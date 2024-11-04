@@ -1,0 +1,15 @@
+Package: manydist
+Type: Package
+Title: (Un)biased Distances for Mixed-type Data
+Version: 0.4.1
+Author: Alfonso Iodice D'Enza [aut, cre], Angelos Markos [aut], Michel van de Velden [aut], Carlo Cavicchia [aut]
+Maintainer: Alfonso Iodice D'Enza <iodicede@gmail.com>
+Description: A general framework for implementing many (un)biased distances for mixed-type variables.
+Imports: entropy, Matrix, fastDummies, data.table, philentropy,
+        cluster, purrr, dplyr, tidyr, forcats, tibble, magrittr, fpc,
+        recipes
+Suggests: palmerpenguins
+License: GPL-3
+Encoding: UTF-8
+NeedsCompilation: no
+Packaged: 2024-11-04 11:48:58 UTC; amarkos
