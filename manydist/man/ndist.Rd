@@ -2,7 +2,7 @@
 \alias{ndist}
 \title{Calculation of Pairwise Distances for Continuous Data}
 \description{
-Computes a distance matrix with options for scaling, weighting, and dimensionality reduction using principal component analysis.
+Computes a distance matrix with options for scaling, weighting, and dimensionality reduction using principal component analysis (see, van de Velden et al., 2024).
 }
 \usage{
 ndist(x, commensurable = FALSE, method = "manhattan",
@@ -56,6 +56,10 @@ dist_matrix <- ndist(penguins_cont, scaling = "robust")
 dist_matrix <- ndist(penguins_cont, method = "euclidean", weights = c(1, 0.5, 2, 1))
 
 }
+\references{
+van de Velden, M., Iodice D'Enza, A., Markos, A., Cavicchia, C. (2024). (Un)biased distances for mixed-type data. \emph{arXiv preprint}. Retrieved from \url{https://arxiv.org/abs/2411.00429}.
+}
+
 \seealso{
 \code{\link{mdist}}, \code{\link{cdist}}
 }

@@ -2,7 +2,7 @@
 \alias{mdist}
 \title{Calculation of Pairwise Distances for Mixed-Type Data}
 \description{
-Computes pairwise distances between observations described by numeric and/or categorical attributes. The function provides options for computing independent, dependent, and practice-based distances as defined by van de Velden et al. (2024), with support for various continuous and categorical distance metrics, scaling, and commensurability adjustments.
+Computes pairwise distances between observations described by numeric and/or categorical attributes. The function provides options for computing independent, dependent, and practice-based distances as defined in van de Velden et al. (2024), with support for various continuous and categorical distance metrics, scaling, and commensurability adjustments.
 }
 \usage{
 mdist(x, response = NULL, distance_cont = "manhattan", distance_cat = "tot_var_dist",
@@ -13,7 +13,7 @@ mdist(x, response = NULL, distance_cont = "manhattan", distance_cat = "tot_var_d
   \item{x}{A dataframe or tibble containing continuous (coded as numeric), categorical (coded as factors), or mixed-type variables.}
   \item{response}{An optional factor for supervised distance calculation in categorical variables, applied only if \code{distance_cat = "supervised"}. Default is \code{NULL}.}
   \item{distance_cont}{Character string specifying the distance metric for continuous variables. Options include \code{"manhattan"} (default) and \code{"euclidean"}.}
-  \item{distance_cat}{Character string specifying the distance metric for categorical variables. Options include \code{"tot_var_dist"} (default), \code{"matching"}, \code{"eskin"}, \code{"iof"}, \code{"of"}, \code{"goodall_3"}, \code{"goodall_4"}, \code{"gifi_chi2"}, \code{"lin"}, \code{"var_entropy"}, \code{"var_mutability"}, \code{"supervised"}, \code{"supervised_full"}, \code{"le_and_ho"}.}
+  \item{distance_cat}{Character string specifying the distance metric for categorical variables. Options include \code{"tot_var_dist"} (default), \code{"HL"}, \code{"HLeucl"}, \code{cat_dis}, \code{mca}, \code{st_dev},  \code{"matching"}, \code{"eskin"}, \code{"iof"}, \code{"of"}, \code{"goodall_3"}, \code{"goodall_4"}, \code{"gifi_chi2"}, \code{"lin"}, \code{"var_entropy"}, \code{"var_mutability"}, \code{"supervised"}, \code{"supervised_full"}, \code{"le_and_ho"} and all the options in the package philentropy.}
   \item{commensurable}{Logical. If \code{TRUE}, the function adjusts each variable's contribution to ensure equal average influence in the overall distance. Default is \code{FALSE}.}
   \item{scaling}{Character string specifying the scaling method for continuous variables. Options include \code{"none"} (default), \code{"std"}, \code{"range"}, \code{"pc_scores"}, and \code{"robust"}.}
   \item{ncomp}{Integer specifying the number of components to retain when \code{scaling = "pc_scores"}. Default is \code{ncol(x)}.}
@@ -74,6 +74,11 @@ distance_matrix <- mdist(pengmix[, c(1, 2, 7)], distance_cat = "tot_var_dist")
 # Example 8: Distance for continuous variables only
 distance_matrix <- mdist(pengmix[, 3:6], distance_cont = "manhattan")
 }
+
+\references{
+van de Velden, M., Iodice D'Enza, A., Markos, A., Cavicchia, C. (2024). (Un)biased distances for mixed-type data. \emph{arXiv preprint}. Retrieved from \url{https://arxiv.org/abs/2411.00429}.
+}
+
 \seealso{
 \code{\link{cdist}}, \code{\link{ndist}}
 }

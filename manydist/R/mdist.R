@@ -19,12 +19,12 @@ mdist <- function(x,response=NULL, distance_cont="manhattan", distance_cat="tot_
     if(preset == "gower"){
       if (commensurable == FALSE)
       {
-        distance_mat <-  ncol(x)*as.matrix(daisy(x, metric = "gower"))
+        distance_mat <-  as.matrix(daisy(x, metric = "gower"))
       } else {
         gowerlist = x %>% map(~daisy(as_tibble(.x),metric="gower") %>% as.matrix())
         gowerlist = tibble(gowdist = gowerlist) %>% mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
         distance_mat <- Reduce(`+`, gowerlist$commgow)
-        distance_mat <- ncol(x)*distance_mat
+        distance_mat <- distance_mat
       }
 
     }else if(preset == "catdissim"){
