@@ -38,6 +38,7 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
 
     full_delta = blocks * create_delta(ZZod, nvar,p,chi2=FALSE)
 
+
   }
   # if(method=="euclid_prof"){
   #   #print("in euclid_prof")
@@ -49,8 +50,10 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
     #print("in chi2")
     #ZZod2
     p=2
-    full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm)), nvar,p,chi2=TRUE)
-
+   # full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm)), nvar,p,chi2=TRUE)
+    full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm/n)), nvar,p,chi2=TRUE) # New: Corrected probability zm/n. Takes average over nvar-1
+    
+    
   }
   # if(method=="w_chi2"){
   #   #print("in w_chi2")
@@ -99,7 +102,8 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
       Qi=ncol(x)
       sk=Qi^2/(Qi^2+2)
       return(
-        matrix((1/sk -1),nrow=Qi,ncol=Qi)/nvar
+        #matrix((1/sk -1),nrow=Qi,ncol=Qi)/nvar
+        matrix((1/sk -1),nrow=Qi,ncol=Qi)
       )
     })
     )
@@ -140,6 +144,7 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
 
   if(method=="lin"){
     prop = as.matrix(zm/n)
+   
 
     pv<-prop
     pr<-pv %*% rep(1,Qs)
@@ -147,10 +152,26 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
     pp<-pr+pc
     pplog<-log(pr)+log(pc)
     diag(pp)<-prop
-    linsim2<- (pplog - 2*log(pp))/2*log(pp)
+ #   print(log(pp))
+  #  linsim2<- (pplog - 2*log(pp))/2*log(pp)
+    linsim2<- (pplog - 2*log(pp))/2*log(pp) # NEW CODE, ADDED BRACKETS FOR DIVISION AND ADDED EPS 27-12-2024
+    linsim2[is.nan(linsim2)] <- 0 # ADDED 8 July 2025 - NEEDS FURTHER INVESTIGTION
     # print(blocks)
-    full_delta<-as.matrix(blocks*linsim2)/nvar
-
+    full_delta<-as.matrix(blocks*linsim2)
+    #full_delta<-as.matrix(blocks*linsim2)/nvar
+    # For all 2x2 blocks corresponding to q_j=2, set full_delta equal to 0
+    start_index <- 1
+    for (j in seq_along(Q)) {
+      if (Q[j] == 2) { # Check if q_j = 2
+        end_index <- start_index + 1
+        # full_delta[start_index:end_index, start_index:end_index] <- 0 # Set 2x2 block to 0
+        # # Create simple matching dissimilarity matrix for this block
+        simple_matching_block <- matrix(1, nrow = 2, ncol = 2) - diag(2)
+        full_delta[start_index:end_index, start_index:end_index] <- simple_matching_block
+      }
+      start_index <- start_index + Q[j] # Move to the next block
+    }
+   # print(full_delta)
   }
 
   if(method=="var_entropy"){

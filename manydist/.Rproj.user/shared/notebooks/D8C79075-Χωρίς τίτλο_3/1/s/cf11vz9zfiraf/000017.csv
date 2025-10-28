@@ -1,0 +1,107 @@
+"0","cat(""\n=== COMPREHENSIVE CLUSTERING ANALYSIS WITH CLUSTERBENCHSTATS ===\n"")"
+"1","
+=== COMPREHENSIVE CLUSTERING ANALYSIS WITH CLUSTERBENCHSTATS ===
+"
+"0","# Apply enhanced clustering to all cycles"
+"0","enhanced_clustering_results <- list()"
+"0",""
+"0","for (cycle_name in names(cycle_prepared_data)) {"
+"0","  if (!is.null(cycle_prepared_data[[cycle_name]])) {"
+"0","    "
+"0","    enhanced_clustering_results[[cycle_name]] <- perform_educational_clustering_official("
+"0","      cycle_prepared_data[[cycle_name]], "
+"0","      cycle_name"
+"0","    )"
+"0","  }"
+"0","}"
+"1","
+=== CLUSTERBENCHSTATS ANALYSIS: PISA 2015 ===
+"
+"1","
+→ Calculating distance matrices for PISA 2015...
+"
+"1","  → unbiased_independent..."
+"1"," 0.8s ✓
+"
+"1","  → unbiased_dependent..."
+"1"," 0.8s ✓
+"
+"1","  → gower_baseline..."
+"1"," 0.1s ✓
+"
+"1","
+→ Running clustering with unbiased_independent distance...
+"
+"1","  → Macro-level clustering...
+"
+"1","    ✓ Macro clustering completed
+"
+"1","  → Micro-level clustering...
+"
+"1","    ✓ Micro clustering completed
+"
+"1","
+→ Running clustering with unbiased_dependent distance...
+"
+"1","  → Macro-level clustering...
+"
+"1","    ✓ Macro clustering completed
+"
+"1","  → Micro-level clustering...
+"
+"1","    ✓ Micro clustering completed
+"
+"1","
+→ Running clustering with gower_baseline distance...
+"
+"1","  → Macro-level clustering...
+"
+"1","    ✓ Macro clustering completed
+"
+"1","  → Micro-level clustering...
+"
+"1","    ✓ Micro clustering completed
+"
+"1","
+→ Finding optimal solutions across all distance methods...
+"
+"0","cat(""\n✓ Enhanced clustering analysis completed for all cycles\n"")"
+"1","
+✓ Enhanced clustering analysis completed for all cycles
+"
+"0","# Display results"
+"0","cat(""\n=== FINAL OPTIMAL CLUSTERING RESULTS ===\n"")"
+"1","
+=== FINAL OPTIMAL CLUSTERING RESULTS ===
+"
+"0","for (cycle_name in names(enhanced_clustering_results)) {"
+"0","  result <- enhanced_clustering_results[[cycle_name]]"
+"0","  "
+"0","  cat(sprintf(""\n--- PISA %s RESULTS ---\n"", cycle_name))"
+"0","  cat(sprintf(""Students analyzed: %d\n"", result$data_info$n_students))"
+"0","  cat(sprintf(""Variables used: %d\n"", result$data_info$n_variables))"
+"0","  "
+"0","  # Display optimal solutions"
+"0","  for (purpose in c(""policy"", ""intervention"", ""equity"")) {"
+"0","    if (!is.null(result$optimal_solutions[[purpose]])) {"
+"0","      sol <- result$optimal_solutions[[purpose]]"
+"0","      cat(sprintf(""%s: %s using %s distance (Score: %.3f)\n"", "
+"0","                  toupper(purpose), sol$solution, sol$distance_method, sol$score))"
+"0","    } else {"
+"0","      cat(sprintf(""%s: No solution found\n"", toupper(purpose)))"
+"0","    }"
+"0","  }"
+"0","}"
+"1","
+--- PISA 2015 RESULTS ---
+"
+"1","Students analyzed: 1373
+"
+"1","Variables used: 18
+"
+"1","POLICY: Ward.4 using unbiased_independent distance (Score: 133.900)
+"
+"1","INTERVENTION: Ward.12 using unbiased_independent distance (Score: 147.183)
+"
+"1","EQUITY: Ward.3 using unbiased_independent distance (Score: 1.824)
+"

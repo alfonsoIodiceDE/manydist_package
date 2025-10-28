@@ -1,0 +1,8 @@
+"0",""
+"0","# Micro-level optimal clusterings  "
+"0","optimal_micro <- find_optimal_clusterings(calibrated_micro, 5)"
+"0","cat(""\\n--- TOP 5 MICRO-LEVEL CLUSTERINGS ---\\n"")"
+"1","\n--- TOP 5 MICRO-LEVEL CLUSTERINGS ---\n"
+"0","print(optimal_micro[, c(""distance_method"", ""clustering_method"", ""k"","
+"0","                        ""within_dissim"", ""separation"", ""entropy"","
+"0","                        ""pearson_gamma"", ""composite_index"")])"

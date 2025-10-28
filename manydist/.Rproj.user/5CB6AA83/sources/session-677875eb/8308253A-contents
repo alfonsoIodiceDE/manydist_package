@@ -1,0 +1,725 @@
+---
+title: "Unbiased mixed variables distances"
+subtitle: "competitors"
+format: html
+code-fold: true
+code-tools: true
+embed-resources: true
+page-layout: full
+toc: true
+toc-title: tasks
+toc-location: left
+toc-expand: 2
+theme: minty
+callout-icon: false
+knitr:
+  opts_chunk: 
+    collapse: true
+    R.options:
+    message: false
+    warning: false
+    code-fold: true
+---
+
+```{r setup}
+#| code-fold: false
+#| eval: TRUE
+#| include: false
+
+# Clear environment and load libraries
+rm(list = ls())
+gc()
+
+# Load required libraries
+library(aricode)
+library(cluster)
+library(fpc)
+library(manydist)
+library(patchwork)
+library(tidyverse)
+library(tidymodels)
+library(varhandle)
+library(vegan)
+library(kdml)
+library(ggplot2)
+library(viridis)
+library(dplyr)
+library(entropy)
+library(kernlab)    # for spectral clustering
+library(mclust)     # for ARI calculation
+library(kdml)
+library(Matrix)     # for EDMIX
+
+```
+
+### GUDMM
+
+
+the main function is `gudmm_distance_dependency_mixed_matrix` that recalls
+
+- `gudmm_distance_categorical_exact` that recalls
+
+- `gudmm_jensen_shannon` for Jensen-Shannon divergence calculation
+
+- `gudmm_calculate_R_MI` that recalls
+
+- `gudmm_mutual_info_regression` for mutual information calculation in regression tasks
+
+- `gudmm_mutual_info_classif` for mutual information calculation in classification tasks
+
+- `gudmm_mutual_info_score` for mutual information score calculation
+
+
+```{r}
+## main function
+source("~/Downloads/custom_cluster_comparison/R/gudmm_distance_dependency_mixed_matrix.R")
+
+## functions within the main function
+source("~/Downloads/custom_cluster_comparison/R/gudmm_distance_categorical_exact.R")
+## this function recalls 
+source("~/Downloads/custom_cluster_comparison/R/gudmm_jensen_shannon.R")
+
+
+##
+source("~/Downloads/custom_cluster_comparison/R/gudmm_calculate_R_MI.R")
+##
+source("~/Downloads/custom_cluster_comparison/R/gudmm_mutual_info_regression.R")
+source("~/Downloads/custom_cluster_comparison/R/gudmm_mutual_info_classif.R")
+source("~/Downloads/custom_cluster_comparison/R/gudmm_mutual_info_score.R")
+```
+
+
+
+### DKSS
+
+the function is `kdml::dkss`, already implemented in R.
+
+### Modified gower
+
+The main function is `mg_gower_mod_matrix` that recalls
+
+- `mg_self_adaptive_distance` 
+
+- `mg_gower_dist_modify` that recalls
+
+- `mg_gower_fcn` for normalized mutual information calculation
+
+
+```{r}
+
+source("~/Downloads/custom_cluster_comparison/R/mg_self_adaptive_distance.R")
+source("~/Downloads/custom_cluster_comparison/R/mg_normalized_MI.R")
+source("~/Downloads/custom_cluster_comparison/R/mg_gower_dist_modify.r")
+source("~/Downloads/custom_cluster_comparison/R/mg_gower_mod_matrix.R")
+
+```
+
+
+## Introduction
+
+In this document, we provide the code to reproduce the results of the clustering experiments in the paper.
+
+The clustering used is partitioning around medoids (PAM) with the `pam` function from the `cluster` package. The dissimilarity matrix in input is computed with respect to the following indexes:
+
+- **Preset methods**: Gower, unbiased dependent, Euclidean one-hot, categorical dissimilarity
+- **Categorical distance methods**: Standard deviation, matching, inverse occurrence frequency, occurrence frequency
+- **Total variation distance**: With PC scores scaling
+- **Modified Gower** (Liu et al. 2024): With adaptive weights using self-adaptive distance
+- **GUDMM**: Mousavi and Sehhati (2023)
+- **KDSS**: Ghashti and Thompson (2024)
+
+The clustering is evaluated with the adjusted Rand index (ARI) using the `ARI` function from the `aricode` package.
+
+---
+
+## Synthetic data 
+
+```{r data-setup}
+#| code-fold: false
+library(tidyverse)
+library(MixSim)
+library(rdist)
+library(tidymodels)
+
+# Categorize numerical variable function
+intv <- function(vec, class) {
+  nbase <- (1:(class - 1)) / class
+  nq <- map_dbl(nbase, ~ quantile(vec, .x))
+  res <- c(min(vec), nq, max(vec))
+  res[1] <- res[1] - 1
+  for (i in 2:length(res)) {
+    if (res[i - 1] == res[i]) {
+      res[i] <- res[i] + 2e-15
+    }
+  }
+  return(res)
+}
+
+# Define all scenario parameters
+set.seed(1234)  # Set once for reproducibility of seed selection
+scenarios <- crossing(
+  seed = sample(1:100000, 3),  # Randomly sample 3 seeds
+  # nClust = c(3, 5, 8),
+  nClust = c(5),
+  # overlap = c(0.01, seq(0.05, 0.20, by = 0.05)),
+  overlap = c(0.01, 0.05, .1), #c(0.05, .1,.2),
+  # nrows = c(100, 600, 1000),
+  nrows = c(600),
+  ncols = c(12),
+  catratio = c(0.2, 0.5, 0.8),#c(0.2, 0.5, 0.8),
+  pi = c(0.01, 1.0)#c(0.01, 1.0)
+)
+
+# Simulation logic per scenario
+simulate_scenario <- function(seed, nClust, overlap, nrows, ncols, catratio, pi) {
+  set.seed(seed)
+  
+  mixsimaux <- MixSim(BarOmega = overlap, PiLow = pi, K = nClust, p = ncols, resN = 1e6)
+  mixdtaux <- simdataset(n = nrows, Pi = mixsimaux$Pi, Mu = mixsimaux$Mu, S = mixsimaux$S)
+  
+  # Discretize a portion of columns to categorical
+  df <- as.data.frame(mixdtaux$X)
+  n_cat <- round(ncols * catratio)
+  label <- mixdtaux$id
+  if (n_cat > 0) {
+    for (k in 1:n_cat) {
+      df[[k]] <- as.factor(cut(df[[k]], intv(df[[k]], 4), labels = 1:4))
+    }
+  }
+  
+  out = list(
+    df = df,
+    label = label)
+  return(out)
+}
+
+# Apply the simulation to all scenarios and nest results
+final_results <- scenarios %>%
+  mutate(data = pmap(
+    list(seed, nClust, overlap, nrows, ncols, catratio, pi),
+    simulate_scenario
+  ))
+
+# Define benchmark methods first
+benchmark_methods <- tibble(
+  what = c(rep("preset", 4),
+           rep("distance_cat", 4),
+           "tvd_pc",
+           "gower_mod",
+           "gudmm",
+           "kdml_dkss"),
+  option = c("gower", "unbiased_dependent", "euclidean_onehot", "catdissim",
+             "st_dev", "matching", "iof", "of",
+             "tot_var_dist",
+             "gower_modified",
+             "dependency_mixed",
+             "dkss_fast")
+)
+
+scenario_structure = crossing(final_results,benchmark_methods)
+
+```
+
+```{r synthetic_clustering}
+#| code-fold: false
+tidymodels_prefer()
+source("~/Downloads/custom_cluster_comparison/R/pam_by_distance.R")
+
+synth_cluster_results <- scenario_structure |>
+  mutate(
+    no_f_cont = round(ncols * (1 - catratio)),
+    pam_clustering = pmap(list(data, what, option, nClust, no_f_cont),
+                          ~pam_by_distance(
+                            df = ..1$df,        # Access the df component
+                            what = ..2,
+                            option = ..3,
+                            label = ..1$label,  
+                            n_clusters = ..4,   
+                            no_f_cont = ..5
+                          )
+    )
+  ) |> dplyr::select(data, what, option, pam_clustering) |>
+  unnest_wider(pam_clustering) |>
+  mutate(
+    ari = map2_dbl(clustering, data, ~{
+      if (is.null(.x)) {
+        return(NA)
+      } else {
+        return(round(ARI(.x, .y$label), digits = 3))  # Access label from data
+      }
+    })
+  ) |>
+  select(data, what, option, ari)
+```
+
+```{r synthetic_results}
+# Summary statistics
+synth_method_performance <- synth_cluster_results %>%
+  group_by(what, option) %>%
+  summarise(
+    mean_ari = mean(ari, na.rm = TRUE),
+    sd_ari = sd(ari, na.rm = TRUE),
+    median_ari = median(ari, na.rm = TRUE),
+    min_ari = min(ari, na.rm = TRUE),
+    max_ari = max(ari, na.rm = TRUE),
+    n_datasets = sum(!is.na(ari)),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(mean_ari))
+
+print("Method Performance Summary:")
+print(synth_method_performance)
+
+
+# Dataset-specific results
+dataset_results <- synth_cluster_results %>%
+  group_by(data) %>%
+  summarise(
+    best_method = paste(what[which.max(ari)], option[which.max(ari)], sep = "_"),
+    best_ari = max(ari, na.rm = TRUE),
+    worst_ari = min(ari, na.rm = TRUE),
+    ari_range = best_ari - worst_ari,
+    .groups = 'drop'
+  )
+
+print("Best Method per Dataset:")
+print(dataset_results)
+
+synth_method_comparison <- synth_cluster_results %>%
+  select(data, what, option, ari) %>%
+  pivot_wider(names_from = c(what, option), values_from = ari, names_sep = "_") 
+
+#print("Method Comparison:")
+#print(synth_method_comparison)
+
+```
+
+
+## Synthetic Results Visualization
+```{r synth_visualization}
+#| code-fold: false
+
+# First, let's extract the experimental parameters and merge with results
+synth_results_with_params <- synth_cluster_results %>%
+  # Extract the nested scenario parameters
+  mutate(
+    scenario_id = row_number()
+  ) %>%
+  # We need to extract parameters from the original scenarios
+  # Let's recreate the parameter extraction
+  bind_cols(
+    # Extract parameters from the original scenarios structure
+    scenarios %>% 
+      slice(rep(1:n(), each = nrow(benchmark_methods))) %>%
+      select(seed, nClust, overlap, nrows, ncols, catratio, pi)
+  )
+
+# 1. Performance by Categorical Ratio
+plot_by_catratio <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  ggplot(aes(x = factor(catratio), y = ari, fill = method)) +
+  geom_boxplot() +
+  labs(
+    title = "Clustering Performance by Categorical Ratio",
+    x = "Categorical Ratio",
+    y = "Adjusted Rand Index (ARI)",
+    fill = "Method"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  guides(fill = guide_legend(ncol = 3))
+
+# 2. Performance by Overlap
+plot_by_overlap <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  ggplot(aes(x = factor(overlap), y = ari, color = method)) +
+  geom_point(alpha = 0.7, size = 2) +
+  stat_summary(fun = mean, geom = "line", aes(group = method), size = 1) +
+  labs(
+    title = "Clustering Performance by Cluster Overlap",
+    x = "Overlap Level",
+    y = "Adjusted Rand Index (ARI)",
+    color = "Method"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8)
+  ) +
+  guides(color = guide_legend(ncol = 3))
+
+# 3. Performance by Pi (cluster balance)
+plot_by_pi <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(
+    method = paste(what, option, sep = "_"),
+    pi_label = ifelse(pi == 0.01, "Unbalanced (0.01)", "Balanced (1.0)")
+  ) %>%
+  ggplot(aes(x = pi_label, y = ari, fill = method)) +
+  geom_boxplot() +
+  labs(
+    title = "Clustering Performance by Cluster Balance",
+    x = "Cluster Balance",
+    y = "Adjusted Rand Index (ARI)",
+    fill = "Method"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8)
+  ) +
+  guides(fill = guide_legend(ncol = 3))
+
+# 4. Heatmap of method performance across conditions
+heatmap_data <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  group_by(method, catratio, overlap, pi) %>%
+  summarise(mean_ari = mean(ari, na.rm = TRUE), .groups = 'drop') %>%
+  mutate(
+    condition = paste0("cat:", catratio, " ovlp:", overlap, " pi:", pi)
+  )
+
+plot_heatmap <- heatmap_data %>%
+  ggplot(aes(x = condition, y = method, fill = mean_ari)) +
+  geom_tile() +
+  scale_fill_viridis_c(name = "Mean ARI") +
+  labs(
+    title = "Method Performance Heatmap Across Conditions",
+    x = "Experimental Condition",
+    y = "Method"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8)
+  )
+
+# 5. Interaction plot showing how methods perform across categorical ratios and overlap
+interaction_plot <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  group_by(method, catratio, overlap) %>%
+  summarise(mean_ari = mean(ari, na.rm = TRUE), .groups = 'drop') %>%
+  ggplot(aes(x = factor(catratio), y = mean_ari, color = factor(overlap), group = factor(overlap))) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~method, scales = "free_y") +
+  labs(
+    title = "Method Performance: Categorical Ratio × Overlap Interaction",
+    x = "Categorical Ratio",
+    y = "Mean ARI",
+    color = "Overlap"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 8),
+    legend.position = "bottom"
+  )
+
+# 6. Summary table by condition
+condition_summary <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  group_by(catratio, overlap, pi) %>%
+  summarise(
+    best_method = method[which.max(ari)],
+    best_ari = max(ari, na.rm = TRUE),
+    mean_ari = mean(ari, na.rm = TRUE),
+    worst_ari = min(ari, na.rm = TRUE),
+    ari_range = best_ari - worst_ari,
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(mean_ari))
+
+# Display all plots
+print(plot_by_catratio)
+print(plot_by_overlap)
+print(plot_by_pi)
+print(plot_heatmap)
+print(interaction_plot)
+
+# Display summary table
+knitr::kable(
+  condition_summary, 
+  caption = "Best Performing Methods by Experimental Condition",
+  digits = 3
+)
+
+# Method ranking across conditions
+method_ranking <- synth_results_with_params %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  group_by(catratio, overlap, pi) %>%
+  mutate(rank = rank(-ari, ties.method = "average")) %>%
+  group_by(method) %>%
+  summarise(
+    mean_rank = mean(rank, na.rm = TRUE),
+    median_rank = median(rank, na.rm = TRUE),
+    best_rank = min(rank, na.rm = TRUE),
+    worst_rank = max(rank, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  arrange(mean_rank)
+
+print("Method Rankings Across All Conditions:")
+knitr::kable(method_ranking, digits = 2)
+
+# Create a results table for better display
+results_wide <- synth_cluster_results %>%
+  select(data, what, option, ari) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  select(-what, -option) %>%
+  pivot_wider(names_from = data, values_from = ari)
+
+knitr::kable(results_wide, caption = "ARI Results by Method and Dataset", digits = 3)
+
+# Performance comparison plot
+synth_performance_plot <- synth_cluster_results %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  ggplot(aes(x = reorder(method, ari), y = ari, fill = what)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(
+    title = "Clustering Performance Comparison",
+    subtitle = "ARI scores across all datasets",
+    x = "Method",
+    y = "Adjusted Rand Index (ARI)",
+    fill = "Method Type"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(synth_performance_plot)
+
+```
+
+
+## Real dataset setup
+
+```{r real-dataset-setup}
+#| code-fold: false
+real_data_flow <- tibble(
+  dataset_path = paste0("/Users/amarkos/MixedSetsClustering/",c("cleveland5.Rdata","cleveland2.Rdata","dermatology.Rdata",
+                                                                "obesitas.Rdata", "australian.Rdata"))
+) |> mutate(
+  dataset_name =c("cleveland5","cleveland2","dermatology",
+                  "obesitas", "australian"),
+  loaded_data= purrr::map(.x = dataset_path, .f=function(x=.x){
+    temp_env = new.env()
+    load(x, envir = temp_env)
+    return(as.list(temp_env))
+  }
+  ),
+  dataset= purrr::map(.x = loaded_data, .f= ~as_tibble(.x$df) |> select(-.x$t)),
+  label = purrr::map(.x = loaded_data, .f = ~{
+    df <- as_tibble(.x$df)
+    target <- .x$t
+    pull(df, target)
+  }),
+  n_clusters= purrr::map_int(.x = loaded_data, .f = ~.x$k)
+)
+
+benchmark_methods <- tibble(
+  what = c(rep("preset", 4),
+           rep("distance_cat", 4),
+           "tvd_pc",
+           "gower_mod",
+           "gudmm",
+           "kdml_dkss"),
+  #          "edmix"),
+  option = c("gower", "unbiased_dependent", "euclidean_onehot", "catdissim",
+             "st_dev", "matching", "iof", "of",
+             "tot_var_dist",
+             "gower_modified",
+             "dependency_mixed",
+             "dkss_fast")#,
+  #           "edmix")
+)
+
+# Dataset-specific continuous feature counts for GUDMM, KDML, and EDMIX
+dataset_cont_features <- tibble(
+  dataset_name = c("cleveland5", "cleveland2", "dermatology", "obesitas", "australian"),
+  no_f_cont = c(5, 5, 1, 8, 8)
+)
+
+# Create the scenario structure first
+scenario_structure = crossing(real_data_flow |>
+                                select(-dataset_path), benchmark_methods)
+
+# Then join with the continuous feature counts
+scenario_structure <- scenario_structure %>%
+  left_join(dataset_cont_features, by = "dataset_name") %>%
+  # Exclude obesitas for KDML DKSS method
+  filter(!(dataset_name == "obesitas" & what == "kdml_dkss"))
+
+# Create toy scenario after the join
+toy_scenario_structure = scenario_structure |>
+  slice(57:60)
+# slice(61:65)  # Updated slice to include EDMIX examples
+```
+
+```{r clustering_experiments}
+#| code-fold: false
+source("~/Downloads/custom_cluster_comparison/R/pam_by_distance.R")
+cluster_results = scenario_structure |>
+  filter(what == "gudmm", dataset_name=="australian") |>
+  mutate(
+    pam_clustering = pmap(list(dataset, what, option, label, n_clusters, no_f_cont),
+                          ~pam_by_distance(
+                            df = ..1,
+                            what = ..2,
+                            option = ..3,
+                            label = ..4,
+                            n_clusters = ..5,
+                            no_f_cont = ..6
+                          )
+    ))
+  ) |>
+  select(dataset_name, what, option, pam_clustering) |>
+  unnest_wider(pam_clustering) |>
+  mutate(
+    ari = map2_dbl(clustering, label, ~{
+      if (is.null(.x)) {
+        return(NA)
+      } else {
+        return(round(ARI(.x, .y), digits = 3))
+      }
+    })
+  ) |>
+  select(dataset_name, what, option, ari)
+
+```
+
+## Results Analysis
+```{r results}
+#| code-fold: false
+
+# Summary statistics
+method_performance <- cluster_results %>%
+  group_by(what, option) %>%
+  summarise(
+    mean_ari = mean(ari, na.rm = TRUE),
+    sd_ari = sd(ari, na.rm = TRUE),
+    median_ari = median(ari, na.rm = TRUE),
+    min_ari = min(ari, na.rm = TRUE),
+    max_ari = max(ari, na.rm = TRUE),
+    n_datasets = sum(!is.na(ari)),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(mean_ari))
+
+print("Method Performance Summary:")
+print(method_performance)
+
+# Dataset-specific results
+dataset_results <- cluster_results %>%
+  group_by(dataset_name) %>%
+  summarise(
+    best_method = paste(what[which.max(ari)], option[which.max(ari)], sep = "_"),
+    best_ari = max(ari, na.rm = TRUE),
+    worst_ari = min(ari, na.rm = TRUE),
+    ari_range = best_ari - worst_ari,
+    .groups = 'drop'
+  )
+
+print("Best Method per Dataset:")
+print(dataset_results)
+
+# EDMIX-specific analysis
+#edmix_results <- cluster_results %>%
+#  filter(what == "edmix") %>%
+#  select(dataset_name, ari) %>%
+#  arrange(desc(ari))
+
+#print("EDMIX Performance by Dataset:")
+#print(edmix_results)
+
+# Compare EDMIX with other methods
+method_comparison <- cluster_results %>%
+  select(dataset_name, what, option, ari) %>%
+  pivot_wider(names_from = c(what, option), values_from = ari, names_sep = "_") #%>%
+#  select(dataset_name, edmix_edmix, everything()) %>%
+#  arrange(desc(edmix_edmix))
+
+print("Method Comparison:")
+print(method_comparison)
+```
+
+## Visualization
+```{r visualization}
+#| code-fold: false
+
+# Create a results table for better display
+results_wide <- cluster_results %>%
+  select(dataset_name, what, option, ari) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  select(-what, -option) %>%
+  pivot_wider(names_from = dataset_name, values_from = ari)
+
+knitr::kable(results_wide, caption = "ARI Results by Method and Dataset", digits = 3)
+
+# Performance comparison plot
+performance_plot <- cluster_results %>%
+  filter(!is.na(ari)) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  ggplot(aes(x = reorder(method, ari), y = ari, fill = what)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(
+    title = "Clustering Performance Comparison",
+    subtitle = "ARI scores across all datasets",
+    x = "Method",
+    y = "Adjusted Rand Index (ARI)",
+    fill = "Method Type"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(performance_plot)
+
+# EDMIX vs other methods heatmap
+heatmap_data <- cluster_results %>%
+  select(dataset_name, what, option, ari) %>%
+  mutate(method = paste(what, option, sep = "_")) %>%
+  select(-what, -option) %>%
+  pivot_wider(names_from = method, values_from = ari) %>%
+  column_to_rownames("dataset_name") %>%
+  as.matrix()
+
+# Create heatmap showing relative performance
+library(pheatmap)
+pheatmap(heatmap_data,
+         scale = "none",
+         cluster_rows = TRUE,
+         cluster_cols = TRUE,
+         color = viridis::viridis(100),
+         main = "ARI Performance Heatmap",
+         fontsize = 8,
+         angle_col = 45)
+
+# EDMIX ranking analysis
+#edmix_ranking <- cluster_results %>%
+#  group_by(dataset_name) %>%
+#  arrange(desc(ari)) %>%
+#  mutate(rank = row_number()) %>%
+#  filter(what == "edmix") %>%
+#  ungroup() %>%
+#  select(dataset_name, ari, rank)
+
+#print("EDMIX Ranking per Dataset:")
+#print(edmix_ranking)
+
+#cat("\nEDMIX Summary Statistics:")
+#cat("\nMean ARI:", round(mean(edmix_ranking$ari, na.rm = TRUE), 3))
+#cat("\nMedian Rank:", median(edmix_ranking$rank, na.rm = TRUE))
+#cat("\nBest Rank:", min(edmix_ranking$rank, na.rm = TRUE))
+#cat("\nWorst Rank:", max(edmix_ranking$rank, na.rm = TRUE))
+```

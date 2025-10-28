@@ -1,0 +1,26 @@
+{
+    "id": "71110C31",
+    "path": "~/nearest_neighbors_for_mixed 2/manydist/R/cat_delta.R",
+    "project_path": "R/cat_delta.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1751447304640.0,
+    "source_on_save": true,
+    "relative_order": 10,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "67,8",
+        "scrollLine": "61"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1753112067,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1753112067026,
+    "read_only": false,
+    "read_only_alternatives": []
+}

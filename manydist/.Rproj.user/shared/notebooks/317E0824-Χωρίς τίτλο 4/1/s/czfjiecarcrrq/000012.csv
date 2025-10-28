@@ -1,0 +1,13 @@
+"0","cat(""\n✓ Variable distribution analysis completed\n"")"
+"1","
+✓ Variable distribution analysis completed
+"
+"0","cat(""✓ Review the transformation recommendations above\n"")"
+"1","✓ Review the transformation recommendations above
+"
+"0","cat(""✓ Achievement variables kept untransformed (linear importance)\n"")"
+"1","✓ Achievement variables kept untransformed (linear importance)
+"
+"0","cat(""✓ Skewed count-like variables marked for transformation\n"")"
+"1","✓ Skewed count-like variables marked for transformation
+"

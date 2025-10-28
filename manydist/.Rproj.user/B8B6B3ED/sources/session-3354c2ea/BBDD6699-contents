@@ -1,0 +1,96 @@
+
+data <- data_matrix
+# Extract the data matrix (assuming first column contains row names)
+species_names <- rownames(data) #data[[1]]
+env_data <- data#<- as.matrix(data[,-1])
+#rownames(env_data) <- species_names
+
+# Display the data
+print("Original Data:")
+print(env_data)
+
+# Calculate grand total
+n <- sum(env_data)
+print(paste("Grand total:", n))
+
+# Calculate P matrix (proportions of grand total)
+P <- env_data / n
+
+# Number of rows (species) and columns (environments)
+I <- nrow(P)  # 5 species
+J <- ncol(P)  # 6 environments
+
+# Column masses (c)
+c <- colSums(P)
+
+# For CA-raw: use uniform row weights instead of row masses
+uniform_row_weights <- rep(1/I, I)
+
+# Create diagonal matrices
+D_c_inv_sqrt <- diag(1/sqrt(c))
+D_unif_sqrt <- diag(sqrt(uniform_row_weights))
+
+# Center the matrix with respect to uniform profile
+M <- P - matrix(1, nrow = I, ncol = 1) %*% matrix(c/I, nrow = 1, ncol = J)
+
+# Create the matrix for SVD decomposition (S*)
+S_star <- D_unif_sqrt %*% M %*% D_c_inv_sqrt
+
+# Perform SVD
+svd_result <- svd(S_star)
+
+# Extract components
+U <- svd_result$u
+V <- svd_result$v
+sigma <- svd_result$d
+
+# Calculate coordinates
+# Standard coordinates for environments (columns)
+col_std_coords <- D_c_inv_sqrt %*% V
+
+# Principal coordinates for species (rows)
+row_principal_coords <- U %*% diag(sigma) / sqrt(uniform_row_weights[1])
+
+# Calculate inertia
+total_inertia <- sum(sigma^2)
+inertia_per_axis <- sigma^2
+percent_inertia <- (inertia_per_axis / total_inertia) * 100
+
+# Create data frames for plotting
+row_df <- data.frame(
+  Species = rownames(env_data),
+  Dim1 = row_principal_coords[,1],
+  Dim2 = row_principal_coords[,2],
+  Type = "Species"
+)
+
+col_df <- data.frame(
+  Environment = colnames(env_data),
+  Dim1 = col_std_coords[,1],
+  Dim2 = col_std_coords[,2],
+  Type = "Environment"
+)
+
+# Plot the results
+ggplot() +
+  geom_point(data = row_df, aes(x = Dim1, y = Dim2, color = "Species"), size = 3) +
+  geom_text(data = row_df, aes(x = Dim1, y = Dim2, label = Species), 
+            vjust = -0.5, hjust = 0.5, color = "blue") +
+  geom_point(data = col_df, aes(x = Dim1, y = Dim2, color = "Environment"), size = 3, shape = 17) +
+  geom_text(data = col_df, aes(x = Dim1, y = Dim2, label = Environment), 
+            vjust = -0.5, hjust = 0.5, color = "red") +
+  labs(title = "CA-raw Biplot (Raw Correspondence Analysis)",
+       x = paste("Dimension 1 (", round(percent_inertia[1], 1), "%)", sep = ""),
+       y = paste("Dimension 2 (", round(percent_inertia[2], 1), "%)", sep = ""),
+       color = "Element Type") +
+  theme_minimal() +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
+  scale_color_manual(values = c("Species" = "blue", "Environment" = "red"))
+
+# Display inertia information
+print(paste("Total inertia:", round(total_inertia, 4)))
+print("Inertia per axis:")
+print(round(inertia_per_axis, 4))
+print("Percentage inertia per axis:")
+print(round(percent_inertia, 1))

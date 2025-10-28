@@ -1,0 +1,372 @@
+# Load required libraries
+library(ca)
+library(vegan)
+
+# ===============================================================================
+# DATA SETUP
+# ===============================================================================
+
+# Your data matrix
+data_matrix <- matrix(c(
+  3910, 4680, 5110, 2803, 3434, 4286,  # Burns
+  3810, 4450, 4710, 2085, 2405, 3067,  # Cinnamon
+  3320, 3120, 3390, 1270, 1403, 1296,  # Sweet
+  1540, 1820, 1760, 769, 930, 876,     # Rend
+  2440, 2550, 3030, 800, 1082, 877     # Thai
+), nrow = 5, byrow = TRUE)
+
+rownames(data_matrix) <- c("Burns", "Cinnamon", "Sweet", "Rend", "Thai")
+colnames(data_matrix) <- c("E11", "E12", "E13", "E21", "E22", "E23")
+
+# ===============================================================================
+# CA-RAW FUNCTION (Complete Implementation)
+# ===============================================================================
+
+CA_raw <- function (X, ncp = 5, row.sup = NULL, col.sup = NULL, quanti.sup=NULL, quali.sup=NULL, graph = TRUE, axes=c(1,2), row.w=NULL, excl=NULL, return_matrices = TRUE){
+  
+  # Helper function for eta2 calculation
+  fct.eta2 <- function(vec,x,weights) {
+    VB <- function(xx) {
+      return(sum((colSums((tt*xx)*weights)^2)/ni))
+    }
+    tt <- tab.disjonctif(vec)
+    ni <- colSums(tt*weights)
+    unlist(lapply(as.data.frame(x),VB))/colSums(x*x*weights)
+  }
+  
+  if (is.table(X)) X <- matrix(as.vector(X),nrow(X),dimnames=dimnames(X))
+  if (is.null(rownames(X))) rownames(X) <- 1:nrow(X)
+  if (is.null(colnames(X))) colnames(X) <- colnames(X, do.NULL = FALSE,prefix="V")
+  if (!is.null(row.sup) & !is.numeric(row.sup)) row.sup<- which(rownames(X)%in%row.sup)
+  if (!is.null(col.sup) & !is.numeric(col.sup)) col.sup<- which(colnames(X)%in%col.sup)
+  if (!is.null(quali.sup) & !is.numeric(quali.sup)) quali.sup<- which(colnames(X)%in%quali.sup)
+  if (!is.null(quanti.sup) & !is.numeric(quanti.sup)) quanti.sup<- which(colnames(X)%in%quanti.sup)
+  
+  X <- as.data.frame(X)
+  is.quali <- which(!unlist(lapply(X,is.numeric)))
+  X[,is.quali] <- lapply(X[,is.quali,drop=FALSE],as.factor)
+  for (i in is.quali) X[,i] <- as.factor(X[,i])
+  X <- droplevels(X)
+  Xtot <- X
+  
+  if (any(!unlist(lapply(X, is.numeric)))) {
+    auxi <- NULL
+    for (j in (1:ncol(X))[!((1:ncol(X))%in%quali.sup)]) if (!is.numeric(X[,j])) auxi <- c(auxi,colnames(X)[j])
+    if (!is.null(auxi)) stop(paste("\nThe following variables are not quantitative: ", auxi))
+  }
+  if (!inherits(X, "data.frame")) stop("X is not a data.frame")
+  if (!is.null(row.sup)) X <- as.data.frame(X[-row.sup,])
+  if ((!is.null(col.sup))||(!is.null(quanti.sup))||(!is.null(quali.sup))) X <- as.data.frame(X[,-c(col.sup,quanti.sup,quali.sup)])
+  
+  if (any(apply(X,1,sum)==0)){
+    warning(paste0("The rows ",paste(rownames(X)[which(apply(X,1,sum)==0)],collapse=", ")," sum at 0. They were suppressed from the analysis"))
+    X <- X[-which(apply(X,1,sum)==0),,drop=FALSE]
+  }
+  if (any(apply(X,2,sum)==0)){
+    warning(paste0("The columns ",paste(colnames(X)[which(apply(X,2,sum)==0)],collapse=", ")," sum at 0. They were suppressed from the analysis"))
+    X <- X[,-which(apply(X,2,sum)==0),drop=FALSE]
+  }
+  
+  # CA-raw modifications start here
+  if (is.null(row.w)) row.w <- rep(1,nrow(X))
+  row.w.init <- row.w
+  if (length(row.w)!=nrow(X)) stop("length of vector row.w should be the number of active rows")
+  
+  # For CA-raw: use uniform row masses instead of proportional masses
+  I <- nrow(X)
+  J <- ncol(X)
+  total <- sum(X*row.w)
+  F <- as.matrix(X)*(row.w/total)
+  marge.col <- colSums(F)
+  
+  # CA-raw: uniform row masses (1/I for each row)
+  marge.row <- rep(1/I, I)
+  
+  ncp <- min(ncp, (nrow(X) - 1), (ncol(X) - 1))
+  
+  # CA-raw: Center with respect to uniform profile instead of average profile
+  # Create uniform profile matrix
+  uniform_profile <- matrix(rep(marge.col, each = I), nrow = I, ncol = J) / I
+  
+  # Center F with respect to uniform profile
+  F_centered <- F - uniform_profile
+  
+  # Apply chi-square metric: pre-multiply by sqrt(I), post-multiply by Dc^(-1/2)
+  if(!is.null(excl)) marge.col[excl] <- 1e-15
+  
+  # For CA-raw: S* = sqrt(I) * F_centered * Dc^(-1/2)
+  S_star <- sqrt(I) * F_centered %*% diag(1/sqrt(marge.col))
+  
+  # Store matrices for output
+  if (return_matrices) {
+    S_matrix <- S_star  # This is the matrix that gets decomposed by SVD
+  }
+  
+  tmp <- svd.triplet(S_star, row.w = marge.row, col.w = rep(1, J), ncp=ncp)
+  if(!is.null(excl)) marge.col[excl] <- 0
+  
+  eig <- tmp$vs^2
+  vp <- matrix(NA, length(eig), 3)
+  rownames(vp) <- paste("dim", 1:length(eig))
+  colnames(vp) <- c("eigenvalue", "percentage of variance", "cumulative percentage of variance")
+  vp[, "eigenvalue"] <- eig
+  vp[, "percentage of variance"] <- (eig/sum(eig))*100
+  vp[, "cumulative percentage of variance"] <- cumsum(vp[, "percentage of variance"])
+  
+  V <- tmp$V
+  U <- tmp$U
+  eig <- eig[1:ncol(U)]
+  
+  # Calculate ALL coordinate types for CA-raw
+  # Standard coordinates
+  coord.row.std <- sqrt(I) * U
+  coord.col.std <- diag(1/sqrt(marge.col)) %*% V
+  
+  # Principal coordinates  
+  coord.row.prin <- sqrt(I) * U %*% diag(sqrt(eig))
+  coord.col.prin <- diag(1/sqrt(marge.col)) %*% V %*% diag(sqrt(eig))
+  
+  # Calculate distances and contributions for CA-raw
+  # Distance from uniform center for rows
+  dist2.row <- apply((F - uniform_profile)^2, 1, function(x) sum(x/marge.col))
+  
+  # Distance from uniform center for columns  
+  F_col_centered <- t(F) - marge.col
+  dist2.col <- apply(F_col_centered^2, 2, function(x) sum(x * marge.row))
+  
+  contrib.row <- t(t(coord.row.std^2 * marge.row)/eig)
+  contrib.col <- t(t(coord.col.prin^2 * marge.col)/eig)
+  
+  cos2.row <- coord.row.std^2/dist2.row
+  cos2.col <- coord.col.prin^2/dist2.col
+  
+  # Set up names
+  colnames(coord.row.std) <- colnames(coord.row.prin) <- colnames(contrib.row) <- colnames(cos2.row) <- paste("Dim", 1:length(eig))
+  rownames(coord.row.std) <- rownames(coord.row.prin) <- rownames(contrib.row) <- rownames(cos2.row) <- rownames(X)
+  
+  colnames(coord.col.std) <- colnames(coord.col.prin) <- colnames(contrib.col) <- colnames(cos2.col) <- paste("Dim", 1:length(eig))
+  rownames(coord.col.std) <- rownames(coord.col.prin) <- rownames(contrib.col) <- rownames(cos2.col) <- colnames(X)
+  
+  inertia.row <- marge.row*dist2.row
+  inertia.col <- marge.col*dist2.col
+  names(inertia.col) <- colnames(X)
+  names(inertia.row) <- rownames(X)
+  
+  res.call <- list(X = X, marge.col = marge.col, marge.row = marge.row, ncp = ncp, row.w=row.w,excl=excl,call=match.call(),Xtot=Xtot,N=sum(row.w*rowSums(X)))
+  
+  # Build comprehensive results with both coordinate types
+  res.row <- list(
+    coord = coord.row.std[, 1:ncp, drop=FALSE],  # Standard coordinates (asymmetric default)
+    coord.principal = coord.row.prin[, 1:ncp, drop=FALSE],  # Principal coordinates (symmetric)
+    contrib = as.matrix(contrib.row[, 1:ncp] * 100), 
+    cos2 = as.matrix(cos2.row[, 1:ncp]), 
+    inertia = inertia.row
+  )
+  
+  res.col <- list(
+    coord = coord.col.prin[, 1:ncp, drop=FALSE],  # Principal coordinates (asymmetric default)
+    coord.standard = coord.col.std[, 1:ncp, drop=FALSE],  # Standard coordinates
+    contrib = as.matrix(contrib.col[, 1:ncp] * 100), 
+    cos2 = as.matrix(cos2.col[, 1:ncp]), 
+    inertia = inertia.col
+  )
+  
+  res <- list(
+    eig = vp[1:min(nrow(X) - 1, ncol(X) - 1),,drop=FALSE], 
+    call = res.call, 
+    row = res.row, 
+    col = res.col, 
+    svd = tmp
+  )
+  
+  # Add detailed matrices if requested
+  if (return_matrices) {
+    res$matrices <- list(
+      S_decomposed = S_matrix,  # The S* matrix that was decomposed
+      F = F,  # Correspondence matrix (proportions)
+      F_centered = F_centered,  # Centered matrix
+      uniform_profile = uniform_profile,  # The uniform profile used for centering
+      U = U,  # Left singular vectors (sites)
+      V = V,  # Right singular vectors (species)
+      singular_values = sqrt(eig),  # Singular values
+      row_masses = marge.row,  # Uniform row masses
+      col_masses = marge.col   # Column masses
+    )
+  }
+  
+  class(res) <- c("CA", "list")
+  if (graph & (ncp>1)) {
+    print(plot(res,axes=axes))
+    if (!is.null(quanti.sup)) print(plot(res, choix="quanti.sup",axes=axes,new.plot=TRUE))
+  }
+  return(res)
+}
+
+# ===============================================================================
+# PLOTTING FUNCTIONS
+# ===============================================================================
+
+# Function to extract and display key information
+extract_ca_raw_info <- function(ca_result) {
+  cat("=== CA-RAW ANALYSIS RESULTS ===\n\n")
+  
+  # Inertias
+  cat("INERTIAS:\n")
+  cat("Total inertia:", sum(ca_result$eig[,"eigenvalue"]), "\n")
+  cat("Eigenvalues (inertias of dimensions):\n")
+  print(ca_result$eig)
+  cat("\nRow inertias:\n")
+  print(round(ca_result$row$inertia, 4))
+  cat("\nColumn inertias:\n")
+  print(round(ca_result$col$inertia, 4))
+  
+  cat("\n", rep("=", 50), "\n", sep="")
+  
+  # Coordinates
+  cat("ROW COORDINATES:\n")
+  cat("Standard coordinates (sites):\n")
+  print(round(ca_result$row$coord, 4))
+  if("coord.principal" %in% names(ca_result$row)) {
+    cat("\nPrincipal coordinates (sites):\n")
+    print(round(ca_result$row$coord.principal, 4))
+  }
+  
+  cat("\nCOLUMN COORDINATES:\n")
+  cat("Principal coordinates (species):\n")
+  print(round(ca_result$col$coord, 4))
+  if("coord.standard" %in% names(ca_result$col)) {
+    cat("\nStandard coordinates (species):\n")
+    print(round(ca_result$col$coord.standard, 4))
+  }
+}
+
+# Symmetric CA-raw plot function
+plot_ca_raw_symmetric <- function(ca_result, axes = c(1, 2), title = "Raw CA - Symmetric") {
+  
+  # Both in principal coordinates for symmetric plot
+  site_coords <- ca_result$row$coord.principal[, axes, drop = FALSE]
+  species_coords <- ca_result$col$coord[, axes, drop = FALSE]  # Already principal
+  
+  # Calculate variance percentages
+  axis1_var <- round(ca_result$eig[axes[1], "percentage of variance"], 1)
+  axis2_var <- round(ca_result$eig[axes[2], "percentage of variance"], 1)
+  
+  # Calculate plot ranges
+  all_coords <- rbind(site_coords, species_coords)
+  x_range <- range(all_coords[,1])
+  y_range <- range(all_coords[,2])
+  
+  # Add padding
+  x_padding <- diff(x_range) * 0.1
+  y_padding <- diff(y_range) * 0.1
+  x_range <- x_range + c(-x_padding, x_padding)
+  y_range <- y_range + c(-y_padding, y_padding)
+  
+  # Create plot with proper aspect ratio
+  plot(x_range, y_range, type = "n",
+       xlab = paste0("Dim ", axes[1], " (", axis1_var, "%)"),
+       ylab = paste0("Dim ", axes[2], " (", axis2_var, "%)"),
+       main = title, asp = 1)
+  
+  # Add grid
+  abline(h = 0, v = 0, col = "gray", lty = 2)
+  
+  # Plot sites (rows)
+  points(site_coords, pch = 19, col = "red", cex = 1.2)
+  text(site_coords, labels = rownames(site_coords), pos = 3, col = "red", cex = 0.8)
+  
+  # Plot species (columns)
+  points(species_coords, pch = 17, col = "blue", cex = 0.8)
+  text(species_coords, labels = rownames(species_coords), pos = 1, col = "blue", cex = 0.6)
+  
+  # Add legend
+  legend("topright", legend = c("Sites", "Species"), 
+         pch = c(19, 17), col = c("red", "blue"), cex = 0.8)
+  
+  # Add note about symmetric scaling
+  mtext("Both sites and species in principal coordinates", side = 3, line = 0.5, cex = 0.8, col = "gray50")
+}
+
+# Symmetric standard CA plot function (using vegan results)
+plot_ca_standard_symmetric <- function(ca_result, axes = c(1, 2), title = "Standard CA - Symmetric") {
+  
+  # Extract coordinates from vegan CA structure
+  row_coords_std <- ca_result$CA$u[, axes, drop = FALSE]
+  col_coords_std <- ca_result$CA$v[, axes, drop = FALSE]
+  singular_values <- sqrt(ca_result$CA$eig[axes])  # Square root of eigenvalues = singular values
+  
+  # Convert both to principal coordinates for symmetric plot
+  site_coords <- row_coords_std * matrix(rep(singular_values, each = nrow(row_coords_std)), nrow = nrow(row_coords_std))
+  species_coords <- col_coords_std * matrix(rep(singular_values, each = nrow(col_coords_std)), nrow = nrow(col_coords_std))
+  
+  # Calculate variance percentages
+  eigenvals <- ca_result$CA$eig
+  total_inertia <- ca_result$CA$tot.chi
+  axis1_var <- round((eigenvals[axes[1]] / total_inertia) * 100, 1)
+  axis2_var <- round((eigenvals[axes[2]] / total_inertia) * 100, 1)
+  
+  # Calculate plot ranges
+  all_coords <- rbind(site_coords, species_coords)
+  x_range <- range(all_coords[,1])
+  y_range <- range(all_coords[,2])
+  
+  # Add padding
+  x_padding <- diff(x_range) * 0.1
+  y_padding <- diff(y_range) * 0.1
+  x_range <- x_range + c(-x_padding, x_padding)
+  y_range <- y_range + c(-y_padding, y_padding)
+  
+  # Create plot with proper aspect ratio
+  plot(x_range, y_range, type = "n",
+       xlab = paste0("Dim ", axes[1], " (", axis1_var, "%)"),
+       ylab = paste0("Dim ", axes[2], " (", axis2_var, "%)"),
+       main = title, asp = 1)
+  
+  # Add grid
+  abline(h = 0, v = 0, col = "gray", lty = 2)
+  
+  # Plot sites (rows)
+  points(site_coords, pch = 19, col = "red", cex = 1.2)
+  text(site_coords, labels = rownames(site_coords), pos = 3, col = "red", cex = 0.8)
+  
+  # Plot species (columns)  
+  points(species_coords, pch = 17, col = "blue", cex = 0.8)
+  text(species_coords, labels = rownames(species_coords), pos = 1, col = "blue", cex = 0.6)
+  
+  # Add legend
+  legend("topright", legend = c("Sites", "Species"), 
+         pch = c(19, 17), col = c("red", "blue"), cex = 0.8)
+  
+  # Add note about symmetric scaling
+  mtext("Both sites and species in principal coordinates", side = 3, line = 0.5, cex = 0.8, col = "gray50")
+}
+
+# ===============================================================================
+# MAIN ANALYSIS AND PLOTTING
+# ===============================================================================
+
+# Run CA-raw analysis
+cat("Running CA-raw analysis...\n")
+result_raw <- CA_raw(data_matrix, graph = FALSE, return_matrices = TRUE)
+
+# Run standard CA analysis
+cat("Running standard CA analysis...\n")
+result_standard <- ca(data_matrix)
+
+# Display detailed CA-raw information
+extract_ca_raw_info(result_raw)
+
+# Create CA-raw symmetric plot
+plot_ca_raw_symmetric(result_raw)
+
+# Wait or create new plot for standard CA
+cat("\nPress Enter for Standard CA plot...")
+readline()
+
+# Create standard CA symmetric plot
+plot_ca_standard_symmetric(result_standard)
+
+# Compare total inertias
+cat("\nComparison of total inertias:\n")
+cat("CA-raw total inertia:", sum(result_raw$eig[,"eigenvalue"]), "\n")
+cat("Standard CA total inertia:", result_standard$CA$tot.chi, "\n")

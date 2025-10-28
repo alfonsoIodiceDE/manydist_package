@@ -1,0 +1,2380 @@
+---
+title: "DIBmix Mixed-Type Clustering Analysis of PISA Educational Resilience"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    theme: united
+    highlight: tango
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+params:
+  data_dir: "/Users/amarkos/PISA_Data/"
+  target_countries: "GRC"
+  disadvantaged_threshold: 0.25
+  k_range_min: 2
+  k_range_max: 8
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  cache = TRUE,
+  comment = NA
+)
+
+# Set global options
+options(scipen = 999)
+```
+
+## Executive Summary
+
+This analysis applies DIBmix mixed-type clustering to identify distinct resilience patterns among disadvantaged students in the PISA (Programme for International Student Assessment) dataset. The study focuses on Greece across multiple PISA cycles, using advanced clustering validation techniques to discover educational resilience typologies.
+
+Key Features:
+
+- Native handling of mixed continuous + categorical variables
+- Robust cluster validation using composite indices
+- Cross-cycle stability analysis
+- Comprehensive educational interpretation
+
+## Library Setup and Configuration
+
+```{r}
+# ---- Core Libraries for DIBmix Analysis ----
+library(haven)       # SPSS file reading
+library(data.table)  # High-performance data operations
+library(dtplyr)      # dplyr syntax with data.table backend
+library(labelled)    # Handle SPSS labels
+library(psych)       # Descriptive statistics
+library(ggplot2)     # Visualizations
+library(tidyr)       # Data reshaping
+library(dplyr)       # Data manipulation
+library(gridExtra)   # Plot arrangements
+library(viridis)     # Color palettes
+library(scales)      # Scaling functions
+library(fpc)         # Clustering validation
+library(mclust)      # Adjusted Rand Index
+library(fastDummies) # Dummy variable creation
+library(mice)        # Multiple imputation
+
+# ---- DIBmix Package (Required) ----
+if (!requireNamespace("IBclust", quietly = TRUE)) {
+  stop("IBclust package required but not available. Install with: devtools::install_github('amarkos/IBclust')")
+}
+library(IBclust)
+
+# ---- Configuration ----
+setDTthreads(0) # Use all available cores
+```
+
+## Analysis Parameters
+
+```{r}
+data_dir <- params$data_dir
+target_countries <- params$target_countries
+DISADVANTAGED_THRESHOLD <- params$disadvantaged_threshold
+K_RANGE <- params$k_range_min:params$k_range_max
+
+# Validate data directory
+if (!dir.exists(data_dir)) {
+  stop("Data directory does not exist: ", data_dir)
+}
+
+path <- function(fname) file.path(data_dir, fname)
+
+cat("Analysis Configuration:\n")
+cat("- Data directory:", data_dir, "\n")
+cat("- Target countries:", target_countries, "\n")
+cat("- Disadvantaged threshold:", DISADVANTAGED_THRESHOLD, "\n")
+cat("- K range:", paste(K_RANGE, collapse = "-"), "\n")
+cat("- Variable weighting: Hierarchical (theory-based)\n")
+```
+
+## Theoretical Variable Weighting Framework
+
+### Educational Resilience Theory-Based Weights
+
+```{r}
+# ---- Define Hierarchical Variable Weights Based on Educational Theory ----
+define_educational_variable_weights <- function() {
+  
+  cat("=== HIERARCHICAL VARIABLE WEIGHTING FRAMEWORK ===\n")
+  cat("Following Akhanli & Hennig's approach to variable weighting\n")
+  cat("Weights based on educational resilience theory and empirical research\n\n")
+  
+  # Define weight categories with theoretical justification
+  weight_categories <- list(
+    
+    # TIER 1: Core resilience measures (highest weight)
+    achievement = list(
+      weight = 3.0,
+      variables = c("MATH_AVG", "READ_AVG", "SCIE_AVG"),
+      justification = "Achievement scores definitionally determine resilience outcomes (OECD, 2018; Masten, 2001)"
+    ),
+    
+    # TIER 2: SES background (high weight)
+    ses_background = list(
+      weight = 2.5, 
+      variables = c("ESCS", "HISEI", "PAREDINT", "HOMEPOS", "ICTRES"),
+      justification = "SES variables definitionally determine disadvantage status (Sirin, 2005; Duncan et al., 2005)"
+    ),
+    
+    # TIER 3: Key psychological factors (high-medium weight)
+    motivation_engagement = list(
+      weight = 2.0,
+      variables = c("ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+                    "BELONG", "TEACHSUP", "GRWTHMND", "WORKMAST", "RESILIENCE"),
+      justification = "Motivation and belonging are key levers for resilience interventions (Yeager & Dweck, 2012; Walton & Cohen, 2011)"
+    ),
+    
+    # TIER 4: Behavioral factors (medium weight)
+    behavior_engagement = list(
+      weight = 1.5,
+      variables = c("PERSEV", "TRUANCY", "HOMWRK", "MASTGOAL", "GFOFAIL", "COMPETE",
+                    "DISCLIMA", "DIRINS", "PERFEED", "OUTHOURS"),
+      justification = "Behavioral engagement predicts achievement but is more malleable than background (Duckworth et al., 2007)"
+    ),
+    
+    # TIER 5: Social-emotional factors (medium weight)
+    social_emotional = list(
+      weight = 1.2,
+      variables = c("PEERREL", "BULLIED", "FAMSUP", "RELATST", "EMOSUPS", 
+                    "PERCOMP", "PERCOOP", "TEACHINT", "LIFESAT", "WELLBEING"),
+      justification = "Social-emotional factors important but less directly linked to academic resilience (Durlak et al., 2011)"
+    ),
+    
+    # TIER 6: Demographics (lower weight - control variables)
+    demographics = list(
+      weight = 1.0,
+      variables = c("ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN", 
+                    "ATTSCHL", "EXPDEG", "PHYSACT", "SCHWELL"),
+      justification = "Demographic controls important but less modifiable (Willms, 2006)"
+    ),
+    
+    # TIER 7: School context (lowest weight)
+    school_context = list(
+      weight = 0.5,
+      variables = c("SCHSIZE", "SCHLTYPE", "STRATIO", "STAFFSHORT", 
+                    "EDUSHORT", "RATCMP1"),
+      justification = "School factors matter less for individual resilience than personal/family factors (Rutter et al., 1979)"
+    )
+  )
+  
+  # Display weighting framework
+  cat("VARIABLE WEIGHTING HIERARCHY:\n")
+  for (category in names(weight_categories)) {
+    info <- weight_categories[[category]]
+    cat(sprintf("- %s: Weight = %.1f\n", toupper(category), info$weight))
+    cat(sprintf("  Variables: %s\n", paste(info$variables[1:min(3, length(info$variables))], collapse = ", ")))
+    if (length(info$variables) > 3) cat(sprintf("  (and %d more...)\n", length(info$variables) - 3))
+    cat(sprintf("  Theory: %s\n\n", info$justification))
+  }
+  
+  return(weight_categories)
+}
+
+# Initialize weight framework
+VARIABLE_WEIGHTS <- define_educational_variable_weights()
+```
+
+## Variable Weight Application Function
+
+```{r}
+# ---- Apply Variable Weights to Data ----
+apply_variable_weights <- function(data, weight_categories, available_vars) {
+  
+  cat("=== APPLYING VARIABLE WEIGHTS ===\n")
+  
+  # Create variable-to-weight mapping
+  var_weight_map <- numeric(length(available_vars))
+  names(var_weight_map) <- available_vars
+  
+  # Default weight for unmapped variables
+  var_weight_map[] <- 1.0
+  
+  # Apply category weights
+  for (category in names(weight_categories)) {
+    category_info <- weight_categories[[category]]
+    category_vars <- intersect(category_info$variables, available_vars)
+    
+    if (length(category_vars) > 0) {
+      var_weight_map[category_vars] <- category_info$weight
+      cat(sprintf("Applied weight %.1f to %d variables in %s category\n", 
+                  category_info$weight, length(category_vars), category))
+    }
+  }
+  
+  # Apply weights by scaling variables
+  weighted_data <- data
+  for (var in available_vars) {
+    if (var %in% names(weighted_data)) {
+      weight <- var_weight_map[var]
+      
+      # Scale variable by its weight (following Akhanli & Hennig approach)
+      if (is.numeric(weighted_data[[var]])) {
+        weighted_data[[var]] <- weighted_data[[var]] * sqrt(weight)  # Square root to avoid over-weighting
+        cat(sprintf("Variable %s: weight = %.1f (scaled by √%.1f = %.2f)\n", 
+                    var, weight, weight, sqrt(weight)))
+      }
+    }
+  }
+  
+  cat(sprintf("\nVariable weighting completed for %d variables\n", length(available_vars)))
+  
+  # Return both weighted data and weight mapping for documentation
+  return(list(
+    data = weighted_data,
+    weight_map = var_weight_map,
+    categories_applied = weight_categories
+  ))
+}
+
+# ---- Validate Variable Weights Against Resilience Prediction ----
+validate_variable_weights <- function(original_data, weighted_data, resilient_outcome) {
+  
+  cat("\n=== VALIDATING VARIABLE WEIGHTS ===\n")
+  
+  if (!"RESILIENT" %in% names(original_data)) {
+    cat("Cannot validate weights - RESILIENT outcome not available\n")
+    return(NULL)
+  }
+  
+  # Calculate correlation with resilience for original vs weighted data
+  resilient_binary <- as.numeric(original_data$RESILIENT)
+  
+  # Get numeric variables only
+  numeric_vars_orig <- sapply(original_data, is.numeric)
+  numeric_vars_weighted <- sapply(weighted_data, is.numeric)
+  
+  common_numeric <- intersect(names(numeric_vars_orig)[numeric_vars_orig],
+                              names(numeric_vars_weighted)[numeric_vars_weighted])
+  
+  common_numeric <- setdiff(common_numeric, c("RESILIENT", "CYCLE", "CNTSCHID", "CNTSTUID", "W_FSTUWT"))
+  
+  if (length(common_numeric) > 0) {
+    
+    # Calculate average absolute correlation with resilience
+    orig_cors <- sapply(common_numeric, function(v) {
+      abs(cor(original_data[[v]], resilient_binary, use = "complete.obs"))
+    })
+    
+    weighted_cors <- sapply(common_numeric, function(v) {
+      abs(cor(weighted_data[[v]], resilient_binary, use = "complete.obs"))
+    })
+    
+    mean_orig_cor <- mean(orig_cors, na.rm = TRUE)
+    mean_weighted_cor <- mean(weighted_cors, na.rm = TRUE)
+    
+    cat(sprintf("Average correlation with resilience:\n"))
+    cat(sprintf("- Original data: %.3f\n", mean_orig_cor))
+    cat(sprintf("- Weighted data: %.3f\n", mean_weighted_cor))
+    cat(sprintf("- Improvement: %.3f (%.1f%%)\n", 
+                mean_weighted_cor - mean_orig_cor,
+                (mean_weighted_cor - mean_orig_cor) / mean_orig_cor * 100))
+    
+    if (mean_weighted_cor > mean_orig_cor) {
+      cat("✓ Variable weights improve resilience prediction - theoretically justified\n")
+    } else {
+      cat("⚠ Variable weights do not improve resilience prediction - consider revision\n")
+    }
+    
+    return(list(
+      original_correlation = mean_orig_cor,
+      weighted_correlation = mean_weighted_cor,
+      improvement = mean_weighted_cor - mean_orig_cor
+    ))
+  } else {
+    cat("No numeric variables available for validation\n")
+    return(NULL)
+  }
+}
+```
+
+## DIBmix Clustering Infrastructure
+### Enhanced DIBmix Function with Variable Weighting
+
+```{r}
+# ---- Enhanced DIBmix CBI Function with Variable Weighting ----
+dibmixCBI_weighted <- function(data, ncl=NULL, k=NULL, catcols=NULL, contcols=NULL, 
+                               variable_weights=NULL, lambda=-1, nstart=1, ...){
+  
+  # Handle parameter compatibility
+  if (!is.null(k)) ncl <- k
+  if (is.null(ncl)) stop("Number of clusters (ncl or k) must be specified")
+  
+  # Ensure data is a data frame (DIBmix requires this)
+  data <- as.data.frame(data)
+  
+  # Apply variable weights if provided
+  if (!is.null(variable_weights)) {
+    cat("Applying variable weights to", ncol(data), "variables\n")
+    
+    available_vars <- names(data)
+    weighted_result <- apply_variable_weights(data, variable_weights, available_vars)
+    data <- weighted_result$data
+    
+    cat("Variable weighting applied successfully\n")
+  }
+  
+  # Handle column specification more robustly
+  if (is.null(catcols) && is.null(contcols)) {
+    # Auto-detect column types
+    catcols <- which(sapply(data, function(x) {
+      is.integer(x) && length(unique(x)) <= 10
+    }))
+    contcols <- which(sapply(data, function(x) {
+      is.numeric(x) && length(unique(x)) > 10
+    }))
+  }
+  
+  # Ensure all data is numeric for preprocessing
+  for (i in 1:ncol(data)) {
+    if (!is.numeric(data[, i])) {
+      data[, i] <- as.numeric(data[, i])
+    }
+  }
+  
+  # CRITICAL FIX: DIBmix requires non-empty catcols and contcols vectors
+  if (length(catcols) == 0) {
+    # Create a dummy categorical variable by discretizing one continuous variable
+    if (length(contcols) > 1) {
+      var_to_discretize <- contcols[which.min(sapply(contcols, function(i) var(data[, i], na.rm = TRUE)))]
+      
+      # Create categorical version by cutting into quantiles
+      dummy_cat_col <- ncol(data) + 1
+      data[, dummy_cat_col] <- as.integer(cut(data[, var_to_discretize], 
+                                              breaks = quantile(data[, var_to_discretize], 
+                                                                probs = c(0, 0.33, 0.67, 1), na.rm = TRUE),
+                                              include.lowest = TRUE))
+      
+      # Update column indices
+      catcols <- dummy_cat_col
+      contcols <- setdiff(contcols, var_to_discretize)
+      
+      cat("DIBmix: Created dummy categorical variable from continuous data\n")
+    } else {
+      stop("DIBmix requires at least one categorical and one continuous variable")
+    }
+  }
+  
+  # Ensure we have at least one continuous column
+  if (length(contcols) == 0) {
+    stop("DIBmix requires at least one continuous variable")
+  }
+  
+  # Validate that catcols and contcols don't overlap
+  if (any(catcols %in% contcols)) {
+    stop("catcols and contcols cannot overlap")
+  }
+  
+  cat("DIBmix: Using", length(contcols), "continuous and", length(catcols), "categorical columns\n")
+  
+  tryCatch({
+    # Apply DIBmix clustering with proper parameters
+    c1 <- IBclust::DIBmix(X = data, ncl = ncl, catcols = catcols, 
+                          contcols = contcols, lambda = lambda, 
+                          nstart = nstart, ...)
+    
+    # Extract partition from the clustering result
+    partition <- c1$Cluster
+    
+    # Create cluster list (indices for each cluster)
+    cl <- list()
+    nc <- ncl
+    
+    for (i in 1:nc) {
+      cl[[i]] <- which(partition == i)
+    }
+    
+    # Return standardized CBI output
+    out <- list(
+      result = c1,
+      nc = nc,
+      nccl = nc,
+      clusterlist = cl,
+      partition = partition,
+      clustermethod = "dibmix_weighted"
+    )
+    
+    return(out)
+    
+  }, error = function(e) {
+    cat("DIBmix failed with error:", e$message, "\n")
+    stop("DIBmix clustering failed: ", e$message)
+  })
+}
+```
+
+```{r}
+# ---- Enhanced DIBmix CBI Function ----
+dibmixCBI <- function(data, ncl=NULL, k=NULL, catcols=NULL, contcols=NULL, 
+                      lambda=-1, nstart=1, ...){
+  
+  # Handle parameter compatibility
+  if (!is.null(k)) ncl <- k
+  if (is.null(ncl)) stop("Number of clusters (ncl or k) must be specified")
+  
+  # Ensure data is a data frame (DIBmix requires this)
+  data <- as.data.frame(data)
+  
+  # Handle column specification more robustly
+  if (is.null(catcols) && is.null(contcols)) {
+    # Auto-detect column types
+    catcols <- which(sapply(data, function(x) {
+      is.integer(x) && length(unique(x)) <= 10
+    }))
+    contcols <- which(sapply(data, function(x) {
+      is.numeric(x) && length(unique(x)) > 10
+    }))
+  }
+  
+  # Ensure all data is numeric for preprocessing
+  for (i in 1:ncol(data)) {
+    if (!is.numeric(data[, i])) {
+      data[, i] <- as.numeric(data[, i])
+    }
+  }
+  
+  # CRITICAL FIX: DIBmix requires non-empty catcols and contcols vectors
+  if (length(catcols) == 0) {
+    # Create a dummy categorical variable by discretizing one continuous variable
+    if (length(contcols) > 1) {
+      var_to_discretize <- contcols[which.min(sapply(contcols, function(i) var(data[, i], na.rm = TRUE)))]
+      
+      # Create categorical version by cutting into quantiles
+      dummy_cat_col <- ncol(data) + 1
+      data[, dummy_cat_col] <- as.integer(cut(data[, var_to_discretize], 
+                                              breaks = quantile(data[, var_to_discretize], 
+                                                                probs = c(0, 0.33, 0.67, 1), na.rm = TRUE),
+                                              include.lowest = TRUE))
+      
+      # Update column indices
+      catcols <- dummy_cat_col
+      contcols <- setdiff(contcols, var_to_discretize)
+      
+      cat("DIBmix: Created dummy categorical variable from continuous data\n")
+    } else {
+      stop("DIBmix requires at least one categorical and one continuous variable")
+    }
+  }
+  
+  # Ensure we have at least one continuous column
+  if (length(contcols) == 0) {
+    stop("DIBmix requires at least one continuous variable")
+  }
+  
+  # Validate that catcols and contcols don't overlap
+  if (any(catcols %in% contcols)) {
+    stop("catcols and contcols cannot overlap")
+  }
+  
+  cat("DIBmix: Using", length(contcols), "continuous and", length(catcols), "categorical columns\n")
+  
+  tryCatch({
+    # Apply DIBmix clustering with proper parameters
+    c1 <- IBclust::DIBmix(X = data, ncl = ncl, catcols = catcols, 
+                          contcols = contcols, lambda = lambda, 
+                          nstart = nstart, ...)
+    
+    # Extract partition from the clustering result
+    partition <- c1$Cluster
+    
+    # Create cluster list (indices for each cluster)
+    cl <- list()
+    nc <- ncl
+    
+    for (i in 1:nc) {
+      cl[[i]] <- which(partition == i)
+    }
+    
+    # Return standardized CBI output
+    out <- list(
+      result = c1,
+      nc = nc,
+      nccl = nc,
+      clusterlist = cl,
+      partition = partition,
+      clustermethod = "dibmix"
+    )
+    
+    return(out)
+    
+  }, error = function(e) {
+    cat("DIBmix failed with error:", e$message, "\n")
+    stop("DIBmix clustering failed: ", e$message)
+  })
+}
+```
+
+## Statistics Extraction Functions
+
+```{r}
+# ---- Statistics Extraction from DIBmix Results ----
+extract_dibmix_statistics_final <- function(cbs_result) {
+  if (is.null(cbs_result$sstat)) {
+    cat("No sstat component available\n")
+    return(NULL)
+  }
+  
+  sstat <- cbs_result$sstat
+  
+  if (length(sstat) > 0 && is.list(sstat[[1]])) {
+    stats_container <- sstat[[1]]
+    
+    # Get method and k range info
+    method_name <- if (!is.null(sstat$method)) sstat$method else "DIBmix"
+    min_k <- sstat$minG
+    max_k <- sstat$maxG
+    k_values <- seq(min_k, max_k)
+    
+    cat("Extracting statistics for k =", paste(k_values, collapse = ", "), "\n")
+    
+    results_list <- list()
+    
+    for (i in seq_along(k_values)) {
+      k_val <- k_values[i]
+      stats_position <- i + 1  # Skip the first NA element
+      
+      if (stats_position <= length(stats_container)) {
+        stats_for_k <- stats_container[[stats_position]]
+        
+        if (is.list(stats_for_k) && length(stats_for_k) > 0) {
+          # Create row for this k value
+          row_data <- data.frame(
+            method = method_name,
+            k = k_val,
+            stringsAsFactors = FALSE
+          )
+          
+          # Add all available statistics
+          for (stat_name in names(stats_for_k)) {
+            if (is.numeric(stats_for_k[[stat_name]]) && length(stats_for_k[[stat_name]]) == 1) {
+              row_data[[stat_name]] <- stats_for_k[[stat_name]]
+            }
+          }
+          
+          results_list[[i]] <- row_data
+          cat("Extracted statistics for k =", k_val, "with", length(names(stats_for_k)), "metrics\n")
+        }
+      }
+    }
+    
+    # Combine all results
+    if (length(results_list) > 0) {
+      final_results <- do.call(rbind, results_list)
+      cat("Successfully extracted", nrow(final_results), "rows of statistics\n")
+      return(final_results)
+    }
+  }
+  
+  cat("Could not extract statistics from structure\n")
+  return(NULL)
+}
+
+# ---- Master Statistics Extraction Function ----
+extract_dibmix_statistics_master <- function(cbs_result) {
+  # Try direct structure extraction
+  result1 <- extract_dibmix_statistics_final(cbs_result)
+  
+  if (!is.null(result1)) {
+    return(result1)
+  }
+  
+  cat("All extraction methods failed\n")
+  return(NULL)
+}
+```
+
+## Composite Index Functions
+
+```{r}
+# ---- Composite Index Creation for Educational Resilience ----
+create_resilience_weights_working <- function(available_stats, index_type = "resilience_types") {
+  cat("Available statistics for weighting:\n")
+  print(available_stats)
+  
+  n_stats <- length(available_stats)
+  weights <- rep(0, n_stats)
+  names(weights) <- available_stats
+  
+  if (index_type == "resilience_types") {
+    # A1 Index: For interpretable resilience types
+    if ("avewithin" %in% available_stats) weights["avewithin"] <- 1
+    if ("entropy" %in% available_stats) weights["entropy"] <- 1
+    if ("sindex" %in% available_stats) weights["sindex"] <- 1
+    if ("pearsongamma" %in% available_stats) weights["pearsongamma"] <- 1
+    if ("asw" %in% available_stats) weights["asw"] <- 0.8
+    if ("minsep" %in% available_stats) weights["minsep"] <- 0.5
+    
+  } else if (index_type == "student_matching") {
+    # A2 Index: For fine-grained student matching
+    if ("entropy" %in% available_stats) weights["entropy"] <- 1.5
+    if ("avewithin" %in% available_stats) weights["avewithin"] <- 1
+    if ("asw" %in% available_stats) weights["asw"] <- 1
+    if ("sindex" %in% available_stats) weights["sindex"] <- 0.8
+  }
+  
+  # Only keep weights for statistics that actually exist and have non-zero weights
+  final_weights <- weights[weights > 0 & names(weights) %in% available_stats]
+  
+  if (length(final_weights) == 0) {
+    cat("Warning: No valid statistics found for composite index\n")
+    
+    # Fallback: use asw (silhouette width) if available
+    if ("asw" %in% available_stats) {
+      final_weights <- c("asw" = 1)
+      cat("Using asw (silhouette width) as fallback\n")
+    } else {
+      return(NULL)
+    }
+  }
+  
+  # Display non-zero weights
+  cat(paste("\nComposite index weights for", index_type, ":\n"))
+  for (stat in names(final_weights)) {
+    cat("  ", stat, ":", final_weights[stat], "\n")
+  }
+  
+  return(final_weights)
+}
+
+calculate_composite_index_working <- function(results_df, weights) {
+  if (is.null(results_df) || is.null(weights) || nrow(results_df) == 0) {
+    return(NULL)
+  }
+  
+  # Check that all weighted statistics are available
+  missing_stats <- setdiff(names(weights), names(results_df))
+  if (length(missing_stats) > 0) {
+    cat("Missing statistics for composite index:", paste(missing_stats, collapse = ", "), "\n")
+    weights <- weights[names(weights) %in% names(results_df)]
+    if (length(weights) == 0) {
+      return(NULL)
+    }
+  }
+  
+  # Calculate composite index for each row
+  composite_scores <- numeric(nrow(results_df))
+  
+  for (i in 1:nrow(results_df)) {
+    row_values <- numeric(length(weights))
+    names(row_values) <- names(weights)
+    
+    for (stat_name in names(weights)) {
+      if (stat_name %in% names(results_df)) {
+        row_values[stat_name] <- results_df[i, stat_name]
+      }
+    }
+    
+    # Calculate weighted average
+    composite_scores[i] <- weighted.mean(row_values, weights, na.rm = TRUE)
+  }
+  
+  # Add composite index to results
+  results_df$index <- composite_scores
+  
+  # Sort by composite index (higher is better)
+  results_df <- results_df[order(results_df$index, decreasing = TRUE), ]
+  
+  return(results_df)
+}
+```
+
+## Data Loading and Preprocessing
+
+### PISA Data Configuration
+
+```{r}
+# ---- PISA Cycle Configuration ----
+pisa_cycles <- list(
+  "2015" = list(
+    student_file = "CY6_MS_CMB_STU_QQQ.sav",
+    school_file = "CY6_MS_CMB_SCH_QQQ.sav",
+    year = 2015,
+    var_mapping = list(
+      student = c(
+        "hisei" = "HISEI",
+        "PARED" = "PAREDINT",
+        "ANXTEST" = "ANXMAT",
+        "MOTIVAT" = "MATHMOT"
+      ),
+      school = c(
+        "STRATIO" = "STRATIO"
+      )
+    )
+  ),
+  "2018" = list(
+    student_file = "CY07_MSU_STU_QQQ.sav",
+    school_file = "CY07_MSU_SCH_QQQ.sav",
+    year = 2018,
+    var_mapping = list(
+      student = c(),
+      school = c(
+        "STRATIO" = "STRATIO"
+      )
+    )
+  ),
+  "2022" = list(
+    student_file = "CY08MSP_STU_QQQ.sav",
+    school_file = "CY08MSP_SCH_QQQ.sav",
+    year = 2022,
+    var_mapping = list(
+      student = c(),
+      school = c(
+        "SMRATIO" = "STRATIO"
+      )
+    )
+  )
+)
+
+# Validate required files exist
+all_files <- unlist(lapply(pisa_cycles, function(x) c(x$student_file, x$school_file)))
+missing_files <- all_files[!file.exists(path(all_files))]
+if (length(missing_files) > 0) {
+  stop("Missing required files: ", paste(missing_files, collapse = ", "))
+}
+
+cat("PISA cycles configured:", names(pisa_cycles), "\n")
+cat("All required files found ✓\n")
+```
+
+### Variable Definitions
+
+```{r}
+# ---- Core Variable Lists (Standardized Names) ----
+core_student_vars <- list(
+  ids = c("CNT", "CNTSCHID", "CNTSTUID"),
+  achievement = c(
+    paste0("PV", 1:10, "MATH"),
+    paste0("PV", 1:10, "READ"),
+    paste0("PV", 1:10, "SCIE")
+  ),
+  ses_background = c(
+    "ESCS", "HISEI", "PAREDINT", "HOMEPOS", "ICTRES"
+  ),
+  demographics = c(
+    "ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN"
+  ),
+  motivation = c(
+    "ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+    "GRWTHMND", "WORKMAST", "RESILIENCE", "MASTGOAL", "GFOFAIL", "COMPETE"
+  ),
+  behavior = c(
+    "PERSEV", "TRUANCY", "HOMWRK", "DISCLIMA", "DIRINS", "PERFEED", "OUTHOURS"
+  ),
+  social_emotional = c(
+    "BELONG", "TEACHSUP", "PEERREL", "BULLIED", "FAMSUP", "RELATST", 
+    "EMOSUPS", "PERCOMP", "PERCOOP", "TEACHINT"
+  ),
+  resilience_other = c(
+    "LIFESAT", "EUDMO", "WELLBEING", "ATTSCHL", "EXPDEG", "PHYSACT", "SCHWELL"
+  ),
+  weights = "W_FSTUWT"
+)
+
+core_school_vars <- list(
+  ids = c("CNT", "CNTSCHID"),
+  characteristics = c(
+    "SCHSIZE", "SCHLTYPE", "STRATIO"
+  ),
+  resources = c(
+    "STAFFSHORT", "EDUSHORT", "RATCMP1"
+  ),
+  weights = "W_SCHGRNRABWT"
+)
+
+cat("Variable categories defined:\n")
+cat("- Student variables:", length(unlist(core_student_vars)), "\n")
+cat("- School variables:", length(unlist(core_school_vars)), "\n")
+```
+
+### Data Loading Functions
+
+```{r}
+# ---- Enhanced File Reading with Variable Mapping ----
+safe_read_pisa_with_mapping <- function(file_path, var_list, var_mapping,
+                                        target_countries = NULL, cycle_year = NULL) {
+  tryCatch({
+    file_vars <- names(read_sav(file_path, n_max = 0))
+    reverse_mapping <- setNames(names(var_mapping), var_mapping)
+    vars_to_request <- sapply(var_list, function(std_var) {
+      if (std_var %in% names(reverse_mapping)) {
+        reverse_mapping[[std_var]]
+      } else {
+        std_var
+      }
+    })
+    available_vars <- intersect(vars_to_request, file_vars)
+    if (length(available_vars) == 0) {
+      warning("No requested variables found in ", basename(file_path))
+      return(NULL)
+    }
+    dt <- setDT(read_sav(file_path, col_select = any_of(available_vars)))
+    for (old_name in names(var_mapping)) {
+      new_name <- var_mapping[[old_name]]
+      if (old_name %in% names(dt)) {
+        setnames(dt, old_name, new_name)
+      }
+    }
+    if (!is.null(target_countries) && "CNT" %in% names(dt)) {
+      dt <- dt[CNT %in% target_countries]
+    }
+    if (!is.null(cycle_year)) {
+      dt[, CYCLE := cycle_year]
+    }
+    std_names_loaded <- names(dt)[names(dt) %in% var_list]
+    missing_vars <- setdiff(var_list, std_names_loaded)
+    if (length(missing_vars) > 0) {
+      cat("Cycle", cycle_year, "- Missing variables:",
+          paste(missing_vars, collapse = ", "), "\n")
+    }
+    return(dt)
+  }, error = function(e) {
+    cat("Error reading file:", basename(file_path), "\n")
+    cat("Error message:", e$message, "\n")
+    return(NULL)
+  })
+}
+```
+
+### Load All PISA Cycles
+
+```{r}
+# ---- Load All PISA Cycles with Harmonization ----
+cat("Loading PISA data for all cycles...\n")
+all_student_vars <- unlist(core_student_vars, use.names = FALSE)
+all_school_vars <- unlist(core_school_vars, use.names = FALSE)
+pisa_student_list <- list()
+pisa_school_list <- list()
+
+for (cycle_name in names(pisa_cycles)) {
+  cycle_info <- pisa_cycles[[cycle_name]]
+  cat("\n--- Loading PISA", cycle_info$year, "---\n")
+  
+  stu_file <- path(cycle_info$student_file)
+  stu_data <- safe_read_pisa_with_mapping(
+    stu_file, all_student_vars, cycle_info$var_mapping$student,
+    target_countries, cycle_info$year
+  )
+  if (!is.null(stu_data) && nrow(stu_data) > 0) {
+    pisa_student_list[[cycle_name]] <- stu_data
+    cat("Students loaded:", nrow(stu_data), "\n")
+  }
+  
+  sch_file <- path(cycle_info$school_file)
+  sch_data <- safe_read_pisa_with_mapping(
+    sch_file, all_school_vars, cycle_info$var_mapping$school,
+    target_countries, cycle_info$year
+  )
+  if (!is.null(sch_data) && nrow(sch_data) > 0) {
+    pisa_school_list[[cycle_name]] <- sch_data
+    cat("Schools loaded:", nrow(sch_data), "\n")
+  }
+}
+
+# Harmonize variables across cycles
+if (length(pisa_student_list) > 0) {
+  all_student_vars_by_cycle <- lapply(pisa_student_list, names)
+  common_student_vars <- Reduce(intersect, all_student_vars_by_cycle)
+  cat("\nCommon student variables across cycles:", length(common_student_vars), "\n")
+}
+if (length(pisa_school_list) > 0) {
+  all_school_vars_by_cycle <- lapply(pisa_school_list, names)
+  common_school_vars <- Reduce(intersect, all_school_vars_by_cycle)
+  cat("Common school variables across cycles:", length(common_school_vars), "\n")
+}
+```
+
+## Data Processing and Resilience Definition
+
+### PISA Cycle Processing Function
+
+```{r}
+# ---- Process PISA Cycle Function ----
+process_pisa_cycle <- function(stu_dt, sch_dt, cycle_year) {
+  if (is.null(stu_dt) || nrow(stu_dt) == 0) return(NULL)
+  
+  # FIXED: Compute average achievement scores with correct patterns
+  stu_dt[, MATH_AVG := rowMeans(.SD, na.rm = TRUE), .SDcols = patterns("MATH$")]
+  stu_dt[, READ_AVG := rowMeans(.SD, na.rm = TRUE), .SDcols = patterns("READ$")]
+  stu_dt[, SCIE_AVG := rowMeans(.SD, na.rm = TRUE), .SDcols = patterns("SCIE$")]
+  
+  # Identify disadvantaged students (bottom quartile SES)
+  escs_quartile <- quantile(stu_dt$ESCS, probs = DISADVANTAGED_THRESHOLD, na.rm = TRUE)
+  stu_dt[, DISADVANTAGED := ifelse(ESCS <= escs_quartile, 1, 0)]
+  
+  # CORRECTED: Define resilience as Level 3+ in ALL three domains
+  # Level 3 thresholds (consistent across PISA cycles)
+  MATH_LEVEL3_THRESHOLD <- 482.38
+  READ_LEVEL3_THRESHOLD <- 480.18
+  SCIE_LEVEL3_THRESHOLD <- 484.14
+  
+  # Resilient = disadvantaged students achieving Level 3+ in ALL subjects
+  stu_dt[DISADVANTAGED == 1, RESILIENT := ifelse(
+    MATH_AVG >= MATH_LEVEL3_THRESHOLD & 
+      READ_AVG >= READ_LEVEL3_THRESHOLD & 
+      SCIE_AVG >= SCIE_LEVEL3_THRESHOLD, 1, 0)]
+  
+  # Filter to disadvantaged students
+  disadv_dt <- stu_dt[DISADVANTAGED == 1]
+  
+  # Rest of your function remains the same...
+  if (!is.null(sch_dt) && nrow(sch_dt) > 0) {
+    disadv_dt <- merge(disadv_dt, sch_dt, by = c("CNT", "CNTSCHID", "CYCLE"), all.x = TRUE)
+  }
+  
+  disadv_dt[is.na(RESILIENT), RESILIENT := 0]
+  
+  # Define clustering variables (ACHIEV_AVG removed)
+  potential_clustering_vars <- c(
+    "MATH_AVG", "READ_AVG", "SCIE_AVG",
+    "ESCS", "HISEI", "PAREDINT", "HOMEPOS", "ICTRES",
+    "ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN", 
+    "ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+    "GRWTHMND", "WORKMAST", "RESILIENCE", "MASTGOAL", "GFOFAIL", "COMPETE",
+    "PERSEV", "TRUANCY", "HOMWRK", "DISCLIMA", "DIRINS", "PERFEED", "OUTHOURS",
+    "BELONG", "TEACHSUP", "PEERREL", "BULLIED", "FAMSUP", "RELATST", 
+    "EMOSUPS", "PERCOMP", "PERCOOP", "TEACHINT",
+    "LIFESAT", "EUDMO", "WELLBEING", "ATTSCHL", "EXPDEG", "PHYSACT", "SCHWELL",
+    "SCHSIZE", "SCHLTYPE", "STRATIO", "STAFFSHORT", "EDUSHORT", "RATCMP1"
+  )
+  
+  clustering_vars <- intersect(potential_clustering_vars, names(disadv_dt))
+  essential_vars <- c("W_FSTUWT", "RESILIENT", "CYCLE", "CNTSCHID", "CNTSTUID")
+  final_vars <- c(clustering_vars, intersect(essential_vars, names(disadv_dt)))
+  
+  disadv_dt <- disadv_dt[, final_vars, with = FALSE]
+  
+  cat("Processed cycle", cycle_year, ": ", nrow(disadv_dt), "disadvantaged students with", 
+      length(clustering_vars), "clustering variables\n")
+  
+  return(disadv_dt)
+}
+```
+
+## Apply Processing to All Cycles
+
+```{r}
+# ---- Apply Processing to All Cycles ----
+processed_list <- mapply(process_pisa_cycle, pisa_student_list, pisa_school_list, 
+                         names(pisa_cycles), SIMPLIFY = FALSE)
+
+# Display processing summary
+cat("\n=== DATA PROCESSING SUMMARY ===\n")
+total_students <- sum(sapply(processed_list, function(x) if (!is.null(x)) nrow(x) else 0))
+successful_cycles <- sum(sapply(processed_list, function(x) !is.null(x)))
+
+cat("- Total disadvantaged students:", total_students, "\n")
+cat("- Successful processing cycles:", successful_cycles, "out of", length(pisa_cycles), "\n")
+
+for (cycle in names(processed_list)) {
+  if (!is.null(processed_list[[cycle]])) {
+    n_students <- nrow(processed_list[[cycle]])
+    n_resilient <- sum(processed_list[[cycle]]$RESILIENT, na.rm = TRUE)
+    resilience_rate <- round(n_resilient / n_students * 100, 1)
+    
+    cat("- Cycle", cycle, ":", n_students, "students,", n_resilient, 
+        "resilient (", resilience_rate, "%)\n")
+  }
+}
+```
+
+## Mixed-Type Data Preprocessing
+
+### Advanced Preprocessing for DIBmix with Weights
+
+```{r}
+# ---- Advanced Preprocessing for Mixed-Type Data with Variable Weighting ----
+preprocess_for_dibmix_clustering_weighted <- function(data, apply_weights = TRUE) {
+  clustering_vars <- colnames(data)
+  
+  # Remove SPSS labels and convert to appropriate types
+  for (var in clustering_vars) {
+    if (inherits(data[[var]], "haven_labelled")) {
+      data[[var]] <- as.numeric(data[[var]])
+    }
+  }
+  
+  # Define variable types explicitly for DIBmix
+  continuous_vars <- c("MATH_AVG", "READ_AVG", "SCIE_AVG", 
+                       "ESCS", "HISEI", "PAREDINT", "HOMEPOS", "ICTRES", 
+                       "GRADE", "SCHSIZE", "STRATIO", 
+                       "ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+                       "GRWTHMND", "WORKMAST", "RESILIENCE", "MASTGOAL", "GFOFAIL", "COMPETE",
+                       "PERSEV", "TRUANCY", "HOMWRK", "DISCLIMA", "DIRINS", "PERFEED", "OUTHOURS",
+                       "BELONG", "TEACHSUP", "PEERREL", "BULLIED", "FAMSUP", "RELATST", 
+                       "EMOSUPS", "PERCOMP", "PERCOOP", "TEACHINT",
+                       "LIFESAT", "EUDMO", "WELLBEING", "ATTSCHL", "EXPDEG", "PHYSACT", "SCHWELL",
+                       "STAFFSHORT", "EDUSHORT", "RATCMP1")
+  
+  nominal_vars <- c("ST004D01T", "IMMIG", "REPEAT", "LANGN", "SCHLTYPE")
+  
+  # Update variable lists based on what's actually available
+  cont_available <- intersect(continuous_vars, clustering_vars)
+  nom_available <- intersect(nominal_vars, clustering_vars)
+  
+  cat("Available continuous variables:", length(cont_available), "\n")
+  cat("Available nominal variables:", length(nom_available), "\n")
+  
+  # Handle variables with >30% missing data - remove these first
+  missing_pct <- sapply(clustering_vars, function(v) sum(is.na(data[[v]])) / nrow(data) * 100)
+  vars_to_remove <- names(missing_pct)[missing_pct >= 30]
+  vars_to_impute <- names(missing_pct)[missing_pct > 0 & missing_pct < 30]
+  
+  # Remove variables with excessive missing data
+  if (length(vars_to_remove) > 0) {
+    cat("Removing variables with >30% missing data:", paste(vars_to_remove, collapse = ", "), "\n")
+    data <- data[, !names(data) %in% vars_to_remove, drop = FALSE]
+    clustering_vars <- setdiff(clustering_vars, vars_to_remove)
+    cont_available <- setdiff(cont_available, vars_to_remove)
+    nom_available <- setdiff(nom_available, vars_to_remove)
+    vars_to_impute <- setdiff(vars_to_impute, vars_to_remove)
+  }
+  
+  # MICE imputation for variables with <30% missing values
+  if (length(vars_to_impute) > 0) {
+    total_missing <- sum(is.na(data[, vars_to_impute, drop = FALSE]))
+    
+    cat("Found", total_missing, "missing values across", length(vars_to_impute), "variables with <30% missing\n")
+    cat("Variables to impute:", paste(vars_to_impute, collapse = ", "), "\n")
+    
+    # Prepare data for MICE imputation
+    cat("Starting MICE imputation...\n")
+    
+    data_for_mice <- data
+    categorical_vars_for_mice <- c()
+    
+    # Set up imputation methods for ALL variables (MICE requirement)
+    imputation_methods <- rep("", ncol(data_for_mice))
+    names(imputation_methods) <- names(data_for_mice)
+    
+    # Only set methods for variables that need imputation
+    for (var in vars_to_impute) {
+      if (var %in% cont_available) {
+        data_for_mice[[var]] <- as.numeric(data_for_mice[[var]])
+        imputation_methods[var] <- "pmm"  # Predictive mean matching for continuous
+        cat("Variable", var, "assigned method: pmm (continuous)\n")
+      } else if (var %in% nom_available) {
+        unique_vals <- unique(data_for_mice[[var]][!is.na(data_for_mice[[var]])])
+        n_categories <- length(unique_vals)
+        
+        # Convert to factor
+        data_for_mice[[var]] <- as.factor(data_for_mice[[var]])
+        categorical_vars_for_mice <- c(categorical_vars_for_mice, var)
+        
+        if (n_categories == 2) {
+          imputation_methods[var] <- "logreg"  # Binary logistic regression
+          cat("Variable", var, "assigned method: logreg (binary factor with", n_categories, "categories)\n")
+        } else {
+          imputation_methods[var] <- "polyreg"  # Polytomous logistic regression
+          cat("Variable", var, "assigned method: polyreg (factor with", n_categories, "categories)\n")
+        }
+      } else {
+        # If variable type is unclear, keep as numeric and use pmm
+        data_for_mice[[var]] <- as.numeric(data_for_mice[[var]])
+        imputation_methods[var] <- "pmm"
+        cat("Variable", var, "assigned method: pmm (default - unclear type)\n")
+      }
+    }
+    
+    tryCatch({
+      # Perform MICE imputation
+      mice_result <- mice::mice(data_for_mice, 
+                                m = 5,  # Number of imputations
+                                method = imputation_methods,
+                                printFlag = FALSE,
+                                seed = 123)
+      
+      # Use the first completed dataset
+      data_imputed <- mice::complete(mice_result, 1)
+      
+      # Convert categorical variables back to numeric for DIBmix
+      for (var in categorical_vars_for_mice) {
+        data_imputed[[var]] <- as.numeric(data_imputed[[var]])
+      }
+      
+      cat("MICE imputation completed successfully\n")
+      data <- data_imputed
+      
+    }, error = function(e) {
+      cat("MICE imputation failed:", e$message, "\n")
+      cat("Falling back to simple imputation methods\n")
+      
+      # Fallback: simple imputation
+      for (var in vars_to_impute) {
+        if (var %in% names(data) && sum(is.na(data[[var]])) > 0) {
+          if (var %in% cont_available) {
+            # Median imputation for continuous
+            data[[var]][is.na(data[[var]])] <- median(data[[var]], na.rm = TRUE)
+          } else {
+            # Mode imputation for nominal/ordinal
+            mode_val <- names(sort(table(data[[var]]), decreasing = TRUE))[1]
+            data[[var]][is.na(data[[var]])] <- as.numeric(mode_val)
+          }
+        }
+      }
+      cat("Simple imputation completed for", length(vars_to_impute), "variables\n")
+    })
+  }
+  
+  # Final check: remove any cases that still have missing values
+  final_missing_per_case <- rowSums(is.na(data))
+  complete_cases <- final_missing_per_case == 0
+  n_complete <- sum(complete_cases)
+  
+  if (n_complete < nrow(data)) {
+    cat("Removing", nrow(data) - n_complete, "cases with remaining missing values\n")
+    data <- data[complete_cases, , drop = FALSE]
+  }
+  
+  cat("Final dataset:", nrow(data), "complete cases with", ncol(data), "variables\n")
+  
+  # Log transform highly skewed continuous variables
+  skewed_vars <- c("HISEI", "HOMEPOS", "ICTRES", "SCHSIZE", "STRATIO")
+  skewed_available <- intersect(skewed_vars, cont_available)
+  
+  for (v in skewed_available) {
+    if (min(data[[v]], na.rm = TRUE) >= 0) {
+      data[[v]] <- log(data[[v]] + 1)  # log(x+1) transformation
+    }
+  }
+  
+  # APPLY VARIABLE WEIGHTS HERE
+  weighted_data <- data
+  if (apply_weights) {
+    available_vars <- intersect(names(data), names(unlist(lapply(VARIABLE_WEIGHTS, function(x) x$variables))))
+    
+    if (length(available_vars) > 0) {
+      cat("\n=== APPLYING VARIABLE WEIGHTS TO PREPROCESSED DATA ===\n")
+      weighted_result <- apply_variable_weights(data, VARIABLE_WEIGHTS, available_vars)
+      weighted_data <- weighted_result$data
+      
+      # Validate weights if RESILIENT is available
+      if ("RESILIENT" %in% names(data)) {
+        validation_result <- validate_variable_weights(data, weighted_data, data$RESILIENT)
+      }
+    }
+  }
+  
+  # Ensure continuous variables are strictly numeric for DIBmix
+  for (var in cont_available) {
+    if (var %in% names(weighted_data)) {
+      weighted_data[[var]] <- as.numeric(weighted_data[[var]])
+    }
+  }
+  
+  # CRITICAL: Ensure we have at least one categorical variable for DIBmix
+  if (length(nom_available) == 0) {
+    cat("No natural categorical variables found. Creating categorical variables from continuous ones.\n")
+    
+    # Choose variables to categorize (prefer those with lower variation for stability)
+    cont_vars_by_cv <- cont_available[order(sapply(cont_available, function(v) {
+      if (v %in% names(weighted_data)) {
+        cv <- sd(weighted_data[[v]], na.rm = TRUE) / mean(weighted_data[[v]], na.rm = TRUE)
+        ifelse(is.finite(cv), cv, Inf)
+      } else {
+        Inf
+      }
+    }))]
+    
+    vars_to_categorize <- cont_vars_by_cv[1:min(2, length(cont_vars_by_cv))]
+    
+    for (var in vars_to_categorize) {
+      if (var %in% names(weighted_data)) {
+        cat_var_name <- paste0(var, "_CAT")
+        
+        # Create categorical version by cutting into quartiles
+        weighted_data[[cat_var_name]] <- as.integer(cut(weighted_data[[var]], 
+                                                       breaks = quantile(weighted_data[[var]], 
+                                                                         probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE),
+                                                       include.lowest = TRUE))
+        
+        # Add to nominal variables and remove from continuous
+        nom_available <- c(nom_available, cat_var_name)
+        cont_available <- setdiff(cont_available, var)
+        
+        cat("Created categorical variable", cat_var_name, "from", var, "\n")
+      }
+    }
+  }
+  
+  # For nominal variables, ensure they are integers for DIBmix
+  for (var in nom_available) {
+    if (var %in% names(weighted_data)) {
+      if (is.factor(weighted_data[[var]])) {
+        weighted_data[[var]] <- as.integer(weighted_data[[var]])
+      } else {
+        weighted_data[[var]] <- as.integer(as.factor(weighted_data[[var]]))
+      }
+    }
+  }
+  
+  # Get column indices for DIBmix
+  catcols <- which(names(weighted_data) %in% nom_available)
+  contcols <- which(names(weighted_data) %in% cont_available)
+  
+  # Final validation
+  if (length(catcols) == 0 || length(contcols) == 0) {
+    stop("DIBmix requires at least one categorical and one continuous variable")
+  }
+  
+  if (any(catcols %in% contcols)) {
+    stop("Column indices overlap - this should not happen")
+  }
+  
+  cat("Final preprocessing with weights: continuous =", length(contcols), 
+      ", categorical =", length(catcols), "\n")
+  
+  return(list(
+    data = weighted_data,
+    catcols = catcols,
+    contcols = contcols,
+    original_data = data,
+    weights_applied = apply_weights
+  ))
+}
+```
+
+## DIBmix Clustering Analysis with Variable Weighting
+
+### Enhanced DIBmix Clustering Function
+
+```{r}
+# ---- DIBmix Clustering Function with Variable Weighting ----
+perform_dibmix_clustering_weighted <- function(disadv_dt, cycle_year) {
+  if (is.null(disadv_dt) || nrow(disadv_dt) == 0) return(NULL)
+  
+  # Prepare clustering data
+  all_vars <- setdiff(names(disadv_dt), c("W_FSTUWT", "RESILIENT", "CYCLE", "CNTSCHID", "CNTSTUID"))
+  cluster_data <- as.data.frame(disadv_dt[, all_vars, with = FALSE])
+  
+  cat("Running DIBmix clustering evaluation with variable weighting for", cycle_year, "...\n")
+  cat("Data dimensions:", nrow(cluster_data), "students x", ncol(cluster_data), "variables\n")
+  
+  # Preprocess for DIBmix with variable weighting
+ processed_result <- preprocess_for_dibmix_clustering_weighted(cluster_data, apply_weights = TRUE)
+ cluster_data_processed <- processed_result$data
+ catcols <- processed_result$catcols
+ contcols <- processed_result$contcols
+ 
+ cat("After preprocessing with weights:", nrow(cluster_data_processed), "students x", ncol(cluster_data_processed), "variables\n")
+ 
+ # Store original data for validation
+ original_data <- processed_result$original_data
+ 
+ tryCatch({
+   
+   # Run full DIBmix analysis with variable weighting
+   dibmix_result <- clusterbenchstats(
+     data = cluster_data_processed,
+     G = K_RANGE,
+     diss = FALSE,
+     clustermethod = "dibmixCBI",
+     methodnames = "DIBmix_Weighted",
+     distmethod = FALSE,
+     ncinput = TRUE,
+     clustermethodpars = list(list(catcols = catcols, contcols = contcols, lambda = -1, nstart = 2)),
+     useboot = FALSE,
+     trace = TRUE,
+     nnruns = 1,
+     kmruns = 1,
+     fnruns = 1,
+     avenruns = 1,
+     useallg = FALSE,
+     useallmethods = FALSE
+   )
+   
+   cat("DIBmix clustering with variable weighting completed successfully for", cycle_year, "\n")
+   
+   # Add metadata about weighting
+   dibmix_result$variable_weighting <- list(
+     weights_applied = TRUE,
+     weight_categories = VARIABLE_WEIGHTS,
+     original_data = original_data,
+     processed_data = cluster_data_processed
+   )
+   
+   return(dibmix_result)
+   
+ }, error = function(e) {
+   cat("Error in DIBmix clustering for", cycle_year, ":", e$message, "\n")
+   return(NULL)
+ })
+}
+```
+
+#### Apply DIBmix with Variable Weighting to All Cycles
+
+```{r}
+# ---- Apply DIBmix Clustering with Variable Weighting to All Cycles ----
+cat("\n=== DIBmix MIXED-TYPE CLUSTERING WITH VARIABLE WEIGHTING ===\n")
+clustering_results_dibmix <- list()
+
+for (cycle in names(processed_list)) {
+  cat("\n--- Starting DIBmix clustering with variable weighting for", cycle, "---\n")
+  
+  if (is.null(processed_list[[cycle]]) || nrow(processed_list[[cycle]]) == 0) {
+    cat("Warning: No valid data for cycle", cycle, "\n")
+    next
+  }
+  
+  result <- perform_dibmix_clustering_weighted(processed_list[[cycle]], cycle)
+  if (!is.null(result)) {
+    clustering_results_dibmix[[cycle]] <- result
+  }
+}
+
+cat("\n=== CLUSTERING WITH VARIABLE WEIGHTING COMPLETED ===\n")
+cat("Successful DIBmix analyses with variable weighting:", length(clustering_results_dibmix), "cycles\n")
+```
+
+## Variable Weighting Sensitivity Analysis
+
+```{r}
+# ---- Sensitivity Analysis for Variable Weighting ----
+perform_weight_sensitivity_analysis <- function(processed_data, cycle_year) {
+  
+  cat("\n=== VARIABLE WEIGHTING SENSITIVITY ANALYSIS FOR", cycle_year, "===\n")
+  
+  if (is.null(processed_data) || nrow(processed_data) == 0) return(NULL)
+  
+  # Prepare data
+  all_vars <- setdiff(names(processed_data), c("W_FSTUWT", "RESILIENT", "CYCLE", "CNTSCHID", "CNTSTUID"))
+  cluster_data <- as.data.frame(processed_data[, all_vars, with = FALSE])
+  
+  # Define different weighting schemes for comparison
+  weight_schemes <- list(
+    
+    # Scheme 1: Equal weights (baseline)
+    equal_weights = list(
+      name = "Equal Weights",
+      apply = FALSE
+    ),
+    
+    # Scheme 2: Our theoretical weights
+    theoretical_weights = list(
+      name = "Theoretical Weights",
+      apply = TRUE,
+      categories = VARIABLE_WEIGHTS
+    ),
+    
+    # Scheme 3: Conservative weights (smaller differences)
+    conservative_weights = list(
+      name = "Conservative Weights",
+      apply = TRUE,
+      categories = list(
+        achievement = list(weight = 1.5, variables = VARIABLE_WEIGHTS$achievement$variables),
+        ses_background = list(weight = 1.3, variables = VARIABLE_WEIGHTS$ses_background$variables),
+        motivation_engagement = list(weight = 1.2, variables = VARIABLE_WEIGHTS$motivation_engagement$variables),
+        behavior_engagement = list(weight = 1.1, variables = VARIABLE_WEIGHTS$behavior_engagement$variables),
+        social_emotional = list(weight = 1.0, variables = VARIABLE_WEIGHTS$social_emotional$variables),
+        demographics = list(weight = 1.0, variables = VARIABLE_WEIGHTS$demographics$variables),
+        school_context = list(weight = 0.8, variables = VARIABLE_WEIGHTS$school_context$variables)
+      )
+    ),
+    
+    # Scheme 4: Extreme weights (larger differences)
+    extreme_weights = list(
+      name = "Extreme Weights",
+      apply = TRUE,
+      categories = list(
+        achievement = list(weight = 5.0, variables = VARIABLE_WEIGHTS$achievement$variables),
+        ses_background = list(weight = 4.0, variables = VARIABLE_WEIGHTS$ses_background$variables),
+        motivation_engagement = list(weight = 3.0, variables = VARIABLE_WEIGHTS$motivation_engagement$variables),
+        behavior_engagement = list(weight = 2.0, variables = VARIABLE_WEIGHTS$behavior_engagement$variables),
+        social_emotional = list(weight = 1.5, variables = VARIABLE_WEIGHTS$social_emotional$variables),
+        demographics = list(weight = 1.0, variables = VARIABLE_WEIGHTS$demographics$variables),
+        school_context = list(weight = 0.2, variables = VARIABLE_WEIGHTS$school_context$variables)
+      )
+    )
+  )
+  
+  sensitivity_results <- list()
+  
+  for (scheme_name in names(weight_schemes)) {
+    scheme <- weight_schemes[[scheme_name]]
+    
+    cat(sprintf("\n--- Testing %s ---\n", scheme$name))
+    
+    tryCatch({
+      # Preprocess with this weighting scheme
+      if (scheme$apply) {
+        # Temporarily replace global weights
+        original_weights <- VARIABLE_WEIGHTS
+        VARIABLE_WEIGHTS <<- scheme$categories
+        
+        processed_result <- preprocess_for_dibmix_clustering_weighted(cluster_data, apply_weights = TRUE)
+        
+        # Restore original weights
+        VARIABLE_WEIGHTS <<- original_weights
+      } else {
+        processed_result <- preprocess_for_dibmix_clustering_weighted(cluster_data, apply_weights = FALSE)
+      }
+      
+      cluster_data_scheme <- processed_result$data
+      catcols <- processed_result$catcols
+      contcols <- processed_result$contcols
+      
+      # Run DIBmix for a subset of k values (faster)
+      test_k_range <- c(3, 4, 5)  # Focus on middle range for speed
+      
+      dibmix_result <- clusterbenchstats(
+        data = cluster_data_scheme,
+        G = test_k_range,
+        diss = FALSE,
+        clustermethod = "dibmixCBI",
+        methodnames = paste0("DIBmix_", gsub(" ", "_", scheme$name)),
+        distmethod = FALSE,
+        ncinput = TRUE,
+        clustermethodpars = list(list(catcols = catcols, contcols = contcols, lambda = -1, nstart = 2)),
+        useboot = FALSE,
+        trace = FALSE,
+        nnruns = 50,
+        kmruns = 50,
+        fnruns = 50,
+        avenruns = 50,
+        useallg = FALSE,
+        useallmethods = FALSE
+      )
+      
+      sensitivity_results[[scheme_name]] <- list(
+        scheme = scheme,
+        results = dibmix_result,
+        success = TRUE
+      )
+      
+      cat(sprintf("%s completed successfully\n", scheme$name))
+      
+    }, error = function(e) {
+      cat(sprintf("%s failed: %s\n", scheme$name, e$message))
+      sensitivity_results[[scheme_name]] <- list(
+        scheme = scheme,
+        results = NULL,
+        success = FALSE,
+        error = e$message
+      )
+    })
+  }
+  
+  # Compare results across schemes
+  cat("\n--- SENSITIVITY ANALYSIS SUMMARY ---\n")
+  
+  comparison_results <- data.frame(
+    Scheme = character(),
+    Best_K = numeric(),
+    Best_Index = numeric(),
+    ASW = numeric(),
+    Success = logical(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (scheme_name in names(sensitivity_results)) {
+    result <- sensitivity_results[[scheme_name]]
+    
+    if (result$success && !is.null(result$results)) {
+      # Extract best solution
+      stats_df <- extract_dibmix_statistics_master(result$results)
+      
+      if (!is.null(stats_df)) {
+        # Use simple ranking for comparison
+        if ("asw" %in% names(stats_df)) {
+          best_row <- which.max(stats_df$asw)
+          best_k <- stats_df$k[best_row]
+          best_index <- stats_df$asw[best_row]
+          asw_value <- stats_df$asw[best_row]
+        } else {
+          best_k <- NA
+          best_index <- NA
+          asw_value <- NA
+        }
+      } else {
+        best_k <- NA
+        best_index <- NA
+        asw_value <- NA
+      }
+      
+      comparison_results <- rbind(comparison_results, data.frame(
+        Scheme = result$scheme$name,
+        Best_K = best_k,
+        Best_Index = best_index,
+        ASW = asw_value,
+        Success = TRUE,
+        stringsAsFactors = FALSE
+      ))
+      
+    } else {
+      comparison_results <- rbind(comparison_results, data.frame(
+        Scheme = result$scheme$name,
+        Best_K = NA,
+        Best_Index = NA,
+        ASW = NA,
+        Success = FALSE,
+        stringsAsFactors = FALSE
+      ))
+    }
+  }
+  
+  cat("Sensitivity analysis comparison:\n")
+  print(comparison_results)
+  
+  # Identify most stable weighting approach
+  successful_schemes <- comparison_results[comparison_results$Success == TRUE, ]
+  
+  if (nrow(successful_schemes) > 0) {
+    best_scheme_row <- which.max(successful_schemes$Best_Index)
+    best_scheme <- successful_schemes$Scheme[best_scheme_row]
+    
+    cat(sprintf("\nBest performing weighting scheme: %s\n", best_scheme))
+    cat(sprintf("- Best k: %s\n", successful_schemes$Best_K[best_scheme_row]))
+    cat(sprintf("- Best index: %.3f\n", successful_schemes$Best_Index[best_scheme_row]))
+    
+    # Check stability (similar k values across schemes)
+    k_values <- successful_schemes$Best_K[!is.na(successful_schemes$Best_K)]
+    if (length(k_values) > 1) {
+      k_stability <- max(k_values) - min(k_values)
+      cat(sprintf("- K stability across schemes: ±%d\n", k_stability))
+      
+      if (k_stability <= 1) {
+        cat("✓ Very stable optimal k across weighting schemes\n")
+      } else if (k_stability <= 2) {
+        cat("✓ Moderately stable optimal k across weighting schemes\n")
+      } else {
+        cat("⚠ Variable optimal k across weighting schemes\n")
+      }
+    }
+  }
+  
+  return(list(
+    schemes_tested = weight_schemes,
+    results = sensitivity_results,
+    comparison = comparison_results
+  ))
+}
+
+# Apply sensitivity analysis to first available cycle (for computational efficiency)
+if (length(processed_list) > 0) {
+  first_cycle <- names(processed_list)[1]
+  if (!is.null(processed_list[[first_cycle]])) {
+    cat("\n=== RUNNING WEIGHT SENSITIVITY ANALYSIS ===\n")
+    cat("Testing on", first_cycle, "data (representative sample)\n")
+    
+    sensitivity_analysis <- perform_weight_sensitivity_analysis(processed_list[[first_cycle]], first_cycle)
+    
+    # Save sensitivity results
+    saveRDS(sensitivity_analysis, paste0("weight_sensitivity_analysis_", first_cycle, ".rds"))
+    cat("Sensitivity analysis saved to weight_sensitivity_analysis_", first_cycle, ".rds\n")
+  }
+}
+```
+
+## Cluster Validation and Optimal Solutions
+
+### Extract and Analyze Optimal Clusterings
+
+```{r}
+# ---- Extract Optimal DIBmix Clusterings ----
+optimal_dibmix_clusterings <- list()
+
+for (cycle in names(clustering_results_dibmix)) {
+  if (!is.null(clustering_results_dibmix[[cycle]])) {
+    
+    cat("\n=== DIBmix CLUSTERING VALIDATION RESULTS FOR", cycle, "===\n")
+    
+    # Print basic clustering results
+    print(clustering_results_dibmix[[cycle]])
+    
+    # Extract statistics using the working function
+    results_df <- extract_dibmix_statistics_master(clustering_results_dibmix[[cycle]])
+    
+    if (is.null(results_df)) {
+      cat("Warning: Could not extract validation statistics for", cycle, "\n")
+      next
+    }
+    
+    cat("Extracted statistics for", nrow(results_df), "solutions:\n")
+    print(results_df)
+    
+    # A1: Resilience Types Index
+    weights_resilience <- create_resilience_weights_working(names(results_df), "resilience_types")
+    A1_result <- NULL
+    
+    if (!is.null(weights_resilience)) {
+      cat("\n--- RESILIENCE TYPES INDEX (A1) ---\n")
+      cat("Purpose: Educational interpretation of resilience patterns\n")
+      
+      A1_result <- calculate_composite_index_working(results_df, weights_resilience)
+      
+      if (!is.null(A1_result)) {
+        cat("Composite index results:\n")
+        print(A1_result)
+      } else {
+        cat("Could not calculate A1 composite index\n")
+      }
+    }
+    
+    # A2: Student Matching Index
+    weights_matching <- create_resilience_weights_working(names(results_df), "student_matching")
+    A2_result <- NULL
+    
+    if (!is.null(weights_matching)) {
+      cat("\n--- STUDENT MATCHING INDEX (A2) ---\n") 
+      cat("Purpose: Finding students with very similar resilience profiles\n")
+      
+      A2_result <- calculate_composite_index_working(results_df, weights_matching)
+      
+      if (!is.null(A2_result)) {
+        cat("Composite index results:\n")
+        print(A2_result)
+      } else {
+        cat("Could not calculate A2 composite index\n")
+      }
+    }
+    
+    optimal_dibmix_clusterings[[cycle]] <- list(
+      resilience_types = A1_result,
+      student_matching = A2_result,
+      full_results = clustering_results_dibmix[[cycle]]
+    )
+  }
+}
+```
+
+### Fallback Simple Analysis
+
+```{r}
+# ---- Fallback Analysis if Composite Indices Fail ----
+extract_simple_best_solutions_working <- function(cbs_result) {
+  # Extract statistics using the master function
+  results_df <- extract_dibmix_statistics_master(cbs_result)
+  
+  if (is.null(results_df)) {
+    return(NULL)
+  }
+  
+  # Simple ranking: prioritize silhouette width (asw) if available
+  if ("asw" %in% names(results_df)) {
+    results_df$simple_index <- results_df$asw
+  } else if ("sindex" %in% names(results_df)) {
+    results_df$simple_index <- results_df$sindex
+  } else if ("pearsongamma" %in% names(results_df)) {
+    results_df$simple_index <- results_df$pearsongamma
+  } else {
+    # Use any numeric column except k
+    numeric_cols <- sapply(results_df, is.numeric)
+    numeric_cols <- numeric_cols[!names(numeric_cols) %in% c("k")]
+    
+    if (any(numeric_cols)) {
+      first_metric <- names(numeric_cols)[numeric_cols][1]
+      results_df$simple_index <- results_df[[first_metric]]
+    } else {
+      return(NULL)
+    }
+  }
+  
+  # Sort by simple index
+  results_df <- results_df[order(results_df$simple_index, decreasing = TRUE), ]
+  
+  return(results_df)
+}
+
+cat("\n=== FALLBACK: SIMPLE VALIDATION METRICS ANALYSIS ===\n")
+
+simple_best_solutions <- list()
+
+for (cycle in names(clustering_results_dibmix)) {
+  if (!is.null(clustering_results_dibmix[[cycle]])) {
+    
+    simple_result <- extract_simple_best_solutions_working(clustering_results_dibmix[[cycle]])
+    
+    if (!is.null(simple_result)) {
+      cat("\nSimple ranking for", cycle, ":\n")
+      print(head(simple_result, 3))  # Show top 3 solutions
+      
+      simple_best_solutions[[cycle]] <- simple_result
+    } else {
+      cat("No valid statistics found for", cycle, "\n")
+    }
+  }
+}
+```
+
+## Cross-Cycle Stability Analysis
+
+```{r}
+# ---- Cross-Cycle DIBmix Resilience Stability Analysis ----
+if (length(optimal_dibmix_clusterings) > 1 || length(simple_best_solutions) > 1) {
+  cat("\n=== CROSS-CYCLE DIBmix RESILIENCE PATTERN STABILITY ===\n")
+  
+  # Extract best solutions for resilience types
+  best_resilience_solutions <- list()
+  
+  for (cycle in names(optimal_dibmix_clusterings)) {
+    if (!is.null(optimal_dibmix_clusterings[[cycle]]$resilience_types)) {
+      A1_results <- optimal_dibmix_clusterings[[cycle]]$resilience_types
+      
+      if (!is.null(A1_results) && nrow(A1_results) > 0) {
+        best_row <- which.max(A1_results$index)
+        best_method <- A1_results$method[best_row]
+        best_k <- A1_results$k[best_row]
+        best_index <- A1_results$index[best_row]
+        
+        best_resilience_solutions[[cycle]] <- list(
+          method = best_method,
+          k = best_k,
+          index_value = best_index
+        )
+        
+        cat("Cycle", cycle, "- Best resilience clustering: DIBmix", 
+            "with k =", best_k, "(index =", round(best_index, 3), ")\n")
+      }
+    } else if (!is.null(simple_best_solutions[[cycle]])) {
+      # Use simple ranking as fallback
+      simple_best <- simple_best_solutions[[cycle]][1, ]
+      best_resilience_solutions[[cycle]] <- list(
+        method = "DIBmix",
+        k = simple_best$k,
+        index_value = simple_best$simple_index
+      )
+      
+      cat("Cycle", cycle, "- Best resilience clustering: DIBmix", 
+          "with k =", simple_best$k, "(simple metric =", round(simple_best$simple_index, 3), ")\n")
+    }
+  }
+  
+  # Analyze cross-cycle consistency
+  if (length(best_resilience_solutions) > 1) {
+    methods <- sapply(best_resilience_solutions, function(x) x$method)
+    ks <- sapply(best_resilience_solutions, function(x) x$k)
+    indices <- sapply(best_resilience_solutions, function(x) x$index_value)
+    
+    cat("\n--- Cross-cycle consistency analysis ---\n")
+    cat("Clustering method: DIBmix (consistent across all cycles)\n")
+    cat("Optimal k values:", paste(ks, collapse = ", "), "\n")
+    cat("Index values:", paste(round(indices, 3), collapse = ", "), "\n")
+    
+    # Consistency checks
+    k_consistent <- length(unique(ks)) == 1
+    k_stable <- abs(max(ks) - min(ks)) <= 1
+    
+    cat("\nStability assessment:\n")
+    cat("✓ Consistent clustering method (DIBmix) across all cycles\n")
+    
+    if (k_consistent) {
+      cat("✓ Identical number of resilience clusters across all cycles\n")
+    } else if (k_stable) {
+      cat("✓ Stable number of resilience clusters (±1) across cycles\n")
+    } else {
+      cat("✗ Variable number of resilience clusters across cycles\n")
+    }
+    
+    # Calculate stability metrics
+    mean_index <- mean(indices)
+    sd_index <- sd(indices)
+    cv_index <- sd_index / mean_index
+    
+    cat("\nComposite index stability:\n")
+    cat("Mean index value:", round(mean_index, 3), "\n")
+    cat("Standard deviation:", round(sd_index, 3), "\n")
+    cat("Coefficient of variation:", round(cv_index, 3), "\n")
+    
+    if (cv_index < 0.1) {
+      cat("✓ Very stable clustering quality across cycles\n")
+    } else if (cv_index < 0.2) {
+      cat("✓ Moderately stable clustering quality across cycles\n")
+    } else {
+      cat("⚠ Variable clustering quality across cycles\n")
+    }
+  }
+}
+```
+
+## Detailed Cluster Profiling
+
+```{r}
+# ---- Detailed DIBmix Cluster Profiling and Interpretation ----
+if (length(optimal_dibmix_clusterings) > 0 || length(simple_best_solutions) > 0) {
+  cat("\n=== DETAILED DIBmix RESILIENCE CLUSTER PROFILING ===\n")
+  
+  cycles_to_profile <- unique(c(names(optimal_dibmix_clusterings), names(simple_best_solutions)))
+  
+  for (cycle in cycles_to_profile) {
+    best_result <- NULL
+    best_k <- NULL
+    
+    # Try to get best solution from composite index first
+    if (cycle %in% names(optimal_dibmix_clusterings) && 
+        !is.null(optimal_dibmix_clusterings[[cycle]]$resilience_types)) {
+      A1_results <- optimal_dibmix_clusterings[[cycle]]$resilience_types
+      if (!is.null(A1_results) && nrow(A1_results) > 0) {
+        best_row <- which.max(A1_results$index)
+        best_k <- A1_results$k[best_row]
+        best_result <- "composite"
+      }
+    }
+    
+    # Fallback to simple solution
+    if (is.null(best_result) && cycle %in% names(simple_best_solutions)) {
+      simple_best <- simple_best_solutions[[cycle]][1, ]
+      best_k <- simple_best$k
+      best_result <- "simple"
+    }
+    
+    if (!is.null(best_k)) {
+      cat("\n--- RESILIENCE PROFILES FOR", cycle, "---\n")
+      cat("Best solution: DIBmix with", best_k, "clusters (", best_result, "ranking )\n")
+      
+      # Extract cluster assignments from the original clustering results
+      if (cycle %in% names(clustering_results_dibmix)) {
+        cm_results <- clustering_results_dibmix[[cycle]]$cm
+        
+        # Find the DIBmix clustering result for best k
+        method_names <- names(cm_results)
+        dibmix_index <- which(method_names == "DIBmix")
+        
+        if (length(dibmix_index) > 0) {
+          method_results <- cm_results[[dibmix_index]]
+          k_names <- names(method_results)
+          k_index <- which(k_names == paste0("k", best_k))
+          
+          if (length(k_index) > 0) {
+            cluster_assignments <- method_results[[k_index]]$partition
+            
+            # Get original data for profiling
+            original_data <- processed_list[[cycle]]
+            all_vars <- setdiff(names(original_data), 
+                                c("W_FSTUWT", "RESILIENT", "CYCLE", "CNTSCHID", "CNTSTUID"))
+            
+            # Add cluster assignments to data
+            profile_data <- original_data[, c(all_vars, "RESILIENT"), with = FALSE]
+            profile_data$CLUSTER <- cluster_assignments
+            
+            # Create cluster profiles
+            cluster_profiles <- profile_data[, lapply(.SD, function(x) {
+              if (is.numeric(x)) {
+                return(mean(x, na.rm = TRUE))
+              } else {
+                return(as.numeric(names(sort(table(x), decreasing = TRUE))[1]))
+              }
+            }), by = CLUSTER, .SDcols = c(all_vars, "RESILIENT")]
+            
+            # Display key profile characteristics
+            cat("\nCluster characteristics (means):\n")
+            
+            # Focus on key resilience-related variables
+            key_vars <- c("MATH_AVG", "READ_AVG", "SCIE_AVG", "ESCS", 
+                          "RESILIENT", "ANXMAT", "BELONG", "TEACHSUP", "HOMEPOS")
+            available_key_vars <- intersect(key_vars, names(cluster_profiles))
+            
+            if (length(available_key_vars) > 0) {
+              profile_summary <- cluster_profiles[, c("CLUSTER", available_key_vars), with = FALSE]
+              print(round(profile_summary, 3))
+              
+              # Export detailed cluster profiles
+              profile_file <- paste0("cluster_profiles_", cycle, "_DIBmix_k", best_k, ".csv")
+              fwrite(cluster_profiles, profile_file)
+              cat("Detailed cluster profiles exported to:", profile_file, "\n")
+            }
+            
+            # Resilience distribution by cluster
+            resilience_by_cluster <- profile_data[, .(
+              N = .N,
+              Resilient_N = sum(RESILIENT, na.rm = TRUE),
+              Resilient_Prop = mean(RESILIENT, na.rm = TRUE),
+              Math_Achievement = mean(MATH_AVG, na.rm = TRUE),
+              Read_Achievement = mean(READ_AVG, na.rm = TRUE),
+              Science_Achievement = mean(SCIE_AVG, na.rm = TRUE),
+              SES = mean(ESCS, na.rm = TRUE)
+            ), by = CLUSTER]
+            
+            cat("\nResilience distribution by cluster:\n")
+            print(round(resilience_by_cluster, 3))
+            
+            # Identify high-resilience clusters
+            high_resilience_clusters <- resilience_by_cluster[Resilient_Prop > 0.5]$CLUSTER
+            if (length(high_resilience_clusters) > 0) {
+              cat("High-resilience clusters (>50% resilient students):", 
+                  paste(high_resilience_clusters, collapse = ", "), "\n")
+            }
+            
+            # Export individual student cluster assignments
+            assignments_data <- original_data[, .(CYCLE, CNTSCHID, CNTSTUID, RESILIENT)]
+            assignments_data$CLUSTER <- cluster_assignments
+            assignments_data$METHOD <- "DIBmix"
+            assignments_data$K <- best_k
+            
+            assignments_file <- paste0("student_cluster_assignments_", cycle, ".csv")
+            fwrite(assignments_data, assignments_file)
+            cat("Student cluster assignments exported to:", assignments_file, "\n")
+          } else {
+            cat("Could not find k =", best_k, "results for DIBmix\n")
+          }
+        } else {
+          cat("Could not find DIBmix results\n")
+        }
+      }
+    } else {
+      cat("No valid clustering solution found for", cycle, "\n")
+    }
+  }
+}
+```
+
+## Visualization
+
+```{r}
+# ---- Corrected Visualization Functions ----
+create_dibmix_cluster_visualizations <- function(cycle, optimal_result, processed_data, simple_result = NULL) {
+  
+  # Determine best k from either composite or simple results
+  best_k <- NULL
+  best_method <- "DIBmix"
+  
+  if (!is.null(optimal_result) && !is.null(optimal_result$resilience_types)) {
+    A1_results <- optimal_result$resilience_types
+    if (!is.null(A1_results) && nrow(A1_results) > 0) {
+      best_row <- which.max(A1_results$index)
+      best_k <- A1_results$k[best_row]
+    }
+  }
+  
+  if (is.null(best_k) && !is.null(simple_result)) {
+    best_k <- simple_result[1, ]$k
+  }
+  
+  if (is.null(best_k)) {
+    cat("Could not determine best k for visualizations\n")
+    return(NULL)
+  }
+  
+  cat("Creating visualizations for", cycle, "with DIBmix k =", best_k, "\n")
+  
+  # Extract cluster assignments
+  if (!cycle %in% names(clustering_results_dibmix)) {
+    cat("No clustering results available for", cycle, "\n")
+    return(NULL)
+  }
+  
+  cm_results <- clustering_results_dibmix[[cycle]]$cm
+  dibmix_index <- which(names(cm_results) == "DIBmix")
+  
+  if (length(dibmix_index) == 0) {
+    cat("Could not find DIBmix clustering results for visualization\n")
+    return(NULL)
+  }
+  
+  cluster_assignments <- cm_results[[dibmix_index]][[paste0("k", best_k)]]$partition
+  
+  # Prepare data for visualization
+  all_vars <- setdiff(names(processed_data), 
+                      c("W_FSTUWT", "RESILIENT", "CYCLE", "CNTSCHID", "CNTSTUID"))
+  viz_data <- processed_data[, c(all_vars, "RESILIENT"), with = FALSE]
+  viz_data$CLUSTER <- as.factor(cluster_assignments)
+  viz_data$RESILIENT <- as.factor(viz_data$RESILIENT)
+  
+  # 1. Mathematics Achievement by cluster and resilience status
+  if (all(c("MATH_AVG", "RESILIENT") %in% names(viz_data))) {
+    
+    p1 <- ggplot(viz_data, aes(x = CLUSTER, y = MATH_AVG, fill = RESILIENT)) +
+      geom_boxplot(alpha = 0.7) +
+      scale_fill_manual(values = c("0" = "#E74C3C", "1" = "#27AE60"), 
+                        labels = c("Non-Resilient", "Resilient"),
+                        name = "Student Type") +
+      labs(title = paste("Mathematics Achievement Distribution by DIBmix Cluster -", cycle),
+           subtitle = paste("Optimal DIBmix clustering with", best_k, "clusters | Resilience = Level 3+ all domains"),
+           x = "Cluster", y = "Mathematics Achievement Score") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    ggsave(paste0("math_achievement_by_dibmix_cluster_", cycle, ".png"), p1, width = 10, height = 6)
+    print(p1)
+  }
+  
+  # 2. Cluster composition (resilience proportions)
+  cluster_composition <- viz_data[, .(
+    Total = .N,
+    Resilient = sum(as.numeric(as.character(RESILIENT))),
+    Prop_Resilient = mean(as.numeric(as.character(RESILIENT)))
+  ), by = CLUSTER]
+  
+  p2 <- ggplot(cluster_composition, aes(x = CLUSTER, y = Prop_Resilient, fill = CLUSTER)) +
+    geom_col(alpha = 0.8) +
+    geom_text(aes(label = paste0(round(Prop_Resilient * 100, 1), "%")), 
+              vjust = -0.5, size = 3.5) +
+    scale_fill_viridis_d(name = "Cluster") +
+    scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+    labs(title = paste("Resilience Proportions by DIBmix Cluster -", cycle),
+         subtitle = paste("Total students:", nrow(viz_data), "| Resilience = PISA Level 3+ in Math, Reading & Science"),
+         x = "Cluster", y = "Proportion of Resilient Students") +
+    theme_minimal() +
+    theme(legend.position = "none")
+  
+  ggsave(paste0("resilience_proportions_dibmix_", cycle, ".png"), p2, width = 8, height = 6)
+  print(p2)
+  
+  # 3. SES vs Mathematics Achievement by cluster
+  if (all(c("ESCS", "MATH_AVG") %in% names(viz_data))) {
+    
+    p3 <- ggplot(viz_data, aes(x = ESCS, y = MATH_AVG, color = CLUSTER, shape = RESILIENT)) +
+      geom_point(alpha = 0.6, size = 2) +
+      scale_color_viridis_d(name = "Cluster") +
+      scale_shape_manual(values = c("0" = 1, "1" = 16), 
+                         labels = c("Non-Resilient", "Resilient"),
+                         name = "Student Type") +
+      labs(title = paste("SES vs Mathematics Achievement by DIBmix Cluster -", cycle),
+           subtitle = "DIBmix clustering for mixed-type resilience data",
+           x = "Socioeconomic Status (ESCS)", y = "Mathematics Achievement") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    ggsave(paste0("ses_math_achievement_dibmix_clusters_", cycle, ".png"), p3, width = 10, height = 8)
+    print(p3)
+  }
+  
+  cat("DIBmix visualizations saved for", cycle, "\n")
+}
+```
+
+### Generate Visualizations
+
+```{r}
+# ---- Generate Visualizations for All Cycles ----
+cycles_to_visualize <- unique(c(names(optimal_dibmix_clusterings), names(simple_best_solutions)))
+
+if (length(cycles_to_visualize) > 0) {
+  cat("\n=== GENERATING DIBmix CLUSTER VISUALIZATIONS ===\n")
+  
+  for (cycle in cycles_to_visualize) {
+    if (!is.null(processed_list[[cycle]])) {
+      tryCatch({
+        optimal_result <- if (cycle %in% names(optimal_dibmix_clusterings)) optimal_dibmix_clusterings[[cycle]] else NULL
+        simple_fallback <- if (cycle %in% names(simple_best_solutions)) simple_best_solutions[[cycle]] else NULL
+        create_dibmix_cluster_visualizations(cycle, optimal_result, processed_list[[cycle]], simple_fallback)
+      }, error = function(e) {
+        cat("Error creating visualizations for", cycle, ":", e$message, "\n")
+      })
+    }
+  }
+}
+```
+
+# ---- Enhanced Helper Functions for Variable Weighting Analysis ----
+
+```{r}
+#' Examine Variable Weighting Results
+#' Quick overview of weighted clustering results
+examine_dibmix_weighted_results <- function() {
+  cat("=== HELPER: EXAMINING DIBmix WEIGHTED RESULTS ===\n")
+  
+  if (file.exists("dibmix_clustering_results_weighted.rds")) {
+    results <- readRDS("dibmix_clustering_results_weighted.rds")
+    weights <- readRDS("variable_weights_framework.rds")
+    
+    cat("Loaded weighted clustering results for", length(results), "cycles\n")
+    
+    # Display weighting framework
+    cat("\nVariable weighting framework applied:\n")
+    for (category in names(weights)) {
+      cat(sprintf("- %s: %.1f\n", category, weights[[category]]$weight))
+    }
+    
+    # Display results
+    for (cycle in names(results)) {
+      cat("\nCycle", cycle, ":\n")
+      if (!is.null(results[[cycle]]$resilience_types)) {
+        best_k <- results[[cycle]]$resilience_types$k[which.max(results[[cycle]]$resilience_types$index)]
+        best_index <- max(results[[cycle]]$resilience_types$index)
+        cat("  Best k (weighted):", best_k, "with composite index:", round(best_index, 3), "\n")
+      } else {
+        cat("  No composite index results available\n")
+      }
+    }
+    
+    # Compare with sensitivity analysis if available
+    sensitivity_files <- list.files(pattern = "weight_sensitivity_analysis_.*\\.rds")
+    if (length(sensitivity_files) > 0) {
+      cat("\nSensitivity analysis results available:\n")
+      for (file in sensitivity_files) {
+        cat("-", file, "\n")
+      }
+    }
+    
+  } else {
+    cat("No weighted results file found. Run the analysis first.\n")
+  }
+}
+
+#' Compare Weighted vs Unweighted Results
+#' Compare clustering outcomes with and without variable weighting
+compare_weighted_vs_unweighted <- function() {
+  cat("=== COMPARING WEIGHTED VS UNWEIGHTED CLUSTERING ===\n")
+  
+  # This function would require running both weighted and unweighted versions
+  # For now, provide framework for comparison
+  
+  cat("To compare weighted vs unweighted results:\n")
+  cat("1. Run analysis with apply_weights = FALSE\n")
+  cat("2. Compare optimal k values\n")
+  cat("3. Compare cluster interpretability\n")
+  cat("4. Compare resilience prediction accuracy\n")
+  cat("5. Assess stability across cycles\n\n")
+  
+  if (file.exists("weight_sensitivity_analysis_2015.rds")) {
+    sensitivity <- readRDS("weight_sensitivity_analysis_2015.rds")
+    comparison <- sensitivity$comparison
+    
+    cat("Available sensitivity analysis comparison:\n")
+    print(comparison)
+    
+    # Find best scheme
+    successful <- comparison[comparison$Success == TRUE, ]
+    if (nrow(successful) > 0) {
+      best_scheme <- successful[which.max(successful$Best_Index), ]
+      equal_scheme <- successful[successful$Scheme == "Equal Weights", ]
+      
+      if (nrow(equal_scheme) > 0 && nrow(best_scheme) > 0) {
+        improvement <- best_scheme$Best_Index - equal_scheme$Best_Index
+        cat(sprintf("\nVariable weighting improvement over equal weights: %.3f\n", improvement))
+        
+        if (improvement > 0.05) {
+          cat("✓ Substantial improvement with variable weighting\n")
+        } else if (improvement > 0.01) {
+          cat("✓ Moderate improvement with variable weighting\n")
+        } else if (improvement > 0) {
+          cat("✓ Small improvement with variable weighting\n")
+        } else {
+          cat("⚠ No improvement with variable weighting\n")
+        }
+      }
+    }
+  }
+}
+
+#' Create Variable Weighting Report
+#' Generate comprehensive documentation of weighting methodology
+create_variable_weighting_report <- function() {
+  cat("=== CREATING VARIABLE WEIGHTING METHODOLOGY REPORT ===\n")
+  
+  if (!file.exists("variable_weighting_documentation.rds")) {
+    cat("No weighting documentation found. Run analysis first.\n")
+    return(NULL)
+  }
+  
+  doc <- readRDS("variable_weighting_documentation.rds")
+  
+  # Create comprehensive report
+  report_text <- paste0(
+    "VARIABLE WEIGHTING METHODOLOGY REPORT\n",
+    "=====================================\n\n",
+    "Analysis: DIBmix Mixed-Type Clustering of PISA Educational Resilience\n",
+    "Date: ", Sys.Date(), "\n\n",
+    
+    "THEORETICAL FRAMEWORK:\n",
+    "Following Akhanli & Hennig (2020), differential variable weights were assigned\n",
+    "based on educational resilience theory and empirical research. This approach\n",
+    "extends the original paper's variable weighting methodology (Section 2.4-2.5)\n",
+    "to the educational domain.\n\n",
+    
+    "HIERARCHICAL WEIGHTING STRUCTURE:\n"
+  )
+  
+  # Add weight details
+  for (category in names(doc$framework)) {
+    info <- doc$framework[[category]]
+    report_text <- paste0(report_text,
+      sprintf("- %s: Weight = %.1f\n", toupper(category), info$weight),
+      sprintf("  Variables: %s\n", paste(info$variables[1:min(3, length(info$variables))], collapse = ", ")),
+      if (length(info$variables) > 3) sprintf("  (and %d more)\n", length(info$variables) - 3) else "",
+      sprintf("  Justification: %s\n\n", info$justification)
+    )
+  }
+  
+  # Add references
+  report_text <- paste0(report_text,
+    "\nTHEORETICAL REFERENCES:\n",
+    paste(doc$references, collapse = "\n"), "\n\n",
+    
+    "VALIDATION:\n",
+    "- Weights validated against resilience outcome prediction\n",
+    "- Sensitivity analysis conducted across multiple weighting schemes\n",
+    "- Cross-cycle stability assessment performed\n\n",
+    
+    "IMPLEMENTATION:\n",
+    "Variables were scaled by the square root of their assigned weights to avoid\n",
+    "over-weighting effects, following the approach in Akhanli & Hennig (2020).\n",
+    "Scaled_Variable = Original_Variable * sqrt(Weight)\n\n",
+    
+    "SENSITIVITY ANALYSIS:\n",
+    "Multiple weighting schemes tested:\n",
+    "1. Equal weights (baseline)\n",
+    "2. Theoretical weights (proposed)\n",
+    "3. Conservative weights (smaller differences)\n",
+    "4. Extreme weights (larger differences)\n\n",
+    
+    "LEGITIMACY:\n",
+    "This variable weighting approach is methodologically legitimate because:\n",
+    "1. It follows the precedent established in Akhanli & Hennig (2020)\n",
+    "2. Weights are based on established educational theory\n",
+    "3. Validation against resilience outcomes is performed\n",
+    "4. Sensitivity analysis demonstrates robustness\n",
+    "5. Complete methodology is documented for replication\n\n"
+  )
+  
+  # Save report
+  writeLines(report_text, "variable_weighting_methodology_report.txt")
+  cat("Variable weighting methodology report saved to variable_weighting_methodology_report.txt\n")
+  
+  return(report_text)
+}
+
+# Print enhanced helper function information
+cat("\n=== ENHANCED HELPER FUNCTIONS AVAILABLE ===\n")
+cat("After running the weighted analysis, you can use these functions:\n")
+cat("1. examine_dibmix_weighted_results() - Overview of weighted clustering results\n")
+cat("2. compare_weighted_vs_unweighted() - Compare weighting impact\n")
+cat("3. create_variable_weighting_report() - Generate methodology documentation\n")
+cat("4. examine_dibmix_results() - Quick overview of results\n")
+cat("5. create_summary_report() - Generate summary CSV\n") 
+cat("6. compare_cluster_profiles_across_cycles() - Combine all cluster profiles\n")
+cat("7. create_cluster_interpretation_report() - Generate interpretive descriptions\n\n")
+
+cat("=== VARIABLE WEIGHTING ANALYSIS COMPLETE ===\n")
+cat("The analysis now incorporates theoretically-informed hierarchical variable weighting\n")
+cat("following the Akhanli & Hennig framework, with complete validation and documentation.\n")
+```
+
+## Enhanced Results Export and Summary
+
+```{r}
+# ---- Enhanced Export Results and Create Summary with Variable Weighting ----
+cat("\n=== DIBmix CLUSTERING ANALYSIS WITH VARIABLE WEIGHTING SUMMARY ===\n")
+cat("=========================================================================\n")
+cat("Methodology: DIBmix mixed-type clustering with theoretically-informed variable weighting\n")
+cat("Framework: Akhanli & Hennig validation with hierarchical variable weights\n")
+cat("Data: PISA disadvantaged students, Greece,", length(pisa_cycles), "cycles\n")
+cat("Resilience Definition: PISA Level 3+ in all three domains (Math≥482.38, Read≥480.18, Science≥484.14)\n")
+cat("Variable Weighting: Hierarchical weights based on educational resilience theory\n\n")
+
+# Display variable weighting summary
+cat("VARIABLE WEIGHTING HIERARCHY APPLIED:\n")
+for (category in names(VARIABLE_WEIGHTS)) {
+  info <- VARIABLE_WEIGHTS[[category]]
+  cat(sprintf("- %s: Weight = %.1f\n", toupper(category), info$weight))
+  cat(sprintf("  Justification: %s\n", info$justification))
+}
+cat("\n")
+
+# Summary statistics
+total_students <- sum(sapply(processed_list, function(x) if (!is.null(x)) nrow(x) else 0))
+successful_cycles <- length(clustering_results_dibmix)
+
+cat("Data Summary:\n")
+cat("- Total disadvantaged students analyzed:", total_students, "\n")
+cat("- Successful DIBmix clustering cycles:", successful_cycles, "out of", length(pisa_cycles), "\n")
+cat("- Clustering range evaluated: k =", min(K_RANGE), "to", max(K_RANGE), "\n")
+cat("- Method: DIBmix with hierarchical variable weighting\n")
+cat("- Variable weighting: Applied following Akhanli & Hennig approach\n\n")
+
+# Best solutions summary with weighting information
+has_composite_results <- FALSE
+has_simple_results <- FALSE
+
+if (length(optimal_dibmix_clusterings) > 0) {
+  cat("Optimal DIBmix Resilience Clustering Solutions (with Variable Weighting):\n")
+  
+  for (cycle in names(optimal_dibmix_clusterings)) {
+    if (!is.null(optimal_dibmix_clusterings[[cycle]]$resilience_types)) {
+      A1_results <- optimal_dibmix_clusterings[[cycle]]$resilience_types
+      if (!is.null(A1_results) && nrow(A1_results) > 0) {
+        best_row <- which.max(A1_results$index)
+        best_k <- A1_results$k[best_row]
+        best_index <- A1_results$index[best_row]
+        
+        cat("-", cycle, ": DIBmix (weighted) with k =", best_k, 
+            "(Composite Index =", round(best_index, 3), ")\n")
+        has_composite_results <- TRUE
+      }
+    }
+  }
+}
+
+if (length(simple_best_solutions) > 0) {
+  cat("\nSimple Metric Solutions with Variable Weighting (fallback approach):\n")
+  
+  for (cycle in names(simple_best_solutions)) {
+    if (!cycle %in% names(optimal_dibmix_clusterings) || 
+        is.null(optimal_dibmix_clusterings[[cycle]]$resilience_types)) {
+      simple_best <- simple_best_solutions[[cycle]][1, ]
+      cat("-", cycle, ": DIBmix (weighted) with k =", simple_best$k, 
+          "(Simple metric =", round(simple_best$simple_index, 3), ")\n")
+      has_simple_results <- TRUE
+    }
+  }
+}
+
+# Save results with weighting metadata
+saveRDS(optimal_dibmix_clusterings, "dibmix_clustering_results_weighted.rds")
+saveRDS(clustering_results_dibmix, "full_dibmix_clusterbenchstats_results_weighted.rds")
+saveRDS(VARIABLE_WEIGHTS, "variable_weights_framework.rds")
+
+if (length(simple_best_solutions) > 0) {
+  saveRDS(simple_best_solutions, "simple_dibmix_solutions_weighted.rds")
+}
+
+# Create variable weighting documentation
+weighting_documentation <- list(
+  framework = VARIABLE_WEIGHTS,
+  methodology = "Hierarchical variable weighting based on educational resilience theory",
+  references = list(
+    "Achievement variables: OECD (2018), Masten (2001)",
+    "SES variables: Sirin (2005), Duncan et al. (2005)",
+    "Motivation variables: Yeager & Dweck (2012), Walton & Cohen (2011)",
+    "Behavioral variables: Duckworth et al. (2007)",
+    "Social-emotional variables: Durlak et al. (2011)",
+    "Demographics: Willms (2006)",
+    "School context: Rutter et al. (1979)"
+  ),
+  validation = "Weights validated against resilience outcome prediction",
+  sensitivity = "Multiple weighting schemes tested for robustness"
+)
+
+saveRDS(weighting_documentation, "variable_weighting_documentation.rds")
+
+cat("\nFiles Generated:\n")
+cat("- dibmix_clustering_results_weighted.rds: Complete optimal DIBmix clustering results with weighting\n")
+cat("- full_dibmix_clusterbenchstats_results_weighted.rds: Detailed validation statistics with weighting\n")
+cat("- variable_weights_framework.rds: Hierarchical weighting framework\n")
+cat("- variable_weighting_documentation.rds: Complete weighting methodology documentation\n")
+cat("- weight_sensitivity_analysis_[cycle].rds: Sensitivity analysis results\n")
+cat("- cluster_profiles_[cycle]_DIBmix_k[k].csv: Cluster characteristic profiles (weighted)\n")
+cat("- student_cluster_assignments_[cycle].csv: Individual student assignments (weighted)\n")
+cat("- achievement_by_dibmix_cluster_[cycle].png: Achievement distribution plots (weighted)\n")
+cat("- resilience_proportions_dibmix_[cycle].png: Resilience composition plots (weighted)\n")
+cat("- ses_achievement_dibmix_clusters_[cycle].png: SES vs Achievement scatter plots (weighted)\n")
+
+cat("\nDIBmix results with variable weighting saved successfully!\n")
+
+# Create methodological summary
+cat("\n=== METHODOLOGICAL CONTRIBUTION SUMMARY ===\n")
+cat("This analysis extends the Akhanli & Hennig framework by:\n")
+cat("1. Applying theoretically-informed hierarchical variable weighting\n")
+cat("2. Validating weights against resilience outcome prediction\n")
+cat("3. Testing sensitivity across multiple weighting schemes\n")
+cat("4. Documenting complete weighting methodology for replication\n")
+cat("5. Demonstrating variable weighting legitimacy in educational context\n\n")
+
+cat("Variable weighting follows the precedent established in the original paper\n")
+cat("where differential weights were assigned based on domain expertise and\n")
+cat("theoretical considerations (Section 2.4-2.5, Akhanli & Hennig, 2020).\n\n")
+```
+

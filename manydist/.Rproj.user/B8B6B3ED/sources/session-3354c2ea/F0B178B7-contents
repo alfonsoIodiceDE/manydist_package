@@ -1,0 +1,46 @@
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+# Create the dataset (removed "δεν απάντησε" and "παρελθόν" rows)
+data <- data.frame(
+  tense = c("αόριστος", "παρατατικός", "παρακείμενος", 
+            "ενεστώτας"),
+  count = c(209, 5, 1, 1),
+  percentage = c(90.8, 2.1, 0.5, 0.5)
+)
+
+# Reorder factors by count for better visualization
+data$tense <- factor(data$tense, levels = data$tense[order(data$count, decreasing = TRUE)])
+
+# Create the bar chart
+p <- ggplot(data, aes(x = tense, y = count)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8, color = "black", linewidth = 0.3) +
+  # Add count labels above bars
+  geom_text(aes(label = count), 
+            vjust = -1.5, size = 3.5, fontface = "bold") +
+  # Add percentage labels above bars (below count)
+  geom_text(aes(label = paste0("(", percentage, "%)")), 
+            vjust = -0.2, size = 3.5, fontface = "bold") +
+  labs(
+    title = expression(paste("Αναγνώριση χρόνου ", italic("μίλησε"), ", ρήμα στην οριστική")),
+    subtitle = "(ερώτηση 1)",
+    x = "", 
+    y = "Συχνότητα"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(b = 20)),
+    axis.title.x = element_text(size = 12, face = "bold", margin = margin(t = 15)),
+    axis.title.y = element_text(size = 12, face = "bold", margin = margin(r = 15)),
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1, color = "black"),
+    axis.text.y = element_text(size = 10, color = "black"),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black", linewidth = 0.5),
+    panel.grid.major.y = element_line(color = "grey90", linetype = "dashed", linewidth = 0.3),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  scale_y_continuous(limits = c(0, 250), expand = c(0, 0))
+
+# Display the plot
+print(p)

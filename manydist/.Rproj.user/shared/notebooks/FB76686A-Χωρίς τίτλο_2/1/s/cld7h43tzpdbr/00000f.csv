@@ -1,0 +1,280 @@
+"0","cat(""\n=== CYCLE-SPECIFIC CLUSTERING ANALYSIS ===\n"")"
+"1","
+=== CYCLE-SPECIFIC CLUSTERING ANALYSIS ===
+"
+"0","perform_cycle_clustering <- function(cycle_distances, cycle_name, clustering_methods, k_range) {"
+"0","  "
+"0","  cat(sprintf(""\n→ Performing clustering for PISA %s (K = %d to %d)...\n"", "
+"0","              cycle_name, min(k_range), max(k_range)))"
+"0","  "
+"0","  cycle_clustering_results <- list()"
+"0","  "
+"0","  for (dist_method in names(cycle_distances)) {"
+"0","    if (!is.null(cycle_distances[[dist_method]])) {"
+"0","      "
+"0","      cat(sprintf(""  Distance method: %s\n"", dist_method))"
+"0","      dist_matrix <- cycle_distances[[dist_method]]$matrix"
+"0","      "
+"0","      method_results <- list()"
+"0","      "
+"0","      for (clust_method in names(clustering_methods)) {"
+"0","        cat(sprintf(""    → %s..."", clust_method))"
+"0","        "
+"0","        method_clusterings <- list()"
+"0","        "
+"0","        for (k in k_range) {"
+"0","          tryCatch({"
+"0","            cluster_labels <- clustering_methods[[clust_method]](dist_matrix, k)"
+"0","            "
+"0","            method_clusterings[[paste0(""k_"", k)]] <- list("
+"0","              k = k,"
+"0","              labels = cluster_labels,"
+"0","              method = clust_method,"
+"0","              n_clusters_actual = length(unique(cluster_labels)),"
+"0","              cycle = cycle_name"
+"0","            )"
+"0","            "
+"0","          }, error = function(e) {"
+"0","            method_clusterings[[paste0(""k_"", k)]] <- NULL"
+"0","          })"
+"0","        }"
+"0","        "
+"0","        method_results[[clust_method]] <- method_clusterings"
+"0","        cat(sprintf("" %d solutions ✓\n"", length(method_clusterings[!sapply(method_clusterings, is.null)])))"
+"0","      }"
+"0","      "
+"0","      cycle_clustering_results[[dist_method]] <- method_results"
+"0","    }"
+"0","  }"
+"0","  "
+"0","  return(cycle_clustering_results)"
+"0","}"
+"0",""
+"0","# Perform clustering for each cycle"
+"0","all_cycle_clustering_results <- list()"
+"0",""
+"0","for (cycle_name in names(all_cycle_distances)) {"
+"0","  "
+"0","  cat(sprintf(""\n--- Clustering Analysis: PISA %s ---\n"", cycle_name))"
+"0","  "
+"0","  # Macro-level clustering"
+"0","  macro_results <- perform_cycle_clustering("
+"0","    all_cycle_distances[[cycle_name]], "
+"0","    cycle_name,"
+"0","    clustering_methods,"
+"0","    CYCLE_CLUSTERING_PARAMS$macro$k_min:CYCLE_CLUSTERING_PARAMS$macro$k_max"
+"0","  )"
+"0","  "
+"0","  # Micro-level clustering"
+"0","  micro_results <- perform_cycle_clustering("
+"0","    all_cycle_distances[[cycle_name]], "
+"0","    cycle_name,"
+"0","    clustering_methods,"
+"0","    CYCLE_CLUSTERING_PARAMS$micro$k_min:CYCLE_CLUSTERING_PARAMS$micro$k_max"
+"0","  )"
+"0","  "
+"0","  all_cycle_clustering_results[[cycle_name]] <- list("
+"0","    macro = macro_results,"
+"0","    micro = micro_results,"
+"0","    distance_info = all_cycle_distances[[cycle_name]]"
+"0","  )"
+"0","}"
+"1","
+--- Clustering Analysis: PISA 2015 ---
+"
+"1","
+→ Performing clustering for PISA 2015 (K = 3 to 8)...
+"
+"1","  Distance method: unbiased_independent
+"
+"1","    → pam..."
+"1"," 6 solutions ✓
+"
+"1","    → ward..."
+"1"," 6 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 6 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 6 solutions ✓
+"
+"1","  Distance method: unbiased_dependent
+"
+"1","    → pam..."
+"1"," 6 solutions ✓
+"
+"1","    → ward..."
+"1"," 6 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 6 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 6 solutions ✓
+"
+"1","
+→ Performing clustering for PISA 2015 (K = 8 to 20)...
+"
+"1","  Distance method: unbiased_independent
+"
+"1","    → pam..."
+"1"," 13 solutions ✓
+"
+"1","    → ward..."
+"1"," 13 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 13 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 13 solutions ✓
+"
+"1","  Distance method: unbiased_dependent
+"
+"1","    → pam..."
+"1"," 13 solutions ✓
+"
+"1","    → ward..."
+"1"," 13 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 13 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 13 solutions ✓
+"
+"1","
+--- Clustering Analysis: PISA 2018 ---
+"
+"1","
+→ Performing clustering for PISA 2018 (K = 3 to 8)...
+"
+"1","  Distance method: unbiased_independent
+"
+"1","    → pam..."
+"1"," 6 solutions ✓
+"
+"1","    → ward..."
+"1"," 6 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 6 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 6 solutions ✓
+"
+"1","  Distance method: unbiased_dependent
+"
+"1","    → pam..."
+"1"," 6 solutions ✓
+"
+"1","    → ward..."
+"1"," 6 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 6 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 6 solutions ✓
+"
+"1","
+→ Performing clustering for PISA 2018 (K = 8 to 20)...
+"
+"1","  Distance method: unbiased_independent
+"
+"1","    → pam..."
+"1"," 13 solutions ✓
+"
+"1","    → ward..."
+"1"," 13 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 13 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 13 solutions ✓
+"
+"1","  Distance method: unbiased_dependent
+"
+"1","    → pam..."
+"1"," 13 solutions ✓
+"
+"1","    → ward..."
+"1"," 13 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 13 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 13 solutions ✓
+"
+"1","
+--- Clustering Analysis: PISA 2022 ---
+"
+"1","
+→ Performing clustering for PISA 2022 (K = 3 to 8)...
+"
+"1","  Distance method: unbiased_independent
+"
+"1","    → pam..."
+"1"," 6 solutions ✓
+"
+"1","    → ward..."
+"1"," 6 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 6 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 6 solutions ✓
+"
+"1","  Distance method: unbiased_dependent
+"
+"1","    → pam..."
+"1"," 6 solutions ✓
+"
+"1","    → ward..."
+"1"," 6 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 6 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 6 solutions ✓
+"
+"1","
+→ Performing clustering for PISA 2022 (K = 8 to 20)...
+"
+"1","  Distance method: unbiased_independent
+"
+"1","    → pam..."
+"1"," 13 solutions ✓
+"
+"1","    → ward..."
+"1"," 13 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 13 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 13 solutions ✓
+"
+"1","  Distance method: unbiased_dependent
+"
+"1","    → pam..."
+"1"," 13 solutions ✓
+"
+"1","    → ward..."
+"1"," 13 solutions ✓
+"
+"1","    → average_linkage..."
+"1"," 13 solutions ✓
+"
+"1","    → complete_linkage..."
+"1"," 13 solutions ✓
+"
+"0","cat(""\n✓ Clustering analysis completed for all cycles\n"")"
+"1","
+✓ Clustering analysis completed for all cycles
+"

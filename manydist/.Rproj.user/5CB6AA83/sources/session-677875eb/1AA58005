@@ -1,0 +1,24 @@
+{
+    "id": "1AA58005",
+    "path": "~/nearest_neighbors_for_mixed 2/manydist/R/commensurability_for_cat.R",
+    "project_path": "R/commensurability_for_cat.R",
+    "type": "r_source",
+    "hash": "75334814",
+    "contents": "",
+    "dirty": false,
+    "created": 1751448052064.0,
+    "source_on_save": true,
+    "relative_order": 13,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1751448053,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1751448053518,
+    "read_only": false,
+    "read_only_alternatives": []
+}

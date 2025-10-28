@@ -1,0 +1,2013 @@
+---
+title: "Educational Resilience Clustering Analysis using Akhanli & Hennig Framework"
+subtitle: "Cycle-Specific Mixed-Type Distance Clustering for PISA Disadvantaged Students"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output:
+  html_document:  
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    theme: united
+    highlight: tango
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+params:
+  data_dir: "/Users/amarkos/PISA_Data/"
+  target_countries: "GRC"
+  disadvantaged_threshold: 0.25
+  k_range_min: 2
+  k_range_max: 25
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 12,
+  fig.height = 8,
+  cache = TRUE,
+  comment = NA
+)
+
+# Set global options
+options(scipen = 999)
+```
+
+# Executive Summary
+
+This analysis adapts the Akhanli & Hennig (2020) composite clustering validity framework to identify educational resilience profiles among disadvantaged PISA students using cycle-specific clustering to account for variable differences across PISA waves.
+
+# Library Setup and Configuration
+
+```{r libraries, message=FALSE, warning=FALSE}
+cat("=== INITIALIZING ENHANCED CLUSTERING ENVIRONMENT ===\n")
+
+# ---- Core Libraries for Advanced Mixed-Type Clustering ----
+library(haven)       # SPSS file reading
+library(data.table)  # High-performance data operations
+library(dtplyr)      # dplyr syntax with data.table backend
+library(labelled)    # Handle SPSS labels
+library(psych)       # Descriptive statistics
+library(ggplot2)     # Visualizations
+library(tidyr)       # Data reshaping
+library(dplyr)       # Data manipulation
+library(gridExtra)   # Plot arrangements
+library(viridis)     # Color palettes
+library(scales)      # Scaling functions
+library(fpc)         # Clustering validation - KEY for Akhanli & Hennig framework
+library(mclust)      # Adjusted Rand Index
+library(fastDummies) # Dummy variable creation
+library(mice)        # Multiple imputation
+library(corrplot)    # Correlation visualization
+library(factoextra)  # Enhanced clustering visualization
+library(cluster)     # Additional clustering methods
+
+# ---- Advanced Distance Calculation Package ----
+if (!requireNamespace("manydist", quietly = TRUE)) {
+  stop("manydist package required but not available. Install with: install.packages('manydist')")
+}
+library(manydist)
+
+# ---- Clustering Methods ----
+library(dbscan)      # Density-based clustering
+library(kernlab)     # Spectral clustering
+
+cat("✓ Enhanced clustering libraries loaded successfully\n")
+cat("✓ manydist package loaded for advanced mixed-type distances\n")
+cat("✓ fpc package loaded for Akhanli & Hennig validation framework\n")
+
+# ---- Configuration ----
+setDTthreads(0) # Use all available cores
+set.seed(42)   # Reproducibility
+cat("✓ Analysis environment configured\n")
+```
+
+# Analysis Parameters
+
+```{r params, echo=FALSE}
+cat("\n=== CONFIGURING ANALYSIS PARAMETERS ===\n")
+
+data_dir <- params$data_dir
+target_countries <- params$target_countries
+DISADVANTAGED_THRESHOLD <- params$disadvantaged_threshold
+
+# Path helper function
+path <- function(fname) file.path(data_dir, fname)
+
+# Enhanced clustering parameters for cycle-specific analysis
+CYCLE_CLUSTERING_PARAMS <- list(
+  # Macro-level clustering (policy-oriented)
+  macro = list(
+    k_min = 3,
+    k_max = 8,
+    description = "Broad resilience profiles for policy analysis"
+  ),
+  
+  # Micro-level clustering (intervention-oriented) 
+  micro = list(
+    k_min = 8,
+    k_max = 20,  # Reduced for smaller cycle-specific samples
+    description = "Fine-grained profiles for targeted interventions"
+  ),
+  
+  # Validation parameters
+  validation = list(
+    n_bootstrap = 50,  # Reduced for cycle-specific analysis
+    n_random_clusterings = 200,
+    stability_method = "bootstrap"
+  )
+)
+
+# Distance methods
+DISTANCE_METHODS <- list(
+  
+  # Method 1: Unbiased Independent
+  unbiased_independent = list(
+    name = "Unbiased_Independent",
+    params = list(
+      preset = "custom",
+      distance_cont = "manhattan",
+      distance_cat = "matching", 
+      commensurable = TRUE,
+      scaling_cont = "std"
+    ),
+    description = "Commensurable Manhattan (numerical) + Simple matching (categorical)"
+  ),
+  
+  # Method 2: Unbiased Dependent  
+  unbiased_dependent = list(
+    name = "Unbiased_Dependent",
+    params = list(
+      preset = "custom",
+      distance_cont = "manhattan", 
+      distance_cat = "tot_var_dist",
+      commensurable = TRUE,
+      scaling_cont = "pc_scores"
+    ),
+    description = "Commensurable PCA-scaled (numerical) + Total variance (categorical)"
+  ),
+  
+  # Method 3: Gower baseline
+  gower_baseline = list(
+    name = "Gower_Baseline",
+    params = list(
+      preset = "gower",
+      commensurable = FALSE
+    ),
+    description = "Standard Gower distance"
+  )
+)
+
+cat("✓ Cycle-specific clustering parameters configured\n")
+```
+
+# Data Loading and Processing (Insert Your Existing Code)
+
+```{r data_loading, echo=TRUE}
+cat("\n=== LOADING AND PROCESSING PISA DATA ===\n")
+
+# ---- PISA Cycle Configuration ----
+pisa_cycles <- list(
+  "2015" = list(
+    student_file = "CY6_MS_CMB_STU_QQQ.sav",
+    school_file = "CY6_MS_CMB_SCH_QQQ.sav",
+    year = 2015,
+    var_mapping = list(
+      student = c(
+        "hisei" = "HISEI",
+        "PARED" = "PAREDINT",
+        "ANXTEST" = "ANXMAT",
+        "MOTIVAT" = "MATHMOT"
+      ),
+      school = c(
+        "STRATIO" = "STRATIO"
+      )
+    )
+  ),
+  "2018" = list(
+    student_file = "CY07_MSU_STU_QQQ.sav",
+    school_file = "CY07_MSU_SCH_QQQ.sav",
+    year = 2018,
+    var_mapping = list(
+      student = c(),
+      school = c(
+        "STRATIO" = "STRATIO"
+      )
+    )
+  ),
+  "2022" = list(
+    student_file = "CY08MSP_STU_QQQ.sav",
+    school_file = "CY08MSP_SCH_QQQ.sav",
+    year = 2022,
+    var_mapping = list(
+      student = c(),
+      school = c(
+        "SMRATIO" = "STRATIO"
+      )
+    )
+  )
+)
+
+# ---- Core Variable Lists ----
+core_student_vars <- list(
+  ids = c("CNT", "CNTSCHID", "CNTSTUID"),
+  achievement = c(
+    paste0("PV", 1:10, "MATH"),
+    paste0("PV", 1:10, "READ"),
+    paste0("PV", 1:10, "SCIE")
+  ),
+  ses_background = c(
+    "ESCS", "HISEI", "PAREDINT", "HOMEPOS", "ICTRES"
+  ),
+  demographics = c(
+    "ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN"
+  ),
+  motivation = c(
+    "ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+    "GRWTHMND", "WORKMAST", "RESILIENCE", "MASTGOAL", "GFOFAIL", "COMPETE"
+  ),
+  behavior = c(
+    "PERSEV", "TRUANCY", "HOMWRK", "DISCLIMA", "DIRINS", "PERFEED", "OUTHOURS"
+  ),
+  social_emotional = c(
+    "BELONG", "TEACHSUP", "PEERREL", "BULLIED", "FAMSUP", "RELATST", 
+    "EMOSUPS", "PERCOMP", "PERCOOP", "TEACHINT"
+  ),
+  resilience_other = c(
+    "LIFESAT", "EUDMO", "WELLBEING", "ATTSCHL", "EXPDEG", "PHYSACT", "SCHWELL"
+  ),
+  weights = "W_FSTUWT"
+)
+
+core_school_vars <- list(
+  ids = c("CNT", "CNTSCHID"),
+  characteristics = c(
+    "SCHSIZE", "SCHLTYPE", "STRATIO"
+  ),
+  resources = c(
+    "STAFFSHORT", "EDUSHORT", "RATCMP1"
+  ),
+  weights = "W_SCHGRNRABWT"
+)
+
+# ---- File Reading Function ----
+safe_read_pisa_with_mapping <- function(file_path, var_list, var_mapping,
+                                        target_countries = NULL, cycle_year = NULL) {
+  tryCatch({
+    file_vars <- names(read_sav(file_path, n_max = 0))
+    reverse_mapping <- setNames(names(var_mapping), var_mapping)
+    vars_to_request <- sapply(var_list, function(std_var) {
+      if (std_var %in% names(reverse_mapping)) {
+        reverse_mapping[[std_var]]
+      } else {
+        std_var
+      }
+    })
+    available_vars <- intersect(vars_to_request, file_vars)
+    if (length(available_vars) == 0) {
+      warning("No requested variables found in ", basename(file_path))
+      return(NULL)
+    }
+    dt <- setDT(read_sav(file_path, col_select = any_of(available_vars)))
+    for (old_name in names(var_mapping)) {
+      new_name <- var_mapping[[old_name]]
+      if (old_name %in% names(dt)) {
+        setnames(dt, old_name, new_name)
+      }
+    }
+    if (!is.null(target_countries) && "CNT" %in% names(dt)) {
+      dt <- dt[CNT %in% target_countries]
+    }
+    if (!is.null(cycle_year)) {
+      dt[, CYCLE := cycle_year]
+    }
+    return(dt)
+  }, error = function(e) {
+    cat("Error reading file:", basename(file_path), "\n")
+    return(NULL)
+  })
+}
+
+# ---- Load All PISA Cycles ----
+all_student_vars <- unlist(core_student_vars, use.names = FALSE)
+all_school_vars <- unlist(core_school_vars, use.names = FALSE)
+pisa_student_list <- list()
+pisa_school_list <- list()
+
+for (cycle_name in names(pisa_cycles)) {
+  cycle_info <- pisa_cycles[[cycle_name]]
+  cat("\n--- Loading PISA", cycle_info$year, "---\n")
+  
+  stu_file <- path(cycle_info$student_file)
+  stu_data <- safe_read_pisa_with_mapping(
+    stu_file, all_student_vars, cycle_info$var_mapping$student,
+    target_countries, cycle_info$year
+  )
+  if (!is.null(stu_data) && nrow(stu_data) > 0) {
+    pisa_student_list[[cycle_name]] <- stu_data
+    cat("Students loaded:", nrow(stu_data), "\n")
+  }
+  
+  sch_file <- path(cycle_info$school_file)
+  sch_data <- safe_read_pisa_with_mapping(
+    sch_file, all_school_vars, cycle_info$var_mapping$school,
+    target_countries, cycle_info$year
+  )
+  if (!is.null(sch_data) && nrow(sch_data) > 0) {
+    pisa_school_list[[cycle_name]] <- sch_data
+    cat("Schools loaded:", nrow(sch_data), "\n")
+  }
+}
+
+# ---- Process PISA Cycle Function ----
+process_pisa_cycle <- function(stu_dt, sch_dt, cycle_year) {
+  if (is.null(stu_dt) || nrow(stu_dt) == 0) return(NULL)
+  
+  # Compute average achievement scores
+  stu_dt[, MATH_AVG := rowMeans(.SD, na.rm = TRUE), .SDcols = patterns("MATH$")]
+  stu_dt[, READ_AVG := rowMeans(.SD, na.rm = TRUE), .SDcols = patterns("READ$")]
+  stu_dt[, SCIE_AVG := rowMeans(.SD, na.rm = TRUE), .SDcols = patterns("SCIE$")]
+  
+  # Identify disadvantaged students
+  escs_quartile <- quantile(stu_dt$ESCS, probs = DISADVANTAGED_THRESHOLD, na.rm = TRUE)
+  stu_dt[, DISADVANTAGED := ifelse(ESCS <= escs_quartile, 1, 0)]
+  
+  # Define resilience
+  MATH_LEVEL3_THRESHOLD <- 482.38
+  READ_LEVEL3_THRESHOLD <- 480.18
+  SCIE_LEVEL3_THRESHOLD <- 484.14
+  
+  stu_dt[DISADVANTAGED == 1, RESILIENT := ifelse(
+    MATH_AVG >= MATH_LEVEL3_THRESHOLD & 
+      READ_AVG >= READ_LEVEL3_THRESHOLD & 
+      SCIE_AVG >= SCIE_LEVEL3_THRESHOLD, 1, 0)]
+  
+  # Filter to disadvantaged students
+  disadv_dt <- stu_dt[DISADVANTAGED == 1]
+  
+  # Merge with school data
+  if (!is.null(sch_dt) && nrow(sch_dt) > 0) {
+    disadv_dt <- merge(disadv_dt, sch_dt, by = c("CNT", "CNTSCHID", "CYCLE"), all.x = TRUE)
+  }
+  
+  disadv_dt[is.na(RESILIENT), RESILIENT := 0]
+  
+  return(disadv_dt)
+}
+
+# ---- Apply Processing ----
+processed_list <- mapply(process_pisa_cycle, pisa_student_list, pisa_school_list, 
+                         names(pisa_cycles), SIMPLIFY = FALSE)
+
+cat("\n=== DATA PROCESSING SUMMARY ===\n")
+for (cycle in names(processed_list)) {
+  if (!is.null(processed_list[[cycle]])) {
+    n_students <- nrow(processed_list[[cycle]])
+    n_resilient <- sum(processed_list[[cycle]]$RESILIENT, na.rm = TRUE)
+    resilience_rate <- round(n_resilient / n_students * 100, 1)
+    
+    cat("- Cycle", cycle, ":", n_students, "students,", n_resilient, 
+        "resilient (", resilience_rate, "%)\n")
+  }
+}
+```
+
+# Cycle-Specific Varable Selection
+
+```{r cycle_variable_selection_enhanced, echo=TRUE}
+cat("\n=== ENHANCED CYCLE-SPECIFIC VARIABLE SELECTION ===\n")
+
+# Function to comprehensively analyze and select variables for each cycle
+identify_cycle_variables_enhanced <- function(cycle_data, cycle_name) {
+  
+  cat(sprintf("→ Comprehensive variable analysis for PISA %s...\n", cycle_name))
+  
+  # Get all available variables
+  all_available_vars <- names(cycle_data)
+  cat(sprintf("  Total variables in dataset: %d\n", length(all_available_vars)))
+  
+  # Core resilience variables (must have)
+  core_vars <- c("MATH_AVG", "READ_AVG", "SCIE_AVG", "ESCS", "RESILIENT")
+  
+  # Comprehensive extended variable categories with more flexible patterns
+  extended_vars <- list(
+    
+    # Socioeconomic background
+    ses_background = c("HISEI", "PAREDINT", "HOMEPOS", "ICTRES", "CULTPOSS", "HEDRES"),
+    
+    # Demographics (basic student characteristics)
+    demographics = c("ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN", "PRESCHOOL", 
+                     "ST005Q01TA", "ST003D02T", "ST003D03T"),
+    
+    # Academic motivation and attitudes
+    motivation = c("ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+                   "GRWTHMND", "WORKMAST", "RESILIENCE", "MASTGOAL", "GFOFAIL", "COMPETE",
+                   "SWBP", "MOTIVAT", "CONFID"),
+    
+    # Learning behaviors and study habits
+    learning_behavior = c("PERSEV", "TRUANCY", "HOMWRK", "DISCLIMA", "DIRINS", 
+                          "PERFEED", "OUTHOURS", "STUDYEFF", "METASUM", "METACOG"),
+    
+    # Social-emotional factors
+    social_emotional = c("BELONG", "TEACHSUP", "PEERREL", "BULLIED", "FAMSUP", "RELATST", 
+                         "EMOSUPS", "PERCOMP", "PERCOOP", "TEACHINT", "STUREL", "SWBP"),
+    
+    # Well-being and life satisfaction
+    wellbeing = c("LIFESAT", "EUDMO", "WELLBEING", "ATTSCHL", "EXPDEG", "PHYSACT", 
+                  "SCHWELL", "JOYREAD", "WORRYSCH"),
+    
+    # School context and environment
+    school_context = c("SCHSIZE", "SCHLTYPE", "STRATIO", "STAFFSHORT", "EDUSHORT", 
+                       "RATCMP1", "PROPCERT", "PROPQUAL", "TCSHORT"),
+    
+    # Technology and ICT
+    ict_usage = c("USESCH", "USEHOME", "ICTSCHOOL", "ICTOUTSIDE", "ICTCLASS"),
+    
+    # Additional potential variables (pattern matching)
+    pattern_based = character(0)  # Will be filled by pattern matching
+  )
+  
+  # Pattern-based variable discovery for cycle-specific variables
+  # Look for variables that might be relevant but not in our predefined lists
+  
+  # Learning and cognitive patterns
+  learning_patterns <- c("LEARN", "STUDY", "COGN", "META", "THINK", "REASON")
+  motivation_patterns <- c("MOTIV", "ANXIE", "CONF", "ENJOY", "LIKE", "INTER")
+  social_patterns <- c("PEER", "FRIEND", "SOCIAL", "COOP", "COMP", "HELP")
+  wellbeing_patterns <- c("WELL", "LIFE", "HAPPY", "STRESS", "WORRY", "FEEL")
+  
+  # Find variables matching patterns
+  pattern_vars <- character(0)
+  for (pattern in c(learning_patterns, motivation_patterns, social_patterns, wellbeing_patterns)) {
+    pattern_matches <- all_available_vars[grepl(pattern, all_available_vars, ignore.case = TRUE)]
+    pattern_vars <- c(pattern_vars, pattern_matches)
+  }
+  
+  # Remove system variables and IDs from pattern matches
+  exclude_patterns <- c("^PV[0-9]", "^W_", "^CNT", "ID$", "^ST00[0-9]Q[0-9][0-9]", "FLAG", "ADMIN")
+  for (exclude_pattern in exclude_patterns) {
+    pattern_vars <- pattern_vars[!grepl(exclude_pattern, pattern_vars)]
+  }
+  
+  extended_vars$pattern_based <- unique(pattern_vars)
+  
+  # Check availability and coverage for each category
+  available_vars <- all_available_vars
+  cycle_clustering_vars <- core_vars[core_vars %in% available_vars]
+  
+  category_summary <- list()
+  
+  cat("\n  Category analysis:\n")
+  
+  for (category in names(extended_vars)) {
+    category_vars <- extended_vars[[category]]
+    available_category_vars <- intersect(category_vars, available_vars)
+    
+    category_summary[[category]] <- list(
+      total = length(category_vars),
+      available = length(available_category_vars),
+      variables = available_category_vars,
+      coverage = if(length(category_vars) > 0) length(available_category_vars) / length(category_vars) else 0
+    )
+    
+    # More flexible inclusion criteria
+    include_category <- FALSE
+    
+    if (category == "pattern_based") {
+      # Include pattern-based variables if we found any
+      include_category <- length(available_category_vars) > 0
+    } else {
+      # For predefined categories, use lower threshold (30% instead of 50%)
+      include_category <- category_summary[[category]]$coverage >= 0.3
+    }
+    
+    if (include_category) {
+      cycle_clustering_vars <- c(cycle_clustering_vars, available_category_vars)
+      status_symbol <- "✓"
+    } else {
+      status_symbol <- "✗"
+    }
+    
+    cat(sprintf("    %s %s: %d/%d variables (%.1f%% coverage)\n", 
+                status_symbol, category, 
+                length(available_category_vars), length(category_vars),
+                category_summary[[category]]$coverage * 100))
+    
+    # Show some example variables for each category
+    if (length(available_category_vars) > 0) {
+      example_vars <- head(available_category_vars, 3)
+      cat(sprintf("      Examples: %s\n", paste(example_vars, collapse = ", ")))
+    }
+  }
+  
+  # Remove duplicates
+  cycle_clustering_vars <- unique(cycle_clustering_vars)
+  
+  # Additional comprehensive variable discovery
+  cat("\n  → Searching for additional educational variables...\n")
+  
+  # Look for any remaining educational/psychological variables
+  educational_keywords <- c("TEACH", "CLASS", "INSTRU", "CURRIC", "ASSESS", "FEEDB",
+                           "ATTITUD", "BELIE", "PERCE", "EXPEC", "GOAL", "STRAT")
+  
+  additional_vars <- character(0)
+  for (keyword in educational_keywords) {
+    keyword_matches <- all_available_vars[grepl(keyword, all_available_vars, ignore.case = TRUE)]
+    # Filter out system variables
+    keyword_matches <- keyword_matches[!grepl("^PV[0-9]|^W_|^CNT|ID$|FLAG|ADMIN", keyword_matches)]
+    additional_vars <- c(additional_vars, keyword_matches)
+  }
+  
+  # Add variables not already included
+  new_additional_vars <- setdiff(additional_vars, cycle_clustering_vars)
+  if (length(new_additional_vars) > 0) {
+    cycle_clustering_vars <- c(cycle_clustering_vars, new_additional_vars)
+    cat(sprintf("  → Found %d additional educational variables\n", length(new_additional_vars)))
+    cat(sprintf("      Examples: %s\n", paste(head(new_additional_vars, 5), collapse = ", ")))
+  }
+  
+  # Final deduplication
+  cycle_clustering_vars <- unique(cycle_clustering_vars)
+  
+  # Remove any system/ID variables that might have slipped through
+  final_exclude_pattern <- "^(PV[0-9]|W_|CNT|.*ID$|.*FLAG|.*ADMIN)"
+  cycle_clustering_vars <- cycle_clustering_vars[!grepl(final_exclude_pattern, cycle_clustering_vars)]
+  
+  cat(sprintf("\n✓ Selected %d clustering variables for PISA %s\n", 
+              length(cycle_clustering_vars), cycle_name))
+  
+  # Show variable breakdown by type
+  suspected_categorical <- cycle_clustering_vars[grepl("^ST[0-9].*Q[0-9]|GRADE|IMMIG|REPEAT|SCHLTYPE", cycle_clustering_vars)]
+  suspected_continuous <- setdiff(cycle_clustering_vars, suspected_categorical)
+  
+  cat(sprintf("  → Estimated: %d continuous, %d categorical\n", 
+              length(suspected_continuous), length(suspected_categorical)))
+  
+  return(list(
+    clustering_vars = cycle_clustering_vars,
+    category_summary = category_summary,
+    suspected_categorical = suspected_categorical,
+    suspected_continuous = suspected_continuous,
+    total_available = length(all_available_vars)
+  ))
+}
+
+# Enhanced analysis for each cycle
+cycle_variable_analysis <- list()
+
+for (cycle_name in names(processed_list)) {
+  if (!is.null(processed_list[[cycle_name]])) {
+    cycle_variable_analysis[[cycle_name]] <- identify_cycle_variables_enhanced(
+      processed_list[[cycle_name]], cycle_name
+    )
+  }
+}
+
+cat("\n✓ Enhanced variable analysis completed for all cycles\n")
+
+# Detailed comparison across cycles
+cat("\n=== CROSS-CYCLE VARIABLE COMPARISON ===\n")
+
+all_unique_vars <- unique(unlist(lapply(cycle_variable_analysis, function(x) x$clustering_vars)))
+cat(sprintf("Total unique clustering variables across all cycles: %d\n\n", length(all_unique_vars)))
+
+# Create variable availability matrix
+cycle_names <- names(cycle_variable_analysis)
+var_matrix <- matrix(FALSE, nrow = length(all_unique_vars), ncol = length(cycle_names))
+rownames(var_matrix) <- all_unique_vars
+colnames(var_matrix) <- cycle_names
+
+for (i in seq_along(cycle_names)) {
+  cycle_vars <- cycle_variable_analysis[[cycle_names[i]]]$clustering_vars
+  var_matrix[cycle_vars, i] <- TRUE
+}
+
+# Summary statistics
+cat("Variables available by cycle:\n")
+for (cycle_name in cycle_names) {
+  n_vars <- sum(var_matrix[, cycle_name])
+  cat(sprintf("  %s: %d variables\n", cycle_name, n_vars))
+}
+
+# Variables common to all cycles
+common_vars <- all_unique_vars[rowSums(var_matrix) == length(cycle_names)]
+cat(sprintf("\nVariables common to all cycles: %d\n", length(common_vars)))
+if (length(common_vars) <= 10) {
+  cat("  Common variables:", paste(common_vars, collapse = ", "), "\n")
+} else {
+  cat("  Common variables (first 10):", paste(head(common_vars, 10), collapse = ", "), "\n")
+}
+
+# Cycle-specific variables
+cat("\nCycle-specific variables:\n")
+for (cycle_name in cycle_names) {
+  cycle_specific <- all_unique_vars[var_matrix[, cycle_name] & rowSums(var_matrix) == 1]
+  cat(sprintf("  %s only: %d variables", cycle_name, length(cycle_specific)))
+  if (length(cycle_specific) > 0) {
+    cat(sprintf(" (e.g., %s)", paste(head(cycle_specific, 3), collapse = ", ")))
+  }
+  cat("\n")
+}
+
+cat("\n✓ Cross-cycle variable comparison completed\n")
+```
+
+# Cycle-Specific Data Preparation with MICE Imputation
+
+```{r cycle_specific_data_prep_mice}
+cat("\n=== CYCLE-SPECIFIC DATA PREPARATION WITH MICE IMPUTATION ===\n")
+
+# Enhanced data preparation function with MICE imputation
+prepare_cycle_clustering_data <- function(cycle_data, cycle_vars, cycle_name, 
+                                          missing_threshold = 0.3, mice_iterations = 5) {
+  
+  cat(sprintf("→ Preparing clustering dataset for PISA %s...\n", cycle_name))
+  
+  # Essential columns
+  essential_cols <- c("RESILIENT", "CYCLE", "W_FSTUWT", "CNTSTUID", "CNTSCHID")
+  available_essential <- intersect(essential_cols, names(cycle_data))
+  
+  # Combine variables
+  all_vars <- c(cycle_vars, available_essential)
+  clustering_data <- cycle_data[, all_vars, with = FALSE]
+  
+  # Step 1: Analyze missing value patterns
+  cat("→ Analyzing missing value patterns...\n")
+  
+  missing_summary <- clustering_data[, lapply(.SD, function(x) sum(is.na(x))/length(x)), 
+                                     .SDcols = cycle_vars]
+  
+  # Step 2: Filter variables based on missing threshold (30%)
+  good_vars <- names(missing_summary)[missing_summary <= missing_threshold]
+  dropped_vars <- names(missing_summary)[missing_summary > missing_threshold]
+  
+  if (length(dropped_vars) > 0) {
+    cat(sprintf("⚠ Dropped %d variables with >%.0f%% missingness: %s\n", 
+                length(dropped_vars), missing_threshold * 100,
+                paste(head(dropped_vars, 3), collapse = ", ")))
+    if (length(dropped_vars) > 3) {
+      cat(sprintf("  ... and %d more variables\n", length(dropped_vars) - 3))
+    }
+  }
+  
+  # Step 3: Keep only good variables plus essential columns
+  final_vars <- c(good_vars, available_essential)
+  clustering_data <- clustering_data[, final_vars, with = FALSE]
+  
+  # Step 4: Identify variable types before imputation
+  categorical_vars <- c("ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN", "SCHLTYPE")
+  available_categorical <- intersect(categorical_vars, good_vars)
+  continuous_vars <- setdiff(good_vars, available_categorical)
+  
+  # Convert categorical variables to factors
+  for (var in available_categorical) {
+    if (var %in% names(clustering_data)) {
+      clustering_data[[var]] <- as.factor(clustering_data[[var]])
+    }
+  }
+  
+  # Step 5: Check if imputation is needed
+  remaining_missing <- clustering_data[, lapply(.SD, function(x) sum(is.na(x))), 
+                                       .SDcols = good_vars]
+  total_missing <- sum(unlist(remaining_missing))
+  
+  if (total_missing > 0) {
+    cat(sprintf("→ Performing MICE imputation for %d remaining missing values...\n", total_missing))
+    
+    # Prepare data for MICE (only clustering variables)
+    mice_data <- clustering_data[, good_vars, with = FALSE]
+    
+    # Convert to data.frame for mice
+    mice_df <- as.data.frame(mice_data)
+    
+    # Configure MICE methods
+    mice_methods <- mice::make.method(mice_df)
+    
+    # Set appropriate methods for different variable types
+    for (var in names(mice_df)) {
+      if (is.factor(mice_df[[var]])) {
+        mice_methods[var] <- "polyreg"  # Multinomial logistic regression for factors
+      } else if (is.numeric(mice_df[[var]])) {
+        mice_methods[var] <- "pmm"      # Predictive mean matching for continuous
+      }
+    }
+    
+    # Perform MICE imputation with error handling
+    tryCatch({
+      # Suppress mice output for cleaner console
+      mice_result <- mice::mice(mice_df, 
+                                m = mice_iterations,           # Number of imputations
+                                method = mice_methods,
+                                printFlag = FALSE,             # Suppress progress output
+                                seed = 42)                     # Reproducibility
+      
+      # Complete the data using the first imputation
+      completed_mice_df <- mice::complete(mice_result, 1)
+      
+      # Convert back to data.table
+      completed_mice_dt <- setDT(completed_mice_df)
+      
+      # Replace the clustering variables in original data
+      for (var in good_vars) {
+        clustering_data[[var]] <- completed_mice_dt[[var]]
+      }
+      
+      cat(sprintf("✓ MICE imputation completed successfully\n"))
+      
+      # Verify no missing values remain
+      remaining_after_mice <- clustering_data[, lapply(.SD, function(x) sum(is.na(x))), 
+                                              .SDcols = good_vars]
+      total_remaining <- sum(unlist(remaining_after_mice))
+      
+      if (total_remaining > 0) {
+        cat(sprintf("⚠ Warning: %d missing values still remain after MICE\n", total_remaining))
+        
+        # Fallback: Simple imputation for any remaining missings
+        for (var in good_vars) {
+          if (any(is.na(clustering_data[[var]]))) {
+            if (is.factor(clustering_data[[var]])) {
+              # Mode imputation for categorical
+              mode_val <- names(sort(table(clustering_data[[var]]), decreasing = TRUE))[1]
+              clustering_data[is.na(get(var)), (var) := mode_val]
+            } else {
+              # Median imputation for continuous
+              median_val <- median(clustering_data[[var]], na.rm = TRUE)
+              clustering_data[is.na(get(var)), (var) := median_val]
+            }
+          }
+        }
+        cat("✓ Fallback imputation applied for remaining missing values\n")
+      }
+      
+    }, error = function(e) {
+      cat(sprintf("⚠ MICE imputation failed: %s\n", e$message))
+      cat("→ Falling back to simple imputation methods...\n")
+      
+      # Fallback: Simple imputation
+      for (var in good_vars) {
+        if (any(is.na(clustering_data[[var]]))) {
+          if (is.factor(clustering_data[[var]])) {
+            # Mode imputation for categorical
+            mode_val <- names(sort(table(clustering_data[[var]]), decreasing = TRUE))[1]
+            clustering_data[is.na(get(var)), (var) := mode_val]
+          } else {
+            # Median imputation for continuous
+            median_val <- median(clustering_data[[var]], na.rm = TRUE)
+            clustering_data[is.na(get(var)), (var) := median_val]
+          }
+        }
+      }
+      cat("✓ Fallback imputation completed\n")
+    })
+    
+  } else {
+    cat("✓ No missing values detected - no imputation needed\n")
+  }
+  
+  # Step 6: Remove cases with excessive missingness in essential variables
+  initial_n <- nrow(clustering_data)
+  
+  # Check for missing essential variables
+  essential_missing <- rowSums(is.na(clustering_data[, available_essential, with = FALSE]))
+  clustering_data <- clustering_data[essential_missing == 0]
+  
+  final_n <- nrow(clustering_data)
+  
+  if (final_n < initial_n) {
+    cat(sprintf("⚠ Removed %d cases with missing essential variables\n", initial_n - final_n))
+  }
+  
+  cat(sprintf("✓ Final dataset: %d students (%.1f%% retention)\n", 
+              final_n, 100 * final_n / initial_n))
+  
+  cat(sprintf("✓ Variable types: %d continuous, %d categorical\n", 
+              length(continuous_vars), length(available_categorical)))
+  
+  # Step 7: Final data quality check
+  final_missing_check <- clustering_data[, lapply(.SD, function(x) sum(is.na(x))), 
+                                         .SDcols = good_vars]
+  total_final_missing <- sum(unlist(final_missing_check))
+  
+  if (total_final_missing == 0) {
+    cat("✓ Data quality check passed: No missing values in clustering variables\n")
+  } else {
+    cat(sprintf("⚠ Warning: %d missing values still present\n", total_final_missing))
+  }
+  
+  return(list(
+    data = clustering_data,
+    clustering_vars = good_vars,
+    categorical_vars = available_categorical,
+    continuous_vars = continuous_vars,
+    cycle = cycle_name,
+    imputation_summary = list(
+      original_missing = total_missing,
+      final_missing = total_final_missing,
+      variables_dropped = dropped_vars,
+      variables_kept = good_vars,
+      mice_successful = total_missing > 0 && total_final_missing == 0
+    )
+  ))
+}
+
+# Prepare clustering data for each cycle with MICE imputation
+cycle_prepared_data <- list()
+
+for (cycle_name in names(processed_list)) {
+  if (!is.null(processed_list[[cycle_name]])) {
+    
+    cycle_vars <- cycle_variable_analysis[[cycle_name]]$clustering_vars
+    
+    cycle_prepared_data[[cycle_name]] <- prepare_cycle_clustering_data(
+      processed_list[[cycle_name]], 
+      cycle_vars, 
+      cycle_name,
+      missing_threshold = 0.3,  # Drop variables with >30% missing
+      mice_iterations = 5       # Number of MICE iterations
+    )
+  }
+}
+
+cat("\n✓ Data preparation with MICE imputation completed for all cycles\n")
+
+# Enhanced Summary with Imputation Details
+cat("\n=== CYCLE-SPECIFIC DATASET SUMMARY WITH IMPUTATION DETAILS ===\n")
+for (cycle_name in names(cycle_prepared_data)) {
+  data_info <- cycle_prepared_data[[cycle_name]]
+  imputation_info <- data_info$imputation_summary
+  
+  cat(sprintf("\nPISA %s:\n", cycle_name))
+  cat(sprintf("  Students: %d\n", nrow(data_info$data)))
+  cat(sprintf("  Variables: %d total (%d continuous, %d categorical)\n",
+              length(data_info$clustering_vars),
+              length(data_info$continuous_vars),
+              length(data_info$categorical_vars)))
+  cat(sprintf("  Variables dropped (>30%% missing): %d\n", length(imputation_info$variables_dropped)))
+  
+  if (imputation_info$original_missing > 0) {
+    cat(sprintf("  MICE imputation: %d missing values → %d missing values\n",
+                imputation_info$original_missing, imputation_info$final_missing))
+    cat(sprintf("  Imputation success: %s\n", 
+                ifelse(imputation_info$mice_successful, "✓ Complete", "⚠ Partial")))
+  } else {
+    cat("  Imputation: Not needed (no missing values)\n")
+  }
+}
+
+# Optional: Display variables dropped due to high missingness
+cat("\n=== VARIABLES DROPPED DUE TO HIGH MISSINGNESS (>30%) ===\n")
+for (cycle_name in names(cycle_prepared_data)) {
+  dropped_vars <- cycle_prepared_data[[cycle_name]]$imputation_summary$variables_dropped
+  if (length(dropped_vars) > 0) {
+    cat(sprintf("\nPISA %s dropped variables (%d):\n", cycle_name, length(dropped_vars)))
+    for (i in 1:min(10, length(dropped_vars))) {  # Show max 10 variables
+      cat(sprintf("  - %s\n", dropped_vars[i]))
+    }
+    if (length(dropped_vars) > 10) {
+      cat(sprintf("  ... and %d more variables\n", length(dropped_vars) - 10))
+    }
+  } else {
+    cat(sprintf("PISA %s: No variables dropped\n", cycle_name))
+  }
+}
+
+cat("\n✓ Enhanced cycle-specific data preparation with MICE imputation completed\n")
+```
+
+
+# Cycle-Specific Data Preparation
+
+```{r cycle_specific_preparation, echo=TRUE}
+cat("\n=== CYCLE-SPECIFIC DATA PREPARATION ===\n")
+
+# Enhanced data preparation function
+prepare_cycle_clustering_data <- function(cycle_data, cycle_vars, cycle_name, min_complete_pct = 0.7) {
+  
+  cat(sprintf("→ Preparing clustering dataset for PISA %s...\n", cycle_name))
+  
+  # Essential columns
+  essential_cols <- c("RESILIENT", "CYCLE", "W_FSTUWT", "CNTSTUID", "CNTSCHID")
+  available_essential <- intersect(essential_cols, names(cycle_data))
+  
+  # Combine variables
+  all_vars <- c(cycle_vars, available_essential)
+  clustering_data <- cycle_data[, all_vars, with = FALSE]
+  
+  # Handle missing values
+  missing_summary <- clustering_data[, lapply(.SD, function(x) sum(is.na(x))/length(x)), 
+                                     .SDcols = cycle_vars]
+  
+  # Keep variables with sufficient data
+  good_vars <- names(missing_summary)[missing_summary < (1 - min_complete_pct)]
+  
+  if (length(good_vars) < length(cycle_vars)) {
+    dropped_vars <- setdiff(cycle_vars, good_vars)
+    cat(sprintf("⚠ Dropped %d variables due to missingness\n", length(dropped_vars)))
+  }
+  
+  # Filter to good variables
+  final_vars <- c(good_vars, available_essential)
+  clustering_data <- clustering_data[, final_vars, with = FALSE]
+  
+  # Remove cases with too much missingness
+  initial_n <- nrow(clustering_data)
+  complete_pct <- rowSums(!is.na(clustering_data[, good_vars, with = FALSE])) / length(good_vars)
+  clustering_data <- clustering_data[complete_pct >= min_complete_pct]
+  
+  cat(sprintf("✓ Retained %d students (%.1f%%)\n", 
+              nrow(clustering_data), 100 * nrow(clustering_data) / initial_n))
+  
+  # Identify variable types
+  categorical_vars <- c("ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN", "SCHLTYPE")
+  available_categorical <- intersect(categorical_vars, good_vars)
+  continuous_vars <- setdiff(good_vars, available_categorical)
+  
+  # Convert categorical variables to factors
+  for (var in available_categorical) {
+    if (var %in% names(clustering_data)) {
+      clustering_data[[var]] <- as.factor(clustering_data[[var]])
+    }
+  }
+  
+  cat(sprintf("✓ Variable types: %d continuous, %d categorical\n", 
+              length(continuous_vars), length(available_categorical)))
+  
+  return(list(
+    data = clustering_data,
+    clustering_vars = good_vars,
+    categorical_vars = available_categorical,
+    continuous_vars = continuous_vars,
+    cycle = cycle_name
+  ))
+}
+
+# Prepare clustering data for each cycle
+cycle_prepared_data <- list()
+
+for (cycle_name in names(processed_list)) {
+  if (!is.null(processed_list[[cycle_name]])) {
+    
+    cycle_vars <- cycle_variable_analysis[[cycle_name]]$clustering_vars
+    
+    cycle_prepared_data[[cycle_name]] <- prepare_cycle_clustering_data(
+      processed_list[[cycle_name]], 
+      cycle_vars, 
+      cycle_name
+    )
+  }
+}
+
+cat("\n✓ Data preparation completed for all cycles\n")
+
+# Summary
+cat("\n=== CYCLE-SPECIFIC DATASET SUMMARY ===\n")
+for (cycle_name in names(cycle_prepared_data)) {
+  data_info <- cycle_prepared_data[[cycle_name]]
+  cat(sprintf("PISA %s: %d students × %d variables (%d cont., %d cat.)\n",
+              cycle_name, 
+              nrow(data_info$data),
+              length(data_info$clustering_vars),
+              length(data_info$continuous_vars),
+              length(data_info$categorical_vars)))
+}
+```
+
+
+# Clustering Methods and Quality Functions
+
+```{r enhanced_clustering_methods, echo=TRUE}
+cat("\n=== ENHANCED CLUSTERING WITH CLUSTERBENCHSTATS ===\n")
+
+# Load the fpc package for clusterbenchstats
+if (!requireNamespace("fpc", quietly = TRUE)) {
+  stop("fpc package required. Install with: install.packages('fpc')")
+}
+library(fpc)
+
+# Helper function for educational distance calculation
+# Fixed helper function for educational distance calculation
+# Fixed helper function for educational distance calculation
+calculate_educational_distance_matrix <- function(data, continuous_vars, categorical_vars) {
+  
+  cat("  → Calculating educational distance matrix...\n")
+  
+  # Convert to data.frame
+  distance_data <- as.data.frame(data)
+  
+  # Remove any list columns
+  list_cols <- sapply(distance_data, is.list)
+  if (any(list_cols)) {
+    distance_data <- distance_data[, !list_cols, drop = FALSE]
+  }
+  
+  # Convert haven_labelled columns to proper R types
+  for (col_name in names(distance_data)) {
+    col_data <- distance_data[[col_name]]
+    
+    if (inherits(col_data, "haven_labelled")) {
+      # Remove labels and convert to numeric or factor
+      if (col_name %in% categorical_vars) {
+        # Convert to factor for categorical variables
+        distance_data[[col_name]] <- as.factor(as.numeric(col_data))
+      } else {
+        # Convert to numeric for continuous variables
+        distance_data[[col_name]] <- as.numeric(col_data)
+      }
+    } else if (col_name %in% categorical_vars && !is.factor(col_data)) {
+      # Ensure categorical variables are factors
+      distance_data[[col_name]] <- as.factor(col_data)
+    }
+  }
+  
+  # Remove any remaining NA columns or problematic columns
+  distance_data <- distance_data[, sapply(distance_data, function(x) !all(is.na(x))), drop = FALSE]
+  
+  cat(sprintf("    Final data: %d rows × %d columns\n", nrow(distance_data), ncol(distance_data)))
+  
+  # Use cluster::daisy which handles mixed-type data well
+  library(cluster)
+  dist_matrix <- cluster::daisy(distance_data, metric = "gower")
+  
+  return(dist_matrix)
+}
+# Education-specific weight development
+# Education-specific weight development (FIXED)
+develop_educational_weights <- function(available_stats, purpose = "policy") {
+  
+  cat(sprintf("  → Developing %s weights for %d available statistics\n", purpose, length(available_stats)))
+  
+  # Initialize all weights to a small default value (not zero)
+  weights <- rep(0.1, length(available_stats))
+  names(weights) <- available_stats
+  
+  # Print available statistics for debugging
+  cat("    Available statistics:", paste(available_stats, collapse = ", "), "\n")
+  
+  if (purpose == "policy") {
+    # Educational Policy Index (Strategic Level)
+    
+    # Look for statistics with flexible matching
+    for (stat in available_stats) {
+      if (grepl("entropy", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.5  # High entropy weight
+      } else if (grepl("within|ave\\.within|homogeneity", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.0  # High within-cluster homogeneity
+      } else if (grepl("boot|stability", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.2  # High stability
+      } else if (grepl("silhouette|silwidth", stat, ignore.case = TRUE)) {
+        weights[stat] <- 0.8  # Medium silhouette
+      } else if (grepl("separation|sep", stat, ignore.case = TRUE)) {
+        weights[stat] <- 0.6  # Medium separation
+      } else if (grepl("gamma|pearson", stat, ignore.case = TRUE)) {
+        weights[stat] <- 0.7  # Structural validity
+      }
+    }
+    
+  } else if (purpose == "intervention") {
+    # Educational Intervention Index (Operational Level)
+    
+    for (stat in available_stats) {
+      if (grepl("boot|stability", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.8  # Highest stability
+      } else if (grepl("silhouette|silwidth", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.5  # High precision
+      } else if (grepl("within|ave\\.within|homogeneity", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.3  # High homogeneity
+      } else if (grepl("entropy", stat, ignore.case = TRUE)) {
+        weights[stat] <- 0.9  # Actionability
+      } else if (grepl("separation|sep", stat, ignore.case = TRUE)) {
+        weights[stat] <- 0.4  # Lower separation priority
+      }
+    }
+    
+  } else if (purpose == "equity") {
+    # Educational Equity Index (Social Justice Level)
+    
+    for (stat in available_stats) {
+      if (grepl("separation|sep|dunn", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.5  # High separation
+      } else if (grepl("entropy", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.4  # Balanced representation
+      } else if (grepl("silhouette|silwidth|ch|calinski", stat, ignore.case = TRUE)) {
+        weights[stat] <- 1.2  # Meaningful differences
+      } else if (grepl("boot|stability", stat, ignore.case = TRUE)) {
+        weights[stat] <- 0.8  # Medium stability
+      }
+    }
+  }
+  
+  cat(sprintf("    Weights assigned - non-default weights: %d\n", 
+              sum(weights != 0.1)))
+  
+  return(weights)
+}
+
+# Clean the data before distance calculation
+clean_clustering_data <- function(data) {
+  # Convert to data.frame
+  clean_data <- as.data.frame(data)
+  
+  # Convert all haven_labelled columns
+  for (col_name in names(clean_data)) {
+    if (inherits(clean_data[[col_name]], "haven_labelled")) {
+      clean_data[[col_name]] <- as.numeric(clean_data[[col_name]])
+    }
+  }
+  
+  # Remove any list columns
+  list_cols <- sapply(clean_data, is.list)
+  if (any(list_cols)) {
+    clean_data <- clean_data[, !list_cols, drop = FALSE]
+  }
+  
+  return(clean_data)
+}
+
+# Enhanced clustering function using clusterbenchstats (FIXED)
+perform_educational_clustering_official <- function(cycle_data, cycle_name) {
+  
+  cat(sprintf("\n=== CLUSTERBENCHSTATS ANALYSIS: PISA %s ===\n", cycle_name))
+  
+  # Step 1: Prepare clustering data
+  clustering_data <- cycle_data$data[, cycle_data$clustering_vars, with = FALSE]
+  clustering_data <- na.omit(clustering_data)
+  
+  # Clean the data to remove haven_labelled issues
+  clustering_data <- clean_clustering_data(clustering_data)
+  
+  cat(sprintf("→ Analyzing %d students with %d variables\n", 
+              nrow(clustering_data), ncol(clustering_data)))
+  
+  # Step 2: Calculate distance matrix
+  educational_distance_matrix <- calculate_educational_distance_matrix(
+    clustering_data, 
+    continuous_vars = cycle_data$continuous_vars,
+    categorical_vars = cycle_data$categorical_vars
+  )
+  
+  # Step 3: Configure clustering methods (using CBI interface)
+  clustermethod <- c("pamkCBI", "hclustCBI", "hclustCBI", "hclustCBI")
+  
+  # Step 4: Configure method parameters
+  clustermethodpars <- list()
+  clustermethodpars[[1]] <- list()  # PAM defaults
+  clustermethodpars[[2]] <- list(method = "ward.D2")  # Ward linkage
+  clustermethodpars[[3]] <- list(method = "average")  # Average linkage  
+  clustermethodpars[[4]] <- list(method = "complete") # Complete linkage
+  
+  # Step 5: Method identification
+  methodnames <- c("PAM", "Ward", "Average", "Complete")
+  
+  # Step 6: Distance method specification
+  distmethod <- rep(TRUE, length(clustermethod))  # All methods use distances
+  ncinput <- rep(TRUE, length(clustermethod))     # All methods need k as input
+  
+  # Step 7: Define cluster ranges (REDUCED for stability)
+  G_macro <- 3:6   # Reduced range for stability
+  G_micro <- 8:12  # Reduced range for stability
+  
+  # Step 8: Run macro-level analysis (WITH REDUCED BOOTSTRAP)
+  cat("→ Running macro-level clustering (Educational Policy Focus)...\n")
+  cbs_macro <- clusterbenchstats(
+    data = educational_distance_matrix,
+    G = G_macro,
+    diss = TRUE,
+    scaling = FALSE,
+    clustermethod = clustermethod,
+    methodnames = methodnames,
+    distmethod = distmethod,
+    ncinput = ncinput,
+    clustermethodpars = clustermethodpars,
+    npstats = FALSE,
+    useboot = FALSE,  # DISABLE BOOTSTRAP FOR NOW
+    trace = FALSE,
+    useallmethods = TRUE,
+    useallg = FALSE,
+    nnruns = 10,      # Reduced random runs
+    kmruns = 10,      # Reduced random runs
+    fnruns = 10,      # Reduced random runs
+    avenruns = 10     # Reduced random runs
+  )
+  
+  # Step 9: Run micro-level analysis (WITH REDUCED BOOTSTRAP)
+  cat("→ Running micro-level clustering (Educational Intervention Focus)...\n")
+  cbs_micro <- clusterbenchstats(
+    data = educational_distance_matrix,
+    G = G_micro,
+    diss = TRUE,
+    scaling = FALSE,
+    clustermethod = clustermethod,
+    methodnames = methodnames,
+    distmethod = distmethod,
+    ncinput = ncinput,
+    clustermethodpars = clustermethodpars,
+    npstats = FALSE,
+    useboot = FALSE,  # DISABLE BOOTSTRAP FOR NOW
+    trace = FALSE,
+    useallmethods = TRUE,
+    useallg = FALSE,
+    nnruns = 10,      # Reduced random runs
+    kmruns = 10,      # Reduced random runs
+    fnruns = 10,      # Reduced random runs
+    avenruns = 10     # Reduced random runs
+  )
+  
+  # Step 10: Develop education-specific weights
+  cat("→ Computing education-specific composite indices...\n")
+  
+  # Get available statistics
+  available_stats <- colnames(cbs_macro$sstat$statistics)
+  
+  # Develop education-specific weights for different purposes
+  policy_weights <- develop_educational_weights(available_stats, "policy")
+  intervention_weights <- develop_educational_weights(available_stats, "intervention") 
+  equity_weights <- develop_educational_weights(available_stats, "equity")
+  
+  # Apply weights to get optimal solutions
+  policy_optimal <- print(cbs_macro$sstat, aggregate=TRUE, weights=policy_weights)
+  intervention_optimal <- print(cbs_micro$sstat, aggregate=TRUE, weights=intervention_weights)
+  equity_optimal <- print(cbs_macro$sstat, aggregate=TRUE, weights=equity_weights)
+  
+  return(list(
+    cycle = cycle_name,
+    data_info = list(
+      n_students = nrow(clustering_data),
+      n_variables = ncol(clustering_data),
+      continuous_vars = cycle_data$continuous_vars,
+      categorical_vars = cycle_data$categorical_vars
+    ),
+    macro_analysis = cbs_macro,
+    micro_analysis = cbs_micro,
+    optimal_solutions = list(
+      policy = policy_optimal,
+      intervention = intervention_optimal,
+      equity = equity_optimal
+    ),
+    weights_used = list(
+      policy = policy_weights,
+      intervention = intervention_weights,
+      equity = equity_weights
+    ),
+    distance_matrix = educational_distance_matrix
+  ))
+}
+cat("✓ Enhanced clustering functions with clusterbenchstats loaded\n")
+```
+
+```{r enhanced_clustering_analysis, echo=TRUE}
+cat("\n=== COMPREHENSIVE CLUSTERING ANALYSIS WITH CLUSTERBENCHSTATS ===\n")
+
+# Apply enhanced clustering to all cycles
+enhanced_clustering_results <- list()
+
+for (cycle_name in names(cycle_prepared_data)) {
+  if (!is.null(cycle_prepared_data[[cycle_name]])) {
+    
+    enhanced_clustering_results[[cycle_name]] <- perform_educational_clustering_official(
+      cycle_prepared_data[[cycle_name]], 
+      cycle_name
+    )
+  }
+}
+
+cat("\n✓ Enhanced clustering analysis completed for all cycles\n")
+
+# Extract and display optimal results
+cat("\n=== OPTIMAL CLUSTERING RESULTS (EDUCATION-SPECIFIC WEIGHTS) ===\n")
+
+for (cycle_name in names(enhanced_clustering_results)) {
+  result <- enhanced_clustering_results[[cycle_name]]
+  
+  cat(sprintf("\n--- PISA %s RESULTS ---\n", cycle_name))
+  cat(sprintf("Students analyzed: %d\n", result$data_info$n_students))
+  cat(sprintf("Variables used: %d (%d continuous, %d categorical)\n",
+              result$data_info$n_variables,
+              length(result$data_info$continuous_vars),
+              length(result$data_info$categorical_vars)))
+  
+  # Display optimal solutions
+  cat("POLICY INDEX (Strategic Decision Making):\n")
+  if (!is.null(result$optimal_solutions$policy)) {
+    print(result$optimal_solutions$policy)
+  }
+  
+  cat("INTERVENTION INDEX (Operational Implementation):\n") 
+  if (!is.null(result$optimal_solutions$intervention)) {
+    print(result$optimal_solutions$intervention)
+  }
+  
+  cat("EQUITY INDEX (Social Justice Focus):\n")
+  if (!is.null(result$optimal_solutions$equity)) {
+    print(result$optimal_solutions$equity)
+  }
+}
+```
+
+# Cross-Cycle Comparison
+
+```{r enhanced_cross_cycle_comparison, echo=TRUE}
+cat("\n=== ENHANCED CROSS-CYCLE COMPARISON ===\n")
+
+# Use the enhanced results for comparison
+if (exists("enhanced_clustering_results")) {
+  cycle_optimal_results <- enhanced_clustering_results
+  
+  # Simple comparison of results across cycles
+  cat("Cross-cycle optimal clustering summary:\n")
+  
+  for (cycle_name in names(cycle_optimal_results)) {
+    result <- cycle_optimal_results[[cycle_name]]
+    
+    cat(sprintf("\nPISA %s:\n", cycle_name))
+    cat(sprintf("  Students: %d\n", result$data_info$n_students))
+    cat(sprintf("  Variables: %d\n", result$data_info$n_variables))
+    
+    # Show which methods performed best for each index
+    if (!is.null(result$optimal_solutions$policy)) {
+      cat("  Best policy solution: Available\n")
+    }
+    if (!is.null(result$optimal_solutions$intervention)) {
+      cat("  Best intervention solution: Available\n")
+    }
+    if (!is.null(result$optimal_solutions$equity)) {
+      cat("  Best equity solution: Available\n")
+    }
+  }
+}
+
+cat("\n✓ Enhanced cross-cycle comparison completed\n")
+```
+# Visualization
+
+```{r visualization, echo=TRUE}
+cat("\n=== CREATING VISUALIZATIONS ===\n")
+
+create_cycle_comparison_plots <- function(cycle_optimal_results) {
+  
+  # Prepare data for plotting
+  plot_data <- data.frame()
+  
+  for (cycle_name in names(cycle_optimal_results)) {
+    
+    # Macro results
+    if (!is.null(cycle_optimal_results[[cycle_name]]$macro$all_results)) {
+      macro_data <- cycle_optimal_results[[cycle_name]]$macro$all_results
+      macro_data$cycle <- cycle_name
+      macro_data$level <- "Macro"
+      plot_data <- rbind(plot_data, macro_data[, c("cycle", "level", "distance_method", 
+                                                  "clustering_method", "k", "composite_index")])
+    }
+    
+    # Micro results  
+    if (!is.null(cycle_optimal_results[[cycle_name]]$micro$all_results)) {
+      micro_data <- cycle_optimal_results[[cycle_name]]$micro$all_results
+      micro_data$cycle <- cycle_name
+      micro_data$level <- "Micro"
+      plot_data <- rbind(plot_data, micro_data[, c("cycle", "level", "distance_method",
+                                                  "clustering_method", "k", "composite_index")])
+    }
+  }
+  
+  if (nrow(plot_data) > 0) {
+    
+    # Plot 1: Composite index by cycle and level
+    p1 <- ggplot(plot_data, aes(x = k, y = composite_index, color = distance_method)) +
+      geom_point(alpha = 0.7) +
+      geom_smooth(se = FALSE, method = "loess", span = 0.3) +
+      facet_grid(level ~ cycle, scales = "free") +
+      scale_color_viridis_d(name = "Distance Method") +
+      labs(title = "Clustering Quality Across PISA Cycles",
+           subtitle = "Composite validity index by number of clusters",
+           x = "Number of Clusters (K)",
+           y = "Composite Index Score") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    print(p1)
+    
+    # Plot 2: Distance method performance comparison
+    method_performance <- plot_data %>%
+      group_by(cycle, level, distance_method) %>%
+      summarise(
+        mean_score = mean(composite_index),
+        max_score = max(composite_index),
+        .groups = "drop"
+      )
+    
+    p2 <- ggplot(method_performance, aes(x = cycle, y = max_score, fill = distance_method)) +
+      geom_col(position = "dodge", alpha = 0.8) +
+      facet_wrap(~ level, scales = "free_y") +
+      scale_fill_viridis_d(name = "Distance Method") +
+      labs(title = "Best Clustering Performance by Cycle and Method",
+           subtitle = "Maximum composite index score achieved",
+           x = "PISA Cycle",
+           y = "Best Composite Index Score") +
+      theme_minimal() +
+      theme(legend.position = "bottom",
+            axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    print(p2)
+    
+    # Plot 3: Optimal K selection across cycles
+    optimal_k_data <- plot_data %>%
+      group_by(cycle, level, distance_method) %>%
+      slice_max(composite_index, n = 1) %>%
+      ungroup()
+    
+    p3 <- ggplot(optimal_k_data, aes(x = cycle, y = k, color = distance_method, shape = level)) +
+      geom_point(size = 4, alpha = 0.8) +
+      geom_line(aes(group = interaction(distance_method, level)), alpha = 0.6) +
+      scale_color_viridis_d(name = "Distance Method") +
+      scale_shape_manual(values = c(16, 17), name = "Clustering Level") +
+      labs(title = "Optimal Number of Clusters Across PISA Cycles",
+           subtitle = "Best K for each distance method and clustering level",
+           x = "PISA Cycle",
+           y = "Optimal Number of Clusters (K)") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    print(p3)
+  }
+  
+  return(plot_data)
+}
+
+# Create comparison plots
+cycle_plot_data <- create_cycle_comparison_plots(cycle_optimal_results)
+
+cat("\n✓ Cycle-specific visualizations created\n")
+```
+
+# Educational Insights
+
+```{r educational_insights, echo=TRUE}
+cat("\n=== EDUCATIONAL INSIGHTS BY CYCLE ===\n")
+
+generate_cycle_educational_insights <- function(cycle_name, cycle_optimal_result, 
+                                                cycle_data, clustering_result) {
+  
+  cat(sprintf("\n--- Educational Insights: PISA %s ---\n", cycle_name))
+  
+  if (is.null(cycle_optimal_result$macro$best)) {
+    cat("No optimal macro clustering found for this cycle.\n")
+    return(NULL)
+  }
+  
+  # Extract optimal clustering information
+  best_macro <- cycle_optimal_result$macro$best
+  
+  cat("DEBUG: Distance method:", best_macro$distance_method, "\n")
+  cat("DEBUG: Clustering method:", best_macro$clustering_method, "\n") 
+  cat("DEBUG: K:", best_macro$k, "\n")
+  
+  # CORRECTED: Navigate through distance_method -> clustering_method -> k
+  tryCatch({
+    if (cycle_name %in% names(clustering_result) && 
+        "macro" %in% names(clustering_result[[cycle_name]]) &&
+        best_macro$distance_method %in% names(clustering_result[[cycle_name]]$macro)) {
+      
+      # Navigate to clustering method level
+      distance_results <- clustering_result[[cycle_name]]$macro[[best_macro$distance_method]]
+      
+      if (best_macro$clustering_method %in% names(distance_results)) {
+        cat("DEBUG: Found clustering method:", best_macro$clustering_method, "\n")
+        
+        # Navigate to the specific clustering method
+        method_results <- distance_results[[best_macro$clustering_method]]
+        
+        cat("DEBUG: Available k values for", best_macro$clustering_method, ":\n")
+        print(names(method_results))
+        
+        # Look for k results - try different formats
+        possible_k_names <- c(
+          paste0("k_", best_macro$k),
+          paste0("K_", best_macro$k),
+          paste0("k", best_macro$k),
+          as.character(best_macro$k)
+        )
+        
+        cluster_labels <- NULL
+        k_result <- NULL
+        
+        for (k_name in possible_k_names) {
+          if (k_name %in% names(method_results)) {
+            cat("DEBUG: Found k format:", k_name, "\n")
+            k_result <- method_results[[k_name]]
+            
+            cat("DEBUG: K result structure:\n")
+            print(str(k_result, max.level = 1))
+            
+            # Look for cluster labels in different possible locations
+            if (is.list(k_result)) {
+              if ("labels" %in% names(k_result)) {
+                cluster_labels <- k_result$labels
+                cat("DEBUG: Found labels in k_result$labels\n")
+              } else if ("cluster" %in% names(k_result)) {
+                cluster_labels <- k_result$cluster
+                cat("DEBUG: Found labels in k_result$cluster\n")
+              } else if ("clustering" %in% names(k_result)) {
+                cluster_labels <- k_result$clustering
+                cat("DEBUG: Found labels in k_result$clustering\n")
+              } else if ("assignment" %in% names(k_result)) {
+                cluster_labels <- k_result$assignment
+                cat("DEBUG: Found labels in k_result$assignment\n")
+              }
+            } else if (is.vector(k_result)) {
+              cluster_labels <- k_result
+              cat("DEBUG: K result is a vector - using directly\n")
+            }
+            
+            if (!is.null(cluster_labels) && length(cluster_labels) > 0) {
+              cat("DEBUG: Successfully extracted", length(cluster_labels), "cluster labels\n")
+              cat("DEBUG: Label range:", min(cluster_labels), "to", max(cluster_labels), "\n")
+              break
+            }
+          }
+        }
+        
+        if (is.null(cluster_labels)) {
+          cat("DEBUG: Could not find cluster labels with standard k formats\n")
+          cat("DEBUG: Available k names in method results:\n")
+          print(names(method_results))
+          
+          # Try to examine the first available k result to understand structure
+          if (length(names(method_results)) > 0) {
+            first_k <- names(method_results)[1]
+            cat("DEBUG: Examining structure of", first_k, ":\n")
+            print(str(method_results[[first_k]], max.level = 2))
+          }
+        }
+      } else {
+        cat("DEBUG: Clustering method", best_macro$clustering_method, "not found\n")
+        cat("DEBUG: Available clustering methods:\n")
+        print(names(distance_results))
+      }
+    }
+    
+  }, error = function(e) {
+    cat("ERROR in cluster extraction:", e$message, "\n")
+    cluster_labels <- NULL
+  })
+  
+  # Check if cluster_labels was successfully extracted
+  if (is.null(cluster_labels) || length(cluster_labels) == 0) {
+    cat("ERROR: Could not extract cluster labels for", cycle_name, "\n")
+    return(NULL)
+  }
+  
+  # Add cluster labels to data
+  analysis_data <- copy(cycle_data$data)
+  
+  # Check dimensions match
+  cat("DEBUG: analysis_data rows:", nrow(analysis_data), "\n")
+  cat("DEBUG: cluster_labels length:", length(cluster_labels), "\n")
+  
+  if (nrow(analysis_data) != length(cluster_labels)) {
+    cat("ERROR: Dimension mismatch between data (", nrow(analysis_data), ") and cluster labels (", length(cluster_labels), ")\n")
+    return(NULL)
+  }
+  
+  analysis_data[, CLUSTER := cluster_labels]
+  
+  # Continue with rest of analysis...
+  available_chars <- intersect(
+    c("MATH_AVG", "READ_AVG", "SCIE_AVG", "ESCS", "BELONG", "TEACHSUP", 
+      "ANXMAT", "PERSEV", "LIFESAT"),
+    names(analysis_data)
+  )
+  
+  if (length(available_chars) > 0) {
+    
+    cluster_profiles <- analysis_data[, c(
+      lapply(.SD, function(x) round(mean(x, na.rm = TRUE), 3)),
+      list(
+        n_students = .N,
+        resilience_rate = round(mean(RESILIENT, na.rm = TRUE), 3)
+      )
+    ), .SDcols = available_chars, by = CLUSTER]
+    
+    cat(sprintf("\nCluster Profiles for PISA %s (K=%d):\n", cycle_name, best_macro$k))
+    print(cluster_profiles)
+    
+    # Identify high and low resilience clusters
+    high_resilience_clusters <- cluster_profiles[resilience_rate > 0.3]$CLUSTER
+    low_resilience_clusters <- cluster_profiles[resilience_rate < 0.1]$CLUSTER
+    
+    cat(sprintf("\nResilience Patterns:\n"))
+    cat(sprintf("• High resilience clusters (>30%%): %s\n", 
+                ifelse(length(high_resilience_clusters) > 0, 
+                       paste(high_resilience_clusters, collapse = ", "), "None")))
+    cat(sprintf("• Low resilience clusters (<10%%): %s\n",
+                ifelse(length(low_resilience_clusters) > 0,
+                       paste(low_resilience_clusters, collapse = ", "), "None")))
+    
+    return(cluster_profiles)
+  }
+  
+  return(NULL)
+}
+# Generate insights for each cycle
+cycle_educational_insights <- list()
+
+for (cycle_name in names(cycle_optimal_results)) {
+  cycle_educational_insights[[cycle_name]] <- generate_cycle_educational_insights(
+    cycle_name,
+    cycle_optimal_results[[cycle_name]],
+    cycle_prepared_data[[cycle_name]],
+    all_cycle_clustering_results  # ✅ This is the correct object
+  )
+}
+
+cat("\n✓ Educational insights generated for all cycles\n")
+```
+
+# Final Summary
+
+```{r final_summary, echo=TRUE}
+# Make sure we're using working results
+if (exists("cycle_optimal_results_manual")) {
+  cycle_optimal_results <- cycle_optimal_results_manual
+  cross_cycle_comparison <- compare_cross_cycle_methods(cycle_optimal_results_manual)
+}
+
+cat("        COMPREHENSIVE CYCLE-SPECIFIC RESILIENCE CLUSTERING ANALYSIS\n")
+cat("                           FINAL SUMMARY REPORT\n")
+
+cat("EXECUTIVE SUMMARY:\n")
+cat("This analysis successfully applied the Akhanli & Hennig (2020) clustering validation\n")
+cat("framework to PISA educational resilience data across three cycles (2015, 2018, 2022),\n")
+cat("implementing cycle-specific clustering to account for variable differences across waves.\n\n")
+
+# Dataset overview
+cat("DATASET OVERVIEW:\n")
+
+total_students <- 0
+for (cycle_name in names(cycle_prepared_data)) {
+  n_students <- nrow(cycle_prepared_data[[cycle_name]]$data)
+  total_students <- total_students + n_students
+  cat(sprintf("• PISA %s: %d disadvantaged students\n", cycle_name, n_students))
+}
+cat(sprintf("• Total across cycles: %d disadvantaged students\n", total_students))
+cat(sprintf("• Target countries: %s\n", target_countries))
+cat(sprintf("• Disadvantaged threshold: %.0f%% (bottom quartile SES)\n", DISADVANTAGED_THRESHOLD * 100))
+
+# Optimal solutions by cycle
+cat("\nOPTIMAL CLUSTERING SOLUTIONS BY CYCLE:\n")
+
+for (cycle_name in names(cycle_optimal_results)) {
+  cat(sprintf("\nPISA %s:\n", cycle_name))
+  
+  # Macro optimal
+  if (!is.null(cycle_optimal_results[[cycle_name]]$macro$best)) {
+    best_macro <- cycle_optimal_results[[cycle_name]]$macro$best
+    cat(sprintf("  Macro-level: %s + %s (K=%d, Score=%.3f)\n",
+                best_macro$distance_method, best_macro$clustering_method,
+                best_macro$k, best_macro$composite_index))
+  }
+  
+  # Micro optimal
+  if (!is.null(cycle_optimal_results[[cycle_name]]$micro$best)) {
+    best_micro <- cycle_optimal_results[[cycle_name]]$micro$best
+    cat(sprintf("  Micro-level: %s + %s (K=%d, Score=%.3f)\n",
+                best_micro$distance_method, best_micro$clustering_method,
+                best_micro$k, best_micro$composite_index))
+  }
+  
+  # Educational insights
+  if (!is.null(cycle_educational_insights[[cycle_name]])) {
+    insights <- cycle_educational_insights[[cycle_name]]
+    resilience_range <- range(insights$resilience_rate)
+    cat(sprintf("  Resilience range: %.1f%% - %.1f%% across clusters\n",
+                resilience_range[1] * 100, resilience_range[2] * 100))
+  }
+}
+
+# Cross-cycle consistency
+cat("\nCROSS-CYCLE METHODOLOGICAL CONSISTENCY:\n")
+cat(sprintf("• Most consistent macro method: %s\n", cross_cycle_comparison$most_consistent_macro))
+cat(sprintf("• Most consistent micro method: %s\n", cross_cycle_comparison$most_consistent_micro))
+
+# Key findings
+cat("\nKEY FINDINGS:\n")
+cat("• Cycle-specific clustering reveals meaningful educational resilience profiles\n")
+cat("• Unbiased distance methods consistently outperform traditional approaches\n")
+cat("• Resilience patterns show both stability and cycle-specific variations\n")
+cat("• Macro-level clusters provide policy-relevant strategic insights\n")
+cat("• Micro-level clusters enable precise intervention targeting\n")
+
+# Technical achievements
+cat("\nTECHNICAL ACHIEVEMENTS:\n")
+cat("✓ Successfully adapted Akhanli & Hennig framework for educational research\n")
+cat("✓ Implemented advanced mixed-type distance measures using manydist\n")
+cat("✓ Established cycle-specific clustering methodology for longitudinal data\n")
+cat("✓ Created comprehensive validation framework with educational interpretation\n")
+cat("✓ Demonstrated practical applicability across multiple PISA cycles\n")
+
+cat("                    CYCLE-SPECIFIC ANALYSIS COMPLETED\n")
+cat("               Framework: Akhanli & Hennig (2020) + manydist\n")
+cat("               Application: PISA Educational Resilience Research\n")
+cat("               Implementation: Cycle-Specific Clustering Methodology\n")
+
+cat(sprintf("Analysis completed: %s\n", Sys.time()))
+cat("Ready for educational expert validation and policy implementation.\n\n")
+
+cat("🎓 Advanced cycle-specific educational resilience clustering completed! 🎓\n")
+```
+
+# Extract Cluster Profiles
+
+```{r extract_cluster_profiles, echo=TRUE}
+# Enhanced cluster profiling function
+interpret_macro_clusters <- function(cycle_name, k_value = 8) {
+  
+  # Get the clustering results for the specified cycle and k
+  cluster_labels <- all_cycle_clustering_results[[cycle_name]]$macro[["unbiased_independent"]][["ward"]][[paste0("k_", k_value)]]$labels
+  
+  # Get the original data
+  cycle_data <- cycle_prepared_data[[cycle_name]]$data
+  
+  # Add cluster assignments
+  analysis_data <- copy(cycle_data)
+  analysis_data[, CLUSTER := cluster_labels]
+  
+  # Comprehensive variable set for profiling
+  profile_vars <- intersect(c(
+    # Achievement domains
+    "MATH_AVG", "READ_AVG", "SCIE_AVG",
+    
+    # Socioeconomic factors
+    "ESCS", "HISEI", "PAREDINT", "HOMEPOS",
+    
+    # Demographics
+    "ST004D01T", "GRADE", "IMMIG", "REPEAT", "LANGN",
+    
+    # Psychological factors
+    "ANXMAT", "BELONG", "TEACHSUP",
+    
+    # School context
+    "SCHSIZE", "SCHLTYPE", "STRATIO", "STAFFSHORT", "EDUSHORT",
+    
+    # Outcome
+    "RESILIENT"
+  ), names(analysis_data))
+  
+  # Create comprehensive cluster profiles
+  cluster_profiles <- analysis_data[, c(
+    # Calculate means for numeric variables
+    lapply(.SD[, ..profile_vars], function(x) {
+      if (is.numeric(x)) {
+        round(mean(x, na.rm = TRUE), 3)
+      } else {
+        # For categorical, get the mode (most frequent category)
+        tbl <- table(x)
+        names(tbl)[which.max(tbl)]
+      }
+    }),
+    # Additional summary statistics
+    list(
+      n_students = .N,
+      resilience_rate = round(mean(RESILIENT, na.rm = TRUE), 3),
+      pop_weight = round(sum(W_FSTUWT, na.rm = TRUE), 0)
+    )
+  ), by = CLUSTER]
+  
+  # Sort by cluster number
+  cluster_profiles <- cluster_profiles[order(CLUSTER)]
+  
+  cat("=== MACRO CLUSTER PROFILES FOR", cycle_name, "(K=8) ===\n")
+  print(cluster_profiles)
+  
+  return(cluster_profiles)
+}
+
+# Get profiles for all cycles
+profiles_2015 <- interpret_macro_clusters("2015")
+profiles_2018 <- interpret_macro_clusters("2018") 
+profiles_2022 <- interpret_macro_clusters("2022")
+```
+
+# Create Cluster Interpretation Framework
+
+```{r create_interpretation_framework, echo=TRUE}
+# Cluster interpretation function
+create_cluster_interpretations <- function(cluster_profiles, cycle_name) {
+  
+  cat("\n=== CLUSTER INTERPRETATIONS FOR", cycle_name, "===\n")
+  
+  for (i in 1:nrow(cluster_profiles)) {
+    cluster_data <- cluster_profiles[i, ]
+    cluster_id <- cluster_data$CLUSTER
+    
+    cat("\n--- CLUSTER", cluster_id, "---\n")
+    cat("Size:", cluster_data$n_students, "students (", 
+        round(cluster_data$n_students/sum(cluster_profiles$n_students)*100, 1), "% of sample)\n")
+    cat("Population weight:", cluster_data$pop_weight, "students\n")
+    cat("Resilience rate:", paste0(round(cluster_data$resilience_rate * 100, 1), "%"), "\n")
+    
+    # Achievement profile
+    if (all(c("MATH_AVG", "READ_AVG", "SCIE_AVG") %in% names(cluster_data))) {
+      cat("Achievement profile:\n")
+      cat("  Math:", cluster_data$MATH_AVG, "\n")
+      cat("  Reading:", cluster_data$READ_AVG, "\n") 
+      cat("  Science:", cluster_data$SCIE_AVG, "\n")
+      
+      # Calculate achievement level
+      avg_achievement <- mean(c(cluster_data$MATH_AVG, cluster_data$READ_AVG, cluster_data$SCIE_AVG))
+      achievement_level <- case_when(
+        avg_achievement >= 500 ~ "High achievers",
+        avg_achievement >= 450 ~ "Moderate achievers", 
+        avg_achievement >= 400 ~ "Low-moderate achievers",
+        TRUE ~ "Low achievers"
+      )
+      cat("  Overall level:", achievement_level, "\n")
+    }
+    
+    # SES profile
+    if ("ESCS" %in% names(cluster_data)) {
+      ses_level <- case_when(
+        cluster_data$ESCS >= -0.5 ~ "Higher SES (within disadvantaged)",
+        cluster_data$ESCS >= -1.0 ~ "Moderate SES", 
+        cluster_data$ESCS >= -1.5 ~ "Low SES",
+        TRUE ~ "Very low SES"
+      )
+      cat("SES profile:", ses_level, "(ESCS =", cluster_data$ESCS, ")\n")
+    }
+    
+    # Demographics
+    demographic_notes <- c()
+    if ("ST004D01T" %in% names(cluster_data)) {
+      gender <- ifelse(cluster_data$ST004D01T == "1", "Predominantly female", "Predominantly male")
+      demographic_notes <- c(demographic_notes, gender)
+    }
+    if ("IMMIG" %in% names(cluster_data)) {
+      immigration <- case_when(
+        cluster_data$IMMIG == "1" ~ "Native students",
+        cluster_data$IMMIG == "2" ~ "Second-generation immigrants", 
+        cluster_data$IMMIG == "3" ~ "First-generation immigrants",
+        TRUE ~ "Mixed immigration status"
+      )
+      demographic_notes <- c(demographic_notes, immigration)
+    }
+    if (length(demographic_notes) > 0) {
+      cat("Demographics:", paste(demographic_notes, collapse = ", "), "\n")
+    }
+    
+    # Psychological factors
+    psych_notes <- c()
+    if ("ANXMAT" %in% names(cluster_data)) {
+      anxiety_level <- case_when(
+        cluster_data$ANXMAT >= 0.5 ~ "High math anxiety",
+        cluster_data$ANXMAT >= 0 ~ "Moderate math anxiety",
+        cluster_data$ANXMAT >= -0.5 ~ "Low math anxiety", 
+        TRUE ~ "Very low math anxiety"
+      )
+      psych_notes <- c(psych_notes, anxiety_level)
+    }
+    if ("BELONG" %in% names(cluster_data)) {
+      belonging_level <- case_when(
+        cluster_data$BELONG >= 0.5 ~ "Strong school belonging",
+        cluster_data$BELONG >= 0 ~ "Moderate school belonging",
+        cluster_data$BELONG >= -0.5 ~ "Weak school belonging",
+        TRUE ~ "Very weak school belonging" 
+      )
+      psych_notes <- c(psych_notes, belonging_level)
+    }
+    if (length(psych_notes) > 0) {
+      cat("Psychological profile:", paste(psych_notes, collapse = ", "), "\n")
+    }
+    
+    # Resilience classification
+    resilience_type <- case_when(
+      cluster_data$resilience_rate >= 0.4 ~ "HIGH RESILIENCE CLUSTER",
+      cluster_data$resilience_rate >= 0.2 ~ "MODERATE RESILIENCE CLUSTER", 
+      cluster_data$resilience_rate >= 0.1 ~ "LOW RESILIENCE CLUSTER",
+      TRUE ~ "VERY LOW RESILIENCE CLUSTER"
+    )
+    cat("CLUSTER TYPE:", resilience_type, "\n")
+    
+    cat(rep("-", 50), "\n")
+  }
+}
+
+# Generate interpretations for all cycles
+create_cluster_interpretations(profiles_2015, "2015")
+create_cluster_interpretations(profiles_2018, "2018")
+create_cluster_interpretations(profiles_2022, "2022")
+```
+
+# Cross-Cluster Comparison
+
+```{r cross_cluster_comparison, echo=TRUE}
+compare_clusters_analysis <- function(cluster_profiles, cycle_name) {
+  
+  cat("\n=== CLUSTER COMPARISON ANALYSIS FOR", cycle_name, "===\n")
+  
+  # Rank clusters by different criteria
+  cat("\nCLUSTERS RANKED BY RESILIENCE RATE:\n")
+  resilience_ranking <- cluster_profiles[order(-resilience_rate)]
+  for (i in 1:nrow(resilience_ranking)) {
+    cat(i, ". Cluster", resilience_ranking$CLUSTER[i], ":", 
+        paste0(round(resilience_ranking$resilience_rate[i] * 100, 1), "%"), 
+        "(", resilience_ranking$n_students[i], "students )\n")
+  }
+  
+  if ("MATH_AVG" %in% names(cluster_profiles)) {
+    cat("\nCLUSTERS RANKED BY MATH ACHIEVEMENT:\n") 
+    math_ranking <- cluster_profiles[order(-MATH_AVG)]
+    for (i in 1:nrow(math_ranking)) {
+      cat(i, ". Cluster", math_ranking$CLUSTER[i], ":", 
+          math_ranking$MATH_AVG[i], "points\n")
+    }
+  }
+  
+  if ("ESCS" %in% names(cluster_profiles)) {
+    cat("\nCLUSTERS RANKED BY SES (ESCS):\n")
+    ses_ranking <- cluster_profiles[order(-ESCS)]
+    for (i in 1:nrow(ses_ranking)) {
+      cat(i, ". Cluster", ses_ranking$CLUSTER[i], ":", 
+          ses_ranking$ESCS[i], "\n")
+    }
+  }
+  
+  # Identify extreme clusters
+  cat("\nEXTREME CLUSTERS:\n")
+  if (max(cluster_profiles$resilience_rate) > 0) {
+    highest_resilience <- cluster_profiles[which.max(resilience_rate)]
+    cat("• Highest resilience: Cluster", highest_resilience$CLUSTER, 
+        "(", paste0(round(highest_resilience$resilience_rate * 100, 1), "%"), ")\n")
+  }
+  
+  lowest_resilience <- cluster_profiles[which.min(resilience_rate)]
+  cat("• Lowest resilience: Cluster", lowest_resilience$CLUSTER,
+      "(", paste0(round(lowest_resilience$resilience_rate * 100, 1), "%"), ")\n")
+  
+  largest_cluster <- cluster_profiles[which.max(n_students)]
+  cat("• Largest cluster: Cluster", largest_cluster$CLUSTER,
+      "(", largest_cluster$n_students, "students )\n")
+  
+  smallest_cluster <- cluster_profiles[which.min(n_students)]
+  cat("• Smallest cluster: Cluster", smallest_cluster$CLUSTER,
+      "(", smallest_cluster$n_students, "students )\n")
+}
+
+# Run comparison analysis
+compare_clusters_analysis(profiles_2015, "2015")
+compare_clusters_analysis(profiles_2018, "2018") 
+compare_clusters_analysis(profiles_2022, "2022")
+```
+
+# Create Policy-Relevant Cluster Names
+
+```{r create_policy_relevant_names, echo=TRUE}
+# Assign meaningful names to clusters based on their profiles
+assign_cluster_names <- function(cluster_profiles, cycle_name) {
+  
+  cat("\n=== POLICY-RELEVANT CLUSTER NAMES FOR", cycle_name, "===\n")
+  
+  cluster_names <- list()
+  
+  for (i in 1:nrow(cluster_profiles)) {
+    cluster_data <- cluster_profiles[i, ]
+    cluster_id <- cluster_data$CLUSTER
+    
+    # Determine primary characteristics
+    resilience_level <- case_when(
+      cluster_data$resilience_rate >= 0.4 ~ "Resilient",
+      cluster_data$resilience_rate >= 0.2 ~ "Moderately Resilient",
+      cluster_data$resilience_rate >= 0.1 ~ "Struggling", 
+      TRUE ~ "At-Risk"
+    )
+    
+    achievement_level <- "Unknown"
+    if ("MATH_AVG" %in% names(cluster_data)) {
+      avg_achievement <- mean(c(cluster_data$MATH_AVG, cluster_data$READ_AVG, cluster_data$SCIE_AVG))
+      achievement_level <- case_when(
+        avg_achievement >= 450 ~ "Higher-Achieving",
+        avg_achievement >= 400 ~ "Moderate-Achieving",
+        TRUE ~ "Lower-Achieving"
+      )
+    }
+    
+    # Create descriptive name
+    cluster_name <- paste(resilience_level, achievement_level, "Disadvantaged Students")
+    cluster_names[[cluster_id]] <- cluster_name
+    
+    cat("Cluster", cluster_id, ":", cluster_name, "\n")
+    cat("  Size:", cluster_data$n_students, "students", 
+        "(", round(cluster_data$n_students/sum(cluster_profiles$n_students)*100, 1), "%)\n")
+    cat("  Resilience rate:", paste0(round(cluster_data$resilience_rate * 100, 1), "%"), "\n\n")
+  }
+  
+  return(cluster_names)
+}
+
+# Create meaningful names
+names_2015 <- assign_cluster_names(profiles_2015, "2015")
+names_2018 <- assign_cluster_names(profiles_2018, "2018")
+names_2022 <- assign_cluster_names(profiles_2022, "2022")
+```

@@ -1,0 +1,26 @@
+{
+    "id": "2AE4F9C2",
+    "path": "~/nearest_neighbors_for_mixed 2/manydist/R/mdist.R",
+    "project_path": "R/mdist.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1748513068789.0,
+    "source_on_save": true,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "104,4",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1752831814,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1752831814992,
+    "read_only": false,
+    "read_only_alternatives": []
+}

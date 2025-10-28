@@ -1,0 +1,411 @@
+cat("\n=== LOADING AND PROCESSING PISA DATA ===\n")
+
+# ---- Required Packages ----
+library(haven)
+library(data.table)
+library(mice)
+
+# ---- PISA Cycle Configuration ----
+pisa_cycles <- list(
+  "2015" = list(
+    student_file = "CY6_MS_CMB_STU_QQQ.sav",
+    school_file = "CY6_MS_CMB_SCH_QQQ.sav",
+    year = 2015,
+    var_mapping = list(
+      student = c("PARED" = "PAREDINT"),
+      school = c()
+    )
+  ),
+  "2018" = list(
+    student_file = "CY07_MSU_STU_QQQ.sav",
+    school_file = "CY07_MSU_SCH_QQQ.sav",
+    year = 2018,
+    var_mapping = list(
+      student = c(),
+      school = c("STRATIO" = "STRATIO")
+    )
+  ),
+  "2022" = list(
+    student_file = "CY08MSP_STU_QQQ.sav",
+    school_file = "CY08MSP_SCH_QQQ.sav",
+    year = 2022,
+    var_mapping = list(
+      student = c(),
+      school = c("SMRATIO" = "STRATIO")
+    )
+  )
+)
+
+core_student_vars <- list(
+  ids = c("CNT", "CNTSCHID", "CNTSTUID"),
+  achievement = c(paste0("PV", 1:10, "MATH"), paste0("PV", 1:10, "READ"), paste0("PV", 1:10, "SCIE")),
+  ses_background = c("ESCS", "HISEI", "PAREDINT", "HOMEPOS", "ICTRES", "WEALTH", "HEDRES"),
+  demographics = c("ST004D01T", "IMMIG", "REPEAT"),
+  motivation = c(
+    "ANXTEST", "ANXMAT", "MATHMOT", "MATHEFF", "SCIEEFF", "JOYSCIE", "INTMAT",
+    "GRWTHMND", "WORKMAST", "RESILIENCE", "MASTGOAL", "GFOFAIL", "COMPETE",
+    "INTBRSCI", "INSTSCIE", "MOTIVAT", "JOYREAD",
+    "INTSCIE", "READINTEREST", "GLOBCOMP", "MATHINT"
+  ),
+  psychological = c(
+    "PERSEV", "GRWTHMND", "WORKMAST", "COMPETE", "EPIST", "BELONG",
+    "GCSELFEFF", "METASUM", "ADAPTIVITY", "PERSEVAGR", "GROSAGR", "STRESAGR",
+    "EMOCOAGR", "CURIOAGR", "COOPAGR", "EMPATAGR", "ASSERAGR", "CREATBELIEF"
+  ),
+  social_support = c(
+    "TEACHSUP", "BELONG", "FAMSUP", "RELATST", "EMOSUPS", "EMOSUPSCI", "CURSUPP",
+    "BEINGBULLIED", "BULLIED", "FEELSAFE", "SOCCON", "SOCONPA", "PARINVOL", "PARSUPMAT"
+  ),
+  learning_behavior = c(
+    "HOMWRK", "PERFEED", "DISCLIMA", "DISCLISCI", "DIRINS", "TRUANCY",
+    "ADINST", "SMINS", "SADDINST", "STUDYHMW", "EXERPRAC",
+    "WORKPAY", "WORKHOME", "SKIPPING", "TARDYSD", "COGACRCO", "COGACMCO",
+    "EXPOFA", "EXPO21ST", "DIGLRN"
+  ),
+  wellbeing = c(
+    "LIFESAT", "ATTSCHL", "EUDMO", "SWBP", "PSYCHSYM", "SOCCON", "BODYIMA", "EXPWB"
+  ),
+  perceptions = c("PQSCHOOL", "PISADIFF", "PQMOTHER", "PQFATHER"),
+  weights = "W_FSTUWT"
+)
+
+core_school_vars <- list(
+  ids = c("CNT", "CNTSCHID"),
+  characteristics = c(
+    "SCHSIZE", "SCHLTYPE", "STRATIO", "PRIVATESCH", "CLSIZE", "SMRATIO"
+  ),
+  resources = c(
+    "STAFFSHORT", "EDUSHORT", "RATCMP1", "SCIERES", "CREACTIV", "RATCMP2",
+    "TOTAT", "DIGRES"
+  ),
+  teacher_quality = c(
+    "PROAT5AB", "PROAT5AM", "PROAT6", "PROATCE", "PROSTAT", "PROSTCE",
+    "PROSTMAS", "PROATCE", "SCIENTCH", "TCHENTHU", "TCHFAIR", "TCHSUPPORT"
+  ),
+  school_climate = c(
+    "STUBEHA", "TEACHBEHA", "SCMCEG", "NEGSCLIM", "ENCOURPG"
+  ),
+  leadership = c("LEAD", "LEADPD", "LEADTCH", "SCHAUT", "TEACHPART", "INSTLEAD", "TCHPART"),
+  community = c("SCHCOM", "PARPART", "EQUITYPOL", "CREATCURR"),
+  weights = "W_SCHGRNRABWT"
+)
+
+# ---- File Reading Function ----
+safe_read_pisa_with_mapping <- function(file_path, var_list, var_mapping,
+                                        target_countries = NULL, cycle_year = NULL) {
+  tryCatch({
+    file_vars <- names(read_sav(file_path, n_max = 0))
+    reverse_mapping <- setNames(names(var_mapping), var_mapping)
+    vars_to_request <- sapply(var_list, function(std_var) {
+      if (std_var %in% names(reverse_mapping)) {
+        reverse_mapping[[std_var]]
+      } else {
+        std_var
+      }
+    })
+    available_vars <- intersect(vars_to_request, file_vars)
+    if (length(available_vars) == 0) {
+      warning("No requested variables found in ", basename(file_path))
+      return(NULL)
+    }
+    dt <- setDT(read_sav(file_path, col_select = any_of(available_vars)))
+    for (old_name in names(var_mapping)) {
+      new_name <- var_mapping[[old_name]]
+      if (old_name %in% names(dt)) {
+        setnames(dt, old_name, new_name)
+      }
+    }
+    if (!is.null(target_countries) && "CNT" %in% names(dt)) {
+      dt <- dt[CNT %in% target_countries]
+    }
+    if (!is.null(cycle_year)) {
+      dt[, CYCLE := cycle_year]
+    }
+    return(dt)
+  }, error = function(e) {
+    cat("Error reading file:", basename(file_path), "\n")
+    return(NULL)
+  })
+}
+
+# ---- Load All PISA Cycles ----
+all_student_vars <- unlist(core_student_vars, use.names = FALSE)
+all_school_vars <- unlist(core_school_vars, use.names = FALSE)
+pisa_student_list <- list()
+pisa_school_list <- list()
+for (cycle_name in names(pisa_cycles)) {
+  cycle_info <- pisa_cycles[[cycle_name]]
+  cat("\n--- Loading PISA", cycle_info$year, "---\n")
+  stu_file <- path(cycle_info$student_file)
+  stu_data <- safe_read_pisa_with_mapping(
+    stu_file, all_student_vars, cycle_info$var_mapping$student,
+    target_countries, cycle_info$year
+  )
+  if (!is.null(stu_data) && nrow(stu_data) > 0) {
+    pisa_student_list[[cycle_name]] <- stu_data
+    cat("Students loaded:", nrow(stu_data), "\n")
+  }
+  sch_file <- path(cycle_info$school_file)
+  sch_data <- safe_read_pisa_with_mapping(
+    sch_file, all_school_vars, cycle_info$var_mapping$school,
+    target_countries, cycle_year
+  )
+  if (!is.null(sch_data) && nrow(sch_data) > 0) {
+    pisa_school_list[[cycle_name]] <- sch_data
+    cat("Schools loaded:", nrow(sch_data), "\n")
+  }
+}
+
+# ---- Process PISA Cycle with Imputation and Binary Resilience Indicators ----
+process_pisa_cycle <- function(stu_dt, sch_dt, cycle_year) {
+  if (is.null(stu_dt) || nrow(stu_dt) == 0) return(NULL)
+  
+  # Check missingness in plausible values and SES variables
+  cat(sprintf("Missing MATH plausible values: %d, READ: %d, SCIE: %d\n",
+              sum(rowSums(is.na(stu_dt[, .SD, .SDcols = patterns("MATH$")])) > 0),
+              sum(rowSums(is.na(stu_dt[, .SD, .SDcols = patterns("READ$")])) > 0),
+              sum(rowSums(is.na(stu_dt[, .SD, .SDcols = patterns("SCIE$")])) > 0)))
+  cat(sprintf("Missing ESCS: %d, HISEI: %d, HOMEPOS: %d, WEALTH: %d\n",
+              sum(is.na(stu_dt$ESCS)),
+              sum(is.na(stu_dt$HISEI)),
+              sum(is.na(stu_dt$HOMEPOS)),
+              sum(is.na(stu_dt$WEALTH))))
+  
+  # Impute ESCS if missingness is <= 30%
+  escs_missing_pct <- mean(is.na(stu_dt$ESCS)) * 100
+  cat(sprintf("ESCS missingness: %.1f%%\n", escs_missing_pct))
+  if (escs_missing_pct > 0 && escs_missing_pct <= 30) {
+    cat("→ Imputing ESCS using MICE...\n")
+    ses_vars <- intersect(names(stu_dt), c("ESCS", "HISEI", "PAREDINT", "HOMEPOS", "WEALTH", "ICTRES", "HEDRES"))
+    mice_data <- as.data.frame(stu_dt[, ses_vars, with = FALSE])
+    mice_methods <- make.method(mice_data)
+    mice_methods["ESCS"] <- "pmm"
+    tryCatch({
+      mice_result <- mice(mice_data, m = 5, method = mice_methods, printFlag = FALSE, seed = 42)
+      completed_mice <- complete(mice_result, 1)
+      stu_dt[, ESCS := completed_mice$ESCS]
+      cat("✓ ESCS imputation completed\n")
+    }, error = function(e) {
+      cat(sprintf("ERROR in ESCS imputation: %s\n", e$message))
+    })
+  } else if (escs_missing_pct > 30) {
+    cat("⚠ ESCS missingness >30%, skipping imputation\n")
+  }
+  
+  # Impute SCIE plausible values if missingness is <= 30%
+  scie_missing_pct <- mean(rowSums(is.na(stu_dt[, .SD, .SDcols = patterns("SCIE$")])) > 0) * 100
+  cat(sprintf("SCIE plausible values missingness: %.1f%%\n", scie_missing_pct))
+  if (scie_missing_pct > 0 && scie_missing_pct <= 30) {
+    cat("→ Imputing SCIE plausible values using MICE...\n")
+    scie_vars <- c(paste0("PV", 1:10, "SCIE"), paste0("PV", 1:10, "MATH"), paste0("PV", 1:10, "READ"),
+                   "ESCS", "HISEI", "PAREDINT", "HOMEPOS", "WEALTH", "ICTRES", "HEDRES")
+    scie_vars <- intersect(names(stu_dt), scie_vars)
+    mice_data <- as.data.frame(stu_dt[, scie_vars, with = FALSE])
+    mice_methods <- make.method(mice_data)
+    for (pv in 1:10) {
+      scie_var <- paste0("PV", pv, "SCIE")
+      if (scie_var %in% names(mice_data)) {
+        mice_methods[scie_var] <- "pmm"
+      }
+    }
+    tryCatch({
+      mice_result <- mice(mice_data, m = 5, method = mice_methods, printFlag = FALSE, seed = 42)
+      completed_mice <- complete(mice_result, 1)
+      for (pv in 1:10) {
+        scie_var <- paste0("PV", pv, "SCIE")
+        if (scie_var %in% names(completed_mice)) {
+          stu_dt[, (scie_var) := completed_mice[[scie_var]]]
+        }
+      }
+      cat("✓ SCIE plausible values imputation completed\n")
+    }, error = function(e) {
+      cat(sprintf("ERROR in SCIE imputation: %s\n", e$message))
+    })
+  } else if (scie_missing_pct > 30) {
+    cat("⚠ SCIE missingness >30%, skipping imputation\n")
+  }
+  
+  # Impute READ plausible values if missingness is <= 30%
+  read_missing_pct <- mean(rowSums(is.na(stu_dt[, .SD, .SDcols = patterns("READ$")])) > 0) * 100
+  cat(sprintf("READ plausible values missingness: %.1f%%\n", read_missing_pct))
+  if (read_missing_pct > 0 && read_missing_pct <= 30) {
+    cat("→ Imputing READ plausible values using MICE...\n")
+    read_vars <- c(paste0("PV", 1:10, "READ"), paste0("PV", 1:10, "MATH"), paste0("PV", 1:10, "SCIE"),
+                   "ESCS", "HISEI", "PAREDINT", "HOMEPOS", "WEALTH", "ICTRES", "HEDRES")
+    read_vars <- intersect(names(stu_dt), read_vars)
+    mice_data <- as.data.frame(stu_dt[, read_vars, with = FALSE])
+    mice_methods <- make.method(mice_data)
+    for (pv in 1:10) {
+      read_var <- paste0("PV", pv, "READ")
+      if (read_var %in% names(mice_data)) {
+        mice_methods[read_var] <- "pmm"
+      }
+    }
+    tryCatch({
+      mice_result <- mice(mice_data, m = 5, method = mice_methods, printFlag = FALSE, seed = 42)
+      completed_mice <- complete(mice_result, 1)
+      for (pv in 1:10) {
+        read_var <- paste0("PV", pv, "READ")
+        if (read_var %in% names(completed_mice)) {
+          stu_dt[, (read_var) := completed_mice[[read_var]]]
+        }
+      }
+      cat("✓ READ plausible values imputation completed\n")
+    }, error = function(e) {
+      cat(sprintf("ERROR in READ imputation: %s\n", e$message))
+    })
+  } else if (read_missing_pct > 30) {
+    cat("⚠ READ missingness >30%, skipping imputation\n")
+  }
+  
+  # Calculate national ESCS threshold
+  escs_q25_national <- quantile(stu_dt$ESCS, probs = 0.25, na.rm = TRUE)
+  
+  # Apply DISADVANTAGED definition
+  stu_dt[, DISADVANTAGED := ifelse(ESCS <= escs_q25_national, 1, 0)]
+  
+  # Compute resilience indicators for each plausible value set
+  orig_resilient_props <- numeric(10)
+  oecd_resilient_props <- numeric(10)
+  revised_resilient_props <- numeric(10)
+  orig_resilient_vars <- numeric(10)
+  oecd_resilient_vars <- numeric(10)
+  revised_resilient_vars <- numeric(10)
+  
+  for (pv in 1:10) {
+    # Extract plausible value for each domain
+    stu_dt[, `:=`(
+      MATH_PV = get(paste0("PV", pv, "MATH")),
+      READ_PV = get(paste0("PV", pv, "READ")),
+      SCIE_PV = get(paste0("PV", pv, "SCIE"))
+    )]
+    stu_dt[, ACHIEVEMENT_PV := (MATH_PV + READ_PV + SCIE_PV) / 3]
+    
+    # Calculate national thresholds for this plausible value
+    math_q75_national <- quantile(stu_dt$MATH_PV, probs = 0.75, na.rm = TRUE)
+    read_q75_national <- quantile(stu_dt$READ_PV, probs = 0.75, na.rm = TRUE)
+    scie_q75_national <- quantile(stu_dt$SCIE_PV, probs = 0.75, na.rm = TRUE)
+    achievement_q75_national <- quantile(stu_dt$ACHIEVEMENT_PV, probs = 0.75, na.rm = TRUE)
+    
+    # Original resilience (Level 3 thresholds)
+    # Note: Level 2 thresholds (MATH: 420.07, READ: 407.47, SCIE: 409.54) can be used for sensitivity analysis
+    MATH_LEVEL3_THRESHOLD <- 482.38
+    READ_LEVEL3_THRESHOLD <- 480.18
+    SCIE_LEVEL3_THRESHOLD <- 484.14
+    stu_dt[DISADVANTAGED == 1, paste0("RESILIENT_PV", pv) := ifelse(
+      MATH_PV >= MATH_LEVEL3_THRESHOLD &
+        READ_PV >= READ_LEVEL3_THRESHOLD &
+        SCIE_PV >= SCIE_LEVEL3_THRESHOLD, 1, 0)]
+    
+    # OECD resilience (bottom 25% ESCS, top 25% overall achievement)
+    stu_dt[DISADVANTAGED == 1, paste0("RESILIENT_OECD_PV", pv) := ifelse(
+      ESCS <= escs_q25_national & ACHIEVEMENT_PV >= achievement_q75_national, 1, 0)]
+    
+    # Revised resilience (bottom 25% ESCS, top 25% in each domain)
+    stu_dt[DISADVANTAGED == 1, paste0("RESILIENT_REVISED_PV", pv) := ifelse(
+      ESCS <= escs_q25_national &
+        MATH_PV >= math_q75_national &
+        READ_PV >= read_q75_national &
+        SCIE_PV >= scie_q75_national, 1, 0)]
+    
+    # Compute proportions for pooled summary statistics
+    disadv_dt <- stu_dt[DISADVANTAGED == 1]
+    n_disadv <- nrow(disadv_dt)
+    orig_resilient_props[pv] <- mean(disadv_dt[[paste0("RESILIENT_PV", pv)]], na.rm = TRUE)
+    oecd_resilient_props[pv] <- mean(disadv_dt[[paste0("RESILIENT_OECD_PV", pv)]], na.rm = TRUE)
+    revised_resilient_props[pv] <- mean(disadv_dt[[paste0("RESILIENT_REVISED_PV", pv)]], na.rm = TRUE)
+    orig_resilient_vars[pv] <- var(disadv_dt[[paste0("RESILIENT_PV", pv)]], na.rm = TRUE) / n_disadv
+    oecd_resilient_vars[pv] <- var(disadv_dt[[paste0("RESILIENT_OECD_PV", pv)]], na.rm = TRUE) / n_disadv
+    revised_resilient_vars[pv] <- var(disadv_dt[[paste0("RESILIENT_REVISED_PV", pv)]], na.rm = TRUE) / n_disadv
+  }
+  
+  # Create final binary resilience indicators using majority rule
+  orig_resilient_cols <- paste0("RESILIENT_PV", 1:10)
+  oecd_resilient_cols <- paste0("RESILIENT_OECD_PV", 1:10)
+  revised_resilient_cols <- paste0("RESILIENT_REVISED_PV", 1:10)
+  stu_dt[, RESILIENT := ifelse(rowSums(.SD, na.rm = TRUE) >= 5, 1, 0), .SDcols = orig_resilient_cols]
+  stu_dt[, RESILIENT_OECD := ifelse(rowSums(.SD, na.rm = TRUE) >= 5, 1, 0), .SDcols = oecd_resilient_cols]
+  stu_dt[, RESILIENT_REVISED := ifelse(rowSums(.SD, na.rm = TRUE) >= 5, 1, 0), .SDcols = revised_resilient_cols]
+  
+  # Pool proportions using Rubin's rules for comparison
+  pool_proportions <- function(props, vars, n) {
+    mean_prop <- mean(props)
+    within_var <- mean(vars)
+    between_var <- var(props)
+    total_var <- within_var + between_var * (1 + 1/length(props))
+    se <- sqrt(total_var)
+    return(list(mean = mean_prop, se = se, n = round(mean_prop * n)))
+  }
+  
+  n_disadv <- nrow(stu_dt[DISADVANTAGED == 1])
+  orig_pooled <- pool_proportions(orig_resilient_props, orig_resilient_vars, n_disadv)
+  oecd_pooled <- pool_proportions(oecd_resilient_props, oecd_resilient_vars, n_disadv)
+  revised_pooled <- pool_proportions(revised_resilient_props, revised_resilient_vars, n_disadv)
+  
+  # Compute correlations for SES variables
+  ses_vars <- intersect(names(stu_dt), c("ESCS", "HISEI", "HOMEPOS", "WEALTH"))
+  if (length(ses_vars) >= 2) {
+    cat(sprintf("Correlations for SES variables in %s:\n", cycle_year))
+    print(cor(stu_dt[DISADVANTAGED == 1, .SD, .SDcols = ses_vars], use = "pairwise.complete.obs"))
+  }
+  
+  # Filter to disadvantaged students
+  disadv_dt <- stu_dt[DISADVANTAGED == 1]
+  
+  # Merge with school data
+  if (!is.null(sch_dt) && nrow(sch_dt) > 0) {
+    disadv_dt <- merge(disadv_dt, sch_dt, by = c("CNT", "CNTSCHID", "CYCLE"), all.x = TRUE)
+  }
+  
+  # Clean up temporary columns
+  disadv_dt[, grep("PV[0-9]+", names(disadv_dt)) := NULL]
+  disadv_dt[, c("MATH_PV", "READ_PV", "SCIE_PV", "ACHIEVEMENT_PV") := NULL]
+  
+  return(list(
+    data = disadv_dt,
+    pooled_results = list(
+      original = orig_pooled,
+      oecd = oecd_pooled,
+      revised = revised_pooled
+    )
+  ))
+}
+
+# ---- Apply Processing ----
+processed_list <- mapply(process_pisa_cycle, pisa_student_list, pisa_school_list,
+                         names(pisa_cycles), SIMPLIFY = FALSE)
+
+# ---- Data Processing Summary ----
+cat("\n=== DATA PROCESSING SUMMARY ===\n")
+for (cycle in names(processed_list)) {
+  if (!is.null(processed_list[[cycle]])) {
+    data <- processed_list[[cycle]]$data  # Individual student data
+    n_students <- nrow(data)
+    
+    # Calculate from individual binary indicators (consistent with clustering)
+    n_resilient_orig <- sum(data$RESILIENT, na.rm = TRUE)
+    resilience_rate_orig <- round(mean(data$RESILIENT, na.rm = TRUE) * 100, 1)
+    
+    n_resilient_oecd <- sum(data$RESILIENT_OECD, na.rm = TRUE)
+    resilience_rate_oecd <- round(mean(data$RESILIENT_OECD, na.rm = TRUE) * 100, 1)
+    
+    n_resilient_revised <- sum(data$RESILIENT_REVISED, na.rm = TRUE)
+    resilience_rate_revised <- round(mean(data$RESILIENT_REVISED, na.rm = TRUE) * 100, 1)
+    
+    # Pooled estimates for comparison
+    pooled <- processed_list[[cycle]]$pooled_results
+    pooled_rate_orig <- round(pooled$original$mean * 100, 1)
+    pooled_se_orig <- round(pooled$original$se * 100, 2)
+    pooled_rate_oecd <- round(pooled$oecd$mean * 100, 1)
+    pooled_se_oecd <- round(pooled$oecd$se * 100, 2)
+    pooled_rate_revised <- round(pooled$revised$mean * 100, 1)
+    pooled_se_revised <- round(pooled$revised$se * 100, 2)
+    
+    cat(sprintf("- Cycle %s: %d disadvantaged students\n", cycle, n_students))
+    cat(sprintf("  Original resilient (Level 3): %d (%.1f%%)\n", n_resilient_orig, resilience_rate_orig))
+    cat(sprintf("  OECD resilient (relative): %d (%.1f%%)\n", n_resilient_oecd, resilience_rate_oecd))
+    cat(sprintf("  Revised resilient (top 25%% each): %d (%.1f%%)\n", n_resilient_revised, resilience_rate_revised))
+    cat(sprintf("  (Pooled estimates: Original %.1f%% ± %.2f%%, OECD %.1f%% ± %.2f%%, Revised %.1f%% ± %.2f%%)\n",
+                pooled_rate_orig, pooled_se_orig, pooled_rate_oecd, pooled_se_oecd, pooled_rate_revised, pooled_se_revised))
+  }
+}

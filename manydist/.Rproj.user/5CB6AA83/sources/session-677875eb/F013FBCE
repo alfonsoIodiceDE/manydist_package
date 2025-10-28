@@ -1,0 +1,26 @@
+{
+    "id": "F013FBCE",
+    "path": "~/nearest_neighbors_for_mixed 2/manydist/R/z_preproc.R",
+    "project_path": "R/z_preproc.R",
+    "type": "r_source",
+    "hash": "2721122532",
+    "contents": "",
+    "dirty": false,
+    "created": 1751447325980.0,
+    "source_on_save": true,
+    "relative_order": 11,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "36,0",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1753109796,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1753109796839,
+    "read_only": false,
+    "read_only_alternatives": []
+}

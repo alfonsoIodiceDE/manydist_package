@@ -40,7 +40,7 @@ This dataset provides a snapshot of player attributes and performance indicators
 }
 
 \references{
-Stefano Leone. (2021). \emph{FIFA 21 Complete Player Dataset}. Retrieved from \url{https://www.kaggle.com/datasets/stefanoleone992/fifa-21-complete-player-dataset}.
+  Stefano Leone. (2021). \emph{FIFA 21 Complete Player Dataset}. Retrieved from \url{https://www.kaggle.com/datasets/stefanoleone992/fifa-21-complete-player-dataset}.
 }
 
 \examples{

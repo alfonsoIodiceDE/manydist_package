@@ -1,0 +1,589 @@
+library(Matrix)
+library(irlba)  # for efficient SVD
+
+# Function to compute PMI matrix
+compute_pmi <- function(X, add_smoothing = 1e-8) {
+  # Convert to proportions
+  total_count <- sum(X)
+  P <- X / total_count
+  
+  # Marginal probabilities
+  row_margins <- rowSums(P)
+  col_margins <- colSums(P)
+  
+  # PMI matrix
+  PMI <- matrix(0, nrow(P), ncol(P))
+  for(i in 1:nrow(P)) {
+    for(j in 1:ncol(P)) {
+      if(P[i,j] > 0) {
+        PMI[i,j] <- log(P[i,j] / (row_margins[i] * col_margins[j]))
+      } else {
+        PMI[i,j] <- log(add_smoothing / (row_margins[i] * col_margins[j]))
+      }
+    }
+  }
+  
+  rownames(PMI) <- rownames(X)
+  colnames(PMI) <- colnames(X)
+  return(PMI)
+}
+
+# Weighted PMI-SVD with clustering
+weighted_pmi_clustering <- function(cooc_matrix, k_clusters = 3, k_dims = 5, 
+                                    lambda = 0.1, max_iter = 20,
+                                    weight_type = "marginal", verbose = TRUE) {
+  
+  # Compute PMI matrix
+  PMI <- compute_pmi(cooc_matrix)
+  
+  # Compute weights
+  total_count <- sum(cooc_matrix)
+  P <- cooc_matrix / total_count
+  row_margins <- rowSums(P)
+  col_margins <- colSums(P)
+  
+  if(weight_type == "marginal") {
+    # CA-style weighting
+    W <- outer(row_margins, col_margins)
+  } else if(weight_type == "uniform") {
+    # Uniform weighting (standard PMI-SVD)
+    W <- matrix(1, nrow(PMI), ncol(PMI))
+  }
+  
+  # Initialize cluster assignments randomly
+  n_words <- nrow(PMI)
+  cluster_assignments <- sample(1:k_clusters, n_words, replace = TRUE)
+  
+  # Storage for results
+  objectives <- numeric(max_iter)
+  
+  for(iter in 1:max_iter) {
+    if(verbose) cat("Iteration", iter, "\n")
+    
+    # Step 1: Update embeddings given clusters
+    # Create cluster indicator matrix
+    Z_K <- matrix(0, n_words, k_clusters)
+    for(i in 1:n_words) {
+      Z_K[i, cluster_assignments[i]] <- 1
+    }
+    
+    # Weighted SVD of PMI matrix
+    svd_result <- irlba(PMI, nv = k_dims, nu = k_dims)
+    
+    # Word embeddings (rows)
+    E <- svd_result$u %*% diag(svd_result$d[1:k_dims])
+    
+    # Context embeddings (columns)  
+    O <- svd_result$v
+    
+    # Step 2: Update clusters given embeddings
+    if(iter > 1) {  # Skip first iteration
+      # K-means on word embeddings
+      kmeans_result <- kmeans(E, centers = k_clusters, nstart = 5)
+      cluster_assignments <- kmeans_result$cluster
+    }
+    
+    # Compute objective
+    reconstruction_error <- sum(W * (PMI - E %*% t(O))^2)
+    
+    # Cluster separation term
+    Z_K <- matrix(0, n_words, k_clusters)
+    for(i in 1:n_words) {
+      Z_K[i, cluster_assignments[i]] <- 1
+    }
+    
+    cluster_means <- t(Z_K) %*% E / pmax(colSums(Z_K), 1)
+    cluster_separation <- -sum(diag(t(cluster_means) %*% diag(colSums(Z_K)) %*% cluster_means))
+    
+    objectives[iter] <- reconstruction_error + lambda * cluster_separation
+    
+    if(verbose) {
+      cat("  Objective:", objectives[iter], 
+          "Reconstruction:", reconstruction_error,
+          "Cluster term:", cluster_separation, "\n")
+    }
+  }
+  
+  return(list(
+    word_embeddings = E,
+    context_embeddings = O,
+    clusters = cluster_assignments,
+    objectives = objectives[1:max_iter],
+    PMI = PMI
+  ))
+}
+
+# Modified clustering function that returns evaluation metrics
+weighted_pmi_clustering_eval <- function(X, k_clusters = 3, k_dims = 5, 
+                                         lambda = 0.1, max_iter = 15,
+                                         weight_type = "marginal", 
+                                         true_clusters = NULL,
+                                         verbose = FALSE) {
+  
+  # Use the main clustering function
+  result <- weighted_pmi_clustering(X, k_clusters, k_dims, lambda, max_iter, weight_type, verbose)
+  
+  # Calculate evaluation metrics
+  metrics <- list()
+  
+  # Internal metrics (unsupervised)
+  # Silhouette score
+  n_words <- nrow(X)
+  if(n_words > k_clusters && k_clusters > 1) {
+    E <- result$word_embeddings
+    cluster_assignments <- result$clusters
+    
+    dist_matrix <- as.matrix(dist(E))
+    silhouette_scores <- numeric(n_words)
+    
+    for(i in 1:n_words) {
+      same_cluster <- cluster_assignments == cluster_assignments[i]
+      same_cluster[i] <- FALSE
+      
+      if(sum(same_cluster) > 0) {
+        a_i <- mean(dist_matrix[i, same_cluster])
+      } else {
+        a_i <- 0
+      }
+      
+      b_i <- Inf
+      for(k in 1:k_clusters) {
+        if(k != cluster_assignments[i]) {
+          other_cluster <- cluster_assignments == k
+          if(sum(other_cluster) > 0) {
+            b_i <- min(b_i, mean(dist_matrix[i, other_cluster]))
+          }
+        }
+      }
+      
+      if(b_i == Inf) b_i <- 0
+      silhouette_scores[i] <- (b_i - a_i) / max(a_i, b_i)
+    }
+    metrics$silhouette <- mean(silhouette_scores)
+  } else {
+    metrics$silhouette <- -1
+  }
+  
+  # Within-cluster sum of squares
+  metrics$wcss <- 0
+  E <- result$word_embeddings
+  cluster_assignments <- result$clusters
+  
+  for(k in 1:k_clusters) {
+    cluster_points <- E[cluster_assignments == k, , drop = FALSE]
+    if(nrow(cluster_points) > 0) {
+      centroid <- colMeans(cluster_points)
+      metrics$wcss <- metrics$wcss + sum(apply(cluster_points, 1, function(x) sum((x - centroid)^2)))
+    }
+  }
+  
+  # PMI reconstruction error
+  reconstruction <- E %*% t(result$context_embeddings)
+  metrics$pmi_error <- sqrt(mean((result$PMI - reconstruction)^2))
+  
+  # External metrics (if true clusters provided)
+  if(!is.null(true_clusters)) {
+    # Adjusted Rand Index
+    metrics$ari <- adjusted_rand_index(true_clusters, cluster_assignments)
+    
+    # Normalized Mutual Information
+    metrics$nmi <- normalized_mutual_information(true_clusters, cluster_assignments)
+  }
+  
+  return(list(
+    clusters = cluster_assignments,
+    embeddings = E,
+    metrics = metrics,
+    final_objective = result$objectives[length(result$objectives)]
+  ))
+}
+
+# Helper functions for external evaluation metrics
+adjusted_rand_index <- function(true_labels, pred_labels) {
+  # Simplified ARI calculation
+  n <- length(true_labels)
+  contingency_table <- table(true_labels, pred_labels)
+  
+  sum_comb_c <- sum(choose(rowSums(contingency_table), 2))
+  sum_comb_k <- sum(choose(colSums(contingency_table), 2))
+  sum_comb_ck <- sum(choose(contingency_table, 2))
+  
+  expected_index <- sum_comb_c * sum_comb_k / choose(n, 2)
+  max_index <- (sum_comb_c + sum_comb_k) / 2
+  
+  if(max_index - expected_index == 0) return(0)
+  return((sum_comb_ck - expected_index) / (max_index - expected_index))
+}
+
+normalized_mutual_information <- function(true_labels, pred_labels) {
+  # Simplified NMI calculation
+  n <- length(true_labels)
+  contingency_table <- table(true_labels, pred_labels)
+  
+  # Calculate entropies
+  p_true <- rowSums(contingency_table) / n
+  p_pred <- colSums(contingency_table) / n
+  
+  H_true <- -sum(p_true[p_true > 0] * log(p_true[p_true > 0]))
+  H_pred <- -sum(p_pred[p_pred > 0] * log(p_pred[p_pred > 0]))
+  
+  # Calculate mutual information
+  MI <- 0
+  for(i in 1:nrow(contingency_table)) {
+    for(j in 1:ncol(contingency_table)) {
+      if(contingency_table[i,j] > 0) {
+        MI <- MI + (contingency_table[i,j]/n) * 
+          log((contingency_table[i,j] * n) / (rowSums(contingency_table)[i] * colSums(contingency_table)[j]))
+      }
+    }
+  }
+  
+  if(H_true + H_pred == 0) return(0)
+  return(2 * MI / (H_true + H_pred))
+}
+
+# Cross-validation function
+cross_validate_clustering <- function(X, k_clusters_range, k_dims_range, lambda_range,
+                                      cv_folds = 3, true_clusters = NULL,
+                                      n_trials = 3, verbose = TRUE) {
+  
+  n_words <- nrow(X)
+  fold_size <- floor(n_words / cv_folds)
+  
+  # Create parameter grid
+  param_grid <- expand.grid(
+    k_clusters = k_clusters_range,
+    k_dims = k_dims_range,
+    lambda = lambda_range,
+    stringsAsFactors = FALSE
+  )
+  
+  if(verbose) cat("Testing", nrow(param_grid), "parameter combinations with", 
+                  cv_folds, "folds and", n_trials, "trials each\n")
+  
+  results <- data.frame(param_grid)
+  results$mean_silhouette <- NA
+  results$mean_wcss <- NA
+  results$mean_pmi_error <- NA
+  results$mean_ari <- NA
+  results$mean_nmi <- NA
+  results$sd_silhouette <- NA
+  results$composite_score <- NA
+  
+  for(i in 1:nrow(param_grid)) {
+    if(verbose && i %% 10 == 0) cat("Progress:", i, "/", nrow(param_grid), "\n")
+    
+    fold_metrics <- list()
+    
+    for(trial in 1:n_trials) {
+      # Create random folds
+      fold_indices <- sample(rep(1:cv_folds, length.out = n_words))
+      
+      trial_metrics <- list(
+        silhouette = numeric(cv_folds),
+        wcss = numeric(cv_folds),
+        pmi_error = numeric(cv_folds),
+        ari = numeric(cv_folds),
+        nmi = numeric(cv_folds)
+      )
+      
+      for(fold in 1:cv_folds) {
+        # Use 80% for training, 20% for validation
+        train_indices <- which(fold_indices != fold)
+        
+        if(length(train_indices) < param_grid$k_clusters[i]) next
+        
+        X_train <- X[train_indices, ]
+        true_clusters_train <- if(!is.null(true_clusters)) true_clusters[train_indices] else NULL
+        
+        # Fit model
+        result <- weighted_pmi_clustering_eval(
+          X_train, 
+          k_clusters = param_grid$k_clusters[i],
+          k_dims = param_grid$k_dims[i],
+          lambda = param_grid$lambda[i],
+          max_iter = 10,  # Reduced for CV speed
+          true_clusters = true_clusters_train,
+          verbose = FALSE
+        )
+        
+        # Store metrics
+        trial_metrics$silhouette[fold] <- result$metrics$silhouette
+        trial_metrics$wcss[fold] <- result$metrics$wcss
+        trial_metrics$pmi_error[fold] <- result$metrics$pmi_error
+        
+        if(!is.null(true_clusters)) {
+          trial_metrics$ari[fold] <- result$metrics$ari
+          trial_metrics$nmi[fold] <- result$metrics$nmi
+        }
+      }
+      
+      fold_metrics[[trial]] <- trial_metrics
+    }
+    
+    # Aggregate across trials and folds
+    all_silhouette <- unlist(lapply(fold_metrics, function(x) x$silhouette))
+    all_wcss <- unlist(lapply(fold_metrics, function(x) x$wcss))
+    all_pmi_error <- unlist(lapply(fold_metrics, function(x) x$pmi_error))
+    
+    results$mean_silhouette[i] <- mean(all_silhouette[!is.na(all_silhouette)])
+    results$mean_wcss[i] <- mean(all_wcss[!is.na(all_wcss)])
+    results$mean_pmi_error[i] <- mean(all_pmi_error[!is.na(all_pmi_error)])
+    results$sd_silhouette[i] <- sd(all_silhouette[!is.na(all_silhouette)])
+    
+    if(!is.null(true_clusters)) {
+      all_ari <- unlist(lapply(fold_metrics, function(x) x$ari))
+      all_nmi <- unlist(lapply(fold_metrics, function(x) x$nmi))
+      results$mean_ari[i] <- mean(all_ari[!is.na(all_ari)])
+      results$mean_nmi[i] <- mean(all_nmi[!is.na(all_nmi)])
+    }
+    
+    # Composite score (higher is better)
+    silhouette_norm <- pmax(0, results$mean_silhouette[i])  # Already in [-1,1]
+    wcss_norm <- 1 / (1 + results$mean_wcss[i])  # Inverse transformation
+    pmi_norm <- 1 / (1 + results$mean_pmi_error[i])  # Inverse transformation
+    
+    results$composite_score[i] <- silhouette_norm + wcss_norm + pmi_norm
+  }
+  
+  return(results)
+}
+
+# Create larger toy dataset
+set.seed(42)
+
+# Extended vocabulary with semantic clusters
+words <- c(
+  # Animals (cluster 1)
+  "cat", "dog", "pet", "animal", "puppy", "kitten", "mammal", "domesticated",
+  "furry", "tail", "paws", "loyal", "companion", "breed", "trained",
+  
+  # Actions/Movement (cluster 2) 
+  "run", "walk", "move", "jump", "climb", "sprint", "jog", "exercise",
+  "motion", "speed", "fast", "slow", "pace", "activity", "athletic",
+  
+  # Food/Fruits (cluster 3)
+  "apple", "banana", "fruit", "sweet", "eat", "taste", "flavor", "nutritious",
+  "healthy", "organic", "fresh", "ripe", "delicious", "juicy", "vitamin",
+  
+  # Technology (cluster 4)
+  "computer", "software", "program", "code", "digital", "data", "algorithm",
+  "technology", "internet", "website", "online", "electronic", "device", "system", "network",
+  
+  # Weather/Nature (cluster 5)
+  "rain", "sun", "weather", "cloud", "storm", "wind", "temperature", "climate",
+  "nature", "outdoor", "environment", "season", "sky", "atmosphere", "natural"
+)
+
+contexts <- c(
+  # Descriptive contexts
+  "small", "large", "good", "bad", "new", "old", "beautiful", "ugly",
+  "strong", "weak", "bright", "dark", "hot", "cold", "clean", "dirty",
+  
+  # Action contexts
+  "quickly", "slowly", "carefully", "roughly", "smoothly", "easily",
+  "efficiently", "effectively", "actively", "passively", "regularly", "rarely",
+  
+  # Location contexts
+  "inside", "outside", "home", "work", "park", "street", "building", "room",
+  "garden", "kitchen", "office", "store", "market", "school", "hospital", "farm",
+  
+  # Time contexts
+  "morning", "afternoon", "evening", "night", "daily", "weekly", "monthly",
+  "summer", "winter", "spring", "autumn", "today", "yesterday", "tomorrow", "always"
+)
+
+# Create larger co-occurrence matrix
+n_words <- length(words)
+n_contexts <- length(contexts)
+X <- matrix(0, n_words, n_contexts)
+rownames(X) <- words
+colnames(X) <- contexts
+
+# Define semantic associations with higher co-occurrence patterns
+
+# Animals cluster - associate with size, location, and descriptive contexts
+animal_indices <- 1:15
+animal_contexts <- c("small", "large", "good", "beautiful", "home", "park", 
+                     "garden", "carefully", "daily", "always", "clean")
+for(i in animal_indices) {
+  for(j in which(contexts %in% animal_contexts)) {
+    # Higher base counts for semantic associations
+    X[i, j] <- rpois(1, lambda = 8) + 5
+  }
+}
+
+# Movement cluster - associate with speed, manner, location contexts  
+movement_indices <- 16:30
+movement_contexts <- c("quickly", "slowly", "efficiently", "actively", "outside", 
+                       "park", "street", "daily", "morning", "afternoon")
+for(i in movement_indices) {
+  for(j in which(contexts %in% movement_contexts)) {
+    X[i, j] <- rpois(1, lambda = 7) + 4
+  }
+}
+
+# Food cluster - associate with quality, location, time contexts
+food_indices <- 31:45
+food_contexts <- c("good", "beautiful", "sweet", "clean", "fresh", "kitchen", 
+                   "store", "market", "daily", "morning", "carefully")
+for(i in food_indices) {
+  for(j in which(contexts %in% food_contexts)) {
+    X[i, j] <- rpois(1, lambda = 6) + 3
+  }
+}
+
+# Technology cluster - associate with modern, efficiency, work contexts
+tech_indices <- 46:60
+tech_contexts <- c("new", "good", "efficiently", "effectively", "quickly", 
+                   "work", "office", "building", "daily", "regularly")
+for(i in tech_indices) {
+  for(j in which(contexts %in% tech_contexts)) {
+    X[i, j] <- rpois(1, lambda = 5) + 2
+  }
+}
+
+# Weather/Nature cluster - associate with outdoor, time, descriptive contexts
+weather_indices <- 61:75
+weather_contexts <- c("beautiful", "hot", "cold", "bright", "outside", "park", 
+                      "garden", "daily", "summer", "winter", "always", "natural")
+for(i in weather_indices) {
+  for(j in which(contexts %in% weather_contexts)) {
+    X[i, j] <- rpois(1, lambda = 4) + 1
+  }
+}
+
+# Add cross-cluster associations (weaker)
+X[sample(animal_indices, 5), which(contexts %in% c("outside", "park"))] <- 
+  X[sample(animal_indices, 5), which(contexts %in% c("outside", "park"))] + 
+  matrix(rpois(10, 2), ncol = 2)
+
+X[sample(food_indices, 3), which(contexts %in% c("actively", "efficiently"))] <- 
+  X[sample(food_indices, 3), which(contexts %in% c("actively", "efficiently"))] + 
+  matrix(rpois(6, 1), ncol = 2)
+
+# Add general background noise
+background_noise <- matrix(rpois(n_words * n_contexts, lambda = 0.5), 
+                           nrow = n_words, ncol = n_contexts)
+X <- X + background_noise
+
+# Ensure no zeros (for PMI calculation)
+X[X == 0] <- 1
+
+print("Extended word-context co-occurrence matrix:")
+print(paste("Dimensions:", nrow(X), "x", ncol(X)))
+print(paste("Total co-occurrences:", sum(X)))
+print(paste("Sparsity:", round(sum(X == 1) / length(X), 3)))
+
+# Expected clusters for reference
+expected_clusters <- rep(1:5, each = 15)
+names(expected_clusters) <- words
+print("\nExpected semantic clusters:")
+for(i in 1:5) {
+  cluster_words <- names(expected_clusters)[expected_clusters == i]
+  cat("Cluster", i, ":", paste(cluster_words[1:8], collapse = ", "), "...\n")
+}
+
+# Run cross-validation and grid search
+k_clusters_range <- 3:7
+k_dims_range <- c(4, 6, 8, 10)
+lambda_range <- c(0.01, 0.05, 0.1, 0.2, 0.5)
+
+cat("Starting hyperparameter optimization...\n")
+
+cv_results <- cross_validate_clustering(
+  X, 
+  k_clusters_range = k_clusters_range,
+  k_dims_range = k_dims_range, 
+  lambda_range = lambda_range,
+  cv_folds = 3,
+  true_clusters = expected_clusters,
+  n_trials = 2,
+  verbose = TRUE
+)
+
+# Find best parameters
+best_idx <- which.max(cv_results$composite_score)
+best_params <- cv_results[best_idx, ]
+
+cat("\nBest parameters found:\n")
+cat("k_clusters:", best_params$k_clusters, "\n")
+cat("k_dims:", best_params$k_dims, "\n") 
+cat("lambda:", best_params$lambda, "\n")
+cat("Composite score:", round(best_params$composite_score, 4), "\n")
+cat("Mean ARI:", round(best_params$mean_ari, 4), "\n")
+cat("Mean Silhouette:", round(best_params$mean_silhouette, 4), "\n")
+
+# Run final model with best parameters
+cat("\nRunning final model with optimized parameters...\n")
+final_result <- weighted_pmi_clustering(
+  X,
+  k_clusters = best_params$k_clusters,
+  k_dims = best_params$k_dims,
+  lambda = best_params$lambda,
+  max_iter = 20,
+  verbose = TRUE
+)
+
+# Compare with default parameters
+cat("\nComparing optimized vs default parameters:\n")
+default_result <- weighted_pmi_clustering(X, k_clusters = 5, k_dims = 5, lambda = 0.1, max_iter = 20, verbose = FALSE)
+
+optimized_ari <- adjusted_rand_index(expected_clusters, final_result$clusters)
+default_ari <- adjusted_rand_index(expected_clusters, default_result$clusters)
+
+cat("Optimized ARI:", round(optimized_ari, 4), "\n")
+cat("Default ARI:", round(default_ari, 4), "\n")
+cat("Improvement:", round(optimized_ari - default_ari, 4), "\n")
+
+# Visualize results
+par(mfrow = c(2, 2))
+
+# Effect of k_clusters
+k_cluster_effects <- aggregate(composite_score ~ k_clusters, cv_results, mean)
+plot(k_cluster_effects$k_clusters, k_cluster_effects$composite_score,
+     type = "b", pch = 19, col = "blue",
+     main = "Effect of Number of Clusters",
+     xlab = "k_clusters", ylab = "Average Composite Score")
+abline(v = 5, col = "red", lty = 2)
+text(5, max(k_cluster_effects$composite_score), "True k=5", pos = 4, col = "red")
+
+# Effect of k_dims  
+k_dims_effects <- aggregate(composite_score ~ k_dims, cv_results, mean)
+plot(k_dims_effects$k_dims, k_dims_effects$composite_score,
+     type = "b", pch = 19, col = "green",
+     main = "Effect of Embedding Dimensions",
+     xlab = "k_dims", ylab = "Average Composite Score")
+
+# Effect of lambda
+lambda_effects <- aggregate(composite_score ~ lambda, cv_results, mean)
+plot(lambda_effects$lambda, lambda_effects$composite_score,
+     type = "b", pch = 19, col = "orange",
+     main = "Effect of Regularization",
+     xlab = "lambda", ylab = "Average Composite Score")
+
+# Final clustering results
+plot(final_result$word_embeddings[,1:2], 
+     col = rainbow(5)[final_result$clusters], 
+     pch = 19, cex = 0.8,
+     main = "Optimized Clustering Results",
+     xlab = "Dimension 1", ylab = "Dimension 2")
+legend("topright", paste("Cluster", 1:5), col = rainbow(5), pch = 19, cex = 0.7)
+
+# Display final clustering results
+print("\nFinal Discovered clusters:")
+cluster_df <- data.frame(
+  word = rownames(X),
+  discovered_cluster = final_result$clusters,
+  expected_cluster = expected_clusters
+)
+
+for(i in 1:max(final_result$clusters)) {
+  words_in_cluster <- cluster_df$word[cluster_df$discovered_cluster == i]
+  cat("Cluster", i, ":", paste(words_in_cluster, collapse = ", "), "\n")
+}
+
+# Show top 5 parameter combinations
+cat("\nTop 5 parameter combinations:\n")
+top_5 <- cv_results[order(cv_results$composite_score, decreasing = TRUE)[1:5], ]
+print(top_5[, c("k_clusters", "k_dims", "lambda", "composite_score", "mean_ari", "mean_silhouette")])

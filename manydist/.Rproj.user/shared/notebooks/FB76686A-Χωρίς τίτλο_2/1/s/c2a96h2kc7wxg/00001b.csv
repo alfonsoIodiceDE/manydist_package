@@ -1,0 +1,29 @@
+"0","cat(""\n=== COMPREHENSIVE CLUSTERING ANALYSIS WITH CLUSTERBENCHSTATS ===\n"")"
+"1","
+=== COMPREHENSIVE CLUSTERING ANALYSIS WITH CLUSTERBENCHSTATS ===
+"
+"0","# Apply enhanced clustering to all cycles"
+"0","enhanced_clustering_results <- list()"
+"0",""
+"0","for (cycle_name in names(cycle_prepared_data)) {"
+"0","  if (!is.null(cycle_prepared_data[[cycle_name]])) {"
+"0","    "
+"0","    enhanced_clustering_results[[cycle_name]] <- perform_educational_clustering_official("
+"0","      cycle_prepared_data[[cycle_name]], "
+"0","      cycle_name"
+"0","    )"
+"0","  }"
+"0","}"
+"1","
+=== CLUSTERBENCHSTATS ANALYSIS: PISA 2015 ===
+"
+"1","→ Analyzing 1079 students with 21 variables
+"
+"1","  → Calculating educational distance matrix...
+"
+"1","    Final data: 1079 rows × 21 columns
+"
+"1","→ Running macro-level clustering (Educational Policy Focus)...
+"
+"1","→ Running micro-level clustering (Educational Intervention Focus)...
+"

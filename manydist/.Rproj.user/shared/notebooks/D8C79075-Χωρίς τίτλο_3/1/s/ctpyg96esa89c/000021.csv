@@ -1,0 +1,47 @@
+"1","
+Cluster agreement analysis:
+"
+"1","  POLICY vs INTERVENTION: ARI = 0.249
+"
+"1","  POLICY vs EQUITY: ARI = 0.329
+"
+"1","  INTERVENTION vs EQUITY: ARI = 0.054
+"
+"0","# Add clusters to original data"
+"0","enhanced_data_with_clusters <- add_clusters_to_data(cycle_prepared_data, all_final_clusters)"
+"1","→ Adding cluster assignments to PISA 2015 data...
+"
+"1","  ✓ Added policy clusters (4 groups)
+"
+"1","  ✓ Added intervention clusters (12 groups)
+"
+"1","  ✓ Added equity clusters (3 groups)
+"
+"0","cat(""\n✓ All cluster extractions completed successfully!\n"")"
+"1","
+✓ All cluster extractions completed successfully!
+"
+"0","cat(""✓ Data enhanced with policy, intervention, and equity cluster assignments\n"")"
+"1","✓ Data enhanced with policy, intervention, and equity cluster assignments
+"
+"0","# OPTIONAL: Quick verification of the enhanced data"
+"0","cat(""\n=== DATA ENHANCEMENT VERIFICATION ===\n"")"
+"1","
+=== DATA ENHANCEMENT VERIFICATION ===
+"
+"0","for (cycle_name in names(enhanced_data_with_clusters)) {"
+"0","  enhanced_info <- enhanced_data_with_clusters[[cycle_name]]"
+"0","  data_cols <- names(enhanced_info$data)"
+"0","  "
+"0","  cluster_cols <- data_cols[grepl(""^CLUSTER_"", data_cols)]"
+"0","  "
+"0","  cat(sprintf(""PISA %s: %d total columns, %d cluster columns (%s)\n"","
+"0","              cycle_name, length(data_cols), length(cluster_cols),"
+"0","              paste(cluster_cols, collapse = "", "")))"
+"0","}"
+"1","PISA 2015: 26 total columns, 3 cluster columns (CLUSTER_POLICY, CLUSTER_INTERVENTION, CLUSTER_EQUITY)
+"
+"0","cat(""\n✓ Ready for comprehensive resilience profile analysis!\n"")"
+"1","
+✓ Ready for comprehensive resilience profile analysis!
+"
