@@ -1,0 +1,390 @@
+
+R version 4.5.1 (2025-06-13) -- "Great Square Root"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "manydist"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> base::assign(".ExTimings", "manydist-Ex.timings", pos = 'CheckExEnv')
+> base::cat("name\tuser\tsystem\telapsed\n", file=base::get(".ExTimings", pos = 'CheckExEnv'))
+> base::assign(".format_ptime",
++ function(x) {
++   if(!is.na(x[4L])) x[1L] <- x[1L] + x[4L]
++   if(!is.na(x[5L])) x[2L] <- x[2L] + x[5L]
++   options(OutDec = '.')
++   format(x[1L:3L], digits = 7L)
++ },
++ pos = 'CheckExEnv')
+> 
+> ### * </HEADER>
+> library('manydist')
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("cdist")
+> ### * cdist
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: cdist
+> ### Title: Calculation of Pairwise Distances for Categorical Data
+> ### Aliases: cdist
+> 
+> ### ** Examples
+> 
+> library(palmerpenguins)
+
+Attaching package: ‘palmerpenguins’
+
+The following objects are masked from ‘package:datasets’:
+
+    penguins, penguins_raw
+
+> library(rsample)
+> 
+> # Prepare data with complete cases for both categorical variables and response
+> complete_vars <- c("species", "island", "sex", "body_mass_g")
+> penguins_complete <- penguins[complete.cases(penguins[, complete_vars]), ]
+> penguins_cat <- penguins_complete[, c("species", "island", "sex")]
+> response <- penguins_complete$body_mass_g
+> 
+> # Create training-test split
+> set.seed(123)
+> penguins_split <- initial_split(penguins_cat, prop = 0.8)
+> tr_penguins <- training(penguins_split)
+> ts_penguins <- testing(penguins_split)
+> response_tr <- response[penguins_split$in_id]
+> response_ts <- response[-penguins_split$in_id]
+> 
+> # Basic usage
+> result <- cdist(tr_penguins)
+> 
+> # With validation data
+> val_result <- cdist(x = tr_penguins, 
++                    validate_x = ts_penguins,
++                    method = "tot_var_dist")
+>                    
+> # ...and commensurability
+> val_result_COMM <- cdist(x = tr_penguins, 
++                    validate_x = ts_penguins,
++                    method = "tot_var_dist",
++                    commensurable = TRUE)
+> 
+> # Supervised distance with response variable
+> sup_result <- cdist(x = tr_penguins, 
++                    response = response_tr,
++                    method = "supervised")
+> 
+> # Supervised with validation data
+> sup_val_result <- cdist(x = tr_penguins,
++                        validate_x = ts_penguins,
++                        response = response_tr,
++                        method = "supervised")
+> 
+> # Commensurable distances with custom weights
+> comm_result <- cdist(tr_penguins,
++                     commensurable = TRUE,
++                     weights = c(2, 1, 1))
+> 
+> # Different methods per variable
+> multi_method <- cdist(tr_penguins,
++                      method = c("matching", "goodall_3", "tot_var_dist"))
+> 
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("cdist", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+
+detaching ‘package:rsample’, ‘package:palmerpenguins’
+
+> nameEx("fifa_nl")
+> ### * fifa_nl
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: fifa_nl
+> ### Title: FIFA 21 Player Data - Dutch League
+> ### Aliases: fifa_nl
+> ### Keywords: datasets
+> 
+> ### ** Examples
+> 
+> data(fifa_nl)
+> summary(fifa_nl)
+ player_positions      nationality  team_position        club_name  
+ CB     : 58      Netherlands:220   SUB    :186   ADO Den Haag: 27  
+ ST     : 39      Germany    : 26   RES    : 42   FC Emmen    : 27  
+ LB     : 26      Belgium    : 20   LCB    : 18   RKC Waalwijk: 26  
+ RB     : 26      Sweden     : 10   RCB    : 18   Willem II   : 25  
+ CDM, CM: 18      Morocco    :  9   LB     : 17   FC Groningen: 24  
+ CM, CDM: 17      Norway     :  9   RB     : 17   FC Utrecht  : 24  
+ (Other):224      (Other)    :114   (Other):110   (Other)     :255  
+         work_rate   weak_foot skill_moves international_reputation
+ Medium/Medium:202   2: 67     2:186       1:380                   
+ High/Medium  : 77   3:264     3:187       2: 21                   
+ Medium/High  : 46   4: 69     4: 31       3:  7                   
+ Medium/Low   : 29   5:  8     5:  4                               
+ High/High    : 23                                                 
+ High/Low     : 20                                                 
+ (Other)      : 11                                                 
+  body_type   preferred_foot      age          height_cm       weight_kg    
+ Lean  :115   Left :123      Min.   :17.00   Min.   :166.0   Min.   :55.00  
+ Normal:272   Right:285      1st Qu.:20.00   1st Qu.:176.0   1st Qu.:69.00  
+ Stocky: 21                  Median :22.00   Median :180.0   Median :74.00  
+                             Mean   :23.27   Mean   :180.7   Mean   :73.59  
+                             3rd Qu.:26.00   3rd Qu.:185.0   3rd Qu.:78.00  
+                             Max.   :36.00   Max.   :201.0   Max.   :94.00  
+                                                                            
+    overall        potential       value_eur           wage_eur    
+ Min.   :53.00   Min.   :62.00   Min.   :  120000   Min.   :  500  
+ 1st Qu.:63.00   1st Qu.:69.00   1st Qu.:  475000   1st Qu.: 2000  
+ Median :66.00   Median :73.00   Median :  800000   Median : 3000  
+ Mean   :66.53   Mean   :73.37   Mean   : 2343652   Mean   : 4768  
+ 3rd Qu.:70.00   3rd Qu.:76.25   3rd Qu.: 1900000   3rd Qu.: 6000  
+ Max.   :84.00   Max.   :88.00   Max.   :27500000   Max.   :30000  
+                                                                   
+ release_clause_eur      pace          shooting        passing     
+ Min.   :       0   Min.   :31.00   Min.   :24.00   Min.   :29.00  
+ 1st Qu.:  683000   1st Qu.:63.00   1st Qu.:44.00   1st Qu.:53.00  
+ Median : 1100000   Median :69.00   Median :56.00   Median :59.00  
+ Mean   : 3547203   Mean   :68.88   Mean   :53.83   Mean   :58.78  
+ 3rd Qu.: 2725000   3rd Qu.:76.00   3rd Qu.:64.00   3rd Qu.:65.00  
+ Max.   :38500000   Max.   :93.00   Max.   :82.00   Max.   :84.00  
+                                                                   
+   dribbling       defending         physic     
+ Min.   :35.00   Min.   :19.00   Min.   :36.00  
+ 1st Qu.:61.00   1st Qu.:36.00   1st Qu.:58.00  
+ Median :65.00   Median :56.00   Median :66.00  
+ Mean   :64.58   Mean   :51.17   Mean   :64.13  
+ 3rd Qu.:70.00   3rd Qu.:63.25   3rd Qu.:72.00  
+ Max.   :86.00   Max.   :83.00   Max.   :89.00  
+                                                
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("fifa_nl", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("mdist")
+> ### * mdist
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: mdist
+> ### Title: Calculation of Pairwise Distances for Mixed-Type Data
+> ### Aliases: mdist
+> 
+> ### ** Examples
+> 
+> library(palmerpenguins)
+
+Attaching package: ‘palmerpenguins’
+
+The following objects are masked from ‘package:datasets’:
+
+    penguins, penguins_raw
+
+> library(rsample)
+> 
+> # Prepare complete data
+> pengmix <- palmerpenguins::penguins[complete.cases(palmerpenguins::penguins), ]
+> 
+> # Create training-test split
+> set.seed(123)
+> pengmix_split <- initial_split(pengmix, prop = 0.8)
+> tr_pengmix <- training(pengmix_split)
+> ts_pengmix <- testing(pengmix_split)
+> 
+> # Example 1: Basic usage with validation data
+> dist_matrix <- mdist(x = tr_pengmix, 
++                     validate_x = ts_pengmix)
+> 
+> # Example 2: Gower preset with validation
+> dist_gower <- mdist(x = tr_pengmix, 
++                    validate_x = ts_pengmix,
++                    preset = "gower", 
++                    commensurable = TRUE)
+> 
+> # Example 3: Euclidean one-hot preset with validation
+> dist_onehot <- mdist(x = tr_pengmix, 
++                     validate_x = ts_pengmix,
++                     preset = "euclidean_onehot")
+> 
+> # Example 4: Custom preset with standardization
+> dist_custom <- mdist(x = tr_pengmix,
++                     validate_x = ts_pengmix,
++                     preset = "custom",
++                     distance_cont = "manhattan",
++                     distance_cat = "matching",
++                     commensurable = TRUE,
++                     scaling_cont = "std")
+> 
+> # Example 5: PCA-based scaling with threshold
+> dist_pca <- mdist(x = tr_pengmix,
++                  validate_x = ts_pengmix,
++                  distance_cont = "euclidean",
++                  scaling_cont = "pc_scores",
++                  threshold = 0.85)
+> 
+> # Example 6: Categorical variables only
+> cat_vars <- c("species", "island", "sex")
+> dist_cat <- mdist(tr_pengmix[, cat_vars],
++                  validate_x = ts_pengmix[, cat_vars],
++                  distance_cat = "tot_var_dist")
+> 
+> # Example 7: Continuous variables only
+> num_vars <- c("bill_length_mm", "bill_depth_mm", 
++               "flipper_length_mm", "body_mass_g")
+> dist_cont <- mdist(tr_pengmix[, num_vars],
++                   validate_x = ts_pengmix[, num_vars],
++                   distance_cont = "manhattan",
++                   scaling_cont = "std")
+> 
+> # Example 8: Supervised distance with response
+> response_tr <- tr_pengmix$body_mass_g
+> dist_sup <- mdist(tr_pengmix,
++                  validate_x = ts_pengmix,
++                  response = response_tr,
++                  distance_cat = "supervised")
+> 
+> 
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("mdist", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+
+detaching ‘package:rsample’, ‘package:palmerpenguins’
+
+> nameEx("ndist")
+> ### * ndist
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: ndist
+> ### Title: Calculation of Pairwise Distances for Continuous Data
+> ### Aliases: ndist
+> 
+> ### ** Examples
+> 
+> library(palmerpenguins)
+
+Attaching package: ‘palmerpenguins’
+
+The following objects are masked from ‘package:datasets’:
+
+    penguins, penguins_raw
+
+> library(rsample)
+> 
+> penguins_cont <- palmerpenguins::penguins[, c("bill_length_mm",
++ "bill_depth_mm", "flipper_length_mm", "body_mass_g")]
+> penguins_cont <- penguins_cont[complete.cases(penguins_cont), ]
+> 
+> # Basic usage
+> dist_matrix <- ndist(penguins_cont)
+> 
+> # Commensurable distances with standardization
+> dist_matrix <- ndist(penguins_cont, 
++                     commensurable = TRUE, 
++                     scaling = "std")
+> 
+> # PCA-based dimensionality reduction
+> dist_matrix <- ndist(penguins_cont, 
++                     scaling = "pc_scores", 
++                     threshold = 0.95)
+> 
+> # Mahalanobis distance
+> dist_matrix <- ndist(penguins_cont, 
++                     method = "mahalanobis")
+> 
+> # Weighted Euclidean distance
+> dist_matrix <- ndist(penguins_cont, 
++                     method = "euclidean",
++                     weights = c(1, 0.5, 2, 1))
+>                     
+> # Training-test split example with validation data
+> set.seed(123)
+> # Create training-test split using rsample
+> penguins_split <- initial_split(penguins_cont, prop = 0.8)
+> tr_penguins <- training(penguins_split)
+> ts_penguins <- testing(penguins_split)
+> 
+> # Basic usage with training data only
+> dist_matrix <- ndist(tr_penguins)
+> 
+> # Computing distances between test and training sets
+> val_dist_matrix <- ndist(x = tr_penguins, 
++                         validate_x = ts_penguins,
++                         method = "euclidean")
+> 
+> # Using validation data with standardization
+> val_dist_matrix_std <- ndist(x = tr_penguins,
++                             validate_x = ts_penguins,
++                             scaling = "std",
++                             method = "manhattan")
+> 
+> # Validation with PCA and commensurability
+> val_dist_matrix_pca <- ndist(x = tr_penguins,
++                             validate_x = ts_penguins,
++                             scaling = "pc_scores",
++                             ncomp = 2,
++                             commensurable = TRUE)
+> 
+> # Validation with robust scaling and custom weights
+> val_dist_matrix_robust <- ndist(x = tr_penguins,
++                                validate_x = ts_penguins,
++                                scaling = "robust",
++                                weights = c(1, 0.5, 2, 1))
+> 
+> # Mahalanobis distance with validation data
+> val_dist_matrix_mahal <- ndist(x = tr_penguins,
++                               validate_x = ts_penguins,
++                               method = "mahalanobis")
+> 
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("ndist", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> ### * <FOOTER>
+> ###
+> cleanEx()
+
+detaching ‘package:rsample’, ‘package:palmerpenguins’
+
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  2.762 0.152 2.971 0 0 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')

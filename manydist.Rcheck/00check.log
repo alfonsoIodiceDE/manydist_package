@@ -1,0 +1,109 @@
+* using log directory ‘/Users/Alfo/Library/CloudStorage/Dropbox/gitgub_repos/manydist_package/manydist.Rcheck’
+* using R version 4.5.1 (2025-06-13)
+* using platform: aarch64-apple-darwin20
+* R was compiled by
+    Apple clang version 16.0.0 (clang-1600.0.26.6)
+    GNU Fortran (GCC) 14.2.0
+* running under: macOS Tahoe 26.0.1
+* using session charset: UTF-8
+* using options ‘--no-manual --as-cran’
+* checking for file ‘manydist/DESCRIPTION’ ... OK
+* checking extension type ... Package
+* this is package ‘manydist’ version ‘0.4.9’
+* package encoding: UTF-8
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... NOTE
+Found the following hidden files and directories:
+  .RDataTmp
+These were most likely included in error. See section ‘Package
+structure’ in the ‘Writing R Extensions’ manual.
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘manydist’ can be installed ... OK
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... NOTE
+unable to verify current time
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... NOTE
+cdist : to_dissimilarity: no visible global function definition for
+  ‘as.dist’
+mdist : to_dissimilarity: no visible global function definition for
+  ‘as.dist’
+ndist : to_dissimilarity: no visible global function definition for
+  ‘as.dist’
+Undefined global functions or variables:
+  as.dist
+Consider adding
+  importFrom("stats", "as.dist")
+to your NAMESPACE file.
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... WARNING
+Codoc mismatches from Rd file 'cdist.Rd':
+cdist
+  Code: function(x, response = NULL, validate_x = NULL, method =
+                 "tot_var_dist", commensurable = TRUE, weights = 1)
+  Docs: function(x, response = NULL, validate_x = NULL, method =
+                 "tot_var_dist", commensurable = FALSE, weights = 1)
+  Mismatches in argument default values:
+    Name: 'commensurable' Code: TRUE Docs: FALSE
+
+Codoc mismatches from Rd file 'mdist.Rd':
+mdist
+  Code: function(x, validate_x = NULL, response = NULL, distance_cont =
+                 "manhattan", distance_cat = "tot_var_dist",
+                 commensurable = TRUE, scaling_cont = "none", ncomp =
+                 ncol(x), threshold = NULL, preset = "custom")
+  Docs: function(x, validate_x = NULL, response = NULL, distance_cont =
+                 "manhattan", distance_cat = "tot_var_dist",
+                 commensurable = FALSE, scaling_cont = "none", ncomp =
+                 ncol(x), threshold = NULL, preset = "custom")
+  Mismatches in argument default values:
+    Name: 'commensurable' Code: TRUE Docs: FALSE
+
+Codoc mismatches from Rd file 'ndist.Rd':
+ndist
+  Code: function(x, validate_x = NULL, commensurable = TRUE, method =
+                 "manhattan", sig = NULL, scaling = "none", ncomp =
+                 ncol(x), threshold = NULL, weights = rep(1, ncol(x)))
+  Docs: function(x, validate_x = NULL, commensurable = FALSE, method =
+                 "manhattan", sig = NULL, scaling = "none", ncomp =
+                 ncol(x), threshold = NULL, weights = rep(1, ncol(x)))
+  Mismatches in argument default values:
+    Name: 'commensurable' Code: TRUE Docs: FALSE
+
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking contents of ‘data’ directory ... OK
+* checking data for non-ASCII characters ... OK
+* checking LazyData ... OK
+* checking data for ASCII and uncompressed saves ... OK
+* checking examples ... OK
+* checking for non-standard things in the check directory ... OK
+* checking for detritus in the temp directory ... OK
+* DONE
+Status: 1 WARNING, 3 NOTEs
