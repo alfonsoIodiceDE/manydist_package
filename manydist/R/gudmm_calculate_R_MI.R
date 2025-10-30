@@ -1,8 +1,6 @@
 # Calculate mutual information matrix R (exact translation)
 gudmm_calculate_R_MI <- function(X, no_f_cont) {
-  source("R/gudmm_mutual_info_regression.R")
-  source("R/gudmm_mutual_info_classif.R")
-  source("R/gudmm_mutual_info_score.R")
+  
   
   no_f <- ncol(X)
   R <- matrix(0, no_f, no_f)

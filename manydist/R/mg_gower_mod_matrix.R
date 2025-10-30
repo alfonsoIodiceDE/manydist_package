@@ -1,7 +1,5 @@
 mg_gower_mod_matrix <- function(x, use_weights = TRUE) {
-  source("R/mg_gower_dist_modify.R")
-  source("R/mg_self_adaptive_distance.R")
-  source("R/mg_normalized_MI.R")
+  
   
   # Convert tibble to data.frame to ensure proper indexing behavior
   if (is_tibble(x)) {

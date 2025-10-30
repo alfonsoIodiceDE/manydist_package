@@ -2,7 +2,6 @@ mg_gower_dist_modify <- function(data.x, data.y = data.x, rngs = NULL, KR.corr =
                               var.weights = NULL, robcb=NULL){
   
   ####################    
-  source("R/mg_gower_fcn.r")
   
   ######## END  gower_fcn() ###################       
   if (is.null(dim(data.x)) && is.null(dim(data.y))) {

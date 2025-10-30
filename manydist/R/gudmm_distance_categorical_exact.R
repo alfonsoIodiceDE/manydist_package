@@ -1,5 +1,5 @@
 gudmm_distance_categorical_exact <- function(X, no_f_cont, R, DM) {
-  source("R/gudmm_jensen_shannon.R")
+  
   
   
   N <- nrow(X)

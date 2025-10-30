@@ -1,4 +1,0 @@
-"0","#| code-fold: false"
-"0","#| eval: TRUE"
-"0","#devtools::install_github(""alfonsoIodiceDE/manydist_package/manydist"")"
-"0","#install.packages(""manydist"")"

@@ -1,8 +1,6 @@
 # Main distance calculation function (exact translation)
 gudmm_distance_dependency_mixed_matrix <- function(XX, no_f_cont, no_f_ord, DM) {
-  source("R/gudmm_calculate_R_MI.R")
-  source("R/gudmm_distance_categorical_exact.R")
-  
+    
   
   X <- XX
   N <- nrow(X)

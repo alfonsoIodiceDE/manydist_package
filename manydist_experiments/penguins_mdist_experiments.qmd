@@ -1,0 +1,107 @@
+---
+title: "manydist: Exploring mdist_evolved() presets on palmerpenguins"
+author: "manydist experiments"
+format:
+  html:
+    toc: true
+    code-tools: true
+    code-fold: show
+execute:
+  echo: true
+  warning: true
+  message: true
+---
+
+> This notebook runs **all major presets and options** of `mdist_evolved()`
+> on the **palmerpenguins** mixed dataset. It’s designed for quick, iterative testing
+> while developing `manydist`. Place this file **outside** your package directory and use
+> `devtools::load_all("../manydist")` to load your development code.
+
+## Setup
+
+```{r}
+if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("palmerpenguins", quietly = TRUE)) install.packages("palmerpenguins")
+if (!requireNamespace("cluster", quietly = TRUE)) install.packages("cluster")
+if (!requireNamespace("recipes", quietly = TRUE)) install.packages("recipes")
+if (!requireNamespace("Rfast", quietly = TRUE)) install.packages("Rfast")
+
+library(devtools)
+# Adjust the path to your package root as needed
+devtools::load_all("../manydist")
+
+library(tidyverse)
+library(palmerpenguins)
+set.seed(123)
+```
+
+## Data
+
+```{r}
+peng <- palmerpenguins::penguins |>
+  dplyr::select(species, island, bill_length_mm, bill_depth_mm,
+                flipper_length_mm, body_mass_g, sex) |>
+  tidyr::drop_na()
+
+cont_peng = peng |> select(where(is.numeric))
+cat_peng = peng |> select(where(is.factor))
+```
+
+
+## Presets to test
+
+I used R6 class object as an output.
+
+```{r}
+preset_structure = tibble(preset = c("gower","unbiased_dependent","euclidean_onehot","gudmm","dkss","mod_gower","custom")) |> 
+  mutate(mix_distance = map(.x=preset,~mdist_evolved(x=peng,preset=.x))
+         )
+
+preset_structure$mix_distance[[2]]
+```
+
+
+##  Train → Test rectangular distances for selected presets
+
+```{r}
+
+```
+
+
+<!-- ## plotting function(s)? -->
+
+<!-- ```{r} -->
+<!-- # plot_cmd <- function(d_or_mat, title = "MDS (cmdscale)") { -->
+<!-- #   to_matrix <- function(obj) { -->
+<!-- #     if (is.null(obj)) return(NULL) -->
+<!-- #     if ("R6" %in% class(obj)) { -->
+<!-- #       if (!is.null(obj$distance)) return(as.matrix(obj$distance)) -->
+<!-- #       if ("to_dist" %in% names(obj)) return(as.matrix(obj$to_dist())) -->
+<!-- #       return(NULL) -->
+<!-- #     } -->
+<!-- #     if (inherits(obj, "dist") || inherits(obj, "dissimilarity")) return(as.matrix(obj)) -->
+<!-- #     if (is.matrix(obj)) return(obj) -->
+<!-- #     if (is.data.frame(obj)) return(as.matrix(obj)) -->
+<!-- #     NULL -->
+<!-- #   } -->
+<!-- #   m <- to_matrix(d_or_mat) -->
+<!-- #   stopifnot(!is.null(m)) -->
+<!-- #   coords <- cmdscale(m, k = 2, eig = TRUE) -->
+<!-- #   df <- tibble::as_tibble(coords$points) |> rlang::set_names(c("Dim1", "Dim2")) -->
+<!-- #   ggplot2::ggplot(df, ggplot2::aes(Dim1, Dim2)) + -->
+<!-- #     ggplot2::geom_point() + -->
+<!-- #     ggplot2::labs(title = title) -->
+<!-- # } -->
+<!-- #  -->
+<!-- #  -->
+
+<!-- ``` -->
+
+
+
+## Session info
+
+```{r}
+sessionInfo()
+```
