@@ -15,8 +15,16 @@ MDist <- R6::R6Class("MDist",
                        print = function(show = NULL, ...) {
                          m <- as.matrix(self$distance)
                          cat("MDist object\n")
-                         cat("  Preset :", self$preset, "\n")
-                         cat("  Size   :", paste(dim(m), collapse = " x "), "\n")
+                         cat("  preset :", self$preset, "\n")
+                         if (nrow(m) == ncol(m)) {
+                           cat("  Number of observations :", nrow(m), "\n")
+                         } else {
+                           cat("  Number of training observations :", ncol(m), "\n")
+                           cat("  Number of test observations     :", nrow(m), "\n")
+                         }
+                         
+                         cat("  number of continuous variables   :", paste(self$params$cont_p, collapse = " x "), "\n")
+                         cat("  number of categorical variables   :", paste(self$params$cat_p, collapse = " x "), "\n")
                          
                          # Determine which parameters to show
                          keys <- show
@@ -35,10 +43,10 @@ MDist <- R6::R6Class("MDist",
                          }
                          
                          # Optional small preview of the matrix
-                         if (nrow(m) > 0 && ncol(m) > 0) {
-                           cat("\n  Preview of distance matrix:\n")
-                           print(round(m[1:min(3, nrow(m)), 1:min(3, ncol(m))], 3))
-                         }
+                         # if (nrow(m) > 0 && ncol(m) > 0) {
+                         #   cat("\n  Preview of distance matrix:\n")
+                         #   print(round(m[1:min(3, nrow(m)), 1:min(3, ncol(m))], 3))
+                         # }
                          invisible(self)
                        },
                        
@@ -63,14 +71,14 @@ MDist <- R6::R6Class("MDist",
                        
                        # mapping of internal parameter names to pretty labels
                        pretty_labels = list(
-                         distance_cont  = "Continuous distance method",
-                         distance_cat   = "Categorical distance method",
-                         scaling_cont   = "Scaling for continuous vars",
-                         commensurable  = "Commensurability adjustment",
-                         ncomp          = "Number of continuous variables",
-                         threshold      = "Variance threshold",
-                         n_cont         = "Number of continuous variables",
-                         n_cat          = "Number of categorical variables"
+                         distance_cont  = "continuous distance method",
+                         distance_cat   = "categorical distance method",
+                         scaling_cont   = "scaling for continuous vars",
+                         commensurable  = "commensurability adjustment",
+                         ncomp          = "number of principal components",
+                         threshold      = "intertia threshold",
+                         cont_p         = "number of continuous variables",
+                         cat_p          = "number of categorical variables"
                        ),
                        
                        # helper for formatting values cleanly

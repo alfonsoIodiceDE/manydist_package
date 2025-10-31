@@ -58,7 +58,13 @@ preset_structure = tibble(preset = c("gower","unbiased_dependent","euclidean_one
   mutate(mix_distance = map(.x=preset,~mdist_evolved(x=peng,preset=.x))
          )
 
+preset_structure$mix_distance[[1]]
 preset_structure$mix_distance[[2]]
+preset_structure$mix_distance[[3]]
+preset_structure$mix_distance[[4]]
+preset_structure$mix_distance[[5]]
+preset_structure$mix_distance[[6]]
+preset_structure$mix_distance[[7]]
 ```
 
 
