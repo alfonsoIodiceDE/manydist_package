@@ -10,6 +10,7 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
   gowdist <- NULL
   cat_data  = x %>% dplyr::select(where(is.factor))
   cont_data = x %>% dplyr::select(where(is.numeric))
+  
   if (ncol(cat_data) == 0)
     cat_data = NULL
   
@@ -42,6 +43,7 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
   
   #### ACTUAL MIXED DATA
   if(!is.null(cont_data) & !is.null(cat_data)){
+    
     if(preset == "gower"){
       if(is.null(validate_x)){
         if (commensurable == FALSE){
@@ -93,7 +95,7 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
         distance_mat = cat_dist_mat + cont_dist_mat
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
         cont_dist_mat = ndist(x = cont_data, validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        cat_dist_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat
+        cat_dist_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         distance_mat = cat_dist_mat + cont_dist_mat
       }
     } else if(preset == "euclidean_onehot"){
@@ -229,10 +231,10 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
       distance_cat = "tot_var_dist"
       commensurable=TRUE
       if(is.null(validate_x)){
-        distance_mat = cdist(x = cat_data,method=distance_cat,commensurable = commensurable)$distance_mat
+        distance_mat = cdist(x = cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        distance_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat
+        distance_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
       }
       
     }else if(preset == "euclidean_onehot"){
@@ -247,7 +249,7 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
         bake(new_data=NULL)
       
       if(is.null(validate_x)){
-      
+        
         distance_mat = ndist(x=cat_data_dummy, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
         
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
@@ -267,16 +269,16 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
     }else if(preset=="custom"){
       
       if(is.null(validate_x)){
-       
-        distance_mat = cdist(x=cat_data,method=distance_cat,commensurable = commensurable)$distance_mat
+        
+        distance_mat = cdist(x=cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         
         
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT    
         
-        distance_mat = cdist(x=cat_data,validate_x=cat_data_val, response=response,method=distance_cat,commensurable = commensurable)$distance_mat
-
-      
-    }
+        distance_mat = cdist(x=cat_data,validate_x=cat_data_val, response=response,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
+        
+        
+      }
     }else if (preset == "gudmm") {
       no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
       df <- cat_data
@@ -319,7 +321,7 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
     if(preset == "gower"){
       if(is.null(validate_x)){
         if (commensurable == FALSE){
-          distance_mat <-  as.matrix(daisy(cont_data, metric = "gower"))
+          distance_mat <-  ncol(cont_data)*as.matrix(daisy(cont_data, metric = "gower")) # check if this ncol is needed
         } else {
           
           gowerlist = cont_data %>% map(~daisy(as_tibble(.x),metric="gower") %>% as.matrix())
@@ -334,7 +336,6 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
         
         if (commensurable == FALSE){
           # distance_mat <-  as.matrix(dist(x, method = "manhattan"))[1:5,1:5]
-          
           distance_mat <-  Rfast::dista(xnew = cont_data_val, 
                                         x = cont_data,
                                         type = "manhattan") |> as.matrix()
@@ -350,7 +351,6 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
             mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
           
           distance_mat <- Reduce(`+`, gowerlist$commgow)
-          
         }
       }
     }else if(preset == "unbiased_dependent"){
@@ -377,16 +377,16 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
         
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
         distance_mat = ndist(x=cont_data,validate_x=cont_data_val, 
-                              method = distance_cont,
-                              commensurable = commensurable,
-                              scaling=scaling_cont)  |>  as.matrix()
+                             method = distance_cont,
+                             commensurable = commensurable,
+                             scaling=scaling_cont)  |>  as.matrix()
         
       }
       
     }else if(preset=="custom"){
+
       if(is.null(validate_x)){
         distance_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-        
         
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT    
         distance_mat = ndist(x=cont_data,validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
@@ -426,56 +426,56 @@ mdist_evolved <- function(x,validate_x=NULL,response=NULL, distance_cont="manhat
         stop("train to test distances not implemented for this method")
       }
     }
-    
   }
-  
-  to_dissimilarity <- function(dist_matrix, reference = NULL) {
-    # If square and symmetric → convert to "dist"
-    if (nrow(dist_matrix) == ncol(dist_matrix) &&
-        isTRUE(all.equal(dist_matrix, t(dist_matrix), tolerance = 1e-10))) {
       
-      d <- as.dist(dist_matrix)
-      class(d) <- c("dissimilarity", "dist")
-      
-      # Copy optional attributes from a reference object if provided
-      if (!is.null(reference)) {
-        for (att in intersect(names(attributes(reference)), 
-                              c("Labels", "Size", "Diag", "Upper"))) {
-          attr(d, att) <- attr(reference, att)
+      to_dissimilarity <- function(dist_matrix, reference = NULL) {
+        # If square and symmetric → convert to "dist"
+        if (nrow(dist_matrix) == ncol(dist_matrix) &&
+            isTRUE(all.equal(dist_matrix, t(dist_matrix), tolerance = 1e-10))) {
+          
+          d <- as.dist(dist_matrix)
+          class(d) <- c("dissimilarity", "dist")
+          
+          # Copy optional attributes from a reference object if provided
+          if (!is.null(reference)) {
+            for (att in intersect(names(attributes(reference)), 
+                                  c("Labels", "Size", "Diag", "Upper"))) {
+              attr(d, att) <- attr(reference, att)
+            }
+          }
+          
+        } else {
+          # Rectangular: cannot coerce to 'dist', keep as matrix
+          d <- dist_matrix
+          class(d) <- c("dissimilarity", "matrix")
         }
+        
+        return(d)
       }
       
-    } else {
-      # Rectangular: cannot coerce to 'dist', keep as matrix
-      d <- dist_matrix
-      class(d) <- c("dissimilarity", "matrix")
+      distance_mat <- to_dissimilarity(distance_mat)
+      
+      params <- list(
+        distance_cont = distance_cont,       # resolved value used
+        distance_cat  = distance_cat,        # resolved value used
+        scaling_cont  = scaling_cont,
+        commensurable = commensurable,
+        ncomp         = ncomp,
+        threshold     = threshold,
+        rectangular   = (nrow(as.matrix(distance_mat)) != ncol(as.matrix(distance_mat))),
+        train_n       = if (!is.null(validate_x)) nrow(validate_x) else nrow(x),
+        test_n        = if (!is.null(validate_x)) nrow(x) else NULL,
+        cat_p         = if (!is.null(cat_data)) ncol(cat_data) else 0,
+        cont_p        = if (!is.null(cont_data)) ncol(cont_data) else 0
+      )
+      
+      return(MDist$new(
+        distance = distance_mat,
+        preset   = preset,
+        data     = x,        # or x if you want to keep it
+        params   = params
+      ))
+      
     }
     
-   return(d)
-  }
-  
-  distance_mat <- to_dissimilarity(distance_mat)
-  
-  params <- list(
-    distance_cont = distance_cont,       # resolved value used
-    distance_cat  = distance_cat,        # resolved value used
-    scaling_cont  = scaling_cont,
-    commensurable = commensurable,
-    ncomp         = ncomp,
-    threshold     = threshold,
-    rectangular   = (nrow(as.matrix(distance_mat)) != ncol(as.matrix(distance_mat))),
-    train_n       = if (!is.null(validate_x)) nrow(validate_x) else nrow(x),
-    test_n        = if (!is.null(validate_x)) nrow(x) else NULL,
-    cat_p         = if (!is.null(cat_data)) ncol(cat_data) else 0,
-    cont_p        = if (!is.null(cont_data)) ncol(cont_data) else 0
-  )
-  
-  return(MDist$new(
-    distance = distance_mat,
-    preset   = preset,
-    data     = x,        # or x if you want to keep it
-    params   = params
-  ))
-  
-}
-
+    

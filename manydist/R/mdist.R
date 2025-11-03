@@ -11,12 +11,13 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
   gowdist <- NULL
   cat_data  = x %>% dplyr::select(where(is.factor))
   cont_data = x %>% dplyr::select(where(is.numeric))
+ 
   if (ncol(cat_data) == 0)
     cat_data = NULL
   
   if (ncol(cont_data) == 0)
     cont_data = NULL
-  
+ 
   
   # Check if tot_var_dist is specified but only one categorical variable exists
   if (!is.null(cat_data) && distance_cat == "tot_var_dist" && ncol(cat_data) == 1) {
@@ -113,14 +114,14 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
       #    warning("'unbiased_dependent' preset with 'tot_var_dist' requires more than one categorical variable. Switching to 'matching' distance.")
       #    distance_cat <- "matching"
       #  }
-      
+
       if(is.null(validate_x)){
         cont_dist_mat = ndist(x = cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        cat_dist_mat = cdist(x = cat_data,method=distance_cat,commensurable = commensurable)$distance_mat
+        cat_dist_mat = cdist(x = cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         distance_mat = cat_dist_mat + cont_dist_mat
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
         cont_dist_mat = ndist(x = cont_data, validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        cat_dist_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat
+        cat_dist_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         distance_mat = cat_dist_mat + cont_dist_mat
       }
     } else if(preset == "euclidean_onehot"){
@@ -156,7 +157,7 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
                              scaling=scaling_cont)  |>  as.matrix()
         
         distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
-        
+ 
       }
     }else if(preset=="entropy_based"){
       # if(weight_cont != "commensurable"){weight_cont = weight_cont}
@@ -187,14 +188,14 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
       #    if(weight_cat != "commensurable"){weight_cat = weight_cat}
       if(is.null(validate_x)){
         cont_dist_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-        cat_dist_mat = cdist(x=cat_data,method=distance_cat,commensurable = commensurable)$distance_mat
+        cat_dist_mat = cdist(x=cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         distance_mat = cat_dist_mat + cont_dist_mat
         if ((distance_cont == "euclidean") & (distance_cat=="HLeucl")){
           distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
         }
       }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT    
         cont_dist_mat = ndist(x=cont_data,validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-        cat_dist_mat = cdist(x=cat_data,validate_x=cat_data_val, response=response,method=distance_cat,commensurable = commensurable)$distance_mat
+        cat_dist_mat = cdist(x=cat_data,validate_x=cat_data_val, response=response,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
         distance_mat = cat_dist_mat + cont_dist_mat
         if ((distance_cont == "euclidean") & (distance_cat=="HLeucl"))
           distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
@@ -221,7 +222,7 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
       
       distance_cat = "tot_var_dist"
       weight_cat = "commensurable"
-      cat_dist_mat = cdist(x=cat_data,method=distance_cat,commensurable=commensurable)$distance_mat
+      cat_dist_mat = cdist(x=cat_data,method=distance_cat,commensurable=commensurable)$distance_mat |>  as.matrix()
       distance_mat = cat_dist_mat
       
     }else if(preset == "euclidean_onehot"){
@@ -266,7 +267,7 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
     }else if(preset == "unbiased_dependent"){
       distance_cont = "manhattan"
       commensurable=TRUE
-      scaling_cont="std"
+      scaling_cont="pc_scores"
       cont_dist_mat = ndist(cont_data, method = distance_cont,commensurable=commensurable,scaling=scaling_cont)  |>  as.matrix()
       distance_mat = cont_dist_mat
     }else if(preset == "euclidean_onehot"){
@@ -280,8 +281,8 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
       x=cont_data
       #    distance_mat=GUDMM(X=x, no_f_cont=n_cont, no_f_ord=0) |> as.matrix()
     }else if(preset=="custom"){
-      distance_mat = ndist(cont_data, method = distance_cont,commensurable=commensurable,scaling=scaling_cont)  |>  as.matrix()
-      
+    #  distance_mat = ndist(cont_data, method = distance_cont,commensurable=commensurable,scaling=scaling_cont)  |>  as.matrix()
+      distance_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
     }
     
   }
@@ -311,7 +312,8 @@ mdist <- function(x,validate_x=NULL,response=NULL, distance_cont="manhattan", di
     return(d)
   }
   
-  distance_mat <- to_dissimilarity(distance_mat)
+#  distance_mat <- to_dissimilarity(distance_mat)
+
   return(distance_mat)
   
 }
