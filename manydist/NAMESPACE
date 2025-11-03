@@ -1,5 +1,5 @@
 export(mdist, cdist, ndist)
-importFrom(entropy, entropy)
+importFrom(entropy, entropy, mi.empirical)
 importFrom(Matrix, Matrix)
 importFrom(fastDummies, dummy_cols)
 importFrom(data.table, data.table, setDT, fread, fwrite)
