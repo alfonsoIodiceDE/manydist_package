@@ -1,3 +1,5 @@
+#' @importFrom fastDummies dummy_cols
+#' @importFrom tibble as_tibble
 z_preproc = function(x,y=NULL,Q){
   out=list()
 

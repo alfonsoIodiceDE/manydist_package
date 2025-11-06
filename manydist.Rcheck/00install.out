@@ -1,11 +1,18 @@
 * installing *source* package ‘manydist’ ...
-** this is package ‘manydist’ version ‘0.4.9’
+** this is package ‘manydist’ version ‘0.5’
 ** using staged installation
 ** R
 ** data
 *** moving datasets to lazyload DB
 ** inst
 ** byte-compile and prepare package for lazy loading
+✅ All competitor packages are already installed.
+
+📦 Competitor packages loaded successfully:
+ [1] "proxy"        "parallelDist" "Rfast"        "klaR"         "arules"      
+ [6] "cluster"      "FD"           "StatMatch"    "gower"        "clustMixType"
+Note: possible error in 'gudmm_distance_dependency_mixed_matrix(X_matrix, ': unused argument (method = "DM5") 
+Note: possible error in 'gudmm_distance_dependency_mixed_matrix(X_matrix, ': unused argument (method = "DM5") 
 ** help
 *** installing help indices
 ** building package indices

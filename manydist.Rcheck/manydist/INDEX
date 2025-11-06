@@ -1,7 +1,10 @@
 cdist                   Calculation of Pairwise Distances for
                         Categorical Data
 fifa_nl                 FIFA 21 Player Data - Dutch League
+hello                   Hello, World!
 mdist                   Calculation of Pairwise Distances for
                         Mixed-Type Data
+mdist_summary_impl      Internal: summary method implementation for
+                        MDist R6 objects
 ndist                   Calculation of Pairwise Distances for
                         Continuous Data

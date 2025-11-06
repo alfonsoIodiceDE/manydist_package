@@ -9,78 +9,82 @@
 * using options ‘--no-manual --as-cran’
 * checking for file ‘manydist/DESCRIPTION’ ... OK
 * checking extension type ... Package
-* this is package ‘manydist’ version ‘0.4.9’
+* this is package ‘manydist’ version ‘0.5’
 * package encoding: UTF-8
 * checking package namespace information ... OK
 * checking package dependencies ... OK
 * checking if this is a source package ... OK
 * checking if there is a namespace ... OK
 * checking for executable files ... OK
-* checking for hidden files and directories ... NOTE
-Found the following hidden files and directories:
-  .RDataTmp
-These were most likely included in error. See section ‘Package
-structure’ in the ‘Writing R Extensions’ manual.
+* checking for hidden files and directories ... OK
 * checking for portable file names ... OK
 * checking for sufficient/correct file permissions ... OK
-* checking whether package ‘manydist’ can be installed ... OK
+* checking whether package ‘manydist’ can be installed ... WARNING
+Found the following significant warnings:
+  Note: possible error in 'gudmm_distance_dependency_mixed_matrix(X_matrix, ': unused argument (method = "DM5") 
+See ‘/Users/Alfo/Library/CloudStorage/Dropbox/gitgub_repos/manydist_package/manydist.Rcheck/00install.out’ for details.
+Information on the location(s) of code generating the ‘Note’s can be
+obtained by re-running with environment variable R_KEEP_PKG_SOURCE set
+to ‘yes’.
 * checking installed package size ... OK
 * checking package directory ... OK
 * checking for future file timestamps ... NOTE
 unable to verify current time
 * checking DESCRIPTION meta-information ... OK
-* checking top-level files ... OK
+* checking top-level files ... NOTE
+Non-standard file/directory found at top level:
+  ‘comparison_results.rds’
 * checking for left-over files ... OK
 * checking index information ... OK
 * checking package subdirectories ... OK
-* checking code files for non-ASCII characters ... OK
+* checking code files for non-ASCII characters ... WARNING
+Found the following files with non-ASCII characters:
+  R/mdist_summary_impl.R
+  R/review_dist_packages.R
+Portable packages must use only ASCII characters in their R code and
+NAMESPACE directives, except perhaps in comments.
+Use \uxxxx escapes for other characters.
+Function ‘tools::showNonASCIIfile’ can help in finding non-ASCII
+characters in files.
 * checking R files for syntax errors ... OK
 * checking whether the package can be loaded ... OK
 * checking whether the package can be loaded with stated dependencies ... OK
 * checking whether the package can be unloaded cleanly ... OK
 * checking whether the namespace can be loaded with stated dependencies ... OK
 * checking whether the namespace can be unloaded cleanly ... OK
-* checking dependencies in R code ... OK
+* checking dependencies in R code ... WARNING
+'::' or ':::' imports not declared from:
+  ‘aricode’ ‘kdml’
 * checking S3 generic/method consistency ... OK
 * checking replacement functions ... OK
 * checking foreign function calls ... OK
 * checking R code for possible problems ... NOTE
-cdist : to_dissimilarity: no visible global function definition for
-  ‘as.dist’
-mdist : to_dissimilarity: no visible global function definition for
-  ‘as.dist’
-ndist : to_dissimilarity: no visible global function definition for
-  ‘as.dist’
+mdist: possible error in
+  gudmm_distance_dependency_mixed_matrix(X_matrix, no_f_cont, no_f_ord
+  = 0, method = "DM5"): unused argument (method = "DM5")
+ndist: no visible global function definition for ‘step_normalize’
 Undefined global functions or variables:
-  as.dist
-Consider adding
-  importFrom("stats", "as.dist")
-to your NAMESPACE file.
+  step_normalize
 * checking Rd files ... OK
 * checking Rd metadata ... OK
 * checking Rd line widths ... OK
 * checking Rd cross-references ... OK
-* checking for missing documentation entries ... OK
+* checking for missing documentation entries ... WARNING
+Undocumented code objects:
+  ‘lovo_mdist’
+All user-level objects in a package should have documentation entries.
+See chapter ‘Writing R documentation files’ in the ‘Writing R
+Extensions’ manual.
 * checking for code/documentation mismatches ... WARNING
+Functions or methods with usage in Rd file 'hello.Rd' but not in code:
+  ‘hello’
+
 Codoc mismatches from Rd file 'cdist.Rd':
 cdist
   Code: function(x, response = NULL, validate_x = NULL, method =
                  "tot_var_dist", commensurable = TRUE, weights = 1)
   Docs: function(x, response = NULL, validate_x = NULL, method =
                  "tot_var_dist", commensurable = FALSE, weights = 1)
-  Mismatches in argument default values:
-    Name: 'commensurable' Code: TRUE Docs: FALSE
-
-Codoc mismatches from Rd file 'mdist.Rd':
-mdist
-  Code: function(x, validate_x = NULL, response = NULL, distance_cont =
-                 "manhattan", distance_cat = "tot_var_dist",
-                 commensurable = TRUE, scaling_cont = "none", ncomp =
-                 ncol(x), threshold = NULL, preset = "custom")
-  Docs: function(x, validate_x = NULL, response = NULL, distance_cont =
-                 "manhattan", distance_cat = "tot_var_dist",
-                 commensurable = FALSE, scaling_cont = "none", ncomp =
-                 ncol(x), threshold = NULL, preset = "custom")
   Mismatches in argument default values:
     Name: 'commensurable' Code: TRUE Docs: FALSE
 
@@ -95,15 +99,61 @@ ndist
   Mismatches in argument default values:
     Name: 'commensurable' Code: TRUE Docs: FALSE
 
-* checking Rd \usage sections ... OK
+* checking Rd \usage sections ... WARNING
+Undocumented arguments in Rd file 'mdist_summary_impl.Rd'
+  ‘object’ ‘...’
+
+Functions with \usage entries need to have the appropriate \alias
+entries, and all their arguments documented.
+The \usage entries must correspond to syntactically valid R code.
+See chapter ‘Writing R documentation files’ in the ‘Writing R
+Extensions’ manual.
 * checking Rd contents ... OK
 * checking for unstated dependencies in examples ... OK
 * checking contents of ‘data’ directory ... OK
 * checking data for non-ASCII characters ... OK
 * checking LazyData ... OK
 * checking data for ASCII and uncompressed saves ... OK
-* checking examples ... OK
+* checking examples ... ERROR
+Running examples in ‘manydist-Ex.R’ failed
+The error most likely occurred in:
+
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: cdist
+> ### Title: Calculation of Pairwise Distances for Categorical Data
+> ### Aliases: cdist
+> 
+> ### ** Examples
+> 
+> library(palmerpenguins)
+
+Attaching package: ‘palmerpenguins’
+
+The following objects are masked from ‘package:datasets’:
+
+    penguins, penguins_raw
+
+> library(rsample)
+> 
+> # Prepare data with complete cases for both categorical variables and response
+> complete_vars <- c("species", "island", "sex", "body_mass_g")
+> penguins_complete <- penguins[complete.cases(penguins[, complete_vars]), ]
+> penguins_cat <- penguins_complete[, c("species", "island", "sex")]
+> response <- penguins_complete$body_mass_g
+> 
+> # Create training-test split
+> set.seed(123)
+> penguins_split <- initial_split(penguins_cat, prop = 0.8)
+> tr_penguins <- training(penguins_split)
+> ts_penguins <- testing(penguins_split)
+> response_tr <- response[penguins_split$in_id]
+> response_ts <- response[-penguins_split$in_id]
+> 
+> # Basic usage
+> result <- cdist(tr_penguins)
+Error in cdist(tr_penguins) : could not find function "cdist"
+Execution halted
 * checking for non-standard things in the check directory ... OK
 * checking for detritus in the temp directory ... OK
 * DONE
-Status: 1 WARNING, 3 NOTEs
+Status: 1 ERROR, 6 WARNINGs, 3 NOTEs

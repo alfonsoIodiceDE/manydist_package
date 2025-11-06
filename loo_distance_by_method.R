@@ -1,16 +1,16 @@
 loo_distance_by_method = function(df, method = c("baseline","naive","gower","hl","u_dep","u_ind","gudmm","dkss","mod_gower"),dims=2){
- source("R/distance_by_method.r") 
-source("R/congruence_coeff.r") 
+#  source("R/distance_by_method.r") 
+# source("R/congruence_coeff.r") 
   
    X=df
   
-  full_distance = distance_by_method(X, method = method) |> as.matrix()
+  full_distance = mdist(X, preset = method) |> as.matrix()
   MDS_full <- cmdscale(full_distance, eig=TRUE, k=2)
   
   
   loo_distances <- map(names(X), ~ {
     X_subset <- X %>% select(-all_of(.x))
-    distance_by_method(X_subset,method) |> as.matrix() 
+    mdist(X_subset,preset = method) |> as.matrix() 
   })
   
   

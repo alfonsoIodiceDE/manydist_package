@@ -1,7 +1,7 @@
 Package: manydist
 Type: Package
 Title: Unbiased Distances for Mixed-Type Data
-Version: 0.4.9
+Version: 0.5
 Authors@R: c(
     person(given = "Alfonso",
            family = "Iodice D'Enza",
@@ -35,16 +35,17 @@ Description: A comprehensive framework for calculating unbiased distances in dat
     "Unbiased mixed variables distance".
 Imports: entropy, Matrix, fastDummies, data.table, philentropy,
         cluster, purrr, dplyr, tidyr, forcats, tibble, magrittr, fpc,
-        recipes, rsample, Rfast, readr, distances
+        recipes, rsample, Rfast, readr, distances, ggplot2, tidyselect
 Depends: R (>= 4.1.0)
 Suggests: palmerpenguins
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 NeedsCompilation: no
-Packaged: 2025-10-28 14:24:05 UTC; Alfo
+RoxygenNote: 7.3.2
+Packaged: 2025-11-06 16:01:04 UTC; Alfo
 Author: Alfonso Iodice D'Enza [aut],
   Angelos Markos [aut, cre],
   Michel van de Velden [aut],
   Carlo Cavicchia [aut]
-Built: R 4.5.1; ; 2025-10-28 14:24:13 UTC; unix
+Built: R 4.5.1; ; 2025-11-06 16:01:06 UTC; unix

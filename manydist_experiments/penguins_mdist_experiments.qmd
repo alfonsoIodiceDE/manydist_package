@@ -1,25 +1,53 @@
 ---
-title: "manydist: Exploring mdist_evolved() presets on palmerpenguins"
+title: "manydist: Exploring mdist() presets on palmerpenguins"
 author: "manydist experiments"
 format:
   html:
     toc: true
     code-tools: true
     code-fold: show
+    embed-resources: true   
 execute:
   echo: true
-  warning: true
-  message: true
+  warning: FALSE
+  message: FALSE
 ---
 
-> This notebook runs **all major presets and options** of `mdist_evolved()`
+> This notebook runs **the update version of** of `mdist`
 > on the **palmerpenguins** mixed dataset. It’s designed for quick, iterative testing
 > while developing `manydist`. Place this file **outside** your package directory and use
 > `devtools::load_all("../manydist")` to load your development code.
 
 ## Setup
 
-```{r}
+```{r, echo=FALSE,message=FALSE}
+# -- Always use dev sources (not installed pkg) -------------------------------
+doc_dir  <- dirname(normalizePath(knitr::current_input()))
+pkg_path <- normalizePath(file.path(doc_dir, "../manydist"), mustWork = TRUE)
+# 
+if ("manydist" %in% loadedNamespaces()) unloadNamespace("manydist")
+
+# load dev sources; export_all helps during development
+pkgload::load_all(pkg_path, export_all = TRUE, helpers = TRUE, attach_testthat = FALSE)
+
+# pkgload::load_all("../manydist")
+
+cat("manydist loaded from: ",
+    getNamespaceInfo(asNamespace("manydist"), "path"), "\n", sep = "")
+
+# -- Make sure summary.MDist is registered for this session -------------------
+# 1) Define a wrapper if it doesn't exist anywhere the generic can see it
+if (!exists("summary.MDist", mode = "function")) {
+  summary.MDist <- function(object, ...) object$summary(...)
+}
+
+# 2) Register it into the manydist namespace so S3 dispatch works even in knit
+registerS3method("summary", "MDist", summary.MDist, envir = asNamespace("manydist"))
+
+# 3) Sanity check
+cat("Has summary.MDist? ",
+    tryCatch(!is.null(getS3method("summary", "MDist")), error = function(e) FALSE),
+    "\n", sep = "")
 if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
 if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
 if (!requireNamespace("palmerpenguins", quietly = TRUE)) install.packages("palmerpenguins")
@@ -29,9 +57,10 @@ if (!requireNamespace("Rfast", quietly = TRUE)) install.packages("Rfast")
 
 library(devtools)
 # Adjust the path to your package root as needed
-devtools::load_all("../manydist")
+# devtools::load_all("../manydist")
 
 library(tidyverse)
+library(tidymodels)
 library(palmerpenguins)
 set.seed(123)
 ```
@@ -54,27 +83,47 @@ cat_peng = peng |> select(where(is.factor))
 I used R6 class object as an output.
 
 ```{r}
-preset_structure = tibble(preset = c("gower","unbiased_dependent","euclidean_onehot","gudmm","dkss","mod_gower","custom")) |> 
-  mutate(mix_distance = map(.x=preset,~mdist_evolved(x=peng,preset=.x))
-         )
+# preset_structure = tibble(preset = c("gower","unbiased_dependent","euclidean_onehot","gudmm","dkss","mod_gower","custom")) |> 
+#   mutate(mix_distance = map(.x=preset,~mdist(x=peng,preset=.x))
+         # )
 
-preset_structure$mix_distance[[1]]
-preset_structure$mix_distance[[2]]
-preset_structure$mix_distance[[3]]
-preset_structure$mix_distance[[4]]
-preset_structure$mix_distance[[5]]
-preset_structure$mix_distance[[6]]
-preset_structure$mix_distance[[7]]
 ```
 
 
-##  Train → Test rectangular distances for selected presets
+##  print and summary
+
+I created an R6 class that contains instruction of what to print (just recalling the `mdist_object_name`) and a summary function that can be recalled via `mdist_object_name$summary()` or `summary(mdist_object_name)` (the latter is S3 style).
 
 ```{r}
+udep_dist = mdist(x=peng,preset="unbiased_dependent")
+
+udep_dist
+
+udep_dist$summary()
+
+summary(udep_dist)
 
 ```
 
 
+## leave one variable out assessment (LOVO)
+
+Just like in the paper, I created the `lovo_mdist()` function, that uses the same syntax as `mdist()` and computes the LOVO distances and compares them with the full dist, both in terms of alienation coefficient and MAD
+
+```{r}
+lovo_results = lovo_mdist(x=peng,preset="unbiased_dependent")
+
+lovo_results$summary()
+print(lovo_results)
+summary(lovo_results)
+
+```
+
+## Next up
+
+- homogeneize the overlapping print and summary output (cosmetic)
+
+- think of some plot (would like to have a function that reproduces the plots we have in the paper, for one or more methods...but if it's not painful)
 <!-- ## plotting function(s)? -->
 
 <!-- ```{r} -->
