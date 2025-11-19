@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.32">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Alfonso Iodice D’Enza">
+
+<title>Distance-based learning with manydist and tidymodels</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="manydist_vignette_complete_files/libs/clipboard/clipboard.min.js"></script>
+<script src="manydist_vignette_complete_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="manydist_vignette_complete_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="manydist_vignette_complete_files/libs/quarto-html/popper.min.js"></script>
+<script src="manydist_vignette_complete_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="manydist_vignette_complete_files/libs/quarto-html/anchor.min.js"></script>
+<link href="manydist_vignette_complete_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="manydist_vignette_complete_files/libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="manydist_vignette_complete_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="manydist_vignette_complete_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="manydist_vignette_complete_files/libs/bootstrap/bootstrap-81267100e462c21b3d6c0d5bf76a3417.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#data-palmer-penguins" id="toc-data-palmer-penguins" class="nav-link" data-scroll-target="#data-palmer-penguins"><span class="header-section-number">2</span> Data: Palmer Penguins</a></li>
+  <li><a href="#base-r-using-mdist-directly" id="toc-base-r-using-mdist-directly" class="nav-link" data-scroll-target="#base-r-using-mdist-directly"><span class="header-section-number">3</span> Base R: using <code>mdist()</code> directly</a>
+  <ul class="collapse">
+  <li><a href="#computing-a-mixed-type-distance" id="toc-computing-a-mixed-type-distance" class="nav-link" data-scroll-target="#computing-a-mixed-type-distance"><span class="header-section-number">3.1</span> Computing a mixed-type distance</a></li>
+  <li><a href="#a-simple-knn-from-a-distance-matrix" id="toc-a-simple-knn-from-a-distance-matrix" class="nav-link" data-scroll-target="#a-simple-knn-from-a-distance-matrix"><span class="header-section-number">3.2</span> A simple KNN from a distance matrix</a></li>
+  </ul></li>
+  <li><a href="#recipes-distance-based-representation-with-step_mdist" id="toc-recipes-distance-based-representation-with-step_mdist" class="nav-link" data-scroll-target="#recipes-distance-based-representation-with-step_mdist"><span class="header-section-number">4</span> Recipes: distance-based representation with <code>step_mdist()</code></a>
+  <ul class="collapse">
+  <li><a href="#defining-a-recipe-with-step_mdist" id="toc-defining-a-recipe-with-step_mdist" class="nav-link" data-scroll-target="#defining-a-recipe-with-step_mdist"><span class="header-section-number">4.1</span> Defining a recipe with <code>step_mdist()</code></a></li>
+  </ul></li>
+  <li><a href="#a-distance-based-knn-model-via-parsnip" id="toc-a-distance-based-knn-model-via-parsnip" class="nav-link" data-scroll-target="#a-distance-based-knn-model-via-parsnip"><span class="header-section-number">5</span> A distance-based KNN model via parsnip</a>
+  <ul class="collapse">
+  <li><a href="#model-specification" id="toc-model-specification" class="nav-link" data-scroll-target="#model-specification"><span class="header-section-number">5.1</span> Model specification</a></li>
+  <li><a href="#workflow" id="toc-workflow" class="nav-link" data-scroll-target="#workflow"><span class="header-section-number">5.2</span> Workflow</a></li>
+  <li><a href="#predictions-and-performance" id="toc-predictions-and-performance" class="nav-link" data-scroll-target="#predictions-and-performance"><span class="header-section-number">5.3</span> Predictions and performance</a></li>
+  </ul></li>
+  <li><a href="#tuning-the-number-of-neighbors-with-tune_grid" id="toc-tuning-the-number-of-neighbors-with-tune_grid" class="nav-link" data-scroll-target="#tuning-the-number-of-neighbors-with-tune_grid"><span class="header-section-number">6</span> Tuning the number of neighbors with <code>tune_grid()</code></a></li>
+  <li><a href="#using-a-custom-distance-function" id="toc-using-a-custom-distance-function" class="nav-link" data-scroll-target="#using-a-custom-distance-function"><span class="header-section-number">7</span> Using a custom distance function</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">8</span> Summary</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Distance-based learning with manydist and tidymodels</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Alfonso Iodice D’Enza </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list=</span><span class="fu">ls</span>())</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"../"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>✅ All competitor packages are already installed.
+
+📦 Competitor packages loaded successfully:
+ [1] "proxy"        "parallelDist" "Rfast"        "klaR"         "arules"      
+ [6] "cluster"      "FD"           "StatMatch"    "gower"        "clustMixType"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># library(manydist)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidymodels)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(palmerpenguins)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># library(manydist)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="introduction" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
+<p>The <strong>manydist</strong> package provides a flexible framework for computing distance (or dissimilarity) matrices for:</p>
+<ul>
+<li>continuous variables,</li>
+<li>categorical variables,</li>
+<li>and genuinely <em>mixed</em> data.</li>
+</ul>
+<p>It includes:</p>
+<ul>
+<li>the core function <code>mdist()</code> for mixed-type distances,</li>
+<li>a lightweight <code>MDist</code> R6 class to store distance matrices and metadata,</li>
+<li>several <em>presets</em> for common mixed-type distances<br>
+(e.g.&nbsp;<code>"gower"</code>, <code>"unbiased_dependent"</code>, <code>"mod_gower"</code>, <code>"gudmm"</code>, <code>"dkss"</code>),</li>
+<li>integration with <strong>tidymodels</strong> via
+<ul>
+<li>a recipe step <code>step_mdist()</code> that replaces predictors with distances, and</li>
+<li>a custom parsnip model <code>nearest_neighbor_dist()</code> that performs k-nearest neighbors using precomputed (or custom) distances.</li>
+</ul></li>
+</ul>
+<p>In this vignette we use the <code>palmerpenguins</code> data to show:</p>
+<ol type="1">
+<li>How to compute mixed-type distances with <code>mdist()</code> in base R.</li>
+<li>How to use <code>step_mdist()</code> to obtain a distance-based representation in a recipe.</li>
+<li>How to fit and tune a k-nearest neighbors model based on manydist via <code>nearest_neighbor_dist()</code> and <code>tune_grid()</code>.</li>
+<li>How to plug in a custom distance function.</li>
+</ol>
+<p>The focus is on <em>classification</em> of penguin species, but the same ideas apply to other supervised or unsupervised tasks that rely on pairwise distances.</p>
+</section>
+<section id="data-palmer-penguins" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Data: Palmer Penguins</h1>
+<p>We start from the <code>penguins</code> data and remove rows with missing values.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>penguins_clean <span class="ot">&lt;-</span> penguins <span class="sc">|&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">drop_na</span>()</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>penguins_clean <span class="sc">|&gt;</span> </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(species)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 3 × 2
+  species       n
+  &lt;fct&gt;     &lt;int&gt;
+1 Adelie      146
+2 Chinstrap    68
+3 Gentoo      119</code></pre>
+</div>
+</div>
+<p>We create a stratified train/test split:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>peng_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(penguins_clean, <span class="at">strata =</span> species)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>peng_train <span class="ot">&lt;-</span> <span class="fu">training</span>(peng_split)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>peng_test  <span class="ot">&lt;-</span> <span class="fu">testing</span>(peng_split)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(peng_train)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 249   8</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(peng_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 84  8</code></pre>
+</div>
+</div>
+</section>
+<section id="base-r-using-mdist-directly" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Base R: using <code>mdist()</code> directly</h1>
+<p>In the simplest use case, you call <code>mdist()</code> on a data frame with both numeric and factor columns.</p>
+<p>We first separate predictors and the outcome:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>x_train <span class="ot">&lt;-</span> peng_train <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>species)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>x_test  <span class="ot">&lt;-</span> peng_test  <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>species)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>y_train <span class="ot">&lt;-</span> peng_train<span class="sc">$</span>species</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>y_test  <span class="ot">&lt;-</span> peng_test<span class="sc">$</span>species</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="computing-a-mixed-type-distance" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="computing-a-mixed-type-distance"><span class="header-section-number">3.1</span> Computing a mixed-type distance</h2>
+<p>For example, we can use the <code>"unbiased_dependent"</code> preset, which combines a dependency-based distance for categorical variables with a Manhattan distance on PCA scores for continuous variables:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>d_obj <span class="ot">&lt;-</span> <span class="fu">mdist</span>(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">x        =</span> x_train,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">new_data =</span> x_test,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">preset   =</span> <span class="st">"unbiased_dependent"</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>d_obj</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>MDist object
+  preset : unbiased_dependent 
+  number of training observations : 249 
+  number of test observations     : 84 
+  number of continuous variables   : 5 
+  number of categorical variables   : 2 
+  parameters:
+    - continuous distance method: manhattan
+    - categorical distance method: tot_var_dist
+    - scaling for continuous vars: pc_scores
+    - commensurability adjustment: TRUE</code></pre>
+</div>
+</div>
+<p>The result is an <code>MDist</code> object, which contains a distance matrix and some metadata:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">class</span>(d_obj)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "MDist" "R6"   </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># str(d_obj, max.level = 1)</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>distance_matrix <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(d_obj<span class="sc">$</span>distance)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(distance_matrix)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1]  84 249</code></pre>
+</div>
+</div>
+<p>The resulting matrix has:</p>
+<ul>
+<li>one row per <em>test</em> observation,</li>
+<li>one column per <em>training</em> observation.</li>
+</ul>
+<p>We can build a simple KNN on top of this matrix without tidymodels.</p>
+</section>
+<section id="a-simple-knn-from-a-distance-matrix" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="a-simple-knn-from-a-distance-matrix"><span class="header-section-number">3.2</span> A simple KNN from a distance matrix</h2>
+<p>For illustration, we define a minimal helper that performs KNN from a distance matrix (rows = test points, columns = train points):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>knn_from_dist <span class="ot">&lt;-</span> <span class="cf">function</span>(D, y_train, <span class="at">k =</span> <span class="dv">5</span>) {</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># D: matrix of distances, rows = new points, cols = training points</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  nn_idx <span class="ot">&lt;-</span> <span class="fu">apply</span>(D, <span class="dv">1</span>L, <span class="cf">function</span>(d) <span class="fu">order</span>(d)[<span class="fu">seq_len</span>(k)])</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">is.vector</span>(nn_idx)) nn_idx <span class="ot">&lt;-</span> <span class="fu">matrix</span>(nn_idx, <span class="at">nrow =</span> <span class="dv">1</span>L)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  lv <span class="ot">&lt;-</span> <span class="fu">levels</span>(y_train)</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">apply</span>(nn_idx, <span class="dv">2</span>L, <span class="cf">function</span>(idx) {</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    tab <span class="ot">&lt;-</span> <span class="fu">table</span>(y_train[idx])</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">names</span>(<span class="fu">which.max</span>(tab))</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">factor</span>(preds, <span class="at">levels =</span> lv)</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can now classify the test set:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>pred_base <span class="ot">&lt;-</span> <span class="fu">knn_from_dist</span>(distance_matrix, y_train, <span class="at">k =</span> <span class="dv">5</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>yardstick<span class="sc">::</span><span class="fu">accuracy_vec</span>(y_test, pred_base)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9761905</code></pre>
+</div>
+</div>
+<p>This shows how <code>mdist()</code> and <code>MDist</code> can be used in <strong>base R</strong>, without any tidymodels machinery.</p>
+</section>
+</section>
+<section id="recipes-distance-based-representation-with-step_mdist" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Recipes: distance-based representation with <code>step_mdist()</code></h1>
+<p>To integrate with tidymodels, manydist provides a recipe step:</p>
+<ul>
+<li><code>step_mdist()</code> replaces the original predictors with one column per training observation, each column containing the distance from that training observation.</li>
+</ul>
+<p>This allows any downstream model to operate in a distance-based feature space.</p>
+<section id="defining-a-recipe-with-step_mdist" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="defining-a-recipe-with-step_mdist"><span class="header-section-number">4.1</span> Defining a recipe with <code>step_mdist()</code></h2>
+<p>We build a simple recipe where:</p>
+<ul>
+<li>the outcome is <code>species</code>,</li>
+<li>all other variables are used as predictors,</li>
+<li><code>step_mdist()</code> computes mixed-type distances using a preset.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>peng_rec <span class="ot">&lt;-</span> <span class="fu">recipe</span>(species <span class="sc">~</span> ., <span class="at">data =</span> peng_train) <span class="sc">|&gt;</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_mdist</span>(</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">all_predictors</span>(),</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">preset =</span> <span class="st">"unbiased_dependent"</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>peng_rec</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Step: mdist
+  role:        predictor
+  trained:     FALSE
+
+  preset:      unbiased_dependent
+  (arguments handled internally by preset)</code></pre>
+</div>
+</div>
+<p>When we <code>prep()</code> the recipe, <code>step_mdist()</code> stores the training predictors internally and will later compute distances to new data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>prepped_rec <span class="ot">&lt;-</span> peng_rec <span class="sc">|&gt;</span> <span class="fu">prep</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we can <code>bake()</code> the recipe for both training and test sets:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>train_dist <span class="ot">&lt;-</span> <span class="fu">bake</span>(prepped_rec, <span class="at">new_data =</span> peng_train)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>test_dist  <span class="ot">&lt;-</span> <span class="fu">bake</span>(prepped_rec, <span class="at">new_data =</span> peng_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>You should see:</p>
+<ul>
+<li>the outcome column <code>species</code>,</li>
+<li>followed by columns named <code>dist_1</code>, <code>dist_2</code>, …, <code>dist_n</code> (one per training row).</li>
+</ul>
+<p>These distance columns can be used as predictors by any parsnip model.</p>
+</section>
+</section>
+<section id="a-distance-based-knn-model-via-parsnip" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> A distance-based KNN model via parsnip</h1>
+<p>manydist registers a custom parsnip model:</p>
+<ul>
+<li><code>nearest_neighbor_dist()</code> (a model specification),</li>
+<li>with a <code>"precomputed"</code> engine that uses KNN on top of distances.</li>
+</ul>
+<p>There are two main ways to use it:</p>
+<ol type="1">
+<li>Let the model compute distances internally (using <code>dist_fun = mdist</code>).</li>
+<li>Use <code>step_mdist()</code> in the recipe, and pass <code>dist_fun = NULL</code> so the model treats predictors as a distance matrix.</li>
+</ol>
+<p>We start with the simpler idiom where <strong><code>step_mdist()</code> does the work</strong> and the model just consumes precomputed distances.</p>
+<section id="model-specification" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="model-specification"><span class="header-section-number">5.1</span> Model specification</h2>
+<p>We define a KNN model that uses the <code>"precomputed"</code> engine and leaves distance computation to the recipe:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>knn_spec <span class="ot">&lt;-</span> <span class="fu">nearest_neighbor_dist</span>(</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">mode      =</span> <span class="st">"classification"</span>,</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">neighbors =</span> <span class="dv">5</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>)  <span class="sc">|&gt;</span> </span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"precomputed"</span>)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>knn_spec</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>nearest neighbor dist Model Specification (classification)
+
+Main Arguments:
+  neighbors = 5
+
+Computational engine: precomputed </code></pre>
+</div>
+</div>
+</section>
+<section id="workflow" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="workflow"><span class="header-section-number">5.2</span> Workflow</h2>
+<p>We can now combine the recipe and the model into a workflow:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>peng_wf <span class="ot">&lt;-</span> <span class="fu">workflow</span>() <span class="sc">|&gt;</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(peng_rec) <span class="sc">|&gt;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(knn_spec)</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>peng_wf</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>══ Workflow ════════════════════════════════════════════════════════════════════
+Preprocessor: Recipe
+Model: nearest_neighbor_dist()
+
+── Preprocessor ────────────────────────────────────────────────────────────────
+1 Recipe Step
+
+• step_mdist()
+
+── Model ───────────────────────────────────────────────────────────────────────
+nearest neighbor dist Model Specification (classification)
+
+Main Arguments:
+  neighbors = 5
+
+Computational engine: precomputed </code></pre>
+</div>
+</div>
+<p>Fitting the workflow:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>peng_fit <span class="ot">&lt;-</span> peng_wf <span class="sc">|&gt;</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(<span class="at">data =</span> peng_train)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="predictions-and-performance" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="predictions-and-performance"><span class="header-section-number">5.3</span> Predictions and performance</h2>
+<p>We obtain class probabilities and predicted classes on the test set:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>peng_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(peng_fit, <span class="at">new_data =</span> peng_test, <span class="at">type =</span> <span class="st">"prob"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">predict</span>(peng_fit, <span class="at">new_data =</span> peng_test, <span class="at">type =</span> <span class="st">"class"</span>),</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    peng_test <span class="sc">|&gt;</span> <span class="fu">select</span>(species)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>peng_pred <span class="sc">|&gt;</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 5
+  .pred_Adelie .pred_Chinstrap .pred_Gentoo .pred_class species
+         &lt;dbl&gt;           &lt;dbl&gt;        &lt;dbl&gt; &lt;fct&gt;       &lt;fct&gt;  
+1          1               0              0 Adelie      Adelie 
+2          0.8             0.2            0 Adelie      Adelie 
+3          1               0              0 Adelie      Adelie 
+4          1               0              0 Adelie      Adelie 
+5          1               0              0 Adelie      Adelie 
+6          1               0              0 Adelie      Adelie </code></pre>
+</div>
+</div>
+<p>Evaluate accuracy:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>peng_pred <span class="sc">|&gt;</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">accuracy</span>(<span class="at">truth =</span> species, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  .metric  .estimator .estimate
+  &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
+1 accuracy multiclass     0.976</code></pre>
+</div>
+</div>
+<p>For ROC–AUC in the multiclass case, we pass one probability column per class:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>peng_pred <span class="sc">|&gt;</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">roc_auc</span>(</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth    =</span> species,</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    .pred_Adelie, .pred_Chinstrap, .pred_Gentoo,</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimator =</span> <span class="st">"macro"</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  .metric .estimator .estimate
+  &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+1 roc_auc macro          0.999</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="tuning-the-number-of-neighbors-with-tune_grid" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Tuning the number of neighbors with <code>tune_grid()</code></h1>
+<p>Because <code>nearest_neighbor_dist()</code> is registered as a parsnip model, we can tune its hyperparameters using <code>tune_grid()</code> just like any other tidymodels model.</p>
+<p>Here we tune the number of neighbors <code>k</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>spec <span class="ot">&lt;-</span> <span class="fu">nearest_neighbor_dist</span>(<span class="at">neighbors =</span> <span class="fu">tune</span>()) <span class="sc">|&gt;</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"precomputed"</span>)</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>knn_tune_spec <span class="ot">&lt;-</span> <span class="fu">nearest_neighbor_dist</span>(</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">mode      =</span> <span class="st">"classification"</span>,</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">neighbors =</span> <span class="fu">tune</span>()   <span class="co"># only tunable param</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"precomputed"</span>)   <span class="co"># &lt;-- no dist_fun, no dist_args</span></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>knn_tune_spec</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>nearest neighbor dist Model Specification (classification)
+
+Main Arguments:
+  neighbors = tune()
+
+Computational engine: precomputed </code></pre>
+</div>
+</div>
+<p>We reuse the same recipe (<code>peng_rec</code>) and create a workflow:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>peng_wf_tune <span class="ot">&lt;-</span> <span class="fu">workflow</span>() <span class="sc">|&gt;</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(peng_rec) <span class="sc">|&gt;</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(knn_tune_spec)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Set up resampling and a grid of k values:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>peng_folds <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(peng_train, <span class="at">v =</span> <span class="dv">3</span>, <span class="at">strata =</span> species)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>k_grid <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">neighbors =</span> <span class="fu">seq</span>(<span class="dv">3</span>, <span class="dv">7</span>, <span class="at">by =</span> <span class="dv">2</span>))</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>k_grid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 3 × 1
+  neighbors
+      &lt;dbl&gt;
+1         3
+2         5
+3         7</code></pre>
+</div>
+</div>
+<p>Now we run <code>tune_grid()</code>. For speed on CRAN, you may want to set <code>eval: false</code> for this chunk and run it locally.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>peng_metrics <span class="ot">&lt;-</span> <span class="fu">metric_set</span>(accuracy, roc_auc)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>param_info <span class="ot">&lt;-</span> <span class="fu">parameters</span>(<span class="fu">neighbors</span>())</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>param_info</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>tuned_knn <span class="ot">&lt;-</span> <span class="fu">tune_grid</span>(</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>  peng_wf_tune,</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">resamples =</span> peng_folds,</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">grid      =</span> k_grid,</span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">metrics   =</span> peng_metrics,</span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">param_info =</span> param_info</span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>tuned_knn</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># Tuning results
+# 3-fold cross-validation using stratification 
+# A tibble: 3 × 4
+  splits           id    .metrics         .notes          
+  &lt;list&gt;           &lt;chr&gt; &lt;list&gt;           &lt;list&gt;          
+1 &lt;split [165/84]&gt; Fold1 &lt;tibble [6 × 5]&gt; &lt;tibble [0 × 4]&gt;
+2 &lt;split [166/83]&gt; Fold2 &lt;tibble [6 × 5]&gt; &lt;tibble [0 × 4]&gt;
+3 &lt;split [167/82]&gt; Fold3 &lt;tibble [6 × 5]&gt; &lt;tibble [0 × 4]&gt;</code></pre>
+</div>
+</div>
+<p>Inspect the tuning results (replace <code>eval=FALSE</code> with <code>eval=TRUE</code> if you actually run the previous chunk):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">collect_metrics</span>(tuned_knn)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 7
+  neighbors .metric  .estimator  mean     n  std_err .config        
+      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;    &lt;dbl&gt; &lt;chr&gt;          
+1         3 accuracy multiclass 0.968     3 0.00828  pre0_mod1_post0
+2         3 roc_auc  hand_till  0.996     3 0.00188  pre0_mod1_post0
+3         5 accuracy multiclass 0.976     3 0.00709  pre0_mod2_post0
+4         5 roc_auc  hand_till  0.998     3 0.00132  pre0_mod2_post0
+5         7 accuracy multiclass 0.992     3 0.00404  pre0_mod3_post0
+6         7 roc_auc  hand_till  0.999     3 0.000525 pre0_mod3_post0</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">show_best</span>(tuned_knn, <span class="at">metric =</span> <span class="st">"accuracy"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 3 × 7
+  neighbors .metric  .estimator  mean     n std_err .config        
+      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;          
+1         7 accuracy multiclass 0.992     3 0.00404 pre0_mod3_post0
+2         5 accuracy multiclass 0.976     3 0.00709 pre0_mod2_post0
+3         3 accuracy multiclass 0.968     3 0.00828 pre0_mod1_post0</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(tuned_knn)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="manydist_vignette_complete_files/figure-html/tune-results-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>After choosing the best <code>k</code>, you can finalize the workflow:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>best_k <span class="ot">&lt;-</span> <span class="fu">select_best</span>(tuned_knn, <span class="at">metric =</span> <span class="st">"accuracy"</span>)</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>final_wf <span class="ot">&lt;-</span> peng_wf_tune <span class="sc">|&gt;</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">finalize_workflow</span>(best_k)</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>final_fit <span class="ot">&lt;-</span> final_wf <span class="sc">|&gt;</span></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(<span class="at">data =</span> peng_train)</span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>final_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(final_fit, <span class="at">new_data =</span> peng_test, <span class="at">type =</span> <span class="st">"class"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(peng_test <span class="sc">|&gt;</span> <span class="fu">select</span>(species))</span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>final_pred <span class="sc">|&gt;</span></span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">accuracy</span>(<span class="at">truth =</span> species, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  .metric  .estimator .estimate
+  &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
+1 accuracy multiclass     0.988</code></pre>
+</div>
+</div>
+</section>
+<section id="using-a-custom-distance-function" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Using a custom distance function</h1>
+<p>One strength of this framework is that you can plug in <em>any</em> distance function that returns either:</p>
+<ul>
+<li>a numeric matrix, or</li>
+<li>an <code>MDist</code> object (with a <code>$distance</code> matrix).</li>
+</ul>
+<!-- Here is a simple example using a **cosine distance** on the numeric -->
+<!-- variables only. -->
+<!-- ## A cosine distance for numeric predictors -->
+<!-- We first create helper data frames of numeric predictors: -->
+<!-- ```{r cosine-data} -->
+<!-- x_train_num <- peng_train |> select(where(is.numeric)) -->
+<!-- x_test_num  <- peng_test  |> select(where(is.numeric)) -->
+<!-- ``` -->
+<!-- Define a cosine distance function that takes `x` (train) and `new_data`: -->
+<!-- ```{r cosine-fun} -->
+<!-- cosine_dist <- function(x, new_data, ...) { -->
+<!--   A <- as.matrix(x) -->
+<!--   B <- as.matrix(new_data) -->
+<!--   # normalize rows -->
+<!--   A_norm <- A / sqrt(rowSums(A^2)) -->
+<!--   B_norm <- B / sqrt(rowSums(B^2)) -->
+<!--   # cosine similarity -->
+<!--   sim <- A_norm %*% t(B_norm) -->
+<!--   # turn into a distance -->
+<!--   1 - sim -->
+<!-- } -->
+<!-- ``` -->
+<!-- We can compute a distance matrix directly: -->
+<!-- ```{r cosine-direct} -->
+<!-- D_cos <- cosine_dist(x_train_num, x_test_num) -->
+<!-- dim(D_cos) -->
+<!-- ``` -->
+<!-- Or we can wrap it in an `MDist` object if we want to be consistent with -->
+<!-- manydist's internal representation: -->
+<!-- ```{r cosine-mdist} -->
+<!-- D_cos_obj <- MDist$new( -->
+<!--   distance = D_cos, -->
+<!--   preset   = "cosine_custom", -->
+<!--   data     = x_train_num, -->
+<!--   params   = list(type = "cosine") -->
+<!-- ) -->
+<!-- D_cos_obj -->
+<!-- ``` -->
+<!-- ## Using a custom distance in the KNN engine -->
+<!-- We can now fit a distance-based KNN where `dist_fun = cosine_dist`. -->
+<!-- For simplicity, we build a minimal recipe that leaves all predictors as-is; -->
+<!-- the engine will extract the numeric columns inside the distance function. -->
+<!-- ```{r cosine-recipe} -->
+<!-- peng_rec_cos <- recipe(species ~ ., data = peng_train) -->
+<!-- ``` -->
+<!-- Now we define a model specification that uses `cosine_dist` as the -->
+<!-- distance function: -->
+<!-- ```{r cosine-model} -->
+<!-- knn_spec_cos <- nearest_neighbor_dist( -->
+<!--   mode      = "classification", -->
+<!--   neighbors = 7, -->
+<!--   dist_fun  = cosine_dist, -->
+<!--   dist_args = list()   # no extra arguments in this example -->
+<!-- ) |> -->
+<!--   set_engine("precomputed") -->
+<!-- knn_spec_cos -->
+<!-- ``` -->
+<!-- Combine into a workflow and fit: -->
+<!-- ```{r cosine-workflow} -->
+<!-- peng_wf_cos <- workflow() |> -->
+<!--   add_recipe(peng_rec_cos) |> -->
+<!--   add_model(knn_spec_cos) -->
+<!-- peng_fit_cos <- peng_wf_cos |> -->
+<!--   fit(data = peng_train) -->
+<!-- peng_fit_cos -->
+<!-- ``` -->
+<!-- Predict and evaluate: -->
+<!-- ```{r cosine-eval} -->
+<!-- pred_cos <- predict(peng_fit_cos, new_data = peng_test, type = "class") |> -->
+<!--   bind_cols(peng_test |> select(species)) -->
+<!-- pred_cos |> -->
+<!--   accuracy(truth = species, estimate = .pred_class) -->
+<!-- ``` -->
+</section>
+<section id="summary" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Summary</h1>
+<p>In this vignette we showed how <strong>manydist</strong> can be used for distance-based learning on mixed data, with a focus on:</p>
+<ul>
+<li>computing mixed-type distances with <code>mdist()</code> and the <code>MDist</code> class,</li>
+<li>transforming predictors into a distance-based representation with <code>step_mdist()</code>,</li>
+<li>fitting and tuning a KNN model via <code>nearest_neighbor_dist()</code> and tidymodels,</li>
+<li>plugging in a completely custom distance function.</li>
+</ul>
+<p>The <code>palmerpenguins</code> data provides a compact, interpretable example, but the same approach extends seamlessly to more complex mixed-type data sets and other downstream methods that can consume distance-based features.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

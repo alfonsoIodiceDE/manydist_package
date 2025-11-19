@@ -58,7 +58,6 @@ if (!requireNamespace("Rfast", quietly = TRUE)) install.packages("Rfast")
 library(devtools)
 # Adjust the path to your package root as needed
 # devtools::load_all("../manydist")
-
 library(tidyverse)
 library(tidymodels)
 library(palmerpenguins)
@@ -95,12 +94,21 @@ I used R6 class object as an output.
 I created an R6 class that contains instruction of what to print (just recalling the `mdist_object_name`) and a summary function that can be recalled via `mdist_object_name$summary()` or `summary(mdist_object_name)` (the latter is S3 style).
 
 ```{r}
-udep_dist = mdist(x=peng,preset="unbiased_dependent")
+peng_split=initial_split(peng,prop = .7,strata = species)
+tr_peng=training(peng_split)
+ts_peng=testing(peng_split)
 
-udep_dist
+udep_dist = mdist(x=tr_peng,new_data=ts_peng,preset="unbiased_dependent")
+udep_dist$distance
 
+
+
+
+gow_dist = mdist(x=tr_peng,new_data=ts_peng,preset="gower")
+gow_dist$distance
+gow_dist$distance |> as.matrix()
 udep_dist$summary()
-
+udep_dist$distance |> as.matrix()
 summary(udep_dist)
 
 ```

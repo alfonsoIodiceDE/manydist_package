@@ -1,0 +1,516 @@
+---
+title: "Distance-based learning with manydist and tidymodels"
+author: "Alfonso Iodice D’Enza"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    number-sections: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| label: setup
+#| include: true
+
+set.seed(123)
+rm(list=ls())
+devtools::load_all("../")
+# library(manydist)
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+# library(manydist)
+```
+
+# Introduction
+
+The **manydist** package provides a flexible framework for computing
+distance (or dissimilarity) matrices for:
+
+- continuous variables,
+- categorical variables,
+- and genuinely *mixed* data.
+
+It includes:
+
+- the core function `mdist()` for mixed-type distances,
+- a lightweight `MDist` R6 class to store distance matrices and metadata,
+- several *presets* for common mixed-type distances  
+  (e.g. `"gower"`, `"unbiased_dependent"`, `"mod_gower"`, `"gudmm"`, `"dkss"`),
+- integration with **tidymodels** via
+  - a recipe step `step_mdist()` that replaces predictors with distances, and
+  - a custom parsnip model `nearest_neighbor_dist()` that performs
+    k-nearest neighbors using precomputed (or custom) distances.
+
+In this vignette we use the `palmerpenguins` data to show:
+
+1. How to compute mixed-type distances with `mdist()` in base R.
+2. How to use `step_mdist()` to obtain a distance-based representation in a recipe.
+3. How to fit and tune a k-nearest neighbors model based on manydist
+   via `nearest_neighbor_dist()` and `tune_grid()`.
+4. How to plug in a custom distance function.
+
+The focus is on *classification* of penguin species, but the same ideas
+apply to other supervised or unsupervised tasks that rely on pairwise
+distances.
+
+# Data: Palmer Penguins
+
+We start from the `penguins` data and remove rows with missing values.
+
+```{r penguins}
+penguins_clean <- penguins |>
+  drop_na()
+
+penguins_clean |> 
+  count(species)
+```
+
+We create a stratified train/test split:
+
+```{r split}
+set.seed(123)
+peng_split <- initial_split(penguins_clean, strata = species)
+peng_train <- training(peng_split)
+peng_test  <- testing(peng_split)
+
+dim(peng_train)
+dim(peng_test)
+```
+
+# Base R: using `mdist()` directly
+
+In the simplest use case, you call `mdist()` on a data frame with both
+numeric and factor columns.
+
+We first separate predictors and the outcome:
+
+```{r base-mdist}
+x_train <- peng_train |> select(-species)
+x_test  <- peng_test  |> select(-species)
+y_train <- peng_train$species
+y_test  <- peng_test$species
+```
+
+## Computing a mixed-type distance
+
+For example, we can use the `"unbiased_dependent"` preset, which combines
+a dependency-based distance for categorical variables with a Manhattan
+distance on PCA scores for continuous variables:
+
+```{r base-mdist-compute}
+d_obj <- mdist(
+  x        = x_train,
+  new_data = x_test,
+  preset   = "unbiased_dependent"
+)
+
+d_obj
+```
+
+The result is an `MDist` object, which contains a distance matrix and some
+metadata:
+
+```{r base-mdist-inspect}
+class(d_obj)
+# str(d_obj, max.level = 1)
+distance_matrix <- as.matrix(d_obj$distance)
+dim(distance_matrix)
+```
+
+The resulting matrix has:
+
+- one row per *test* observation,
+- one column per *training* observation.
+
+We can build a simple KNN on top of this matrix without tidymodels.
+
+## A simple KNN from a distance matrix
+
+For illustration, we define a minimal helper that performs KNN from a
+distance matrix (rows = test points, columns = train points):
+
+```{r base-knn-helper}
+knn_from_dist <- function(D, y_train, k = 5) {
+  # D: matrix of distances, rows = new points, cols = training points
+  nn_idx <- apply(D, 1L, function(d) order(d)[seq_len(k)])
+  if (is.vector(nn_idx)) nn_idx <- matrix(nn_idx, nrow = 1L)
+
+  lv <- levels(y_train)
+  preds <- apply(nn_idx, 2L, function(idx) {
+    tab <- table(y_train[idx])
+    names(which.max(tab))
+  })
+  factor(preds, levels = lv)
+}
+```
+
+We can now classify the test set:
+
+```{r base-knn-run}
+pred_base <- knn_from_dist(distance_matrix, y_train, k = 5)
+
+yardstick::accuracy_vec(y_test, pred_base)
+```
+
+This shows how `mdist()` and `MDist` can be used in **base R**, without any
+tidymodels machinery.
+
+# Recipes: distance-based representation with `step_mdist()`
+
+To integrate with tidymodels, manydist provides a recipe step:
+
+- `step_mdist()` replaces the original predictors with one column per
+  training observation, each column containing the distance from that
+  training observation.
+
+This allows any downstream model to operate in a distance-based feature
+space.
+
+## Defining a recipe with `step_mdist()`
+
+We build a simple recipe where:
+
+- the outcome is `species`,
+- all other variables are used as predictors,
+- `step_mdist()` computes mixed-type distances using a preset.
+
+```{r rec-mdist}
+peng_rec <- recipe(species ~ ., data = peng_train) |>
+  step_mdist(
+    all_predictors(),
+    preset = "unbiased_dependent"
+  )
+
+peng_rec
+```
+
+When we `prep()` the recipe, `step_mdist()` stores the training predictors
+internally and will later compute distances to new data.
+
+```{r rec-mdist-prep}
+prepped_rec <- peng_rec |> prep()
+
+```
+
+Now we can `bake()` the recipe for both training and test sets:
+
+```{r rec-mdist-bake}
+train_dist <- bake(prepped_rec, new_data = peng_train)
+test_dist  <- bake(prepped_rec, new_data = peng_test)
+
+```
+
+You should see:
+
+- the outcome column `species`,
+- followed by columns named `dist_1`, `dist_2`, ..., `dist_n` (one per training row).
+
+These distance columns can be used as predictors by any parsnip model.
+
+# A distance-based KNN model via parsnip
+
+manydist registers a custom parsnip model:
+
+- `nearest_neighbor_dist()` (a model specification),
+- with a `"precomputed"` engine that uses KNN on top of distances.
+
+There are two main ways to use it:
+
+1. Let the model compute distances internally (using `dist_fun = mdist`).
+2. Use `step_mdist()` in the recipe, and pass `dist_fun = NULL`
+   so the model treats predictors as a distance matrix.
+
+We start with the simpler idiom where **`step_mdist()` does the work**
+and the model just consumes precomputed distances.
+
+## Model specification
+
+We define a KNN model that uses the `"precomputed"` engine and leaves
+distance computation to the recipe:
+
+```{r model-spec}
+knn_spec <- nearest_neighbor_dist(
+  mode      = "classification",
+  neighbors = 5
+)  |> 
+  set_engine("precomputed")
+
+knn_spec
+```
+
+## Workflow
+
+We can now combine the recipe and the model into a workflow:
+
+```{r workflow}
+peng_wf <- workflow() |>
+  add_recipe(peng_rec) |>
+  add_model(knn_spec)
+
+peng_wf
+```
+
+Fitting the workflow:
+
+```{r fit-workflow}
+peng_fit <- peng_wf |>
+  fit(data = peng_train)
+
+```
+
+## Predictions and performance
+
+We obtain class probabilities and predicted classes on the test set:
+
+```{r predict-prob-class}
+peng_pred <- predict(peng_fit, new_data = peng_test, type = "prob") |>
+  bind_cols(
+    predict(peng_fit, new_data = peng_test, type = "class"),
+    peng_test |> select(species)
+  )
+
+peng_pred |>
+  head()
+```
+
+Evaluate accuracy:
+
+```{r eval-acc}
+peng_pred |>
+  accuracy(truth = species, estimate = .pred_class)
+```
+
+For ROC–AUC in the multiclass case, we pass one probability column per
+class:
+
+```{r eval-roc}
+peng_pred |>
+  roc_auc(
+    truth    = species,
+    .pred_Adelie, .pred_Chinstrap, .pred_Gentoo,
+    estimator = "macro"
+  )
+```
+
+
+
+
+# Tuning the number of neighbors with `tune_grid()`
+
+Because `nearest_neighbor_dist()` is registered as a parsnip model,
+we can tune its hyperparameters using `tune_grid()` just like any
+other tidymodels model.
+
+Here we tune the number of neighbors `k`:
+
+```{r tune-spec}
+spec <- nearest_neighbor_dist(neighbors = tune()) |>
+  set_engine("precomputed")
+
+knn_tune_spec <- nearest_neighbor_dist(
+  mode      = "classification",
+  neighbors = tune()   # only tunable param
+) |>
+  set_engine("precomputed")   # <-- no dist_fun, no dist_args
+
+knn_tune_spec
+```
+
+We reuse the same recipe (`peng_rec`) and create a workflow:
+
+```{r tune-workflow}
+peng_wf_tune <- workflow() |>
+  add_recipe(peng_rec) |>
+  add_model(knn_tune_spec)
+```
+
+Set up resampling and a grid of k values:
+
+```{r tune-grid-setup}
+set.seed(123)
+peng_folds <- vfold_cv(peng_train, v = 3, strata = species)
+
+k_grid <- tibble(neighbors = seq(3, 7, by = 2))
+k_grid
+```
+
+Now we run `tune_grid()`.
+For speed on CRAN, you may want to set `eval: false` for this chunk and
+run it locally.
+
+```{r tune-grid, eval=TRUE}
+
+peng_metrics <- metric_set(accuracy, roc_auc)
+
+param_info <- parameters(neighbors())
+param_info
+
+
+tuned_knn <- tune_grid(
+  peng_wf_tune,
+  resamples = peng_folds,
+  grid      = k_grid,
+  metrics   = peng_metrics,
+  param_info = param_info
+)
+
+
+tuned_knn
+```
+
+Inspect the tuning results (replace `eval=FALSE` with `eval=TRUE` if you
+actually run the previous chunk):
+
+```{r tune-results, eval=TRUE}
+collect_metrics(tuned_knn)
+show_best(tuned_knn, metric = "accuracy")
+
+autoplot(tuned_knn)
+```
+
+After choosing the best `k`, you can finalize the workflow:
+
+```{r finalize, eval=TRUE}
+best_k <- select_best(tuned_knn, metric = "accuracy")
+
+final_wf <- peng_wf_tune |>
+  finalize_workflow(best_k)
+
+final_fit <- final_wf |>
+  fit(data = peng_train)
+
+final_pred <- predict(final_fit, new_data = peng_test, type = "class") |>
+  bind_cols(peng_test |> select(species))
+
+final_pred |>
+  accuracy(truth = species, estimate = .pred_class)
+```
+
+# Using a custom distance function
+
+One strength of this framework is that you can plug in *any*
+distance function that returns either:
+
+- a numeric matrix, or
+- an `MDist` object (with a `$distance` matrix).
+
+<!-- Here is a simple example using a **cosine distance** on the numeric -->
+<!-- variables only. -->
+
+<!-- ## A cosine distance for numeric predictors -->
+
+<!-- We first create helper data frames of numeric predictors: -->
+
+<!-- ```{r cosine-data} -->
+<!-- x_train_num <- peng_train |> select(where(is.numeric)) -->
+<!-- x_test_num  <- peng_test  |> select(where(is.numeric)) -->
+<!-- ``` -->
+
+<!-- Define a cosine distance function that takes `x` (train) and `new_data`: -->
+
+<!-- ```{r cosine-fun} -->
+<!-- cosine_dist <- function(x, new_data, ...) { -->
+<!--   A <- as.matrix(x) -->
+<!--   B <- as.matrix(new_data) -->
+
+<!--   # normalize rows -->
+<!--   A_norm <- A / sqrt(rowSums(A^2)) -->
+<!--   B_norm <- B / sqrt(rowSums(B^2)) -->
+
+<!--   # cosine similarity -->
+<!--   sim <- A_norm %*% t(B_norm) -->
+
+<!--   # turn into a distance -->
+<!--   1 - sim -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- We can compute a distance matrix directly: -->
+
+<!-- ```{r cosine-direct} -->
+<!-- D_cos <- cosine_dist(x_train_num, x_test_num) -->
+<!-- dim(D_cos) -->
+<!-- ``` -->
+
+<!-- Or we can wrap it in an `MDist` object if we want to be consistent with -->
+<!-- manydist's internal representation: -->
+
+<!-- ```{r cosine-mdist} -->
+<!-- D_cos_obj <- MDist$new( -->
+<!--   distance = D_cos, -->
+<!--   preset   = "cosine_custom", -->
+<!--   data     = x_train_num, -->
+<!--   params   = list(type = "cosine") -->
+<!-- ) -->
+
+<!-- D_cos_obj -->
+<!-- ``` -->
+
+<!-- ## Using a custom distance in the KNN engine -->
+
+<!-- We can now fit a distance-based KNN where `dist_fun = cosine_dist`. -->
+<!-- For simplicity, we build a minimal recipe that leaves all predictors as-is; -->
+<!-- the engine will extract the numeric columns inside the distance function. -->
+
+<!-- ```{r cosine-recipe} -->
+<!-- peng_rec_cos <- recipe(species ~ ., data = peng_train) -->
+<!-- ``` -->
+
+<!-- Now we define a model specification that uses `cosine_dist` as the -->
+<!-- distance function: -->
+
+<!-- ```{r cosine-model} -->
+<!-- knn_spec_cos <- nearest_neighbor_dist( -->
+<!--   mode      = "classification", -->
+<!--   neighbors = 7, -->
+<!--   dist_fun  = cosine_dist, -->
+<!--   dist_args = list()   # no extra arguments in this example -->
+<!-- ) |> -->
+<!--   set_engine("precomputed") -->
+
+<!-- knn_spec_cos -->
+<!-- ``` -->
+
+<!-- Combine into a workflow and fit: -->
+
+<!-- ```{r cosine-workflow} -->
+<!-- peng_wf_cos <- workflow() |> -->
+<!--   add_recipe(peng_rec_cos) |> -->
+<!--   add_model(knn_spec_cos) -->
+
+<!-- peng_fit_cos <- peng_wf_cos |> -->
+<!--   fit(data = peng_train) -->
+
+<!-- peng_fit_cos -->
+<!-- ``` -->
+
+<!-- Predict and evaluate: -->
+
+<!-- ```{r cosine-eval} -->
+<!-- pred_cos <- predict(peng_fit_cos, new_data = peng_test, type = "class") |> -->
+<!--   bind_cols(peng_test |> select(species)) -->
+
+<!-- pred_cos |> -->
+
+<!--   accuracy(truth = species, estimate = .pred_class) -->
+<!-- ``` -->
+
+# Summary
+
+In this vignette we showed how **manydist** can be used for distance-based
+learning on mixed data, with a focus on:
+
+- computing mixed-type distances with `mdist()` and the `MDist` class,
+- transforming predictors into a distance-based representation with `step_mdist()`,
+- fitting and tuning a KNN model via `nearest_neighbor_dist()` and tidymodels,
+- plugging in a completely custom distance function.
+
+The `palmerpenguins` data provides a compact, interpretable example, but
+the same approach extends seamlessly to more complex mixed-type data sets
+and other downstream methods that can consume distance-based features.

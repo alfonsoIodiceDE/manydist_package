@@ -1,0 +1,78 @@
+---
+title: "manydist: nearest neighbors experiments"
+author: "synthetic data"
+format:
+  html:
+    toc: true
+    code-tools: true
+    code-fold: show
+    embed-resources: true   
+execute:
+  echo: true
+  warning: FALSE
+  message: FALSE
+---
+
+## Setup
+
+```{r, echo=FALSE,message=FALSE,results='hide'}
+rm(list=ls())
+set.seed(123)
+rm(list=ls())
+devtools::load_all("../")
+library(devtools)
+library(tidyverse)
+library(tidymodels)
+library(cluster)
+library(palmerpenguins)
+
+```
+
+
+
+## Data
+
+```{r}
+source("../knn_experiments/genmixdata.R")
+source("../knn_experiments/scenario_params.R")
+
+scenario_structure = tibble(sc_params=scenarios) |> 
+  mutate(
+    dominance = dplyr::case_when(
+    sc_params  |>  purrr::map_dbl(~ .x$target_corr) >= 0.6 &
+      sc_params |> purrr::map_dbl(~ .x$cat_assoc_strength) <= 0.2 ~ "continuous",
+    sc_params |> purrr::map_dbl(~ .x$target_corr) <= 0.2 &
+      sc_params |> purrr::map_dbl(~ .x$cat_assoc_strength) >= 0.6 ~ "categorical",
+    TRUE ~ "balanced"
+  ),
+  noise = ifelse(grepl("_noise$", names(scenarios)), "high", "low"),
+  sc_params = map(.x = sc_params,function(x=.x){
+      y <- factor(sample(seq_len(x$n_classes), x$n, replace = TRUE))
+      x <- within(x, rm(n_classes))  # remove helper field
+      x$y <- y
+      return(x)
+  }),
+  df = map(.x = sc_params,~cbind(do.call(genmixdata,.x),response=.x$y))
+  )
+
+```
+
+##  Distance computations
+
+```{r, eval=TRUE}
+
+set.seed(1)
+
+
+init_sp <- initial_split(scenario_structure$df[[1]],prop=.75)
+
+```
+
+
+- compute distances for each preset (for external method we need to select rows/cols from the resulting distance matrix)
+
+- define a knn on distance matrix (check Rfast for that)
+
+- tune the knn on a reasonable grid of values
+
+- collect the results
