@@ -3,16 +3,16 @@ to_install <- packages[!sapply(packages, requireNamespace, quietly = TRUE)]
 if (length(to_install) > 0) install.packages(to_install)
 invisible(lapply(packages, library, character.only = TRUE))
 
-source("functions.R")
+# source("../knn_experiments/functions.R")
+#
+# source("../knn_experiments/sim_balanced.R")
+# source("../knn_experiments/sim_balanced_noise.R")
+# source("../knn_experiments/sim_numerical.R")
+# source("../knn_experiments/sim_numerical_noise.R")
+# source("../knn_experiments/sim_categorical.R")
+# source("../knn_experiments/sim_categorical_noise.R")
 
-source("sim_balanced.R")
-source("sim_balanced_noise.R")
-source("sim_numerical.R")
-source("sim_numerical_noise.R")
-source("sim_categorical.R")
-source("sim_categorical_noise.R")
-
-load("sim_balanced.RData")
+load("../knn_experiments/sim_balanced.RData")
 ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   geom_boxplot(alpha = 0.7) +
   theme_minimal(base_size = 14) +
@@ -24,7 +24,7 @@ ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   scale_y_continuous(limits = c(0.4, 1)) +
   theme(legend.position = "none")
 
-load("sim_balanced_noise.RData")
+load("../knn_experiments/sim_balanced_noise.RData")
 ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   geom_boxplot(alpha = 0.7) +
   theme_minimal(base_size = 14) +
@@ -36,7 +36,7 @@ ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   scale_y_continuous(limits = c(0.4, 1)) +
   theme(legend.position = "none")
 
-load("sim_numerical.RData")
+load("../knn_experiments/sim_numerical.RData")
 ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   geom_boxplot(alpha = 0.7) +
   theme_minimal(base_size = 14) +
@@ -48,7 +48,7 @@ ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   scale_y_continuous(limits = c(0.6, 1)) +
   theme(legend.position = "none")
 
-load("sim_numerical_noise.RData")
+load("../knn_experiments/sim_numerical_noise.RData")
 ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   geom_boxplot(alpha = 0.7) +
   theme_minimal(base_size = 14) +
@@ -60,7 +60,7 @@ ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   scale_y_continuous(limits = c(0.6, 1)) +
   theme(legend.position = "none")
 
-load("sim_categorical.RData")
+load("../knn_experiments/sim_categorical.RData")
 ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   geom_boxplot(alpha = 0.7) +
   theme_minimal(base_size = 14) +
@@ -72,7 +72,7 @@ ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   scale_y_continuous(limits = c(0.4, 1)) +
   theme(legend.position = "none")
 
-load("sim_categorical_noise.RData")
+load("../knn_experiments/sim_categorical_noise.RData")
 ggplot(acc_summary, aes(x = method, y = accuracy, fill = method)) +
   geom_boxplot(alpha = 0.7) +
   theme_minimal(base_size = 14) +

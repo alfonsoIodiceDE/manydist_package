@@ -5,7 +5,7 @@ format:
   html:
     toc: true
     code-tools: true
-    code-fold: show
+    code-fold: true
     embed-resources: true   
 execute:
   echo: true
@@ -15,11 +15,10 @@ execute:
 
 ## Setup
 
-```{r, echo=FALSE,message=FALSE,results='hide'}
+```{r, echo=FALSE,message=FALSE,results='hide',eval=FALSE}
 rm(list=ls())
 set.seed(123)
-rm(list=ls())
-devtools::load_all("../")
+devtools::load_all("../manydist/")
 library(devtools)
 library(tidyverse)
 library(tidymodels)
@@ -32,47 +31,194 @@ library(palmerpenguins)
 
 ## Data
 
-```{r}
+```{r, eval=FALSE}
 source("../knn_experiments/genmixdata.R")
 source("../knn_experiments/scenario_params.R")
+method = c("euclidean_onehot","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep")
+n_rep=50
 
-scenario_structure = tibble(sc_params=scenarios) |> 
+scenario_structure = tibble(sc_params=scenarios) |>
   mutate(
     dominance = dplyr::case_when(
-    sc_params  |>  purrr::map_dbl(~ .x$target_corr) >= 0.6 &
-      sc_params |> purrr::map_dbl(~ .x$cat_assoc_strength) <= 0.2 ~ "continuous",
-    sc_params |> purrr::map_dbl(~ .x$target_corr) <= 0.2 &
-      sc_params |> purrr::map_dbl(~ .x$cat_assoc_strength) >= 0.6 ~ "categorical",
-    TRUE ~ "balanced"
-  ),
-  noise = ifelse(grepl("_noise$", names(scenarios)), "high", "low"),
-  sc_params = map(.x = sc_params,function(x=.x){
+      sc_params  |>  purrr::map_dbl(~ .x$target_corr) >= 0.6 &
+        sc_params |> purrr::map_dbl(~ .x$cat_assoc_strength) <= 0.2 ~ "continuous",
+      sc_params |> purrr::map_dbl(~ .x$target_corr) <= 0.2 &
+        sc_params |> purrr::map_dbl(~ .x$cat_assoc_strength) >= 0.6 ~ "categorical",
+      TRUE ~ "balanced"
+    ),
+    noise = ifelse(grepl("_noise$", names(scenarios)), "high", "low"), 
+    sc_params = map(.x = sc_params,function(x=.x){
       y <- factor(sample(seq_len(x$n_classes), x$n, replace = TRUE))
       x <- within(x, rm(n_classes))  # remove helper field
       x$y <- y
       return(x)
-  }),
-  df = map(.x = sc_params,~cbind(do.call(genmixdata,.x),response=.x$y))
+    })) |>crossing(rep=1:n_rep) |> 
+  mutate(
+    df = map(.x = sc_params,~cbind(do.call(genmixdata,.x),response=.x$y))
   )
 
-```
-
-##  Distance computations
-
-```{r, eval=TRUE}
-
-set.seed(1)
-
-
-init_sp <- initial_split(scenario_structure$df[[1]],prop=.75)
 
 ```
 
+##  KNN
 
-- compute distances for each preset (for external method we need to select rows/cols from the resulting distance matrix)
+```{r, eval=FALSE}
+# source("../manydist/R/make_mdist_recipe.R")
+# source("../manydist/R/mdist_methods_info.R")
 
-- define a knn on distance matrix (check Rfast for that)
 
-- tune the knn on a reasonable grid of values
+invalid_for_step_mdist <- c("gudmm", "dkss", "mod_gower")
+valid_methods <- setdiff(method, invalid_for_step_mdist)
 
-- collect the results
+
+scenario_structure_w_params <- crossing(scenario_structure, method=valid_methods) |>
+  left_join(mdist_method_lookup, by = "method")
+
+
+
+```
+
+```{r sanity check, eval=FALSE}
+library(recipes)
+
+# pick one row that you know is failing; start with slice(1) then adjust if needed
+row_i <- 3L
+
+test_row <- scenario_structure_w_params |>
+  dplyr::slice(row_i)
+
+
+
+split_i         <- scenario_structure_w_params$df[[3]] |> initial_split(strata=response)
+test_i <- split_i |> testing()
+train_i <- split_i |> training()
+mdist_type_i <- scenario_structure_w_params$mdist_type[[3]]
+preset_i     <- scenario_structure_w_params$mdist_preset[[3]]
+param_set_i  <- scenario_structure_w_params$param_set[[3]]
+
+mdist_type_i
+preset_i
+param_set_i
+
+rec_i <- make_mdist_recipe(
+  df          = df_i,
+  mdist_type  = mdist_type_i,
+  mdist_preset = preset_i,
+  param_set   = param_set_i,
+  outcome     = "response"
+)
+
+prepped_i <- prep(rec_i)
+baked_train_i <- bake(prepped_i, new_data = NULL)
+baked_test_i  <- bake(prepped_i, new_data = test_i)
+
+knn_spec_i <- nearest_neighbor_dist(
+  mode      = "classification",
+  neighbors = 32
+) |> set_engine("precomputed")
+
+wf_i <- workflow(
+  preprocessor = rec_i,
+  spec         = knn_spec_i
+)
+
+fit_res_i <- last_fit(wf_i, split_i)
+collect_metrics(fit_res_i)
+```
+
+
+```{r,eval=FALSE}
+n_neighbors = round(sqrt(1000))
+
+workflow_structure = scenario_structure_w_params |>
+  mutate(
+    init_split=map(.x=df, ~initial_split(.x,prop=.75, strata=response)),
+    tr_df=map(.x=init_split, ~training(.x)),
+    preprocessing = pmap(
+      list(tr_df, mdist_type, mdist_preset, param_set),
+      ~ make_mdist_recipe(
+          df          = ..1,
+          mdist_type  = ..2,
+          mdist_preset = ..3,
+          param_set   = ..4,
+          outcome     = "response"   # or your actual outcome variable
+        )
+    ),
+    prepped_rec=map(.x=preprocessing,~prep(.x)),
+    knn_spec = map(.x= preprocessing,~nearest_neighbor_dist(
+                                               mode = "classification",
+                                               neighbors = n_neighbors) |> set_engine("precomputed")
+    ),
+    knn_wf= map2(.x=preprocessing,.y=knn_spec,~workflow(preprocessor = .x,spec = .y)),
+    test_fit =map2(.x=init_split,.y=knn_wf,~.y |> last_fit(.x)),  
+    metrics =map(.x=test_fit,~collect_metrics(.x))
+  )
+  
+selected_results = workflow_structure |> dplyr::select(dominance, noise, method,metrics,rep)
+
+save(file="wf_structure_50_rep.RData",selected_results)
+
+
+
+```
+
+
+
+```{r}
+library(tidyverse)
+load(file="wf_structure_50_rep.RData")
+
+results_long <- selected_results |>
+  tidyr::unnest(metrics)
+
+results_accuracy <- results_long |>
+  dplyr::filter(.metric == "accuracy")
+
+```
+```{r}
+method_levels <- c("baseline", "naive", "hl", "hl_add", "gower",
+                   "gudmm", "dkps", "mod_gower", "u_ind", "u_dep")
+
+
+my_colors <- c(
+  # Set B
+  # "baseline"    = "#8c564b",
+  "naive"       = "#e377c2",
+  "hl"          = "#bcbd22",
+  # "gudmm"       = "#ff7f0e",
+  # "dkps"        = "#A9A9A9",  # dark grey
+
+  # Set A
+  "hl_add"      = "#1f77b4",
+  "u_ind"       = "#2ca02c",
+  "u_dep"       = "#d62728",
+  "gower"       = "#FFBF00"
+  # "mod_gower"   = "#9467bd"
+)
+
+my_shapes <- c(
+  # "baseline"    = 16,  # filled circle
+  "naive"       = 17,  # filled triangle
+  "hl"          = 15,  # filled square
+  "hl_add"      = 3,   # plus
+  "gower"       = 4,   # cross
+  # "gudmm"       = 18,  # filled diamond
+  # "dkps"        = 8,   # star
+  # "mod_gower"   = 0,   # empty square
+  "u_ind"       = 1,   # empty circle
+  "u_dep"       = 2    # empty triangle
+)
+
+
+results_accuracy |> group_by(dominance, noise,method) |> 
+  ggplot(mapping=aes(x=method,y=.estimate, fill=method))+
+  geom_boxplot()+facet_grid(noise~dominance)+ theme_bw()+
+   theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+    theme(legend.position = "none")+
+  ylab("accuracy") + xlab("methods")+
+  scale_fill_manual(values = my_colors) 
+
+```
+
+
+
