@@ -1,3 +1,18 @@
+#' Build a recipe that computes mdist-based distance features
+#'
+#' @description
+#' This helper creates a tidymodels recipe using step_mdist().
+#' It supports both mdist presets and custom param sets.
+#'
+#' @param df A data frame.
+#' @param mdist_type "preset" or "custom".
+#' @param mdist_preset Name of the preset (if mdist_type == "preset").
+#' @param param_set A list of custom mdist arguments (if mdist_type == "custom").
+#' @param outcome Name of the outcome variable.
+#'
+#' @return A `recipes::recipe()` object.
+#'
+#' @export
 make_mdist_recipe <- function(df, mdist_type, mdist_preset, param_set, outcome) {
   # 1. Outcome must exist
   if (!outcome %in% names(df)) {

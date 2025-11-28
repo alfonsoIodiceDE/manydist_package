@@ -116,7 +116,7 @@ ndist = function (x, validate_x = NULL, commensurable = TRUE, method = "manhatta
       if (is.null(validate_x)) {
         by_var_dist = map(.x = as_tibble(x), .f = function(x = .x) {
           b_v_d = daisy(data.frame(x), metric = method,
-                        warnBin = FALSE) |> as_matrix()
+                        warnBin = FALSE) |> as.matrix()
           return(b_v_d)
         })
       }else {

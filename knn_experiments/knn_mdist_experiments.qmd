@@ -15,7 +15,7 @@ execute:
 
 ## Setup
 
-```{r, echo=FALSE,message=FALSE,results='hide',eval=FALSE}
+```{r, echo=FALSE,message=FALSE,results='hide',eval=TRUE}
 rm(list=ls())
 set.seed(123)
 devtools::load_all("../manydist/")
@@ -31,11 +31,11 @@ library(palmerpenguins)
 
 ## Data
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 source("../knn_experiments/genmixdata.R")
 source("../knn_experiments/scenario_params.R")
 method = c("euclidean_onehot","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep")
-n_rep=50
+n_rep=10
 
 scenario_structure = tibble(sc_params=scenarios) |>
   mutate(
@@ -62,7 +62,7 @@ scenario_structure = tibble(sc_params=scenarios) |>
 
 ##  KNN
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # source("../manydist/R/make_mdist_recipe.R")
 # source("../manydist/R/mdist_methods_info.R")
 
@@ -78,30 +78,36 @@ scenario_structure_w_params <- crossing(scenario_structure, method=valid_methods
 
 ```
 
+### check that `mdist` and `step_mdist` provide the same results
+
 ```{r sanity check, eval=FALSE}
 library(recipes)
 
 # pick one row that you know is failing; start with slice(1) then adjust if needed
-row_i <- 3L
-
+row_i <- 5L
 test_row <- scenario_structure_w_params |>
   dplyr::slice(row_i)
+test_row
 
-
-
-split_i         <- scenario_structure_w_params$df[[3]] |> initial_split(strata=response)
+split_i         <- scenario_structure_w_params$df[[row_i]] |> initial_split(strata=response)
 test_i <- split_i |> testing()
 train_i <- split_i |> training()
-mdist_type_i <- scenario_structure_w_params$mdist_type[[3]]
-preset_i     <- scenario_structure_w_params$mdist_preset[[3]]
-param_set_i  <- scenario_structure_w_params$param_set[[3]]
+mdist_type_i <- scenario_structure_w_params$mdist_type[[row_i]]
+preset_i     <- scenario_structure_w_params$mdist_preset[[row_i]]
+param_set_i  <- scenario_structure_w_params$param_set[[row_i]]
+param_set_i_md = param_set_i
 
-mdist_type_i
-preset_i
-param_set_i
+param_set_i_md$x = train_i |> dplyr::select(-response)
+param_set_i_md$new_data = test_i |> dplyr::select(-response)
+param_set_i_md$preset = preset_i
+
+plain_mdist_output = do.call(mdist,args = param_set_i_md)
+# distance_cont="euclidean",distance_cat="HLeucl",commensurable = FALSE, scaling_cont="std")
+dist_mat_i = plain_mdist_output$distance |> as.matrix()
+
 
 rec_i <- make_mdist_recipe(
-  df          = df_i,
+  df          = train_i,
   mdist_type  = mdist_type_i,
   mdist_preset = preset_i,
   param_set   = param_set_i,
@@ -110,8 +116,15 @@ rec_i <- make_mdist_recipe(
 
 prepped_i <- prep(rec_i)
 baked_train_i <- bake(prepped_i, new_data = NULL)
-baked_test_i  <- bake(prepped_i, new_data = test_i)
 
+baked_train_i
+
+baked_test_i  <- bake(prepped_i, new_data = test_i )
+(baked_test_i |> dplyr::select(dist_1:dist_5) |> slice(1:5) |> as.matrix())/dist_mat_i[1:5,1:5]
+```
+
+
+```{r sanity check, eval=FALSE}
 knn_spec_i <- nearest_neighbor_dist(
   mode      = "classification",
   neighbors = 32
@@ -127,7 +140,7 @@ collect_metrics(fit_res_i)
 ```
 
 
-```{r,eval=FALSE}
+```{r,eval=TRUE}
 n_neighbors = round(sqrt(1000))
 
 workflow_structure = scenario_structure_w_params |>

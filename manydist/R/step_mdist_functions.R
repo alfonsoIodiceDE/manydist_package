@@ -108,33 +108,77 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_mdist <- function(object, new_data, ...) {
-  # Correct recipes idiom:
+
   recipes::check_new_data(object$columns, object, new_data)
 
   pred_mat <- new_data[, object$columns, drop = FALSE]
 
-  if (object$preset == "custom") {
-    d_obj <- mdist(
-      x             = object$train_predictors,
-      new_data      = pred_mat,
-      distance_cont = object$distance_cont,
-      distance_cat  = object$distance_cat,
-      commensurable = object$commensurable,
-      scaling_cont  = object$scaling_cont,
-      ncomp         = object$ncomp,
-      threshold     = object$threshold,
-      preset        = "custom"
+  ## ---- Detect if we're baking the training set ----
+  same_n     <- nrow(pred_mat) == nrow(object$train_predictors)
+  same_p     <- ncol(pred_mat) == ncol(object$train_predictors)
+  same_names <- identical(colnames(pred_mat), colnames(object$train_predictors))
+
+  if (same_n && same_p && same_names) {
+    # only now we try equality; no warnings on different sizes
+    is_training <- isTRUE(
+      all.equal(
+        pred_mat,
+        object$train_predictors,
+        check.attributes = FALSE
+      )
     )
   } else {
-    d_obj <- mdist(
-      x        = object$train_predictors,
-      new_data = pred_mat,
-      preset   = object$preset
-    )
+    is_training <- FALSE
+  }
+  ## -------------------------------------------------
+
+  if (object$preset == "custom") {
+
+    if (is_training) {
+      # training: within-sample branch in mdist (validate_x is NULL)
+      d_obj <- mdist(
+        x             = object$train_predictors,
+        distance_cont = object$distance_cont,
+        distance_cat  = object$distance_cat,
+        commensurable = object$commensurable,
+        scaling_cont  = object$scaling_cont,
+        ncomp         = object$ncomp,
+        threshold     = object$threshold,
+        preset        = "custom"
+      )
+    } else {
+      # test / new data: train–test distances
+      d_obj <- mdist(
+        x             = object$train_predictors,
+        new_data      = pred_mat,
+        distance_cont = object$distance_cont,
+        distance_cat  = object$distance_cat,
+        commensurable = object$commensurable,
+        scaling_cont  = object$scaling_cont,
+        ncomp         = object$ncomp,
+        threshold     = object$threshold,
+        preset        = "custom"
+      )
+    }
+
+  } else { # preset != "custom"
+
+    if (is_training) {
+      d_obj <- mdist(
+        x      = object$train_predictors,
+        preset = object$preset
+      )
+    } else {
+      d_obj <- mdist(
+        x        = object$train_predictors,
+        new_data = pred_mat,
+        preset   = object$preset
+      )
+    }
+
   }
 
   d_mat <- as.matrix(d_obj$distance)
-
   n_train <- nrow(object$train_predictors)
   colnames(d_mat) <- paste0("dist_", seq_len(n_train))
 
