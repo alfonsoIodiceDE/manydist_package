@@ -175,6 +175,15 @@ mdist <- function(x,new_data=NULL,response=NULL, distance_cont="manhattan", dist
 
         distance_mat = cat_dist_mat + cont_dist_mat
       }
+
+      if(interaction){
+        i_distance_matrix <- idist(D = cont_dist_mat, cat_data = df_cat, pi_nn = 0.2, decision = "prior_corrected")
+        rho_w = 1/ncol(df_cat)
+        # distance_matrix = cont_dist_mat + (1-rho_w)*cat_dist_mat + rho_w * i_distance_matrix
+        distance_mat = cont_dist_mat + (ncol(df_cat))/(ncol(df_cont) )*(cat_dist_mat + i_distance_matrix)
+        # distance_matrix = cont_dist_mat + cat_dist_mat + rho_w*i_distance_matrix
+      }
+
     } else if(preset == "euclidean_onehot"){
 
       distance_cont = "euclidean"
@@ -511,7 +520,8 @@ mdist <- function(x,new_data=NULL,response=NULL, distance_cont="manhattan", dist
         distance_mat = ndist(x=cont_data,validate_x=cont_data_val,
                              method = distance_cont,
                              commensurable = commensurable,
-                             scaling=scaling_cont)  |>  as.matrix()
+                             scaling=scaling_cont,
+                             interaction=FALSE)  |>  as.matrix()
 
       }
 
