@@ -39,7 +39,7 @@ Imports: cluster, data.table, distances, dplyr,
           philentropy, purrr, readr, recipes, Rfast, 
           rsample,  stats, tibble, tidyr, 
           tidyselect, tune, parsnip, rlang 
-Depends: R (>= 4.1.0)  
+Depends: R (>= 4.5.0)  
 Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType
 License: GPL-3
 Encoding: UTF-8
