@@ -55,19 +55,33 @@ mdist <- function(x,new_data=NULL,response=NULL, distance_cont="manhattan", dist
   if (ncol(cont_data) == 0)
     cont_data = NULL
 
+  # --- Apply preset defaults for later consistency with continuous only and categorical only ---
+  if (preset == "unbiased_dependent") {
+    distance_cont <- "manhattan"
+    distance_cat  <- "tot_var_dist"
+    commensurable <- TRUE
+    scaling_cont  <- "pc_scores"
+  }
 
-  # Check if tot_var_dist is specified but only one categorical variable exists
-  if (!is.null(cat_data) && distance_cat == "tot_var_dist" && ncol(cat_data) == 1 && preset=="custom" ) {
-    warning("'tot_var_dist' requires more than one categorical variable. Switching to 'matching' distance.")
+  if (preset == "euclidean_onehot") {
+    distance_cont <- "euclidean"
+    commensurable <- FALSE
+    scaling_cont  <- "std"
+  }
+
+
+  # --- Robust fallbacks for all presets ---
+  if (!is.null(cat_data) && distance_cat == "tot_var_dist" && ncol(cat_data) == 1) {
+    warning("'tot_var_dist' requires >1 categorical variable. Switching to 'matching'.", call. = FALSE)
     distance_cat <- "matching"
   }
 
-  # Check if pc_scores scaling_cont is specified but only one continuous variable exists
   if (!is.null(cont_data) && scaling_cont == "pc_scores" && ncol(cont_data) == 1) {
-    warning("With only one variable, PCA produces a single component identical to standardization. Consider using scaling_cont = \"std\" instead.")
-
+    warning("With 1 continuous variable, 'pc_scores' is equivalent to standardization. Switching to scaling_cont='std'.",
+            call. = FALSE)
+    scaling_cont <- "std"
+    # (or scaling_cont <- "none", depending on how ndist defines "std")
   }
-
   if(!is.null(validate_x)){
     cat_data_val  = validate_x %>% dplyr::select(where(is.factor))
     cont_data_val = validate_x %>% dplyr::select(where(is.numeric))
@@ -330,7 +344,11 @@ mdist <- function(x,new_data=NULL,response=NULL, distance_cont="manhattan", dist
 
     }else if(preset == "euclidean_onehot"){
 
-      commensurable = FALSE
+
+      distance_cont <- "euclidean"
+      commensurable <- FALSE
+      scaling_cont  <- "std"
+
 
 
       dummy_recipe = recipe(~.,data=cat_data) |> step_dummy(all_nominal(),one_hot = TRUE)

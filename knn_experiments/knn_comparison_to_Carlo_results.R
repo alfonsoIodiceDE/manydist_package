@@ -32,16 +32,24 @@ test_df_full$y <- y_ts
 ## ------------------------------------------------------------
 
 method_map <- tibble::tibble(
-  method_code   = c("g",      "oh",              "udep",               "uind"),
-  dist_obj_name = c("dist_g", "dist_oh",         "dist_udep",         "dist_uind"),
-  acc_col       = c(1L,       2L,                3L,                  4L),
-  mdist_type    = c("preset", "preset",          "preset",            "custom"),
-  mdist_preset  = c("gower",  "euclidean_onehot","unbiased_dependent",NA_character_),
+  method_code   = c("g",      "oh",        "udep",      "udep",               "uind"),
+  dist_obj_name = c("dist_g", "dist_oh",  "dist_udep",  "dist_udep",         "dist_uind"),
+  acc_col       = c(1L,       2L,                3L,                  4L, 5L),
+  mdist_type    = c("preset", "preset",          "preset",    "custom"  ,      "custom"),
+  mdist_preset  = c("gower",  "euclidean_onehot","unbiased_dependent",NA_character_ , NA_character_),
   param_set     = list(
     NULL,  # g
     NULL,  # oh
     NULL,  # udep
     # uind: unbiased independent, Carlo-style
+    list(
+      preset        = "custom",
+      distance_cont = "manhattan",
+      distance_cat  = "tot_var_dist",
+      scaling_cont="std",
+      commensurable = TRUE
+      # add scaling_cont etc. here if you need to match old defaults
+    ),
     list(
       preset        = "custom",
       distance_cont = "manhattan",
@@ -55,12 +63,14 @@ method_map <- tibble::tibble(
 ## Result containers
 dist_comp_results <- list()
 knn_comp_results  <- list()
-
+acc[]
 ## ------------------------------------------------------------
 ## 3. Loop over the four distance methods
 ## ------------------------------------------------------------
 
 for (ii in seq_len(nrow(method_map))) {
+
+
   this_method   <- method_map$method_code[ii]
   this_distname <- method_map$dist_obj_name[ii]
   acc_col       <- method_map$acc_col[ii]
@@ -101,6 +111,7 @@ for (ii in seq_len(nrow(method_map))) {
   cat("Carlo distance matrix dim (train x test): ",
       paste(dim(dist_carlo), collapse = " x "), "\n")
 
+
   # Carlo: train x test; tidymodels: test x train
   # So we compare t(dist_carlo) to dist_test_train_tm
   max_abs_diff_dist <- max(abs(dist_test_train_tm - t(dist_carlo)))
@@ -129,7 +140,8 @@ for (ii in seq_len(nrow(method_map))) {
     acc_k_from_tm_dists[k] <- compute_accuracy(preds_k, y_ts)
   }
 
-  acc_carlo <- acc[, acc_col]
+
+  if(acc_col>=4){acc_carlo=acc[,acc_col-1]}else{acc_carlo <- acc[, acc_col]}
 
   max_abs_diff_acc_carlo_vs_tm_dists <-
     max(abs(acc_carlo - acc_k_from_tm_dists))

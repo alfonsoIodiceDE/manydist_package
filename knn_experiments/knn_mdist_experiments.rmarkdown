@@ -24,7 +24,7 @@ library(tidyverse)
 library(tidymodels)
 library(cluster)
 library(palmerpenguins)
-  
+
 ```
 
 
@@ -35,7 +35,7 @@ library(palmerpenguins)
 source("../knn_experiments/genmixdata.R")
 source("../knn_experiments/scenario_params.R")
 method = c("euclidean_onehot","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep", "u_dep_manh")
-n_rep=20
+n_rep=50
 
 scenario_structure = tibble(sc_params=scenarios) |>
   mutate(
@@ -81,103 +81,51 @@ scenario_structure_w_params <- crossing(scenario_structure, method=valid_methods
 ### check that `mdist` and `step_mdist` provide the same results
 
 
-### Test to train distance computations
 
-```{r, eval=TRUE}
+
+```{r,eval=TRUE}
 n_neighbors = round(sqrt(1000))
 
 workflow_structure = scenario_structure_w_params |>
   mutate(
-    # This may already be a bit costly
-    init_split = purrr::map(
-      .x = df,
-      ~ initial_split(.x, prop = .75, strata = response),
-      .progress = TRUE   # progress here
-    ),
-
-    tr_df = purrr::map(
-      .x = init_split,
-      ~ training(.x),
-      .progress = TRUE   # and here
-    ),
-
-    preprocessing = purrr::pmap(
+    init_split=map(.x=df, ~initial_split(.x,prop=.75, strata=response)),
+    tr_df=map(.x=init_split, ~training(.x)),
+    preprocessing = pmap(
       list(tr_df, mdist_type, mdist_preset, param_set),
       ~ make_mdist_recipe(
-          df           = ..1,
-          mdist_type   = ..2,
+          df          = ..1,
+          mdist_type  = ..2,
           mdist_preset = ..3,
-          param_set    = ..4,
-          outcome      = "response"
-        ),
-      .progress = TRUE   # building recipes can be slow
+          param_set   = ..4,
+          outcome     = "response"   # or your actual outcome variable
+        )
     ),
-
-    prepped_rec = purrr::map(
-      .x = preprocessing,
-      ~ prep(.x),
-      .progress = TRUE
-    )
-    )
-```
-
-### KNN predictions
-
-```{r, eval=TRUE}
-workflow_structure = workflow_structure |>
-  mutate(
-    knn_spec = purrr::map(
-      .x = preprocessing,
-      ~ nearest_neighbor_dist(
-          mode      = "classification",
-          neighbors = n_neighbors
-        ) |> set_engine("precomputed"),
-      .progress = TRUE
+    prepped_rec=map(.x=preprocessing,~prep(.x)),
+    knn_spec = map(.x= preprocessing,~nearest_neighbor_dist(
+                                               mode = "classification",
+                                               neighbors = n_neighbors) |> set_engine("precomputed")
     ),
-
-    knn_wf = purrr::map2(
-      .x = preprocessing,
-      .y = knn_spec,
-      ~ workflow(preprocessor = .x, spec = .y),
-      .progress = TRUE
-    ),
-
-    # 🔴 This is usually the *really* heavy bit
-    test_fit = purrr::map2(
-      .x = init_split,
-      .y = knn_wf,
-      ~ .y |> last_fit(.x),
-      .progress = TRUE   # main progress bar here
-    )
-    )
-```
-
-### collecting metrics
-
-```{r, eval=TRUE}
-workflow_structure = workflow_structure |>
-  mutate(
-    metrics = purrr::map(
-      .x = test_fit,
-      ~ collect_metrics(.x),
-      .progress = TRUE
-    )
+    knn_wf= map2(.x=preprocessing,.y=knn_spec,~workflow(preprocessor = .x,spec = .y)),
+    test_fit =map2(.x=init_split,.y=knn_wf,~.y |> last_fit(.x)),  
+    metrics =map(.x=test_fit,~collect_metrics(.x))
   )
+  
+selected_results = workflow_structure |> dplyr::select(dominance, noise, method,metrics,rep)
 
-selected_results = workflow_structure |> 
-  dplyr::select(dominance, noise, method, metrics, rep)
+results_name=paste0("wf_structure_",n_rep,"_rep.RData")
+save(file=results_name,selected_results)
 
-results_name = paste0("wf_structure_", n_rep, "_rep.RData")
-save(file = results_name, selected_results)
 
 
 ```
+
+
 
 ```{r}
 library(tidyverse)
 load(file=results_name)
 
-results_long <- selected_results |> dplyr::filter(method != "hl_add") |> 
+results_long <- selected_results |>
   tidyr::unnest(metrics)
 
 results_accuracy <- results_long |>
@@ -221,7 +169,7 @@ my_shapes <- c(
 )
 
 
-knn_exp_plot=results_accuracy |> group_by(dominance, noise,method) |> 
+results_accuracy |> group_by(dominance, noise,method) |> 
   ggplot(mapping=aes(x=method,y=.estimate, fill=method))+
   geom_boxplot()+facet_grid(noise~dominance)+ theme_bw()+
    theme(axis.text.x = element_text(angle = 60, hjust = 1))+
@@ -229,38 +177,8 @@ knn_exp_plot=results_accuracy |> group_by(dominance, noise,method) |>
   ylab("accuracy") + xlab("methods")+
   scale_fill_manual(values = my_colors) 
 
-plotname= paste0(results_name |> str_remove(".RData"),"_knn_plot.pdf")
-ggsave(filename = plotname,knn_exp_plot,width=8,height = 4)
-
 ```
 
 
-### PAM experiment
 
-```{r}
-scenario_structure_w_params_pam <- crossing(scenario_structure, method=method) |>
-  left_join(mdist_method_lookup, by = "method") |> dplyr::filter(rep<6) |>
-  mutate(
-    preprocessing = purrr::pmap(
-      list(df, mdist_type, mdist_preset, param_set),
-      ~ make_mdist_recipe(
-        df           = ..1,
-        mdist_type   = ..2,
-        mdist_preset = ..3,
-        param_set    = ..4,
-        outcome      = "response"
-      ),
-      .progress = TRUE   # building recipes can be slow
-    ),
-    
-    prepped_rec = purrr::map(
-      .x = preprocessing,
-      ~ prep(.x),
-      .progress = TRUE
-    )
-  )
-
-  
-
-```
 
