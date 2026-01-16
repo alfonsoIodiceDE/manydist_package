@@ -38,9 +38,9 @@ Imports: cluster, data.table, distances, dplyr,
           fpc, ggplot2, magrittr,  Matrix, 
           philentropy, purrr, readr, recipes, Rfast, 
           rsample,  stats, tibble, tidyr, 
-          tidyselect, tune
+          tidyselect, tune, parsnip, rlang 
 Depends: R (>= 4.1.0)  
-Suggests: palmerpenguins
+Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

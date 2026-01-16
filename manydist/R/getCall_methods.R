@@ -1,3 +1,6 @@
+#' @importFrom stats getCall
+NULL
+
 #' @export
 #' @method getCall knn_dist
 getCall.knn_dist <- function(x, ...) {
@@ -12,8 +15,14 @@ getCall.knn_dist <- function(x, ...) {
 }
 
 #' @export
-#' @method getCall nearest_neighbor_dist
-getCall.nearest_neighbor_dist <- function(x, ...) {
+#' @method getCall model_spec
+getCall.model_spec <- function(x, ...) {
+  # Only handle your custom model; otherwise fall back
+  if (!identical(x$method$pkg, "manydist") ||
+      !identical(x$method$fun, "nearest_neighbor_dist")) {
+    return(NextMethod())
+  }
+
   arg_exprs <- lapply(x$args, rlang::quo_get_expr)
 
   rlang::call2(

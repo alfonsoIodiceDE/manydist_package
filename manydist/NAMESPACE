@@ -2,7 +2,7 @@
 
 S3method(bake,step_mdist)
 S3method(getCall,knn_dist)
-S3method(getCall,nearest_neighbor_dist)
+S3method(getCall,model_spec)
 S3method(ggplot2::autoplot,MDistLOVO)
 S3method(prep,step_mdist)
 S3method(print,MDistLOVO)
