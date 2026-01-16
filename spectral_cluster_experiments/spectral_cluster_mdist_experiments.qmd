@@ -30,6 +30,7 @@ library(palmerpenguins)
 ## Data
 
 ```{r, eval=TRUE}
+pengs = palmerpenguins::penguins |> na.omit()
 method = c("euclidean_onehot","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep", "u_dep_manh")
 
 ```

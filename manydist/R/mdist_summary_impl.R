@@ -1,15 +1,15 @@
 #' Internal: summary method implementation for MDist R6 objects
 mdist_summary_impl <- function(object, ...) {
   `%||%` <- function(x, y) if (is.null(x)) y else x
-  
+
   d <- object$distance
   if (is.null(d)) {
     cat("MDist summary\n  Preset :", object$preset, "\n  <no distance stored>\n")
     return(invisible(object))
   }
-  
+
   is_dist <- inherits(d, "dist")
-  
+
   # Dimensions without full materialization
   if (is_dist) {
     n <- attr(d, "Size")
@@ -20,8 +20,8 @@ mdist_summary_impl <- function(object, ...) {
     n_row <- dm[1]; n_col <- dm[2]
     is_square <- (n_row == n_col)
   }
-  
-  # Helper: fetch a tiny block (≤10×10) for cheap diagnostics/preview
+
+  # Helper: fetch a tiny block (~10x10) for cheap diagnostics/preview
   get_block <- function(x, k = 10) {
     if (inherits(x, "dist")) {
       idx <- seq_len(min(k, attr(x, "Size")))
@@ -33,7 +33,7 @@ mdist_summary_impl <- function(object, ...) {
     }
   }
   block <- get_block(d)
-  
+
   # Stats (exclude diagonal for square matrices). For dist, use the vector form directly.
   if (is_dist) {
     dv <- as.numeric(d)
@@ -53,14 +53,14 @@ mdist_summary_impl <- function(object, ...) {
     na_cnt <- sum(is.na(b))
     inf_cnt <- sum(is.infinite(b))
   }
-  
+
   # Cheap symmetry & diagonal checks (on block only when applicable)
   diag_zero <- if (is_square) all(diag(block) == 0) else NA
   approx_sym <- if (is_square) {
     max_abs_diff <- max(abs(block - t(block)), na.rm = TRUE)
     max_abs_diff < 1e-12
   } else NA
-  
+
   # Optional: quick-and-dirty triangle inequality check on the block
   tri_viol_rate <- if (is_square && nrow(block) >= 3) {
     k <- nrow(block)
@@ -77,19 +77,19 @@ mdist_summary_impl <- function(object, ...) {
     }
     if (tot > 0) v / tot else NA_real_
   } else NA_real_
-  
+
   p <- object$params %||% list()
   has_cont <- !is.null(p$cont_p) && isTRUE(p$cont_p > 0)
   has_cat  <- !is.null(p$cat_p)  && isTRUE(p$cat_p  > 0)
-  
+
   cat("MDist summary\n")
   cat("  Preset :", object$preset, "\n")
   if (is_square) cat("  Observations :", n_row, "\n")
-  else           cat("  Train–test matrix :", n_col, "train ×", n_row, "test\n")
-  
+  else           cat("  Train-test matrix :", n_col, "train x", n_row, "test\n")
+
   if (!is.null(p$cont_p)) cat("  Continuous vars :", p$cont_p, "\n")
   if (!is.null(p$cat_p))  cat("  Categorical vars:", p$cat_p, "\n")
-  
+
   cat("\nDistance matrix statistics",
       if (!is_dist && is_square) " (on preview block)" else if (!is_dist) " (on preview block)" else "",
       ":\n", sep = "")
@@ -109,7 +109,7 @@ mdist_summary_impl <- function(object, ...) {
   cat("  Inf count",
       if (is_dist) "" else " (block)",
       ":", inf_cnt, "\n\n", sep = "")
-  
+
   msg <- if (has_cont && has_cat) {
     paste0(if (isTRUE(p$commensurable)) "Commensurable" else "Non-commensurable",
            " mixed-type distance combining ",
@@ -121,6 +121,6 @@ mdist_summary_impl <- function(object, ...) {
     paste("Purely categorical distance using", p$distance_cat %||% "<unspecified>", "metric.")
   } else "Empty or untyped distance object."
   cat(msg, "\n")
-  
+
   invisible(object)
 }

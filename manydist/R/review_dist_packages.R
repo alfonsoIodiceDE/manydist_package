@@ -8,17 +8,17 @@ competitor_pkgs <- c(
   "proxy",          # many distance metrics + custom ones
   "parallelDist",   # multithreaded distance computation
   "Rfast",          # fast C++ distances for large matrices
-  
+
   # --- Categorical / binary ---
   "klaR",           # kmodes -> simple matching distance
   "arules",         # dissimilarities on transactions (Jaccard, cosine, etc.)
-  
+
   # --- Mixed (numeric + categorical) ---
   "cluster",        # daisy(metric = "gower")
   "FD",             # gowdis()
   "StatMatch",      # gower.dist()
   "gower",          # fast C implementation of Gower
-  "clustMixType"    # kproto (Gower variant and λ-weighted)
+  "clustMixType"    # kproto (Gower variant and lambda-weighted)
 )
 
 # Identify missing packages
@@ -30,7 +30,7 @@ if (length(missing_pkgs) > 0) {
   cat(paste0("  - ", missing_pkgs, collapse = "\n"), "\n")
   install.packages(missing_pkgs, dependencies = TRUE)
 } else {
-  cat("✅ All competitor packages are already installed.\n")
+  cat("OK: All competitor packages are already installed.\n")
 }
 
 # Load all packages quietly
@@ -38,5 +38,5 @@ suppressPackageStartupMessages(
   lapply(competitor_pkgs, require, character.only = TRUE)
 )
 
-cat("\n📦 Competitor packages loaded successfully:\n")
+cat("\nCompetitor packages loaded successfully:\n")
 print(competitor_pkgs)

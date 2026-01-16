@@ -1,4 +1,4 @@
-ndist = function (x, validate_x = NULL, commensurable = TRUE, method = "manhattan",
+ndist = function (x, validate_x = NULL, commensurable = FALSE, method = "manhattan",
                   sig = NULL, scaling = "none", ncomp = ncol(x), threshold = NULL,
                   weights = rep(1, ncol(x)))
 {
