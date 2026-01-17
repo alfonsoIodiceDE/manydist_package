@@ -1,41 +1,75 @@
-set.seed(123)
-library(mvtnorm)
-library(dplyr)
-library(aricode)
-library(cluster)    
-library(mvtnorm)
-library(dplyr)
+# set.seed(123)
+# library(mvtnorm)
+# library(dplyr)
+# library(aricode)
+# library(cluster)
+# library(mvtnorm)
+# library(dplyr)
+# library(manydist)
+# library(tidyverse)
+# library(FPDclustering)
+# source("R/delta_knn_ba.R")
+# pengs = palmerpenguins::penguins |> na.omit()
+#
+# data(Star)
+#
+# # load(file="Xkp.RData")
+# # load(file="XkpEasy.rdata")
+# # load(file="XkpMedium.rdata")
+# #
+# dfc = XkpMedium |> as_tibble()
+# dfc = pengs |> as_tibble() |> select(-species,-year)
+#
+# star = Star |> select(-Type) |> mutate(across(where(is.character), as.factor))
+
+
+# options(repos = c(CRAN = "https://cloud.r-project.org"))
+#
+# install.packages(c("parallelDist","klaR","arules","FD","StatMatch","clustMixType"))
+#
+# remotes::install_github("alfonsoIodiceDE/manydist_package", subdir = "manydist")
+
+
+if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("palmerpenguins", quietly = TRUE)) install.packages("palmerpenguins")
+if (!requireNamespace("cluster", quietly = TRUE)) install.packages("cluster")
+if (!requireNamespace("recipes", quietly = TRUE)) install.packages("recipes")
+if (!requireNamespace("Rfast", quietly = TRUE)) install.packages("Rfast")
+
+library(devtools)
 library(manydist)
+# Adjust the path to your package root as needed
+# devtools::load_all("../manydist")
 library(tidyverse)
-library(FPDclustering)
-source("R/delta_knn_ba.R")
-pengs = palmerpenguins::penguins |> na.omit()
-
-data(Star)
-
-# load(file="Xkp.RData")
-# load(file="XkpEasy.rdata")
-# load(file="XkpMedium.rdata")
-# 
-dfc = XkpMedium |> as_tibble()
-dfc = pengs |> as_tibble() |> select(-species,-year)
-
-star = Star |> select(-Type) |> mutate(across(where(is.character), as.factor))
+library(tidymodels)
+library(palmerpenguins)
+set.seed(123)
 
 
+peng <- palmerpenguins::penguins |>
+  dplyr::select(species, island, bill_length_mm, bill_depth_mm,
+                flipper_length_mm, body_mass_g, sex) |>
+  tidyr::drop_na()
 
-source("R/distance_by_method_cri.R")
-# source("R/distance_by_method.R")
-source("R/spectral_from_dist.R")
+udep_int = mdist(x=peng,preset="unbiased_dependent",interaction = TRUE)
+D_int = udep_int$distance |> as.matrix()
 
-D_int = distance_by_method(star,method="u_dep",interaction=TRUE)
+udep_no_int = mdist(x=peng,preset="unbiased_dependent",interaction = FALSE)
+D_no_int = udep_no_int$distance |> as.matrix()
 
-D_no_int = distance_by_method(dfc,method="u_dep",interaction =FALSE)
 # D_gudmm = distance_by_method(dfc,method="gudmm",interaction=FALSE) |> as.matrix()
-D_naive= distance_by_method(dfc,method="naive",interaction=FALSE)
-D_gow = distance_by_method(dfc,method="gower",interaction=FALSE)
+naive = mdist(x=peng,preset="euclidean_onehot")
+D_naive = naive$distance |> as.matrix()
+
+gow = mdist(x=peng,preset="gower")
+D_gow = gow$distance |> as.matrix()
+
 # D_dkss = distance_by_method(dfc,method="dkss",interaction=FALSE)
-D_mod_gow = distance_by_method(dfc,method="mod_gower",interaction=FALSE) |> as.matrix()
+
+mod_gow = mdist(x=peng,preset="mod_gower")
+D_mod_gow = mod_gow$distance |> as.matrix()
+
 
 
 source("R/spectral_from_dist.R")
