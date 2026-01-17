@@ -27,8 +27,7 @@
 #
 # install.packages(c("parallelDist","klaR","arules","FD","StatMatch","clustMixType"))
 #
-# remotes::install_github("alfonsoIodiceDE/manydist_package", subdir = "manydist")
-
+remotes::install_github("alfonsoIodiceDE/manydist_package", subdir = "manydist")
 
 if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
 if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
@@ -72,7 +71,6 @@ D_mod_gow = mod_gow$distance |> as.matrix()
 
 
 
-source("R/spectral_from_dist.R")
 
 myk=3
 
