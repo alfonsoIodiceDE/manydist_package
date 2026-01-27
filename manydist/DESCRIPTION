@@ -1,15 +1,15 @@
 Package: manydist
 Type: Package
 Title: Unbiased Distances for Mixed-Type Data
-Version: 0.5
+Version: 0.5.0
 Authors@R: c(
     person(given = "Alfonso",
            family = "Iodice D'Enza",
-           role = "aut",
-           email = "iodicede@gmail.com"),
+           role = c("aut", "cre"),
+           email = "iodicede@unina.it"),
     person(given = "Angelos",
            family = "Markos",
-           role = c("aut", "cre"),
+           role = "aut",
            email = "amarkos@gmail.com"),
     person(given = "Michel",
            family = "van de Velden",
@@ -18,27 +18,24 @@ Authors@R: c(
            family = "Cavicchia",
            role = "aut"))
 Maintainer: Angelos Markos <amarkos@gmail.com>
-Description: A comprehensive framework for calculating unbiased distances in datasets 
-    containing mixed-type variables (numerical and categorical). The package implements 
-    a general formulation that ensures multivariate additivity and commensurability, 
-    meaning that variables contribute equally to the overall distance regardless of 
-    their type, scale, or distribution. Supports multiple distance measures including 
-    Gower's distance, Euclidean distance, Manhattan distance, and various categorical 
-    variable distances such as simple matching, Eskin, occurrence frequency, and 
-    association-based distances. Provides tools for variable scaling (standard 
-    deviation, range, robust range, and principal component scaling), and handles 
-    both independent and association-based category dissimilarities. Implements 
-    methods to correct for biases that typically arise from different variable types, 
-    distributions, and number of categories. Particularly useful for cluster analysis, 
-    data visualization, and other distance-based methods when working with mixed data. 
-    Methods based on van de Velden et al. (2024) <doi:10.48550/arXiv.2411.00429> 
-    "Unbiased mixed variables distance".
+Description: Tools for computing unbiased distance measures for datasets containing 
+    mixed-type variables (numerical and categorical). The package implements a general 
+    formulation ensuring multivariate additivity and commensurability, so that variables 
+    contribute equally to the overall distance regardless of type, scale, or distribution. 
+    Supported measures include Gower, Euclidean, and Manhattan distances, as well as 
+    categorical dissimilarities such as simple matching, Eskin, occurrence frequency, 
+    and association-based distances. The package provides variable scaling methods 
+    (standard deviation, range, robust range, and principal component scaling) and 
+    supports both independent and association-based category dissimilarities. Bias 
+    corrections for differences in variable type, distribution, and number of categories 
+    are included. Methods are based on van de Velden et al. (2024) 
+    <doi:10.48550/arXiv.2411.00429>.
 Imports: cluster, data.table, distances, dplyr, 
           dials, entropy, fastDummies, forcats, 
           fpc, ggplot2, magrittr,  Matrix, 
           philentropy, purrr, readr, recipes, Rfast, 
           rsample,  stats, tibble, tidyr, 
-          tidyselect, tune, parsnip, rlang 
+          tidyselect, tune, parsnip, rlang, clusterGeneration 
 Depends: R (>= 4.5.0)  
 Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType
 License: GPL-3

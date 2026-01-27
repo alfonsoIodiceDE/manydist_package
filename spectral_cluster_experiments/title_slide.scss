@@ -1,0 +1,28 @@
+/*-- scss:rules --*/
+
+/* Colors sampled from banner */
+$institutional-blue: #5189C0;
+
+#title-slide {
+  h1, h2, h3, p {
+    color: $institutional-blue;
+  }
+}
+
+/* --------------------------------------------------
+   Remove bold from headings (keep size unchanged)
+-------------------------------------------------- */
+
+.reveal {
+  h1, h2, h3, h4 {
+    font-weight: 400;
+  }
+}
+
+.centered {
+  text-align: center;
+}
+
+.callout-large {
+  font-size: 1.5em;
+}

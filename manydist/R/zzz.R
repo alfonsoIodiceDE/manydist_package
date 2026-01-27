@@ -3,3 +3,6 @@
     try(register_nearest_neighbor_dist(), silent = TRUE)
   }
 }
+
+#' @importFrom clusterGeneration genRandomClust
+NULL

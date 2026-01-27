@@ -1,0 +1,1409 @@
+---
+title: "A general framework for unbiased mixed variables distance"
+subtitle: "supplementary material"
+format: html
+bibliography: unbiased_dist_refs.bib
+csl: asa.csl
+code-fold: true
+code-tools: true
+embed-resources: true
+page-layout: full
+toc: true
+toc-location: left
+toc-expand: 2
+theme: minty
+callout-icon: false
+knitr:
+  opts_chunk: 
+    collapse: true
+    R.options:
+    message: false
+    warning: false
+    code-fold: true
+    
+---
+
+
+
+
+```{r setup}
+rm(list=ls())
+packages <- c(
+  "aricode", "cluster", "fpc", "manydist", "patchwork", "tidyverse",
+  "tidymodels", "varhandle", "vegan", "kdml", "ggplot2", "viridis",
+  "dplyr", "entropy", "kernlab", "mclust", "Matrix", "philentropy", "conflicted"
+)
+
+# Install any missing packages from CRAN
+missing <- packages[!packages %in% installed.packages()[, "Package"]]
+if (length(missing) > 0) {
+  install.packages(missing)
+}
+
+# Load all packages quietly
+invisible(
+  lapply(packages, function(pkg) {
+    suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+  })
+)
+
+# Optional: Resolve common function conflicts
+# install.packages("conflicted")  # Only once
+tidymodels_prefer()
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+conflict_prefer("distance", "philentropy")
+
+```
+
+
+Here we provide the code to reproduce the results of the supplementary material of the paper "Unbiased mixed variables distances". 
+
+
+
+### Data generation
+
+These are the simulation parameers
+
+```{r,eval=TRUE}
+reps<-100  # 100 can take 30min
+n<-500
+k<-2 # Dimension solution
+sigma<-0.03 # Noise
+
+porig<-6 # Number of variables corresponding to true config
+pnnoise<-0 # Number of numerical noise vars
+pcnoise<-0 # Number of categorical noise vars
+pn<-2 # Number of numerical variables underying config
+
+pnum<-pn+pnnoise+pcnoise  # Total number of numerical vars+noise vars (Needed to know which vars to discretize)
+p<-porig+pnnoise+pcnoise # Total number of variables
+qoptions<-c(2,3,5,9) # Distribution of the categorical variables corresponding to true config
+pcat<-length(qoptions) # Number of cat variables underlying config
+
+
+methods = c("baseline","naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
+method_levels <- c("baseline", "naive", "hl", "hl_add", "gower","gudmm", "dkps", "mod_gower", "u_ind", "u_dep", "u_mix")
+
+
+my_colors <- c(
+  # Set B
+  "baseline"    = "#8C564B",  # brown
+  "naive"       = "#E377C2",  # pink
+  "hl"          = "#9C9E00",  # darker yellow-green (better contrast)
+  "gudmm"       = "#FF7F0E",  # orange
+  "dkps"        = "#7F7F7F",  # darker grey (more visible)
+
+  # Set A
+  "hl_add"      = "#9EC5E5",  # light blue
+  "u_ind"       = "#2CA02C",  # green
+  "u_dep"       = "#D62728",  # red
+  "u_mix"       = "#0D3B66",  # dark blue
+  "gower"       = "#FFBF00",  # gold
+  "mod_gower"   = "#9467BD"   # purple
+)
+
+my_shapes <- c(
+  "baseline"    = 16,  # filled circle
+  "naive"       = 17,  # filled triangle
+  "hl"          = 15,  # filled square
+  "hl_add"      = 3,   # plus
+  "gower"       = 4,   # cross
+  "gudmm"       = 18,  # filled diamond
+  "dkps"        = 8,   # star
+  "mod_gower"   = 0,   # empty square
+  "u_ind"       = 1,   # empty circle
+  "u_dep"       = 2,    # empty triangle
+  "u_mix" = 5 # empty diamond
+)
+
+
+```
+
+
+
+The considered methods are
+
+#### additive distances
+
+- `baseline`: Manhattan distance on all the standardized numerical variables (before discretization)
+
+- `gower`: classic Gower distance 
+
+- `mod_gower`: modified version of the Gower distance, as proposed in @LYNCLP:2024
+
+- `hl_add`: Manhattan distance with scaling of indicators as proposed by
+@HennigLiao2013
+
+- `u_ind`: commensurable with simple matching
+
+- `u_dep`: commensurable PCA-scaled numerical and total-variance categorical
+
+- `u_mix`: commensurable Manhattan numerical and total-variance categorical
+
+#### non-additive distances
+
+- `naive`: Euclidean distance on all variables, with one-hot encoded categorical variables.
+
+-  `hl`:  Euclidean distance with scaling of indicators as proposed by
+@HennigLiao2013
+
+
+- `gudmm`: Generalized Unified Distance Metric for Mixed-type data as proposed by @MS:2023
+
+- `dkps`: Distance using kernel product similarity as proposed by @GT:2024
+
+
+<!-- The `distance_by_method.r` recalls `manydist` where applicable, and the external functions when needed.  -->
+
+
+### Compute distances: leave one variable out 
+
+
+```{r, eval=FALSE}
+library(progress)
+
+
+pb <- progress_bar$new(
+  format = "  Simulating [:bar] :percent eta: :eta",
+  total = reps * length(methods),
+  clear = FALSE,
+  width = 60
+)
+
+# methods = c("baseline","naive","gower","hl","u_dep","u_ind","gudmm","dkss","mod_gower")
+
+
+generated_datasets = tibble(replicate=1:reps) |> 
+  mutate(dataset = map(.x=replicate, ~generate_dataset(n = n, pn=pn, porig=porig, pnnoise =pnnoise , pcnoise = pcnoise, sigma = sigma, qoptions = qoptions, seed = 1234+.x)),
+         method=map(.x=replicate,~methods)
+         ) |> unnest(method)|>
+  left_join(mdist_method_lookup, by = "method")
+```
+
+
+```{r, eval=FALSE}
+## a little helper for mdist
+
+run_mdist_within <- function(df, mdist_type, mdist_preset, param_set, outcome = "response") {
+  x <- df
+
+  if (is.character(outcome) && length(outcome) == 1 && outcome %in% names(df)) {
+    x <- dplyr::select(df, -dplyr::all_of(outcome))
+  }
+
+  if (mdist_type == "preset") {
+    out <- manydist::mdist(x = x, preset = mdist_preset)
+
+  } else if (mdist_type == "custom") {
+    if (is.null(param_set)) stop("param_set is NULL for mdist_type = 'custom'")
+    args <- param_set
+    args$x <- x
+    out <- do.call(manydist::mdist, args = args)
+
+  } else {
+    stop("Unknown mdist_type: ", mdist_type)
+  }
+
+  out$distance
+}
+
+# little helper for the leave one variable out version of mdist
+run_lovo <- function(df, mdist_type, mdist_preset, param_set,
+                     outcome = "response", dims = 2, keep_dist = FALSE) {
+
+  x <- df  # default: don't drop anything
+
+  if (is.character(outcome) && length(outcome) == 1 && outcome %in% names(df)) {
+    x <- dplyr::select(df, -dplyr::all_of(outcome))
+  }
+
+  if (mdist_type == "preset") {
+    manydist::lovo_mdist(x = x, preset = mdist_preset, dims = dims, keep_dist = keep_dist)
+
+  } else if (mdist_type == "custom") {
+    args <- param_set
+    args$x <- x
+    args$dims <- dims
+    args$keep_dist <- keep_dist
+    do.call(manydist::lovo_mdist, args = args)
+
+  } else {
+    stop("Unknown mdist_type: ", mdist_type)
+  }
+}
+```
+
+
+```{r, eval=FALSE}
+
+simulation_structure <- generated_datasets |>
+  dplyr::mutate(
+    loo_results = purrr::pmap(
+      dplyr::pick(dataset, method, mdist_type, mdist_preset, param_set),
+      \(dataset, method, mdist_type, mdist_preset, param_set) {
+        pb$tick()
+        X <- if (method == "baseline") dataset$Xorig else dataset$X
+        run_lovo(X, mdist_type, mdist_preset, param_set)
+      }
+    )
+  )
+
+
+ save(file="simulation_structure.RData", simulation_structure)
+```
+
+
+
+```{r, echoFALSE, eval=TRUE}
+load("simulation_structure.RData")
+```
+
+
+```{r}
+
+reference_method = "baseline"
+
+baseline_refs = simulation_structure |>
+  filter(method == "baseline") |>
+  select(replicate, baseline_loo = loo_results)
+
+
+rel_simulation_structure <- simulation_structure |>
+  dplyr::left_join(baseline_refs, by = "replicate") |>
+  dplyr::mutate(
+    loo_results = purrr::map2(.x = loo_results,.y = baseline_loo,
+        .f = \(res_obj, ref_obj) {
+        res <- res_obj$results
+        ref <- ref_obj$results
+
+        # join by variable to be safe (order might differ)
+        dplyr::left_join(
+          res,
+          dplyr::select(ref, variable,
+                        ref_mad_normalized = mad_normalized,
+                        ref_ac_importance  = ac_importance),
+          by = "variable"
+        ) |>
+          dplyr::mutate(
+            mad_relative_importance = mad_normalized / ref_mad_normalized,
+            ac_relative_importance  = ac_importance  / ref_ac_importance
+          )
+      }
+    )
+  ) |>
+  select(-baseline_loo)
+
+results_wide <- rel_simulation_structure |>
+  tidyr::unnest(loo_results) |>
+  dplyr::group_by(variable, method) |>
+  dplyr::summarise(
+    dplyr::across(
+      c(
+        mad_importance,
+        cc_importance,
+        ac_importance,
+        mad_normalized,
+        mad_relative_importance,
+        ac_relative_importance
+      ),
+      ~ mean(.x, na.rm = TRUE)
+    ),
+    .groups = "drop"
+  ) |>
+  tidyr::pivot_wider(
+    names_from  = method,
+    values_from = c(
+      mad_importance,
+      cc_importance,
+      ac_importance,
+      mad_normalized,
+      mad_relative_importance,
+      ac_relative_importance
+    )
+  )
+
+
+measure_names <- c(
+  "mad_importance",
+  "cc_importance",
+  "ac_importance",
+  "mad_normalized",
+  "mad_relative_importance",
+  "ac_relative_importance"
+)
+
+# Step 2: Split by measure name
+split_by_measure <- map(
+  .x = measure_names,
+  .f = function(measure) {
+    results_wide |>
+      select(variable, starts_with(paste0(measure, "_"))) |>
+      rename_with(~ str_remove(., paste0(measure, "_")), -variable)
+  }
+) |> set_names(measure_names)
+  
+```
+
+
+
+
+### Code for  `Figure 1`
+
+```{r,fig.height=5,fig.width=8}
+
+meas_to_plot_mad = split_by_measure |> pluck("mad_importance") |> 
+  mutate(measure="mad_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
+
+
+mad_max = max(meas_to_plot_mad |> select(where(is.numeric),-var_id))
+
+rect_data = tibble(
+  xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=mad_max,
+  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max)  
+  
+```
+
+
+```{r,fig.height=8,fig.width=8}
+meas_to_plot_mad_rel = split_by_measure |> pluck("mad_normalized") |> 
+  mutate(measure="mad_normalized") |> slice(3:6,1,2) |> mutate(var_id=1:6)
+
+mad_max_rel = max(meas_to_plot_mad_rel |> select(where(is.numeric),-var_id))
+
+rect_data_rel = tibble(
+  xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=mad_max_rel,
+  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max_rel)
+
+loo_mad_plot = meas_to_plot_mad |> 
+  rename(dkps=`dkss`) |> 
+  dplyr::select(variable,var_id, any_of(method_levels)) |> 
+  ## for consistency with paper name
+  pivot_longer(cols=naive:u_mix, names_to="method",values_to="value") |> 
+  mutate(method=factor(method, levels=method_levels),
+         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep","u_mix"), "additive distances", "non-additive distances")) |>
+  ggplot(aes(x = var_id, y = value,
+             color = method,shape=method)) +
+  geom_rect(data=rect_data,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
+  geom_rect(data=rect_data,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
+  geom_point()+geom_line() +
+  ylab("absolute variable contribution to distance")+
+  xlab("") +  theme_bw() + theme(legend.position = "none")+
+  scale_x_continuous(breaks=seq(1,6,1),labels = rep("",6))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  scale_shape_manual(values = my_shapes) +
+  scale_color_manual(values = my_colors) + facet_wrap(.~additive)
+```
+
+
+```{r,fig.height=8,fig.width=8}
+loo_mad_rel_plot = meas_to_plot_mad_rel |> 
+  rename(dkps=`dkss`) |> ## for consistency with paper name
+  dplyr::select(variable,var_id, any_of(method_levels)) |> 
+  pivot_longer(cols=naive:u_mix, names_to="method",values_to="value") |>
+  mutate(method=factor(method, levels=c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep","u_mix"), "additive distances", "non-additive distances")) |>
+  ggplot(aes(x = var_id, y = value,
+             color = method,shape=method)) +
+  geom_rect(data=rect_data_rel,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
+  geom_rect(data=rect_data_rel,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
+  geom_point()+geom_line() +
+  ylab("relative variable contribution to distance") +
+  xlab("left-out variable") +  theme_bw() +
+  scale_x_continuous(breaks=seq(1,6,1),labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2"))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        strip.text = element_blank())+
+  scale_shape_manual(values = my_shapes) +
+  scale_color_manual(values = my_colors) + facet_wrap(.~additive)
+
+
+fig_1_plot = loo_mad_plot / loo_mad_rel_plot
+
+ggsave(fig_1_plot, file = "figure_1_mad_importances.pdf", width = 8, height = 8)
+fig_1_plot
+
+
+
+
+```
+
+### Code for  `Figure 2`
+
+```{r,fig.height=4,fig.width=8}
+meas_to_plot_ac = split_by_measure |> pluck("ac_relative_importance") |> 
+  mutate(measure="ac_relative_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
+
+
+ac_max = max(meas_to_plot_ac |> select(where(is.numeric),-var_id))
+
+rect_data_ac = tibble(
+  xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=ac_max,
+  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=ac_max)
+
+
+ac_plot = meas_to_plot_ac |> 
+  rename(dkps=`dkss`) |> ## for consistency with paper name
+  dplyr::select(variable,var_id, any_of(method_levels)) |> 
+  pivot_longer(cols=naive:u_mix, names_to="method",values_to="value") |>
+  mutate(method=factor(method, levels=c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep","u_mix"), "additive distance", "non-additive distance")) |>
+  ggplot(aes(x = var_id, y = value,
+             color = method,shape=method)) +
+  geom_rect(data=rect_data_ac,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
+  geom_rect(data=rect_data_ac,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
+  geom_point()+geom_line() +
+  ylab("relative alienation coefficient")+
+  xlab("left-out variable") +  theme_bw() +
+  scale_x_continuous(breaks=seq(1,6,1),labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2"))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  scale_shape_manual(values = my_shapes) +
+  scale_color_manual(values = my_colors) + facet_wrap(.~additive)
+
+ggsave("figure_2_ac_importances.pdf", ac_plot, width = 8, height = 4)
+
+ac_plot
+
+```
+
+
+
+## Retrieval of the true configuration
+
+### Data generation
+
+```{r, eval=FALSE}
+recovery_structure <- tidyr::crossing(
+  tibble::tibble(replicate = 1:reps),
+  method = methods,
+  categories = qoptions
+) |>
+  dplyr::left_join(manydist:::mdist_method_lookup, by = "method") |>
+  dplyr::mutate(
+    dataset = purrr::map2(
+      .x = replicate, .y = categories,
+      ~ generate_dataset(
+        n = n, porig = porig, pn = pn,
+        pnnoise = pnnoise, pcnoise = pcnoise,
+        sigma = sigma, qoptions = .y, mode = "shared",
+        seed = 1234 + .x
+      )
+    ),
+    # compute distance matrix using method specs + baseline uses Xorig
+    distance_matrix = purrr::pmap(
+      dplyr::pick(dataset, method, mdist_type, mdist_preset, param_set),
+      \(dataset, method, mdist_type, mdist_preset, param_set) {
+        X <- if (method == "baseline") dataset$Xorig else dataset$X
+
+        run_mdist_within(
+          df = X,
+          mdist_type = mdist_type,
+          mdist_preset = mdist_preset,
+          param_set = param_set,
+          outcome = NULL   # because X / Xorig have no response column
+        ) |>
+          base::as.matrix()
+      }
+    ),
+
+    mds_results = purrr::map(
+      distance_matrix,
+      ~ cmdscale(.x, eig = TRUE, k = 2)$points |>
+        as.data.frame() |>
+        setNames(c("x1", "x2"))
+    ),
+
+    congruence_coeff = purrr::map2(
+      .x = mds_results, .y = dataset,
+      \(mds, ds) congruence_coeff(ds$truth, mds)
+    )
+  )
+
+# save(file="recovery_structure.RData", recovery_structure)
+recovery_structure_lite = recovery_structure |>
+  select(-dataset, -distance_matrix, -mds_results) |>
+  unnest(congruence_coeff) |>
+  select(replicate, method, categories, congruence_coeff) |> 
+  mutate(categories=factor(paste0(categories," categories")),
+         alienation_coeff = sqrt(1-congruence_coeff^2))
+
+save(file="recovery_structure_lite.RData", recovery_structure_lite)
+```
+
+
+### Code for figure `Figure 3`
+
+
+
+```{r}
+load("recovery_structure_lite.RData")
+```
+
+
+```{r,fig.height=8,fig.width=8}
+boxplot_figure_simu = recovery_structure_lite |> 
+ mutate(
+   method = ifelse(method=="dkss","dkps",method), # for consistency with paper name
+   method=factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))) |> 
+        # additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep"), "additive", "non-additive")) |> 
+ggplot(aes(x=(method), y=alienation_coeff))+
+  geom_boxplot(aes(fill=method)) +
+  facet_wrap(~categories)+ theme_bw()+ theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+    theme(legend.position = "none")+
+  ylab("alienation coefficient") + xlab("methods")+
+  scale_fill_manual(values = my_colors) 
+
+
+
+print(boxplot_figure_simu, width = 8, height = 4)
+ggsave(file="AC_boxplots.pdf",boxplot_figure_simu,width=8.5,height=6)
+```
+
+
+
+## Clustering experiment: partitioning around medoids
+
+### Data generation
+
+```{r}
+nrep <- 100
+k_true <- 4
+q <- 9
+numsep <- 0.1
+catsep <- 0.6
+clustSizeEq <- 50
+
+param_generator_grid <- tibble::tibble(
+  numsignal = c(0,0,4,4,4,8,8,8),
+  numnoise  = c(8,8,4,4,4,0,0,0),
+  catsignal = c(4,8,0,4,8,0,4,8),
+  catnoise  = c(4,0,8,4,0,8,4,0)
+) |>
+  tidyr::crossing(replicate = 1:nrep)
+
+mixed_datasets_grid <- param_generator_grid |>
+  dplyr::mutate(
+    data = purrr::pmap(
+      dplyr::pick(numsignal, catsignal, numnoise, catnoise, replicate),
+      \(numsignal, catsignal, numnoise, catnoise, replicate) {
+        gen_mixed(
+          k_true      = k_true,
+          clustSizeEq = clustSizeEq,
+          numsignal   = numsignal,
+          numnoise    = numnoise,
+          catsignal   = catsignal,
+          catnoise    = catnoise,
+          q           = q,
+          q_err       = q,
+          numsep      = numsep,
+          catsep      = catsep,
+          seed        = replicate
+        )
+      }
+    )
+  )
+
+methods <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
+
+sim_methods_grid <- mixed_datasets_grid |>
+  tidyr::crossing(method = methods) |>
+  dplyr::left_join(manydist:::mdist_method_lookup, by = "method")
+
+stopifnot(!any(is.na(sim_methods_grid$mdist_type)))
+
+ari_pam_results <- sim_methods_grid |>
+  dplyr::mutate(
+    ari = purrr::pmap_dbl(
+      dplyr::pick(data, mdist_type, mdist_preset, param_set),
+      \(data, mdist_type, mdist_preset, param_set) {
+        df <- data$df
+        D <- run_mdist_within(df, mdist_type, mdist_preset, param_set, outcome = "y")
+        pam_fit <- cluster::pam(D, k = k_true, diss = TRUE)
+        mclust::adjustedRandIndex(df$y, pam_fit$clustering)
+      }
+    )
+  )
+
+save(ari_pam_results, file = "ari_pam_experiment.RData")
+```
+
+
+## Illustration: FIFA player data
+
+### Data preparation and analysis
+
+```{r, eval=FALSE}
+# Variables are organized: Categorical first, then numerical
+load("data/Fifa21NL.RData") # Load the data
+# data(fifa_nl)
+#Xorig<-X<-ddata[,-c(1,2)]
+X<-fifa_nl[,-c(1,2,19:24)] # vars 1 and 2 are a bit useless (too many categories)
+# vars 19:24 interesting but same scale and little variation
+# leaving them out makes the plots a bit smaller.
+# leaving them in doesn't seem to change a lot
+n<-nrow(X)
+nd<-2 # Dimensionality of MDS solution
+X=X[,c(8:1,9:16)]  # Order
+X=X[,-3]  # Remove int rep: 380 have something, 21+7 in other cats
+
+X=X[,c(1:12,14,13,15)]
+p<-ncol(X)
+X[8:15] <- lapply(X[8:15], as.numeric)
+fifa_clean <- as_tibble(X)  |> 
+  select(where(is.integer), where(is.numeric),where(is.factor) ,-release_clause_eur) |> 
+  rename(pref_foot=`preferred_foot`,
+         club=`club_name`,
+         position=`team_position`)
+
+```
+
+
+```{r, eval=FALSE}
+
+fifa_structure = tibble(method = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep")) |>
+  mutate(loo_results=map(.x=method, ~loo_distance_by_method(df=fifa_clean,
+                                    method = .x,dims=nd))
+  )
+
+
+save(file="fifa_structure.RData", fifa_structure)
+```
+
+```{r, echo = FALSE}
+load("fifa_structure.RData")
+```
+
+
+```{r}
+results_fifa_wide = fifa_structure |>
+  unnest(loo_results) |>
+  pivot_wider(
+    names_from = method,
+    values_from = c(
+      mad_importances,
+      cc_importances,
+      ac_importances,
+      mad_normalized)
+    )
+  
+
+
+measure_names <- c(
+  "mad_importances",
+  "cc_importances",
+  "ac_importances",
+  "mad_normalized")
+
+# Step 2: Split by measure name
+fifa_split_by_measure <- map(
+  .x = measure_names,
+  .f = function(measure) {
+    results_fifa_wide |>
+      select(loo_var, starts_with(paste0(measure, "_"))) |>
+      rename_with(~ str_remove(., paste0(measure, "_")), -loo_var)
+  }
+) |> set_names(measure_names)
+
+
+```
+
+
+
+### Code for `Figure 4`
+
+```{r,fig.height=5,fig.width=8}
+
+meas_to_plot_mad = fifa_split_by_measure |> pluck("mad_importances") |>
+  mutate(measure="mad_importances") |> slice(c(8:14,1:7)) |>  mutate(var_id=1:n())
+
+
+mad_max = max(meas_to_plot_mad |> select(where(is.numeric),-var_id))
+
+rect_data = tibble(
+  xmin_cont=8.5,xmax_cont=14,ymin_cont=0,ymax_cont=mad_max,
+  xmin_cat=.5,xmax_cat=8.5,ymin_cat=0,ymax_cat=mad_max)
+
+meas_to_plot_mad_rel = fifa_split_by_measure |> pluck("mad_normalized") |>
+  mutate(measure="mad_normalized")|> slice(c(8:14,1:7)) |> mutate(var_id=1:n())
+
+mad_max_rel = max(meas_to_plot_mad_rel |> select(where(is.numeric),-var_id))
+
+rect_data_rel = tibble(
+  xmin_cont=8.5,xmax_cont=14,ymin_cont=0,ymax_cont=mad_max_rel,
+  xmin_cat=.5,xmax_cat=8.5,ymin_cat=0,ymax_cat=mad_max_rel)
+
+
+  
+loo_mad_plot = meas_to_plot_mad |> 
+  rename(dkps=`dkss`) |> ## for consistency with paper name
+  pivot_longer(cols=naive:u_dep, names_to="method",values_to="value") |>
+  mutate(method=factor(method, levels=c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep")),
+         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep"), "additive distances", "non-additive distances")) |>
+  ggplot(aes(x = var_id, y = value,
+             color = method,shape=method)) +
+  geom_rect(data=rect_data,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
+  geom_rect(data=rect_data,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
+  geom_point()+geom_line() +
+  ylab("absolute variable contribution to distance")+
+  theme_bw() + theme(legend.position = "none")+
+  scale_x_continuous(breaks=seq(1,14,1),labels = rep("",14))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  scale_shape_manual(values = my_shapes) +
+  scale_color_manual(values = my_colors) + xlab("") + facet_wrap(.~additive)
+
+loo_mad_rel_plot = meas_to_plot_mad_rel |> 
+  rename(dkps=`dkss`) |> ## for consistency with paper name
+  pivot_longer(cols=naive:u_dep, names_to="method",values_to="value") |>
+  mutate(method=factor(method, levels=c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep")),
+         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep"), "additive", "non-additive")) |>
+  ggplot(aes(x = var_id, y = value,
+             color = method,shape=method)) +
+  geom_rect(data=rect_data_rel,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
+  geom_rect(data=rect_data_rel,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
+  geom_point()+geom_line() +
+  ylab("relative variable contribution to distance") +
+  theme_bw() +
+  scale_x_continuous(breaks=seq(1,14,1),labels = meas_to_plot_mad_rel |> pull(loo_var))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        strip.text = element_blank())+
+  scale_shape_manual(values = my_shapes) +
+  scale_color_manual(values = my_colors) + xlab("")+ facet_wrap(.~additive)
+
+
+fig_4_plot = loo_mad_plot / loo_mad_rel_plot
+
+ggsave(fig_4_plot, file = "figure_4_mad_importances.pdf", width = 8, height = 8)
+
+fig_4_plot
+
+```
+
+
+
+
+### Code for  `Figure 5`
+
+```{r,fig.height=5,fig.width=8}
+meas_to_plot_ac = fifa_split_by_measure |> pluck("ac_importances") |>
+  mutate(measure="ac_importances")|> slice(c(8:14,1:7))|> mutate(var_id=1:n())
+
+# meas_to_plot_ac = fifa_split_by_measure |> pluck("ac_importances") |>
+#   mutate(measure="ac_importances") |> mutate(var_id=1:n())
+
+max_ac = max(meas_to_plot_ac |> select(where(is.numeric),-var_id))
+
+rect_data_ac = tibble(
+  xmin_cont=7.5,xmax_cont=14,ymin_cont=0,ymax_cont=max_ac,
+  xmin_cat=.5,xmax_cat=7.5,ymin_cat=0,ymax_cat=max_ac)
+
+ac_plot = meas_to_plot_ac |> 
+  rename(dkps=`dkss`) |> ## for consistency with paper name
+  pivot_longer(cols=naive:u_dep, names_to="method",values_to="value") |>
+  mutate(method=factor(method, levels=c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep")),
+         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep"), "additive distances", "non-additive distances")) |>
+  ggplot(aes(x = var_id, y = value,
+             color = method,shape=method)) +
+  geom_rect(data=rect_data_ac,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
+  geom_rect(data=rect_data_ac,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
+  geom_point()+geom_line() +
+  ylab("alienation coefficient")+
+    theme_bw() +
+  scale_x_continuous(breaks=seq(1,14,1),labels = meas_to_plot_mad |> pull(loo_var))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  scale_shape_manual(values = my_shapes) +
+  scale_color_manual(values = my_colors) +xlab("") +facet_wrap(.~additive)
+
+ac_plot
+
+ggsave("figure_5_ac_rel_importances.pdf", ac_plot, width = 8, height = 4)
+```
+
+
+
+
+<!-- ## Clustering based comparison -->
+
+<!-- ### Real dataset setup -->
+
+<!-- ```{r real-dataset-setup} -->
+<!-- #| code-fold: false -->
+<!-- real_data_flow <- tibble( -->
+<!--   dataset_path = paste0("data/",c("cleveland5.Rdata","cleveland2.Rdata","dermatology.Rdata", -->
+<!--                                                                 "obesitas.Rdata", "australian.Rdata")) -->
+<!-- ) |> mutate( -->
+<!--   dataset_name =c("cleveland5","cleveland2","dermatology", -->
+<!--                   "obesitas", "australian"), -->
+<!--   loaded_data= purrr::map(.x = dataset_path, .f=function(x=.x){ -->
+<!--     temp_env = new.env() -->
+<!--     load(x, envir = temp_env) -->
+<!--     return(as.list(temp_env)) -->
+<!--   } -->
+<!--   ), -->
+<!--   dataset= purrr::map(.x = loaded_data, .f= ~as_tibble(.x$df) |> select(-.x$t)), -->
+<!--   label = purrr::map(.x = loaded_data, .f = ~{ -->
+<!--     df <- as_tibble(.x$df) -->
+<!--     target <- .x$t -->
+<!--     pull(df, target) -->
+<!--   }), -->
+<!--   n_clusters= purrr::map_int(.x = loaded_data, .f = ~.x$k) -->
+<!-- ) -->
+
+<!-- method = c("baseline","naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep") -->
+
+<!-- # Dataset-specific continuous feature counts for GUDMM, KDML, and EDMIX -->
+<!-- dataset_cont_features <- tibble( -->
+<!--   dataset_name = c("cleveland5", "cleveland2", "dermatology", "obesitas", "australian"), -->
+<!--   no_f_cont = c(5, 5, 1, 8, 8) -->
+<!-- ) -->
+
+<!-- # Create the scenario structure first -->
+<!-- clu_scenario_structure = crossing(real_data_flow |> -->
+<!--                                 select(-dataset_path), method) |>  -->
+<!--   filter(!(dataset_name == "obesitas" & method == "dkss")) -->
+
+
+<!-- ``` -->
+
+
+<!-- ```{r clustering_experiments} -->
+<!-- # set.seed(123) -->
+<!-- set.seed(12) -->
+<!-- pb_clu <- progress_bar$new( -->
+<!--   format = "clustering [:bar] :percent eta: :eta", -->
+<!--   total = nrow(real_data_flow) * length(methods), -->
+<!--   clear = FALSE, -->
+<!--   width = 60 -->
+<!-- ) -->
+
+<!-- #| code-fold: false -->
+<!-- cluster_results = clu_scenario_structure |> -->
+
+<!--   mutate( -->
+<!--     distance_matrix = map2(.x=dataset, .y=method,  -->
+<!--                            ~distance_by_method(df=.x, method = .y) -->
+<!--                            ) -->
+<!--   )  |> -->
+<!--   mutate( -->
+<!--     clustering = map2(.x=distance_matrix, .y=n_clusters,  -->
+<!--                       function(x=.x,y=.y){pb_clu$tick() -->
+<!--                         if (y > 1) { -->
+<!--                           return(cluster::pam(x, k = y,nstart = 10)$clustering) -->
+<!--                         } else { -->
+<!--                           return(NULL)  # No clustering for single cluster -->
+<!--                         } -->
+<!--                       } -->
+<!--     ), -->
+<!--     ari = map2_dbl(clustering, label, ~{ -->
+<!--       if (is.null(.x)) { -->
+<!--         return(NA) -->
+<!--       } else { -->
+<!--         return(round(ARI(.x, .y), digits = 3)) -->
+<!--       } -->
+<!--     }) -->
+<!--   )  -->
+
+
+<!-- save(file="cluster_results.RData", cluster_results) -->
+
+<!-- ``` -->
+
+
+<!-- ```{r clustering_experiments} -->
+<!-- cluster_aris = cluster_results |> -->
+<!--   select(dataset_name, method, ari)|> pivot_wider(names_from=method, values_from=ari) |> -->
+<!--   mutate(across(where(is.numeric), ~round(.x, digits = 3))) -->
+
+
+<!-- cluster_aris_long= cluster_aris |> mutate(data_x_ax=1:nrow(cluster_aris)) |>  -->
+<!--   pivot_longer(cols = -c(dataset_name,data_x_ax), names_to = "method", values_to = "ari") |> -->
+<!--   mutate(method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep"))) -->
+
+
+<!-- my_colors <- c( -->
+<!--   # "baseline"    = "#666666",  #  -->
+<!--   "naive"       = "#d95f02",  # orange -->
+<!--   "hl"          = "#7570b3",  # purple -->
+<!--   "hl_add"      = "#1b9e77",  # green -->
+<!--   "gower"       = "#e7298a",  # pink -->
+<!--   "gudmm"       = "#66a61e",  # olive green -->
+<!--    "dkss"        = "#e6ab02",  # mustard -->
+<!--   "mod_gower"   = "#a6761d",  # brown -->
+<!--   "u_ind"       = "dodgerblue",  -->
+<!--   "u_dep"       = "indianred"    -->
+<!-- ) -->
+
+
+<!-- cluster_plot = cluster_aris_long |> ggplot(aes(x=data_x_ax,y=ari, color=method)) + -->
+<!-- geom_point()+geom_line(aes(lty=method))  + -->
+<!--   scale_color_manual(values = my_colors) + -->
+<!--   theme(legend.position = "right")+ -->
+<!--   theme_minimal() + -->
+<!--   scale_x_continuous(breaks=seq(1,nrow(cluster_aris),1),labels =cluster_aris$dataset_name)+labs(x="",y="adjusted rand index") -->
+
+<!-- ggsave(cluster_plot, file = "cluster_plot.pdf", width = 8, height = 4) -->
+
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- # method_performance <- cluster_aris %>% -->
+<!-- #   group_by(method) %>% -->
+<!-- #   summarise( -->
+<!-- #     mean_ari = mean(ari, na.rm = TRUE), -->
+<!-- #     sd_ari = sd(ari, na.rm = TRUE), -->
+<!-- #     median_ari = median(ari, na.rm = TRUE), -->
+<!-- #     min_ari = min(ari, na.rm = TRUE), -->
+<!-- #     max_ari = max(ari, na.rm = TRUE), -->
+<!-- #     n_datasets = sum(!is.na(ari)), -->
+<!-- #     .groups = 'drop' -->
+<!-- #   ) %>% -->
+<!-- #   arrange(desc(mean_ari)) -->
+
+
+<!-- performance_plot <- cluster_aris |>  -->
+<!--   filter(!is.na(ari)) |>  -->
+<!--   ggplot(aes(x = method, y = ari, fill = method)) + -->
+<!--   geom_boxplot() + -->
+<!--   coord_flip() + -->
+<!--   labs( -->
+<!--     title = "Clustering Performance Comparison", -->
+<!--     subtitle = "ARI scores across all datasets", -->
+<!--     x = "Method", -->
+<!--     y = "Adjusted Rand Index (ARI)", -->
+<!--     fill = "Method Type" -->
+<!--   ) + -->
+<!--   theme_minimal() + -->
+<!--   theme(legend.position = "bottom") -->
+
+
+<!-- # print("Method Performance Summary:") -->
+<!-- # print(method_performance) -->
+
+<!-- # Dataset-specific results -->
+<!-- dataset_results <- cluster_results %>% -->
+<!--   group_by(dataset_name) %>% -->
+<!--   summarise( -->
+<!--     best_method = method[which.max(ari)], -->
+<!--     best_ari = max(ari, na.rm = TRUE), -->
+<!--     worst_ari = min(ari, na.rm = TRUE), -->
+<!--     ari_range = best_ari - worst_ari, -->
+<!--     .groups = 'drop' -->
+<!--   ) -->
+
+
+<!-- ``` -->
+
+
+## Appendix D Categorical mean distances: skewed distributions
+
+```{r}
+LeHo<-function(X){  #  Returns the LeHo Distance (symmetric Kullback-Leibler)
+                    #  X is matrix with conditional probabilities
+#if(any(rowSums(X)!=1)){
+#  print("Input must be conditional probs (row sums should be 1)")
+#} else {
+  
+require(philentropy)
+
+n<-nrow(X)
+D<-matrix(0,n,n)
+for (i in 1:(n-1)){
+  for (j in (i+1):n){
+    D[j,i]<-D[i,j]<-distance(X[c(i,j),],"kullback-leibler",unit="log2")+
+      distance(X[c(j,i),],"kullback-leibler",unit="log2")}
+
+}
+
+return(D)
+}
+```
+
+
+### Data generation
+
+```{r,messge=FALSE, warning=FALSE}
+# Let's consider some specific unbalanced scenarios
+# One probility is d. The others are (1-d)/(q-1)
+# We consider skewed options:
+dis<-c(0.05,0.1,0.2,0.33,0.5,0.66,0.8,0.9,0.95)
+
+#qi=5
+qs<-c(2,3,5,10)#,18) # Some options for qi
+
+nint<-length(dis)    # Number of options for d (nint-1)
+rsm<-rsma<-rhl<-sdsm<-rse<-rsof<-rsiof<-sdse<-rsa<-sdsa<-sdsof<-sdsiof<-sddsma<-sdssm<-
+  sddse<-sddsa<-sddsm<-sdhl<-sddsmca<-sddsof<-sddsiof<-sddshl<- sdshl<-
+  rsmca<-sdsmca<-esm<-em<-ee<-ea<-ehl<-emca<-eof<-eiof<-matrix(NA,nrow=nint,ncol=length(qs))
+
+#par(mfrow=c(2,2))
+for (qis in 1:length(qs)){
+  #ds<-NULL
+  qi<-qs[qis]
+  for (i in (1:nint)){ # variant 2
+
+    Deltam<-matrix(1,qi,qi)    # Matching
+    diag(Deltam)<-rep(0,qi)    # Matching Delta
+
+    #d=i/(2*qi)  # i=2 corresponds to equal probs if variant 1 is chosen. (Only works for one qi. Not for qs loop)
+    d=dis[i]  # variant 2
+
+    #ds<-rbind(ds,d)
+    p<-c(d,rep((1-d)/(qi-1),(qi-1)))
+    sum(p)
+
+    Dp<-diag(p)
+    pp<-p %*% t(p)
+    spi<-(diag(Dp-pp))^-1
+    spi5<-(diag(Dp-pp))^-.5
+
+    DEsk<-(2/(qi^2))*Deltam # Delta Eskin
+
+    DOF<-log(p)%*%t(log(p)) * Deltam  # OF
+    n=160 # For inv OF we need n. Soon gets very large (increases in n) 160 is sufficient
+    #n<-ceiling(1/min(p))
+    DIOF<-log(n*p)%*%t(log(n*p)) * Deltam  # inverse OF. If some np<1 we can get negatives
+
+    n=160  # For HL we need to find a way to get somewhat consistent values. Let's choose n large
+    marginals=p*n
+
+    HLemp<-distancefactor(cat=qi,n=n,catsizes=marginals) #
+    DHL<-Deltam*HLemp*2#*sqrt(2)  # NOTE 13/09: Corrected: Was sqrt(2). But, should be, see paper, 2x
+    #DE<-sqrt((1/qi)*(spi %*% t(rep(1,qi)) + t(spi %*% t(rep(1,qi)))))
+    #diag(DE)<-rep(0,qi)
+
+    DM<-sqrt(1/qi)*(spi5 %*% t(rep(1,qi)) + t(spi5 %*% t(rep(1,qi))))
+    diag(DM)<-rep(0,qi)
+
+    DA<-(1/qi)*diag(spi5)%*%Deltam%*%diag(spi5)
+    DMCA<-(1/qi) * diag(p^-.5)%*%Deltam%*%diag(p^-.5)
+
+    #we<-ee[i,(qis)]<- t(p)%*%DE%*%p
+
+    wsm<-esm[i,(qis)]<- t(p)%*%Deltam%*%p   # Simple Matching
+    we<-ee[i,(qis)]<- t(p)%*%DEsk%*%p       # Eskin
+    wof<-eof[i,(qis)]<-t(p)%*%DOF%*%p       # OF
+    wiof<-eiof[i,(qis)]<-t(p)%*%DIOF%*%p    # IOF
+    whl<-ehl[i,(qis)]<-t(p)%*%DHL%*%p       # HL
+    wm<-em[i,(qis)]<- t(p)%*%DM%*%p         # SD scaling
+    wa<-ea[i,(qis)]<- t(p)%*%DA%*%p         # Cat dis scaling
+    wmca<-emca[i,(qis)]<- t(p)%*%DMCA%*%p   # MCA scaling
+
+    # We can also estimate the variance among the distances using Deltas: E(X^2)-E(X)^2
+    # We can do this dividing by expected values so that we look at what happens
+    # when delta is commensurable. Or not
+    # if not:
+
+    #we<-wm<-wa<-wmca<-wof<-wiof<-whl<-wsm<-1
+
+    sddse[i,(qis)]<- sqrt(t(p)%*%DEsk^2%*%p - ee[i,(qis)]^2)/we  # Eskin
+    sddsma[i,(qis)]<- sqrt(t(p)%*%Deltam^2%*%p - esm[i,(qis)]^2)/ wsm  # Simple Matching
+    sddshl[i,(qis)]<- sqrt(t(p)%*%DHL^2%*%p - ehl[i,(qis)]^2)/ whl  # HL
+    sddsm[i,(qis)]<- sqrt(t(p)%*%DM^2%*%p - em[i,(qis)]^2)/ wm  # SD
+    sddsa[i,(qis)]<- sqrt(t(p)%*%DA^2%*%p -  ea[i,(qis)]^2)/wa # Cat dissim
+    sddsmca[i,(qis)]<- sqrt(t(p)%*%DMCA^2%*%p - emca[i,(qis)]^2)/wmca  # MCA
+    sddsof[i,(qis)]<-sqrt(t(p)%*%DOF^2%*%p - eof[i,(qis)]^2)/wof  # OF
+    sddsiof[i,(qis)]<-sqrt(t(p)%*%(DIOF/as.numeric(wiof))^2%*%p - 1 )  #IOF
+
+    # Let's consider spread among cat dissimilarities. But: This only makes sense
+    # when on similar scales. So, use commensurable deltas: (Or not: see above)
+    sdse[i,qis]<-sd((1/we)*DEsk[upper.tri(DEsk)])  # Eskin
+    sdsm[i,qis]<-sd((1/wm)*DM[upper.tri(DM)]) # SD
+    sdshl[i,qis]<-sd((1/whl)*DHL[upper.tri(DHL)]) # HL
+    sdssm[i,qis]<-sd((1/wsm)*Deltam[upper.tri(Deltam)]) # Simple Matching
+    sdsa[i,qis]<-sd((1/wa)*DA[upper.tri(DA)]) #  Cat dissim,
+    sdsmca[i,qis]<-sd((1/wmca)*DMCA[upper.tri(DMCA)]) # MCA
+    sdsof[i,qis]<-sd((1/wof)*DOF[upper.tri(DOF)])  # OF
+    sdsiof[i,qis]<-sd((1/wiof)*DIOF[upper.tri(DIOF)]) # IOF
+
+
+
+  }
+
+}
+
+cats<-as.character(qs)
+skew<-as.character(dis)#as.character(1:nint)
+```
+
+
+### Code for `Figure 6`
+
+```{r,fig.height=7,fig.width=7}
+sk_distance_to_plot = function(exp_mean_dist,distance_name){
+  exp_mean_dist = as_tibble(exp_mean_dist) |> mutate(`skewness (p1)` = c(0.05,0.1,0.2,0.33,0.5,0.66,0.8,0.9,0.95)) |>
+    rename(`2 cats` = V1,
+           `3 cats` = V2,
+           `5 cats` = V3,
+           `10 cats` = V4) |>
+    mutate(method=distance_name) |>
+    pivot_longer(cols = c(`2 cats`, `3 cats`, `5 cats`, `10 cats`),
+                 names_to = "Number of categories", values_to = "Mean distance")
+
+  return(exp_mean_dist)
+}
+
+all_exp_mean_dist=rbind(sk_distance_to_plot(esm,"Simple Matching"),
+                        sk_distance_to_plot(ee,"Eskin"),
+                        sk_distance_to_plot(eof,"OF"),
+                        sk_distance_to_plot(eiof,"IOF")
+)
+
+paper_plot_skew1=all_exp_mean_dist |>
+  mutate(`Number of categories`=fct_inorder(`Number of categories`),
+         method=fct_inorder(method),) |>
+  ggplot(aes(y=`Mean distance`,x=`skewness (p1)`,color=`Number of categories`)) +
+  geom_line() + geom_point() + facet_wrap(~method,scales = "free_y") + theme_minimal() + labs(x=expression("Skewness (p1)"), y="Mean distance") +
+  xlim(c(0,1))+expand_limits(y = 0)+theme_bw()+theme(legend.position = "bottom")
+
+
+print(paper_plot_skew1,width=10,height=6)
+```
+
+
+### Code for `Figure 7`
+
+```{r,fig.height=4,fig.width=8}
+all_exp_mean_dist2=rbind(sk_distance_to_plot(ehl,"Hennig-Liao"),
+                         sk_distance_to_plot(em,"Std. dev."),
+                         sk_distance_to_plot(ea,"Cat. dissim.")
+)
+
+paper_plot_skew2=all_exp_mean_dist2 |>
+  mutate(`Number of categories`=fct_inorder(`Number of categories`),
+         method=fct_inorder(method),) |>
+  ggplot(aes(y=`Mean distance`,x=`skewness (p1)`,color=`Number of categories`)) +
+  geom_line() + geom_point() + facet_wrap(~method) + theme_minimal() + labs(x=expression("Skewness (p1)"), y="Mean distance") +
+  xlim(c(0,1))+expand_limits(y = 0)+theme_bw()+theme(legend.position = "bottom")
+
+
+print(paper_plot_skew2)
+
+```
+
+
+
+
+### Code for `Figure 8`
+
+```{r,fig.height=4,fig.width=8}
+
+qs<-c(2,3,5,10)#,18) # Some options for qs
+
+nint<-length(dis)    # Number of options for d (nint-1)
+
+CVchd<-CVtvd<-CVmsd<-CVlhd<-Echi<-Echd<-Etvi<-Etvd<-Emsi<-Elhi<-Elhd<-Emsd<-array(NA,dim=c(length(qs),length(qs),nint,nint))
+
+for (q1 in 1:length(qs)){  # cats row
+  qi<-qs[q1]
+  for (q2 in q1:length(qs)){ # cats cols
+    qj<-qs[q2]
+    for (pi in 1:nint){  # row distributions
+      d1<-dis[pi]
+      p1<-c(d1,rep((1-d1)/(qj-1),(qj-1)))  # nint different marginals: Distribution over colums
+      for (pj in 1:nint){
+        d2<-dis[pj]
+        p2<-c(d2,rep((1-d2)/(qi-1),(qi-1)))  # corresponding col marginals: Distribution over rows
+        Pi<-p2 %*% t(p1)   # joint table independent
+        Ri<-Pi/rowSums(Pi) # conditional table independent
+        #  Ci<-Ri/sqrt(p2)
+
+        if (qj>qi) {
+          Pd<-diag(p1[1:qi])
+          Addzeros<-matrix(0,(qi-1),(qj-qi))
+          Addps<-p1[qi+1:(qj-qi)]
+          Add<-rbind(Addzeros,Addps)
+          Pd<-cbind(Pd,Add)
+        } else { #qi=qj
+          pd<-p2
+          Pd<-diag(pd)       # joint table dependent case (diagonal smallest q)
+        }
+        Rd<-Pd/rowSums(Pd)
+        Cd<-Rd/sqrt(p2)    # Chi-square table: cond. prob/sqrt(p)
+
+
+        # category dissimilarities:
+        Dlhd<-LeHo(Rd)                   #  Le Ho
+        # Dmsd<-MousaviSehhati(Pd)         # Moussavi
+        Dtvd<-dist(Rd,"manhattan")/2     # TVD
+        Dchd<-dist(Cd,"euclidean")^2     # Chi2 dist
+        #    Dchd<-Dchd/(2*(qi-1))     # Chi2 dist corrected for number of categories...
+
+        Elhd[q1,q2,pi,pj]<-t(pd) %*%Dlhd %*%pd
+        # Emsd[q1,q2,pi,pj]<-t(pd) %*%Dmsd %*%pd
+        Etvd[q1,q2,pi,pj]<-t(pd) %*%as.matrix(Dtvd) %*%pd
+        Echd[q1,q2,pi,pj]<-t(pd) %*%as.matrix(Dchd) %*%pd
+
+        # Coefficient of variation
+
+        CVlhd[q1,q2,pi,pj]<-sqrt(t(pd) %*%Dlhd^2 %*%pd - (t(pd) %*%Dlhd %*%pd)^2)/(t(pd) %*%Dlhd %*%pd)
+        # CVmsd[q1,q2,pi,pj]<-sqrt(t(pd) %*%Dmsd^2 %*%pd - (t(pd) %*%Dmsd %*%pd)^2)/(t(pd) %*%Dmsd %*%pd)
+        CVtvd[q1,q2,pi,pj]<-sqrt(t(pd) %*%(as.matrix(Dtvd))^2 %*%pd - (t(pd) %*%as.matrix(Dtvd) %*%pd)^2)/(t(pd) %*%as.matrix(Dtvd) %*%pd)
+        CVchd[q1,q2,pi,pj]<-sqrt(t(pd) %*%(as.matrix(Dchd))^2 %*%pd - (t(pd) %*%as.matrix(Dchd) %*%pd)^2)/(t(pd) %*%as.matrix(Dchd) %*%pd)
+
+
+        Dlhi<-LeHo(Ri)
+        # Dmsi<-MousaviSehhati(Pi)
+        Dtvi<-dist(Ri,"manhattan")/2
+        #  Dchi<-dist(Ci,"euclidean")^2
+
+        Elhi[q1,q2,pi,pj]<-t(p2) %*%Dlhi %*%p2
+        # Emsi[q1,q2,pi,pj]<-t(p2) %*%Dmsi %*%p2
+        Etvi[q1,q2,pi,pj]<-t(p2) %*%as.matrix(Dtvi) %*%p2
+        #  Echi[q1,q2,pi,pj]<-t(p1) %*%as.matrix(Dchi) %*%p1
+      }
+    }
+  }
+}
+
+
+
+Elhs<-as.data.frame(rbind(Elhd[1,1,1,],Elhd[2,2,1,],Elhd[3,3,1,],Elhd[4,4,1,]))
+Etvs<-as.data.frame(rbind(Etvd[1,1,1,],Etvd[2,2,1,],Etvd[3,3,1,],Etvd[4,4,1,]))
+Emss<-as.data.frame(rbind(Emsd[1,1,1,],Emsd[2,2,1,],Emsd[3,3,1,],Emsd[4,4,1,]))
+Echs<-as.data.frame(rbind(Echd[1,1,1,],Echd[2,2,1,],Echd[3,3,1,],Echd[4,4,1,]))
+
+CVlhs<-as.data.frame(rbind(CVlhd[1,1,1,],CVlhd[2,2,1,],CVlhd[3,3,1,],CVlhd[4,4,1,]))
+CVtvs<-as.data.frame(rbind(CVtvd[1,1,1,],CVtvd[2,2,1,],CVtvd[3,3,1,],CVtvd[4,4,1,]))
+CVmss<-as.data.frame(rbind(CVmsd[1,1,1,],CVmsd[2,2,1,],CVmsd[3,3,1,],CVmsd[4,4,1,]))
+CVchs<-as.data.frame(rbind(CVchd[1,1,1,],CVchd[2,2,1,],CVchd[3,3,1,],CVchd[4,4,1,]))
+
+cats<-as.character(qs)
+skew<-as.character(dis)#as.character(1:nint)
+
+
+sk_distance_to_plot = function(exp_mean_dist,distance_name){
+  exp_mean_dist = as_tibble(exp_mean_dist) |> mutate(`skewness (p1)` = c(0.05,0.1,0.2,0.33,0.5,0.66,0.8,0.9,0.95)) |>
+    rename(`2 cats` = V1,
+           `3 cats` = V2,
+           `5 cats` = V3,
+           `10 cats` = V4) |>
+    mutate(method=distance_name) |>
+    pivot_longer(cols = c(`2 cats`, `3 cats`, `5 cats`, `10 cats`),
+                 names_to = "Number of categories", values_to = "Mean distance")
+
+  return(exp_mean_dist)
+}
+
+
+all_exp_mean_dist3=rbind(sk_distance_to_plot(t(as.matrix(Elhs)),"Le-Ho"),
+                         sk_distance_to_plot(t(as.matrix(Etvs)),"Total Variance Distance")
+)
+
+paper_plot_skew3=all_exp_mean_dist3 |>
+  mutate(`Number of categories`=fct_inorder(`Number of categories`),
+         method=fct_inorder(method),) |>
+  ggplot(aes(y=`Mean distance`,x=`skewness (p1)`,color=`Number of categories`)) +
+  geom_line() + geom_point() + facet_wrap(~method,scales="free_y") + theme_minimal() + labs(x=expression("Skewness (p1)"), y="Mean distance") +
+  xlim(c(0,1))+expand_limits(y = 0)+theme_bw()+theme(legend.position = "bottom")
+
+
+print(paper_plot_skew3,width=8,height=4)
+
+```
+
+
+## Appendix E FIFA variable distributions
+
+### Code for  `Figure 9`
+
+```{r, fig.height=12,fig.width=8}
+load("data/Fifa21NL.RData") # Load the data
+# data(fifa_nl)
+#Xorig<-X<-ddata[,-c(1,2)]
+Xorig<-X<-fifa_nl[,-c(1,2,19:24)] # vars 1 and 2 are a bit useless (too many categories)
+# vars 19:24 interesting but same scale and little variation
+# leaving them out makes the plots a bit smaller.
+# leaving them in doesn't seem to change a lot
+
+
+n<-nrow(X)
+# p<-ncol(X)
+K<-10  # Number of clusters in cluster analysis
+nd<-2 # Dimensionality of MDS solution
+X=X[,c(8:1,9:16)]  # Order
+Xorig=Xorig[,c(8:1,9:16)]  # Order
+X=X[,-3]  # Remove int rep: 380 have something, 21+7 in other cats
+Xorig=Xorig[,-3]
+X=X[,c(1:12,14,13,15)]
+Xorig=Xorig[,c(1:12,14,13,15)]
+p<-ncol(X)
+
+# First convert integers to numeric manually
+X[8:15] <- lapply(X[8:15], as.numeric)
+
+# reordering / numeric first
+X <- X %>%
+  select(where(is.integer), where(is.numeric), where(is.factor))
+
+
+X_tib_num = X |> as_tibble() |> select(where(is.numeric))
+
+X_tib_cat = X |> as_tibble() |> select(where(is.factor))
+
+levels(X_tib_cat$work_rate)=c("H/H", "H/L", "H/M", "L/H", "L/L", "L/M", "M/H", "M/L", "M/M")
+levels(X_tib_cat$club_name) = c("ADO","Ajax","AZ","Emmen","Groningen","Twente","Utrecht",
+                                "Feyenoord","Fortuna","Heracles","PEC","PSV","RKC","Heerenveen",
+                                "Sparta","Vitesse","VVV","Willem II")
+
+X_tib_cat=X_tib_cat |> rename(`club`=club_name,
+                              `position`=team_position)
+
+X_tib_num_nest =  tibble(values=X_tib_num |> map((~.x)),features=names(X_tib_num))|>
+  mutate(
+    hplot=map2(.x=values,.y=features,
+               function(x=.x,y=.y){
+                 my_tib=tibble(a=x)
+                 names(my_tib) = y
+
+                 my_plot= my_tib |> ggplot(aes(x)) + geom_histogram(bins=15,alpha=.75)+theme_bw()+ggtitle(y)+
+                   theme(plot.title = element_text(hjust = 0.5))+xlab("")+ylab("")
+               }
+    )
+  )
+
+
+X_tib_cat_nest =  tibble(values=X_tib_cat |> map((~.x)),features=names(X_tib_cat))|>
+  mutate(
+    bplot=map2(.x=values,.y=features,
+               function(x=.x,y=.y){
+                 my_tib=tibble(a=x)
+                 names(my_tib) = y
+
+                 my_plot= my_tib |> ggplot(aes(x)) + geom_bar(alpha=.75)+theme_bw()+ggtitle(y)+
+                   theme(plot.title = element_text(hjust = 0.5),
+                         axis.text.x =element_text(angle=90 ))+xlab("")+ylab("")
+               }
+    )
+  )
+
+
+fifa_descriptive_plots=(X_tib_cat_nest$bplot[[1]]/
+                          X_tib_cat_nest$bplot[[2]]/
+                          X_tib_cat_nest$bplot[[3]]/
+                          X_tib_cat_nest$bplot[[4]]/
+                          X_tib_cat_nest$bplot[[5]]/
+                          X_tib_cat_nest$bplot[[6]]/
+                          X_tib_cat_nest$bplot[[7]])|
+  (X_tib_num_nest$hplot[[1]]/
+     X_tib_num_nest$hplot[[2]]/
+     X_tib_num_nest$hplot[[3]]/
+     X_tib_num_nest$hplot[[4]]/
+     X_tib_num_nest$hplot[[5]]/
+     X_tib_num_nest$hplot[[6]]/
+     X_tib_num_nest$hplot[[7]])#+ plot_layout(guides = 'collect')
+
+
+print(fifa_descriptive_plots)
+
+```

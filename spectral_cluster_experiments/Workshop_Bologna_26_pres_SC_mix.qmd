@@ -1,0 +1,1083 @@
+---
+title: "Association-Based Spectral Clustering for Mixed Data"
+subtitle: "Intermediate Workshop of the PRIN 2022 project, 5-6 February 2026, Bologna"
+author: "Alfonso Iodice D'Enza, Cristina Tortora and Francesco Palumbo"
+# date: "22 June, 2023"
+title-slide-attributes:
+  data-background-color: "#E6C65C"
+  data-background-image: figures/wp_bol_logo.png
+  data-background-position: bottom
+  data-background-size: contain
+  data-background-opacity: "0.75"
+  data-color: "#4A3F1F"
+format: 
+  revealjs: 
+    html-math-method:
+      method: mathjax
+      url: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js
+    # smaller: true
+    # logo: figures/wp_bol_logo.png
+    theme: [default, title_slide.scss]
+    fontsize: 1.5em
+    preview-links: true
+    transition: fade
+    # bibliography: spectral_mix_biblio.bib
+    # csl: asa.csl
+    progress: true
+    slide-number: true
+    embed-resources: true
+---
+
+
+```{r, warning=FALSE,message=FALSE}
+library(FactoMineR)
+library(GGally)
+library("gganimate")
+library(ggrepel)
+library(magick)
+library(palmerpenguins)
+library("tidyverse")
+library("fpc")
+library("factoextra")
+library("dbscan")
+library("mclust")
+library(fastDummies)
+library(mlbench)
+library(tidyverse)
+library(tidymodels)
+library(purrr)
+library(ca)
+library("magick")
+library(tidymodels)
+library(discrim)
+library(clustrd)
+library(flipbookr)
+library(kableExtra)
+library(janitor)
+library(patchwork)
+library(mvtnorm)
+library("ggraph")
+library("tidygraph")
+library("GGally")
+library("tidyverse")
+library("network")
+library("sna")
+library("ggplot2")
+library("kableExtra")
+library("RefManageR")
+
+BibOptions(check.entries = FALSE,
+           bib.style = "authoryear",
+       cite.style = "authoryear",
+       style = "markdown",
+       hyperlink = FALSE,
+       dashed = FALSE)
+wp_bologna_26_bib <- ReadBib("wp_bologna_26_references.bib", check = FALSE)
+
+```
+
+## {.center}
+
+:::: {.columns}
+
+::: {.column width="10%" .center}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+[outline]{style="color:indianred"}
+
+:::
+
+::: {.column  width="90%" }
+
+:::{.callout-tip appearance="minimal" icon=false title=""}
+
+
+&nbsp;
+
+###  dissimilarity- and distance-based unsupervised learning
+
+&nbsp;
+
+### independence-based vs association-based 
+
+&nbsp;
+
+### taking into account continuous/categorical interactions
+
+&nbsp;
+
+### example and future work
+
+&nbsp;
+
+:::
+
+:::
+
+::::
+
+
+#  dissimilarity- and distance-based unsupervised learning
+
+## learning from dissimilarities
+
+some unsupervised learning methods take as input a dissimilarity matrix
+
+&nbsp;
+
+### [dimension reduction]{style="color:dodgerblue"}: multidimensional scaling (MDS)^[`r Citet(bib=wp_bologna_26_bib,"borg2005modern")`]
+
+&nbsp;
+
+### [clustering methods]{style="color:forestgreen"}: hierarchical (HC) and partitioning around medoids (PAM)^[`r Citet(bib=wp_bologna_26_bib,"kaufman2009finding")`]
+
+&nbsp;
+
+:::{.fragment .centered}
+### the [dissimilarity]{style="color:indianred"} measure of choice is [key]{style="color:indianred"}, obviously 
+:::
+
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+2 continuous variables: add up by-variable  (absolute value or squared) differences 
+
+```{r}
+toy_data <- tibble(
+  X1 = c(5, 3, 7),     
+  X2 = c(1, 4, 2),     
+  X3   = factor(c("purple", "blue", "gold")), 
+  X4   = factor(c("A", "B", "C")) 
+)  
+```
+
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4)) +
+  geom_point(size=8) + geom_text(color="white") +
+  geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4,alpha=.001)+
+  geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4,alpha=.001)+theme_void()
+
+```
+
+
+
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+2 continuous variables: add up by-variable  (absolute value or squared) differences
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4)) +
+  geom_point(size=8) + geom_text(color="white") +
+  geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4)+
+  geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+theme_void()
+```
+
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+2 continuous variables: add up by-variable  (absolute value or squared) differences 
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4)) +
+  geom_point(size=8) + geom_text(color="white") +
+  # geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4)+
+  # geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+
+  geom_line(data=toy_data |> filter(X4 %in%c("A","B")), 
+               inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=2)+
+  geom_line(data=toy_data |> filter(X4 %in%c("A","B")), 
+               inherit.aes = FALSE,aes(y=X2,x=0),color="forestgreen",size=2)+
+  annotate("label",x=2, y=2,label="d(A,B)",size=10)+theme_void()
+  
+```
+
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+2 continuous variables: add up by-variable  (absolute value or squared) differences 
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4)) +
+  geom_point(size=8) + geom_text(color="white") +
+  # geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4)+
+  # geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+
+  geom_line(data=toy_data |> filter(X4 %in%c("A","C")), 
+               inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=2)+
+  geom_line(data=toy_data |> filter(X4 %in%c("A","C")), 
+               inherit.aes = FALSE,aes(y=X2,x=0),color="forestgreen",size=2)+
+  annotate("label",x=2, y=2,label="d(A,C)",size=10)+theme_void()
+  
+```
+
+
+
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+2 continuous variables: add up by-variable  (absolute value or squared) differences 
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4)) +
+  geom_point(size=8) + geom_text(color="white") +
+  # geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4)+
+  # geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+
+  geom_line(data=toy_data |> filter(X4 %in%c("B","C")), 
+               inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=2)+
+  geom_line(data=toy_data |> filter(X4 %in%c("B","C")), 
+               inherit.aes = FALSE,aes(y=X2,x=0),color="forestgreen",size=2)+
+  annotate("label",x=2, y=2,label="d(B,C)",size=10)+theme_void()
+  
+```
+
+<!-- ##  -->
+
+<!-- [**intuition**]{style="color:indianred"} -->
+
+<!-- 2 continuous and 1 categorical variables  -->
+
+<!-- ```{r} -->
+<!-- toy_data |>  -->
+<!--   ggplot(aes(x=X1,y=X2,label=X4,color=as.character(X3))) + -->
+<!--   geom_point(size=8) + geom_text(color="white") + -->
+<!--   geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4,alpha=.001)+ -->
+<!--   geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4,alpha=.001)+ -->
+<!--   scale_color_identity()+theme_void()+ -->
+<!--   theme(legend.position="none") -->
+
+
+<!-- ``` -->
+
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+2 continuous and 1 categorical variables 
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4,color=as.character(X3))) +
+  geom_point(size=8) + geom_text(color="white") +
+  geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4,alpha=.001)+
+  geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4,alpha=.001)+
+  scale_color_identity()+theme_void()+
+  theme(legend.position="none")
+
+
+```
+
+## 
+
+[**intuition**]{style="color:indianred"}
+
+one might consider [purple]{style="color:purple"} and [blue]{style="color:blue"}  *closer* than e.g. [purple]{style="color:purple"} and [yellow]{style="color:gold"}
+
+```{r}
+toy_data |> 
+  ggplot(aes(x=X1,y=X2,label=X4,color=as.character(X3))) +
+  geom_point(size=8) + geom_text(color="white") +
+  geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="dodgerblue",size=4,alpha=.001)+
+  geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4,alpha=.001)+
+  scale_color_identity()+theme_void()+
+  theme(legend.position="none")
+
+
+```
+
+## 
+
+[**independence-based** ]{style="color:indianred"}
+
+
+
+
+
+## [independence-based]{style="color: dodgerblue"} 
+
+Most commonly used dissimilarity (or, distance) measures are based on by-variable differences that are  then added together 
+
+&nbsp;
+
+-   ### in the continuous case: Euclidean or Manhattan distances
+
+&nbsp;
+
+-   ### in the categorical case: Hamming (matching) distance (among MANY others) 
+
+&nbsp;
+
+-   ### in the mixed data case:  Gower dissimilarity index
+
+&nbsp;
+
+:::{.fragment .centered}
+### no inter-variable relations are considered $\rightarrow$ [independence-based]{style="color: dodgerblue"}
+:::
+
+
+
+
+##
+
+-  When variables are correlated or associated, shared information is
+effectively counted multiple times 
+
+- inflated dissimilarities may cause potential distortions in downstream unsupervised learning tasks.
+
+
+```{r}
+library(tidyverse)
+library(ggrepel)
+
+cars_sel <- c("Toyota Corolla", "Cadillac Fleetwood")
+
+mtcars_tbl <- mtcars |>
+  rownames_to_column("car") |>
+  mutate(
+    disp_z = as.numeric(scale(disp)),
+    wt_z   = as.numeric(scale(wt))
+  )
+
+# standardized matrix (consistent baseline)
+Z <- mtcars_tbl |> select(disp_z, wt_z) |> as.matrix()
+
+# Euclidean distance between selected cars (on standardized data)
+seg_eucl <- mtcars_tbl |>
+  filter(car %in% cars_sel) |>
+  summarise(
+    x    = disp_z[car == cars_sel[1]],
+    y    = wt_z[car == cars_sel[1]],
+    xend = disp_z[car == cars_sel[2]],
+    yend = wt_z[car == cars_sel[2]],
+    dist = sqrt((xend - x)^2 + (yend - y)^2)
+  )
+
+# Mahalanobis whitening (orientation-preserving) on standardized data
+S <- cov(Z)
+eig <- eigen(S)
+U <- eig$vectors
+D <- diag(eig$values)
+
+W_pca <- Z %*% U %*% diag(1 / sqrt(diag(D))) %*% t(U)
+
+whitened_tbl <- mtcars_tbl |>
+  mutate(
+    w1 = W_pca[, 1],
+    w2 = W_pca[, 2]
+  )
+
+# segment in whitened space (Euclidean here == Mahalanobis in original standardized space)
+seg_mah <- whitened_tbl |>
+  filter(car %in% cars_sel) |>
+  summarise(
+    x    = w1[car == cars_sel[1]],
+    y    = w2[car == cars_sel[1]],
+    xend = w1[car == cars_sel[2]],
+    yend = w2[car == cars_sel[2]],
+    dist = sqrt((xend - x)^2 + (yend - y)^2)
+  )
+```
+
+```{r}
+ggplot(mtcars_tbl, aes(x = disp, y = wt)) +
+  geom_point(size = 2) +
+  labs(
+    x = "Displacement (cu. in.)",
+    y = "Weight (1000 lbs)",
+    title = "Redundant continuous variables: displacement and weight",
+    subtitle = "Larger cars tend to have both higher displacement and weight"
+  ) +
+  theme_minimal(base_size = 10)
+```
+
+
+##
+
+-  When variables are correlated or associated, shared information is
+effectively counted multiple times 
+
+- inflated dissimilarities may cause potential distortions in downstream unsupervised learning tasks.
+
+
+```{r}
+ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
+  geom_point(size = 2) +
+  stat_ellipse(type = "norm", level = 0.68, linewidth = .5,alpha=.25,color="indianred") +
+  coord_equal() +
+  labs(
+    x = "Displacement (z-score)",
+    y = "Weight (z-score)",
+    title = "Same data after standardization",
+    subtitle = "Units removed, redundancy remains"
+  ) +
+  theme_minimal(base_size = 10)
+```
+
+##
+
+Independence-based measures, such as Euclidean distance, treats the variables as independent
+
+```{r}
+ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
+  geom_point(size = 2, color = "grey70") +
+  stat_ellipse(type = "norm", level = 0.68, linewidth = .5,alpha=.25,color="indianred") +
+  geom_point(
+    data = filter(mtcars_tbl, car %in% cars_sel),
+    aes(color = car),
+    size = 3
+  ) +
+  geom_segment(
+    data = seg_eucl,
+    aes(x = x, y = y, xend = xend, yend = yend),
+    linewidth = 1,
+    arrow = arrow(length = unit(0.15, "cm")),
+    inherit.aes = FALSE
+  ) +
+  geom_text_repel(
+    data = filter(mtcars_tbl, car %in% cars_sel),
+    aes(label = car, color = car),
+    size = 4,
+    box.padding = 0.3,
+    point.padding = 0.3,
+    max.overlaps = Inf,
+    show.legend = FALSE
+  ) +
+  geom_label(
+    data = seg_eucl,
+    aes(x = (x + xend)/2, y = (y + yend)/2, label = paste0("d_E = ", round(dist, 2))),
+    inherit.aes = FALSE,
+    label.size = 0,
+    alpha = 0.85
+  ) +
+  coord_equal() +
+  labs(
+    x = "Displacement (z-score)",
+    y = "Weight (z-score)",
+    title = "Euclidean distance (standardized) overcounts redundant information",
+    subtitle = "Differences along the shared 'size' direction are counted twice"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "none")
+```
+
+
+##
+
+The [Mahalanobis distance]{style="color:dodgerblue"}  takes correlations into account so that shared information is not over-counted
+
+
+```{r}
+ggplot(whitened_tbl, aes(w1, w2)) +
+  geom_point(size = 2, color = "grey70") +
+  stat_ellipse(type = "norm", level = 0.68, linewidth = .5,alpha=.25,color="dodgerblue") +
+  geom_point(
+    data = filter(whitened_tbl, car %in% cars_sel),
+    aes(color = car),
+    size = 4
+  ) +
+  geom_segment(
+    data = seg_mah,
+    aes(x = x, y = y, xend = xend, yend = yend),
+    linewidth = 1,
+    arrow = arrow(length = unit(0.15, "cm")),
+    inherit.aes = FALSE
+  ) +
+  geom_text_repel(
+    data = filter(whitened_tbl, car %in% cars_sel),
+    aes(label = car, color = car),
+    size = 4,
+    box.padding = 0.35,
+    point.padding = 0.3,
+    max.overlaps = Inf,
+    show.legend = FALSE
+  ) +
+  geom_label(
+    data = seg_mah,
+    aes(x = (x + xend)/2, y = (y + yend)/2, label = paste0("d_M = ", round(dist, 2))),
+    inherit.aes = FALSE,
+    label.size = 0,
+    alpha = 0.85
+  ) +
+  labs(
+    title = "Mahalanobis whitening",
+    subtitle = "with preserved orientation (computed on standardized variables)",
+    x = "whitened dim 1",
+    y = "whitened dim 2"
+  ) +
+  coord_equal() +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "none")
+```
+
+:::{.fragment .centered}
+### this is an [association-based]{style="color:indianred"} distance for continuous data
+:::
+
+## 
+
+[association-based]{style="color: indianred"} pairwise distance
+
+-   differences in line with the inter-variables association/correlation are down-weighted
+
+:::{.callout-note  title="Association-based for continuous: Mahalanobis distance" icon=false}
+ 
+Let ${\bf X}_{con}$  be $n\times Q_{d}$ a data matrix of $n$ observations described by $Q_{d}$ continuous variables, and let $\bf S$ the sample covariance matrix, the Mahalanobis distance matrix is
+
+$$
+{\bf D}_{mah}
+= \left[\operatorname{diag}({\bf G})\,{\bf 1}_{n}^{\sf T}
++ {\bf 1}_{n}\,\operatorname{diag}({\bf G})^{\sf T}
+- 2{\bf G}\right]^{\odot 1/2}
+$$
+ where 
+ 
+ - $[\cdot]^{\odot 1/2}$ denotes the element-wise square root  
+ 
+ - ${\bf G}=({\bf C}{\bf X}_{con}){\bf S}^{-1}({\bf C}{\bf X}_{con})^{\sf T}$ is the Mahalanobis Gram matrix 
+ 
+ - ${\bf C}={\bf I}_{n}-\tfrac{1}{n}{\bf 1}_{n}{\bf 1}_{n}^{\sf T}$ is the centering operator 
+ 
+:::
+
+
+## 
+
+[association-based]{style="color: indianred"} pairwise distance
+
+-   differences in line with the inter-variables association/correlation are down-weighted
+
+:::{.callout-tip title="Association-based for categorical: <span style='color: indianred;'>total variation distance (TVD)</span>^[`r Citet(bib=wp_bologna_26_bib,'le2005association')`]" icon=false}
+To  distance matrix ${\bf D}_{tvd}$ is defined using the so-called <span style='color: dodgerblue;'>delta framework</span>^[`r Citet(bib=wp_bologna_26_bib,'vdv_pr')`] a general way to define categorical data distances.
+
+Let ${\bf X}_{cat}$ be $n\times Q_{c}$ a data matrix of $n$ observations described by $Q_{c}$ categorical variables.
+
+ 
+$$
+{\bf D} = {\bf Z}{\Delta}{\bf Z}^{\sf T} 
+= \left[\begin{array}{ccc} {\bf Z}_{1} & \dots & {\bf Z}_{Q_{c}} \end{array} \right]\left[\begin{array}{ccc}
+                                                                                          {\bf\Delta}_1  & & \\
+                                                                                          & \ddots &\\
+                                                                                          & & {\bf\Delta}_{Q_{c}} \end{array} \right] \left[ \begin{array}{c}
+                                                                                                                                             {\bf Z}_{1}^{\sf T}\\
+                                                                                                                                             \vdots \\
+                                                                                                                                             {\bf Z}_{Q_{c}}^{\sf T}
+                                                                                                                                             \end{array} \right]
+$$
+- where ${\bf Z}=[{\bf Z}_1,\ldots,{\bf Z}_{Q_c}]$ is the super-indicator matrix, with $Q^{*}=\sum_{j=1}^{Q_c} q_j$
+
+- ${\Delta}_j$ is the category dissimilarity matrix for variable $j$, i.e., the $j$th diagonal block of the block-diagonal matrix ${\Delta}$.
+
+- setting ${\Delta}_j$ determines the categorical distance measure of choice (independent- or association-based)
+:::
+
+
+## 
+
+[association-based]{style="color: indianred"} pairwise distance
+
+-   differences in line with the inter-variables association/correlation are down-weighted
+
+:::{.callout-tip title="Association-based for categorical: <span style='color: indianred;'>total variation distance (TVD)</span>^[`r Citet(bib=wp_bologna_26_bib,'le2005association')`] (2)" icon=false}
+- In the [IB]{style="color: dodgerblue"} case, the off-diagonal elements of ${\Delta}_j$ depend only on variable $j$. 
+
+- In the [AB]{style="color: indianred"} case, they depend on the association of each category pair with all other categorical variables. 
+
+Consider the empirical joint probability distributions stored in the off-diagonal blocks of  ${\bf P}$:
+
+$$
+{\bf P} = \frac{1}{n} 
+\begin{bmatrix}
+{\bf Z}_1^{\sf T}{\bf Z}_1 & {\bf Z}_1^{\sf T}{\bf Z}_2 & \cdots & {\bf Z}_1^{\sf T}{\bf Z}_{Q_c} \\
+\vdots & \ddots & \vdots & \vdots \\
+{\bf Z}_{Q_c}^{\sf T}{\bf Z}_1 & {\bf Z}_{Q_c}^{\sf T}{\bf Z}_2 & \cdots & {\bf Z}_{Q_c}^{\sf T}{\bf Z}_{Q_c}
+\end{bmatrix}.
+$$
+
+We refer to the conditional probability distributions for each variable $j$ given each variable $i$ ($i,j=1,\ldots,Q_c$, $i\neq j$),
+stored in the block matrix
+
+$$
+{\bf R} = {\bf P}_z^{-1}({\bf P} - {\bf P}_z).
+$$
+
+where ${\bf P}_z = {\bf P} \odot {\bf I}_{Q^*}$, and ${\bf I}_{Q^*}$ is the $Q^*\times Q^*$ identity matrix.
+
+:::
+
+
+## 
+
+[association-based]{style="color: indianred"} pairwise distance
+
+-   differences in line with the inter-variables association/correlation are down-weighted
+
+:::{.callout-tip title="Association-based for categorical: <span style='color: indianred;'>total variation distance (TVD)</span>^[`r Citet(bib=wp_bologna_26_bib,'le2005association')`] (3)" icon=false}
+
+Let ${\bf r}^{ji}_a$ and ${\bf r}^{ji}_b$ be the rows of ${\bf R}_{ji}$, the $(j,i)$th off-diagonal block of ${\bf R}$
+The category dissimilarity between $a$ and $b$ for variable $j$ based on the total variation distance (TVD) is defined as
+
+$$
+\delta^{j}_{tvd}(a,b)
+= \sum_{i\neq j}^{Q_c} w_{ji}
+\Phi^{ji}({\bf r}^{ji}_{a},{\bf r}^{ji}_{b})
+= \sum_{i\neq j}^{Q_c} w_{ji}
+\left[\frac{1}{2}\sum_{\ell=1}^{q_i}
+|{\bf r}^{ji}_{a\ell}-{\bf r}^{ji}_{b\ell}|\right],
+\label{ab_delta}
+$$
+
+where $w_{ji}=1/(Q_c-1)$ for equal weighting  (can be user-defined). 
+
+ TVD-based dissimilarity matrix is, therefore, 
+
+$$
+{\bf D}_{tvd}= {\bf Z}{\Delta}^{(tvd)}{\bf Z}^{\sf T}.
+$$
+
+:::
+
+
+
+
+
+# AB for mixed?
+
+## AB for mixed
+
+A straightforward AB-distance for mixed data is given by the convex combination of Mahalanobis and TVD distances:
+
+$$
+{\bf D}_{mix}
+=\frac{Q_{d}}{Q}\,{\bf D}_{mah}
++\left(1-\frac{Q_{d}}{Q}\right){\bf D}_{tvd}.
+$$
+
+- this distance only accounts for correlations or associations among variables of the same type
+
+- no continuous--categorical interactions are considered.
+
+&nbsp;
+
+:::{.fragment .centered}
+
+### [how to measure interactions?]{style="color:dodgerblue"}
+
+:::
+
+## how to measure interactions: aim
+
+define  $\Delta_{int}$, that accounts for the interactions and augment $\Delta_{(tvd)}$, so that the dissimilarity measure becomes 
+
+$$
+{\bf D}_{mix}^{(int)}
+=
+{\bf D}_{mah}
++
+{\bf D}_{cat}^{(int)}.
+$$
+
+where 
+
+$$
+{\bf D}_{cat}^{(int)}={\bf Z}\tilde{\Delta}{\bf Z}^\top 
+$$
+and
+
+$$
+\tilde{\Delta} = (1-\alpha)\Delta^{tvd} + \alpha \frac{1}{Q_{c}}\Delta^{int}
+$$
+where $\alpha=\frac{1}{Q_{c}}$.
+
+
+How to define $\Delta^{int}$
+
+
+- the general entry for the $j^{th}$ diagonal block is $\delta_{int}^{j}(a,b)$ accounts for the interaction by measuring how the continuous variables help in discriminating between the observations choosing category $a$ and those choosing category $b$ for the $j^{th}$ categorical variable  
+
+
+## how to measure interactions: aim
+
+- a straightforward option is to compare the continuous variables means, conditional to $a$ and $b$ 
+
+  - not suited for non-spherical clusters 
+
+. . .
+
+- consider the computation of  $\delta_{int}^{ij}\left({ab}\right)$  as a two-class ($a/b$) classification problem, with the continuous variables as predictors
+  -  use a distance-based classifier: [nearest-neighbors]{style="color:dodgerblue"}
+
+
+<!-- \frac{1}{2}\left(\right) -->
+
+<!-- ## -->
+
+<!-- [**NN based computation of $\delta_{int}^{j}(a,b)$**]{style="color: indianred"} -->
+
+<!-- ![](figures/phi_plots.png){fig-align="center"} -->
+
+
+##  $\Delta^{(int)}_{j}$ computation
+
+- consider ${\bf D}_{mah}$ and sort it  to identify the neighbors for each observation.
+
+- set a proportion of neighbors to consider, say $\hat{\pi}_{nn}=0.1$
+ 
+
+- for each pair of categories $(a,b)$, $a,b=1,\ldots,q_{j}$, $a\neq b$ of the $j^{th}$ categorical variable:
+
+
+- classify the observations using the [prior corrected]{style="color:dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"duda2001pattern")`] decision rule
+    
+    $$
+     \text{if $i$ is such that }\ \ \ \frac{\hat{\pi}_{nn}(a)}{\hat{\pi}(a)}\geq\frac{\hat{\pi}_{nn}(b)}{\hat{\pi}(b)} \ \ \ \text{ then assign $i$ to class $a$ else to class $b$}
+    $$
+    
+  
+- compute $\delta_{int}^{j}(a,b)$ as the [balanced accuracy]{style="color:dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"brodersen2010balanced")`] (average of class-wise sensitivities)
+    $$
+    \Phi_{int}^{j}(a,b)=\frac{1}{2}\left(\frac{\texttt{true } a}{\texttt{true } a + \texttt{false }a}+\frac{\texttt{true } b}{\texttt{true } b + \texttt{false }b}\right)
+    $$
+
+
+
+
+##
+
+[**computing $\Delta_{int}$**]{style="color:indianred"}
+
+![](figures/AB_plot.png){fig-align="center" width="70%"}
+
+
+##
+
+[**computing $\Delta_{int}$**]{style="color:indianred"}
+
+![](figures/AC_plot.png){fig-align="center" width="70%"}
+
+
+##
+
+[**computing $\Delta_{int}$**]{style="color:indianred"}
+
+![](figures/AD_plot.png){fig-align="center" width="70%"}
+
+##
+
+[**computing $\Delta_{int}$**]{style="color:indianred"}
+
+![](figures/BC_plot.png){fig-align="center" width="70%"}
+
+
+##
+
+[**computing $\Delta_{int}$**]{style="color:indianred"}
+
+![](figures/BD_plot.png){fig-align="center" width="70%"}
+
+##
+
+[**computing $\Delta_{int}$**]{style="color:indianred"}
+
+![](figures/CD_plot.png){fig-align="center" width="70%"}
+
+
+# spectral clustering in a nutshell
+
+## {.center}
+
+[**Spectral clustering: a graph partitioning problem**]{style="color:indianred"}
+
+
+::: {.callout-note  appearence="simple" icon=false}
+## Graph representation
+
+a graph representation of the data matrix $\bf X$: the aim is then to cut it into K groups (clusters)
+
+```{r, warning=FALSE,message=FALSE,fig.align="center",out.width="35%"}
+set.seed(123)
+net = rgraph(4, mode = "graph", tprob = .75)
+net = network(net, directed = FALSE)
+# vertex names
+network.vertex.names(net) = letters[1:4]
+ggnet2(net, size = 12,color="dodgerblue", label = TRUE, label.size = 8,label.color = "white",edge.label = c("w_ac","w_cb","w_bd","w_cd"),
+       edge.label.color = "indianred",edge.label.size = 12)
+```
+
+:::
+
+. . .
+
+
+::: {.callout-tip  appearence="simple" icon=false}
+## the affinity matrix <span style = "color:dodgerblue"> ${\bf A}$ </span>
+the elements <span style = "color:dodgerblue"> $\bf w_{ij}$ </span> of  <span style = "color:dodgerblue"> $\bf A$ </span> are high (low) if $i$ and $j$ are in the same (different) groups
+```{r}
+tib_graph = tibble(.=letters[1:4],a=c("0","0","w_ca","0"),b=c("0","0","w_cb","w_db"),c = c("w_ac","w_cb","0","w_dc"), d = c("0","w_bd","w_cd","0"))
+tib_graph |> kbl(align = 'c')  |> kable_styling(full_width = F,font_size = 16) |> kable_minimal() |>   
+ column_spec(c(1:5),
+    border_right = T,
+    border_left = T) |> 
+  column_spec(c(2:5), color = "indianred") 
+```
+
+:::
+
+##
+
+
+
+
+
+
+
+
+## {.center} 
+
+[**Spectral clustering: making the graph easy to cut**]{style="color:indianred"}
+
+
+An approximated solution to the graph partitioning problem:
+
+-  <span style = "color:dodgerblue"> spectral decomposition </span> of the graph Laplacian matrix, that is a [normalized]{style="color:dodgerblue"} version of the [affinity matrix ${\bf A}$]{style="color:dodgerblue"}:
+
+
+$$\color{dodgerblue}{\bf{L}} = {\bf D}_{r}^{-1/2}\underset{\color{grey}{\text{affinity matrix } {\bf A}}}{\color{dodgerblue}{exp(-{\bf D}^{2}(2\sigma^{2})^{-1})}}{\bf D}_{r}^{-1/2} =\color{dodgerblue}{{\bf Q}{\Lambda}{\bf Q}^{\sf T}}$$
+
+
+
+-  <span style = "color:dodgerblue"> $\bf D$ </span> be the $n\times n$ matrix of pairwise Euclidean distances
+  
+- the <span style = "color:dodgerblue"> $\sigma$ </span> parameter dictates the number of neighbors each observation is linked to (rule of thumb: median distance to the 20th nearest neighbor)
+  
+- diagonal terms of $\bf A$ are set to zero: <span style = "color:dodgerblue"> $a_{ii}=0$ </span>, $i=1,\ldots,n$ 
+  
+- <span style = "color:dodgerblue"> ${\bf D}_{r}=diag({\bf r})$ </span>,
+  <span style = "color:dodgerblue"> ${\bf r}={\bf A}{\bf 1}$ </span> and
+  <span style = "color:dodgerblue"> ${\bf 1}$ </span> is an $n$-dimensional vector of 1's 
+
+
+. . .
+
+- the spectral clustering of the $n$ original objects is a <span style = "color:dodgerblue"> $K$-means</span> applied on the rows of the matrix <span style = "color:dodgerblue"> ${\bf{\tilde Q}}$</span>, containing the first $K$ columns of $\bf Q$
+
+<!-- ## {.center} -->
+
+<!-- [**Spectral clustering: the NJW  procedure**]{style="color:indianred"} -->
+
+<!-- - step 1: compute the pairwise distances matrix $\bf D$ -->
+
+<!-- - step 2: switch to the affinity matrix $\bf A$ -->
+
+<!-- - step 3: normalize the affinity matrix to obtain the Laplacian matrix $\bf L$ -->
+
+<!-- - step 4: decompose $\bf L$ and obtain ${\bf {\tilde Q}}$, matrix of the $K$-dimensional spectral scores  -->
+
+<!-- - step 5: apply the $K$-means on ${\bf {\tilde Q}}$ to obtain the cluster allocation vector -->
+
+
+<!-- ## {.center} -->
+
+<!-- [**scatterplot matrix of the spectral scores**]{style="color:indianred"} -->
+
+<!-- ```{r,fig.align='center', echo=FALSE,out.width = "70%"} -->
+<!-- p12 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_1,y=spect_scores_2,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p13 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_1,y=spect_scores_3,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p14 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_1,y=spect_scores_4,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p15 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_1,y=spect_scores_5,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p23 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_2,y=spect_scores_3,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p24 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_2,y=spect_scores_4,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p25 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_2,y=spect_scores_5,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p34 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_3,y=spect_scores_4,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p35 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_3,y=spect_scores_5,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- p45 = multi_s_clusters %>% -->
+<!--   ggplot(aes(x=spect_scores_4,y=spect_scores_5,color=spect_clust,shape=true_clust))+ -->
+<!--   theme_minimal()+geom_point() + theme(legend.position = "none")+ xlab("")+ylab("")+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- blank_p = ggplot(data=tibble(x=0,y=0),mapping=aes(x,y))+ -->
+<!--   theme_void()+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- blank_p1 = ggplot(data=tibble(x=0,y=0),mapping=aes(x,y))+ -->
+<!--   theme_void()+geom_text(label="spectral score 1",size=4)+ -->
+<!--   xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- blank_p2 = ggplot(data=tibble(x=0,y=0),mapping=aes(x,y))+ -->
+<!--   theme_void()+geom_text(label="spectral score 2",size=4)+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- blank_p3 = ggplot(data=tibble(x=0,y=0),mapping=aes(x,y))+ -->
+<!--   theme_void()+geom_text(label="spectral score 3",size=4)+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- blank_p4 = ggplot(data=tibble(x=0,y=0),mapping=aes(x,y))+ -->
+<!--   theme_void()+geom_text(label="spectral score 4",size=4)+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- blank_p5 = ggplot(data=tibble(x=0,y=0),mapping=aes(x,y))+ -->
+<!--   theme_void()+geom_text(label="spectral score 5",size=4)+xlim(c(-1,1))+ylim(c(-1,1)) -->
+
+<!-- (blank_p1 | blank_p | blank_p |  blank_p | blank_p) /  -->
+<!-- (p12 | blank_p2 | blank_p | blank_p | blank_p) / -->
+<!-- (p13 | p23 | blank_p3 |  blank_p | blank_p) / -->
+<!-- (p14 | p24 | p34 |  blank_p4 | blank_p) / -->
+<!-- (p15 | p25 | p35 |  p45 | blank_p5)  -->
+
+
+
+<!-- ``` -->
+
+##
+
+[**Spectral clustering: solution and performance**]{style="color:indianred"}
+
+Recent benchmarking studies^[`r Citet(bib=wp_bologna_26_bib,"murugesan2021benchmarking", before="e.g., ")`]:
+SC works well, particularly in case of non-convex and overlapping clusters 
+
+::: {layout-ncol=2}
+![](figures/parcoord_SC_solution.png){width=50%}
+
+![](figures/SC_non_convex_solution.png){width=50%}
+
+:::
+
+
+##
+
+[**toy experiment**]{style="color:indianred"}
+
+does $\delta_{int}^{j}(a,b)$  of help?
+
+:::{.callout-note appearence="simple" icon="false"}
+## a toy scenario
+
+
+- a latent cluster membership
+
+- 1 signal categorical variable partially associated to the latent clusters
+
+- 4  categorical variables: 1 signal, 3 noise, mutually independent
+
+- 2 continuous variables, unrelated to the latent clusters, but with discriminant power for some categories of the signal categorical variable
+:::
+
+:::{.callout-tip appearence="simple" icon="false"}
+## compared methods
+
+-  [gower dissimilarity]{style="color: dodgerblue"}: a straightforward option
+
+- [naive SC for mixed-type]{style="color: dodgerblue"} ^[`r Citet(bib=wp_bologna_26_bib,"mbuga21")`]
+  
+- [GUDMM]{style="color: dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"mousavi2023generalized")`]: an entropy based approach that takes into account inter- and intra-variable relation
+
+- [unbiased association-based approach]{style="color: dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"vdv_jcgs")`]: association-based, but no interactions considered
+:::
+
+
+##
+
+
+
+[**toy experiment**]{style="color:indianred"}
+
+![](figures/toy_experiment_results.png){fig-align="center" width="70%"}
+
+## {.center}
+
+[**Final considerations and future work**]{style="color:indianred"}
+
+- [association-based measures aim to go beyond match/mismatch of categories]{style="color:forestgreen"}
+
+- [when the signal is limited to few variables, retrieving information from cont/cat interaction may be useful]{style="color:forestgreen"}
+
+- [measuring interactions via non-parametric approach NN-based approach is suitable for non-convex/oddly shaped clusters]{style="color:forestgreen"}
+
+- [commensurability makes the by-variable contributions to distance even]{style="color:forestgreen"}
+
+
+
+- [computationally demanding (but it can be made bearable)]{style="color:dodgerblue"}
+
+- [$\pi_{nn}$ tuning and regularization of $\delta_{int}$'s to reduce variability]{style="color:dodgerblue"}
+
+
+## {.center}
+
+
+<h2>[an R package to compute distances: anydist?]{style="color:darkorange"}</h2>
+
+
+## {.center}
+
+<h2> [an R package to compute distances: [m]{style="color:dodgerblue"}anydist!]{style="color:darkorange"} (it's on CRAN!)</h2>
+
+
+
+
+## {.center}
+
+**main references**
+
+```{r ,echo=FALSE, results='asis', size='tiny'}
+PrintBibliography(wp_bologna_26_bib[c("le2005association","mbuga21","mousavi2023generalized","murugesan2021benchmarking","ng2001spectral","vdv_pr","vdv_jcgs")] )
+```
+
+
+<!-- . . . -->
+
+<!-- <p align="right">slides available at [https://alfonsoiodicede.github.io/](https://alfonsoiodicede.github.io/talks.html) -->
+<!-- </p> -->
+
+
+
+
+
+
+
+
+
