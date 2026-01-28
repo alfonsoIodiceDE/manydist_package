@@ -393,16 +393,29 @@ measure_names <- c(
   "ac_relative_importance"
 )
 
-# Step 2: Split by measure name
-split_by_measure <- map(
-  .x = measure_names,
-  .f = function(measure) {
+split_by_measure_mean <- purrr::map(
+  measure_names,
+  \(measure) {
     results_wide |>
-      select(variable, starts_with(paste0(measure, "_"))) |>
-      rename_with(~ str_remove(., paste0(measure, "_")), -variable)
+      dplyr::select(variable, dplyr::starts_with(paste0(measure, "_mean_"))) |>
+      dplyr::rename_with(
+        ~ stringr::str_remove(., paste0(measure, "_mean_")),
+        -variable
+      )
   }
-) |> set_names(measure_names)
-  
+) |> rlang::set_names(measure_names)
+
+split_by_measure_sd <- purrr::map(
+  measure_names,
+  \(measure) {
+    results_wide |>
+      dplyr::select(variable, dplyr::starts_with(paste0(measure, "_sd_"))) |>
+      dplyr::rename_with(
+        ~ stringr::str_remove(., paste0(measure, "_sd_")),
+        -variable
+      )
+  }
+) |> rlang::set_names(measure_names)  
 ```
 
 
@@ -412,78 +425,109 @@ split_by_measure <- map(
 
 ```{r,fig.height=5,fig.width=8}
 
-meas_to_plot_mad = split_by_measure |> pluck("mad_importance") |> 
+meas_to_plot_mad_mean <- split_by_measure_mean |> pluck("mad_importance") |> 
   mutate(measure="mad_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
+meas_to_plot_mad_sd <- split_by_measure_sd |> pluck("mad_importance") |> 
+  mutate(measure="mad_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
-mad_max = max(meas_to_plot_mad |> select(where(is.numeric),-var_id))
+mad_max <- max(meas_to_plot_mad_mean |> select(where(is.numeric), -var_id), na.rm = TRUE)
 
-rect_data = tibble(
+rect_data <- tibble(
   xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=mad_max,
-  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max)  
-  
-meas_to_plot_mad_rel = split_by_measure |> pluck("mad_normalized") |> 
+  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max
+)  
+
+meas_to_plot_mad_rel_mean <- split_by_measure_mean |> pluck("mad_normalized") |> 
   mutate(measure="mad_normalized") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
-mad_max_rel = max(meas_to_plot_mad_rel |> select(where(is.numeric),-var_id))
+meas_to_plot_mad_rel_sd <- split_by_measure_sd |> pluck("mad_normalized") |> 
+  mutate(measure="mad_normalized") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
-rect_data_rel = tibble(
+mad_max_rel <- max(meas_to_plot_mad_rel_mean |> select(where(is.numeric), -var_id), na.rm = TRUE)
+
+rect_data_rel <- tibble(
   xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=mad_max_rel,
-  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max_rel)
-
+  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max_rel
+)
   
 ```
 
 
 ```{r,fig.height=8,fig.width=8}
-
-
-loo_mad_plot = meas_to_plot_mad |> 
-  rename(dkps=`dkss`) |> 
-  dplyr::select(variable,var_id, any_of(method_levels)) |> 
-  ## for consistency with paper name
-  pivot_longer(cols=naive:u_mix, names_to="method",values_to="value") |> 
-  mutate(method=factor(method, levels=method_levels),
-         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep","u_mix"), "additive distances", "non-additive distances")) |>
-  ggplot(aes(x = var_id, y = value,
-             color = method,shape=method)) +
-  geom_rect(data=rect_data,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
-            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
-  geom_rect(data=rect_data,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
-            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
-  geom_point()+geom_line() +
-  ylab("absolute variable contribution to distance")+
-  xlab("") +  theme_bw() + theme(legend.position = "none")+
-  scale_x_continuous(breaks=seq(1,6,1),labels = rep("",6))+
-  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+loo_mad_plot <- meas_to_plot_mad_mean |> 
+  rename(dkps = `dkss`) |> 
+  dplyr::select(variable, var_id, any_of(method_levels)) |> 
+  pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |> 
+  mutate(
+    method = factor(method, levels = method_levels),
+    additive = ifelse(method %in% c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),
+                      "additive distances", "non-additive distances")
+  ) |>
+  dplyr::left_join(
+    meas_to_plot_mad_sd |>
+      rename(dkps = `dkss`) |>
+      dplyr::select(variable, var_id, any_of(method_levels)) |>
+      pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
+      mutate(method = factor(method, levels = method_levels)),
+    by = c("variable","var_id","method")
+  ) |>
+  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
+  geom_rect(data=rect_data,
+            aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha=.2, fill="indianred", color="lightgrey", inherit.aes=FALSE) +
+  geom_rect(data=rect_data,
+            aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha=.2, fill="dodgerblue", color="lightgrey", inherit.aes=FALSE) +
+  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), width = 0.12, linewidth = 0.35) +
+  geom_point() + geom_line() +
+  ylab("absolute variable contribution to distance") +
+  xlab("") + theme_bw() + theme(legend.position = "none") +
+  scale_x_continuous(breaks=seq(1,6,1), labels = rep("",6)) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
   scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) + facet_wrap(.~additive)
+  scale_color_manual(values = my_colors) +
+  facet_wrap(.~additive)
 
 ```
 
 
 ```{r,fig.height=8,fig.width=8}
-loo_mad_rel_plot = meas_to_plot_mad_rel |> 
-  rename(dkps=`dkss`) |> ## for consistency with paper name
-  dplyr::select(variable,var_id, any_of(method_levels)) |> 
-  pivot_longer(cols=naive:u_mix, names_to="method",values_to="value") |>
-  mutate(method=factor(method, levels=c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
-         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep","u_mix"), "additive distances", "non-additive distances")) |>
-  ggplot(aes(x = var_id, y = value,
-             color = method,shape=method)) +
-  geom_rect(data=rect_data_rel,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
-            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
-  geom_rect(data=rect_data_rel,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
-            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
-  geom_point()+geom_line() +
+loo_mad_rel_plot <- meas_to_plot_mad_rel_mean |> 
+  rename(dkps = `dkss`) |> 
+  dplyr::select(variable, var_id, any_of(method_levels)) |> 
+  pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
+  mutate(
+    method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+    additive = ifelse(method %in% c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),
+                      "additive distances", "non-additive distances")
+  ) |>
+  dplyr::left_join(
+    meas_to_plot_mad_rel_sd |>
+      rename(dkps = `dkss`) |>
+      dplyr::select(variable, var_id, any_of(method_levels)) |>
+      pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
+      mutate(method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
+    by = c("variable","var_id","method")
+  ) |>
+  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
+  geom_rect(data=rect_data_rel,
+            aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha=.2, fill="indianred", color="lightgrey", inherit.aes=FALSE) +
+  geom_rect(data=rect_data_rel,
+            aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha=.2, fill="dodgerblue", color="lightgrey", inherit.aes=FALSE) +
+  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), width = 0.12, linewidth = 0.35) +
+  geom_point() + geom_line() +
   ylab("relative variable contribution to distance") +
-  xlab("left-out variable") +  theme_bw() +
-  scale_x_continuous(breaks=seq(1,6,1),labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2"))+
+  xlab("left-out variable") + theme_bw() +
+  scale_x_continuous(breaks=seq(1,6,1),
+                     labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2"))+
   theme(axis.text.x = element_text(angle = 60, hjust = 1),
         strip.text = element_blank())+
   scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) + facet_wrap(.~additive)
-
+  scale_color_manual(values = my_colors) +
+  facet_wrap(.~additive)
 
 fig_1_plot = loo_mad_plot / loo_mad_rel_plot
 
@@ -498,36 +542,53 @@ fig_1_plot
 ### Code for  `Figure 2`
 
 ```{r,fig.height=4,fig.width=8}
-meas_to_plot_ac = split_by_measure |> pluck("ac_relative_importance") |> 
+meas_to_plot_ac_mean <- split_by_measure_mean |> pluck("ac_relative_importance") |> 
   mutate(measure="ac_relative_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
+meas_to_plot_ac_sd <- split_by_measure_sd |> pluck("ac_relative_importance") |> 
+  mutate(measure="ac_relative_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
-ac_max = max(meas_to_plot_ac |> select(where(is.numeric),-var_id))
+ac_max <- max(meas_to_plot_ac_mean |> select(where(is.numeric), -var_id), na.rm = TRUE)
 
-rect_data_ac = tibble(
+rect_data_ac <- tibble(
   xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=ac_max,
-  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=ac_max)
+  xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=ac_max
+)
 
-
-ac_plot = meas_to_plot_ac |> 
-  rename(dkps=`dkss`) |> ## for consistency with paper name
-  dplyr::select(variable,var_id, any_of(method_levels)) |> 
-  pivot_longer(cols=naive:u_mix, names_to="method",values_to="value") |>
-  mutate(method=factor(method, levels=c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
-         additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep","u_mix"), "additive distance", "non-additive distance")) |>
-  ggplot(aes(x = var_id, y = value,
-             color = method,shape=method)) +
-  geom_rect(data=rect_data_ac,aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
-            alpha = .2,fill="indianred",color="lightgrey",inherit.aes = FALSE)+
-  geom_rect(data=rect_data_ac,aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
-            alpha = .2,fill="dodgerblue",color="lightgrey",inherit.aes = FALSE)+
-  geom_point()+geom_line() +
-  ylab("relative alienation coefficient")+
-  xlab("left-out variable") +  theme_bw() +
-  scale_x_continuous(breaks=seq(1,6,1),labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2"))+
-  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+ac_plot <- meas_to_plot_ac_mean |> 
+  rename(dkps = `dkss`) |> ## for consistency with paper name
+  dplyr::select(variable, var_id, any_of(method_levels)) |> 
+  pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
+  mutate(
+    method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+    additive = ifelse(method %in% c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),
+                      "additive distance", "non-additive distance")
+  ) |>
+  dplyr::left_join(
+    meas_to_plot_ac_sd |>
+      rename(dkps = `dkss`) |>
+      dplyr::select(variable, var_id, any_of(method_levels)) |>
+      pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
+      mutate(method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
+    by = c("variable","var_id","method")
+  ) |>
+  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
+  geom_rect(data=rect_data_ac,
+            aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
+            alpha=.2, fill="indianred", color="lightgrey", inherit.aes = FALSE) +
+  geom_rect(data=rect_data_ac,
+            aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
+            alpha=.2, fill="dodgerblue", color="lightgrey", inherit.aes = FALSE) +
+  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), width = 0.12, linewidth = 0.35) +
+  geom_point() + geom_line() +
+  ylab("relative alienation coefficient") +
+  xlab("left-out variable") + theme_bw() +
+  scale_x_continuous(breaks=seq(1,6,1),
+                     labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2")) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
   scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) + facet_wrap(.~additive)
+  scale_color_manual(values = my_colors) +
+  facet_wrap(.~additive)
 
 ggsave("figure_2_ac_importances.pdf", ac_plot, width = 8, height = 4)
 
@@ -695,6 +756,39 @@ ari_pam_results <- sim_methods_grid |>
 
 save(ari_pam_results, file = "ari_pam_experiment.RData")
 ```
+
+```{r}
+load(file="ari_pam_experiment.RData")
+```
+
+```{r}
+
+ari_plot_df <- ari_pam_results |>
+  mutate(
+    scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
+    scenario = factor(scenario, levels = unique(scenario))
+  )
+
+ari_plot = ggplot(ari_plot_df, aes(x = method, y = ari, fill = method)) +
+  geom_boxplot(
+    outlier.alpha = 0.25,
+    linewidth = 0.35
+  ) +
+  scale_fill_manual(values = my_colors) +
+  facet_wrap(~ scenario, ncol = 2) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.text = element_text(size = 9),
+    legend.position = "none"
+  ) +
+  labs(x = "", y = "ARI (PAM on dissimilarities)")
+
+print(ari_plot, width = 8, height = 4)
+ggsave(file="ari_plot.pdf",ari_plot,width=6,height=8)
+```
+
 
 
 ## Illustration: FIFA player data
