@@ -24,6 +24,7 @@ tidymodels_prefer()
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("distance", "philentropy")
+conflict_prefer("as.matrix","base")
 
 reps<-100  # 100 can take 30min
 n<-500
@@ -122,29 +123,80 @@ run_mdist_within <- function(df, mdist_type, mdist_preset, param_set, outcome = 
 
 # little helper for the leave one variable out version of mdist
 run_lovo <- function(df, mdist_type, mdist_preset, param_set,
-                     outcome = "response", dims = 2, keep_dist = FALSE) {
+                     outcome = NULL, dims = 2, keep_dist = FALSE,
+                     legacy_gower_sum = FALSE) {
 
-  x <- df  # default: don't drop anything
-
+  # drop outcome if present
+  x <- df
   if (is.character(outcome) && length(outcome) == 1 && outcome %in% names(df)) {
     x <- dplyr::select(df, -dplyr::all_of(outcome))
   }
 
+  # ---- special case: legacy Gower SUM scaling for LOVO ----
+  if (legacy_gower_sum && identical(mdist_type, "preset") && identical(mdist_preset, "gower")) {
+
+    vars <- names(x)
+    p_full <- length(vars)
+
+    # full
+    D_full <- manydist::mdist(x = x, preset = "gower")$distance |> as.matrix()
+    D_full <- D_full * p_full
+
+    base_mds <- cmdscale(D_full, eig = TRUE, k = dims)$points[, 1:dims, drop = FALSE]
+    loo_list <- vector("list", length(vars)); names(loo_list) <- vars
+
+    for (i in seq_along(vars)) {
+      var <- vars[i]
+      x_sub <- dplyr::select(x, -dplyr::any_of(var))
+      p_loo <- ncol(x_sub)
+
+      D_loo <- manydist::mdist(x = x_sub, preset = "gower")$distance |> as.matrix()
+      D_loo <- D_loo * p_loo
+
+      loo_list[[i]] <- D_loo
+    }
+
+    mad <- vapply(loo_list, function(m) mean(abs(D_full - m)), numeric(1))
+    cc  <- vapply(loo_list, function(m) {
+      pts <- cmdscale(m, eig = TRUE, k = dims)$points[, 1:dims, drop = FALSE]
+      congruence_coeff(base_mds, pts)
+    }, numeric(1))
+    ac <- sqrt(1 - cc^2)
+
+    res <- tibble::tibble(
+      variable       = vars,
+      mad_importance = mad,
+      cc_importance  = cc,
+      ac_importance  = ac,
+      mad_normalized = mad / sum(mad)
+    )
+
+    out <- list(results = res, base_mds = base_mds)
+    if (keep_dist) {
+      out$full_dist <- D_full
+      out$loo_dist  <- loo_list
+    }
+    return(out)
+  }
+
+  # ---- default path: your package's LOVO ----
   if (mdist_type == "preset") {
-    manydist::lovo_mdist(x = x, preset = mdist_preset, dims = dims, keep_dist = keep_dist)
+    obj <- manydist::lovo_mdist(x = x, preset = mdist_preset, dims = dims, keep_dist = keep_dist)
 
   } else if (mdist_type == "custom") {
+    if (is.null(param_set)) stop("param_set is NULL for mdist_type = 'custom'")
     args <- param_set
     args$x <- x
     args$dims <- dims
     args$keep_dist <- keep_dist
-    do.call(manydist::lovo_mdist, args = args)
+    obj <- do.call(manydist::lovo_mdist, args = args)
 
   } else {
     stop("Unknown mdist_type: ", mdist_type)
   }
-}
 
+  obj
+}
 
 simulation_structure <- generated_datasets |>
   dplyr::mutate(
@@ -153,13 +205,14 @@ simulation_structure <- generated_datasets |>
       \(dataset, method, mdist_type, mdist_preset, param_set) {
         pb$tick()
         X <- if (method == "baseline") dataset$Xorig else dataset$X
-        run_lovo(X, mdist_type, mdist_preset, param_set)
+        run_lovo(X, mdist_type, mdist_preset, param_set,legacy_gower_sum = (method == "gower"))
       }
     )
   )
 
 
 save(file="simulation_structure.RData", simulation_structure)
+
 
 recovery_structure <- tidyr::crossing(
   tibble::tibble(replicate = 1:reps),

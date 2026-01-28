@@ -217,7 +217,11 @@ mdist <- function(x, new_data=NULL, response=NULL,
           distance_mat <- Reduce(`+`, gowerlist)
         }
       }
-    }  else if(preset == "unbiased_dependent"){
+    }  else if(identical(preset, "unbiased_dependent")||
+               (identical(preset, "custom")&&
+                identical(distance_cont , "manhattan")&&
+                identical(distance_cat , "tot_var_dist")&&
+                isFALSE(commensurable)&&identical(scaling_cont , "pc_scores"))){
       # distance_cont = "manhattan"
       # distance_cat = "tot_var_dist"
       # commensurable = TRUE
