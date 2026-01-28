@@ -53,6 +53,7 @@ tidymodels_prefer()
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("distance", "philentropy")
+conflict_prefer("as.matrix","base")
 
 ```
 
@@ -349,35 +350,39 @@ rel_simulation_structure <- simulation_structure |>
   ) |>
   select(-baseline_loo)
 
-results_wide <- rel_simulation_structure |>
+results_long <- rel_simulation_structure |>
   tidyr::unnest(loo_results) |>
+  # enforce one value per replicate (if already unique, no change)
+  dplyr::group_by(replicate, variable, method) |>
+  dplyr::summarise(
+    dplyr::across(
+      c(mad_importance, cc_importance, ac_importance,
+        mad_normalized, mad_relative_importance, ac_relative_importance),
+      ~ mean(.x, na.rm = TRUE)
+    ),
+    .groups = "drop"
+  )
+
+results_summary <- results_long |>
   dplyr::group_by(variable, method) |>
   dplyr::summarise(
     dplyr::across(
-      c(
-        mad_importance,
-        cc_importance,
-        ac_importance,
-        mad_normalized,
-        mad_relative_importance,
-        ac_relative_importance
+      c(mad_importance, cc_importance, ac_importance,
+        mad_normalized, mad_relative_importance, ac_relative_importance),
+      list(
+        mean = \(x) mean(x, na.rm = TRUE),
+        sd   = \(x) sd(x,   na.rm = TRUE)
       ),
-      ~ mean(.x, na.rm = TRUE)#### CALCOLARE UNA MISURA DI VARIABILITA' QUI
+      .names = "{.col}_{.fn}"
     ),
     .groups = "drop"
-  ) |>
-  tidyr::pivot_wider(
-    names_from  = method,
-    values_from = c(
-      mad_importance,
-      cc_importance,
-      ac_importance,
-      mad_normalized,
-      mad_relative_importance,
-      ac_relative_importance
-    )
   )
 
+results_wide <- results_summary |>
+  tidyr::pivot_wider(
+    names_from = method,
+    values_from = -c(variable, method)
+  )
 
 measure_names <- c(
   "mad_importance",
@@ -417,10 +422,6 @@ rect_data = tibble(
   xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=mad_max,
   xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max)  
   
-```
-
-
-```{r,fig.height=8,fig.width=8}
 meas_to_plot_mad_rel = split_by_measure |> pluck("mad_normalized") |> 
   mutate(measure="mad_normalized") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
@@ -429,6 +430,13 @@ mad_max_rel = max(meas_to_plot_mad_rel |> select(where(is.numeric),-var_id))
 rect_data_rel = tibble(
   xmin_cont=4.5,xmax_cont=6,ymin_cont=0,ymax_cont=mad_max_rel,
   xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max_rel)
+
+  
+```
+
+
+```{r,fig.height=8,fig.width=8}
+
 
 loo_mad_plot = meas_to_plot_mad |> 
   rename(dkps=`dkss`) |> 
@@ -450,6 +458,7 @@ loo_mad_plot = meas_to_plot_mad |>
   theme(axis.text.x = element_text(angle = 60, hjust = 1))+
   scale_shape_manual(values = my_shapes) +
   scale_color_manual(values = my_colors) + facet_wrap(.~additive)
+
 ```
 
 
