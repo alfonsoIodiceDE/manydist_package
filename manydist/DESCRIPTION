@@ -35,7 +35,7 @@ Imports: cluster, data.table, distances, dplyr,
           fpc, ggplot2, magrittr,  Matrix, 
           philentropy, purrr, readr, recipes, Rfast, 
           rsample,  stats, tibble, tidyr, 
-          tidyselect, tune, parsnip, rlang, clusterGeneration 
+          tidyselect, tune, parsnip, rlang,recipes, clusterGeneration 
 Depends: R (>= 4.5.0)  
 Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType
 License: GPL-3

@@ -205,7 +205,8 @@ run_mdist_within <- function(df, mdist_type, mdist_preset, param_set, outcome = 
   } else {
     stop("Unknown mdist_type: ", mdist_type)
   }
-if(mdist_prest=="gower"){
+if (identical(mdist_type, "preset") && identical(mdist_preset, "gower")) {
+  
   out$distance*ncol(x)
   }else{
   out$distance
@@ -693,7 +694,8 @@ ggsave(file="AC_boxplots.pdf",boxplot_figure_simu,width=8.5,height=6)
 
 ## Clustering experiment: partitioning around medoids
 
-### Data generation
+###  numsep =.1 and catsep=0.6 generation
+
 
 ```{r}
 nrep <- 100
@@ -741,7 +743,7 @@ sim_methods_grid <- mixed_datasets_grid |>
 
 stopifnot(!any(is.na(sim_methods_grid$mdist_type)))
 
-ari_pam_results <- sim_methods_grid |>
+ari_pam_results_01_06 <- sim_methods_grid |>
   dplyr::mutate(
     ari = purrr::pmap_dbl(
       dplyr::pick(data, mdist_type, mdist_preset, param_set),
@@ -754,22 +756,158 @@ ari_pam_results <- sim_methods_grid |>
     )
   )
 
-save(ari_pam_results, file = "ari_pam_experiment.RData")
+# ari_pam_results_01_06 = ari_pam_results 
+
+save(ari_pam_results_01_06, file = "ari_pam_experiment_numsep_01_catsep_06.RData")
 ```
 
+
+###  numsep =.01 and catsep=0.3 generation
+
+
 ```{r}
-load(file="ari_pam_experiment.RData")
+nrep <- 100
+k_true <- 4
+q <- 9
+numsep <- 0.01
+catsep <- 0.3
+clustSizeEq <- 50
+
+param_generator_grid <- tibble::tibble(
+  numsignal = c(0,0,4,4,4,8,8,8),
+  numnoise  = c(8,8,4,4,4,0,0,0),
+  catsignal = c(4,8,0,4,8,0,4,8),
+  catnoise  = c(4,0,8,4,0,8,4,0)
+) |>
+  tidyr::crossing(replicate = 1:nrep)
+
+mixed_datasets_grid <- param_generator_grid |>
+  dplyr::mutate(
+    data = purrr::pmap(
+      dplyr::pick(numsignal, catsignal, numnoise, catnoise, replicate),
+      \(numsignal, catsignal, numnoise, catnoise, replicate) {
+        gen_mixed(
+          k_true      = k_true,
+          clustSizeEq = clustSizeEq,
+          numsignal   = numsignal,
+          numnoise    = numnoise,
+          catsignal   = catsignal,
+          catnoise    = catnoise,
+          q           = q,
+          q_err       = q,
+          numsep      = numsep,
+          catsep      = catsep,
+          seed        = replicate
+        )
+      }
+    )
+  )
+
+methods <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
+
+sim_methods_grid <- mixed_datasets_grid |>
+  tidyr::crossing(method = methods) |>
+  dplyr::left_join(manydist:::mdist_method_lookup, by = "method")
+
+stopifnot(!any(is.na(sim_methods_grid$mdist_type)))
+
+ ari_pam_results_001_03 <- sim_methods_grid |>
+  dplyr::mutate(
+    ari = purrr::pmap_dbl(
+      dplyr::pick(data, mdist_type, mdist_preset, param_set),
+      \(data, mdist_type, mdist_preset, param_set) {
+        df <- data$df
+        D <- run_mdist_within(df, mdist_type, mdist_preset, param_set, outcome = "y")
+        pam_fit <- cluster::pam(D, k = k_true, diss = TRUE)
+        mclust::adjustedRandIndex(df$y, pam_fit$clustering)
+      }
+    )
+  )
+
+
+save(ari_pam_results_001_03, file = "ari_pam_experiment_numsep_001_catsep_03.RData")
 ```
 
-```{r}
 
-ari_plot_df <- ari_pam_results |>
+
+###  numsep =.1 and catsep=0.35 generation
+
+
+```{r}
+nrep <- 100
+k_true <- 4
+q <- 9
+numsep <- 0.1
+catsep <- 0.35
+clustSizeEq <- 50
+
+param_generator_grid <- tibble::tibble(
+  numsignal = c(0,0,4,4,4,8,8,8),
+  numnoise  = c(8,8,4,4,4,0,0,0),
+  catsignal = c(4,8,0,4,8,0,4,8),
+  catnoise  = c(4,0,8,4,0,8,4,0)
+) |>
+  tidyr::crossing(replicate = 1:nrep)
+
+mixed_datasets_grid <- param_generator_grid |>
+  dplyr::mutate(
+    data = purrr::pmap(
+      dplyr::pick(numsignal, catsignal, numnoise, catnoise, replicate),
+      \(numsignal, catsignal, numnoise, catnoise, replicate) {
+        gen_mixed(
+          k_true      = k_true,
+          clustSizeEq = clustSizeEq,
+          numsignal   = numsignal,
+          numnoise    = numnoise,
+          catsignal   = catsignal,
+          catnoise    = catnoise,
+          q           = q,
+          q_err       = q,
+          numsep      = numsep,
+          catsep      = catsep,
+          seed        = replicate
+        )
+      }
+    )
+  )
+
+methods <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
+
+sim_methods_grid <- mixed_datasets_grid |>
+  tidyr::crossing(method = methods) |>
+  dplyr::left_join(manydist:::mdist_method_lookup, by = "method")
+
+stopifnot(!any(is.na(sim_methods_grid$mdist_type)))
+
+ari_pam_results_01_035 <- sim_methods_grid |>
+  dplyr::mutate(
+    ari = purrr::pmap_dbl(
+      dplyr::pick(data, mdist_type, mdist_preset, param_set),
+      \(data, mdist_type, mdist_preset, param_set) {
+        df <- data$df
+        D <- run_mdist_within(df, mdist_type, mdist_preset, param_set, outcome = "y")
+        pam_fit <- cluster::pam(D, k = k_true, diss = TRUE)
+        mclust::adjustedRandIndex(df$y, pam_fit$clustering)
+      }
+    )
+  )
+
+save(ari_pam_results_01_035, file = "ari_pam_experiment_numsep_01_catsep_035.RData")
+```
+
+
+
+
+```{r}
+load(file="ari_pam_experiment_numsep_01_catsep_06.RData")
+
+ari_plot_df_01_06 <- ari_pam_results_01_06 |>
   mutate(
     scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
     scenario = factor(scenario, levels = unique(scenario))
   )
 
-ari_plot = ggplot(ari_plot_df, aes(x = method, y = ari, fill = method)) +
+ari_plot_01_06 = ggplot(ari_plot_df_01_06, aes(x = method, y = ari, fill = method)) +
   geom_boxplot(
     outlier.alpha = 0.25,
     linewidth = 0.35
@@ -785,10 +923,65 @@ ari_plot = ggplot(ari_plot_df, aes(x = method, y = ari, fill = method)) +
   ) +
   labs(x = "", y = "ARI (PAM on dissimilarities)")
 
-print(ari_plot, width = 8, height = 4)
-ggsave(file="ari_plot.pdf",ari_plot,width=6,height=8)
+print(ari_plot_01_06, width = 8, height = 4)
+ggsave(file="ari_plot_01_06.pdf",ari_plot_01_06,width=6,height=8)
 ```
 
+```{r}
+load(file="ari_pam_experiment_numsep_001_catsep_03.RData")
+ari_plot_df_001_03 <- ari_pam_results_001_03 |>
+  mutate(
+    scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
+    scenario = factor(scenario, levels = unique(scenario))
+  )
+
+ari_plot_001_03 = ggplot(ari_plot_df_001_03, aes(x = method, y = ari, fill = method)) +
+  geom_boxplot(
+    outlier.alpha = 0.25,
+    linewidth = 0.35
+  ) +
+  scale_fill_manual(values = my_colors) +
+  facet_wrap(~ scenario, ncol = 2) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.text = element_text(size = 9),
+    legend.position = "none"
+  ) +
+  labs(x = "", y = "ARI (PAM on dissimilarities)")
+
+print(ari_plot_001_03, width = 8, height = 4)
+ggsave(file="ari_plot_001_03.pdf",ari_plot_001_03,width=6,height=8)
+```
+
+```{r}
+load(file="ari_pam_experiment_numsep_01_catsep_035.RData")
+ari_plot_df_01_035 <- ari_pam_results_01_035 |>
+  mutate(
+    scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
+    scenario = factor(scenario, levels = unique(scenario))
+  )
+
+ari_plot_01_035 = ggplot(ari_plot_df_01_035, aes(x = method, y = ari, fill = method)) +
+  geom_boxplot(
+    outlier.alpha = 0.25,
+    linewidth = 0.35
+  ) +
+  scale_fill_manual(values = my_colors) +
+  facet_wrap(~ scenario, ncol = 2) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.text = element_text(size = 9),
+    legend.position = "none"
+  ) +
+  labs(x = "", y = "ARI (PAM on dissimilarities)")
+
+print(ari_plot_01_035, width = 8, height = 4)
+ggsave(file="ari_plot_01_035.pdf",ari_plot_01_035,width=6,height=8)
+```
 
 
 ## Illustration: FIFA player data
