@@ -1,0 +1,93 @@
+---
+title: "One-directional Continuous–Categorical Interactions"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+---
+
+## What is the problem?
+
+### How many interaction directions do we need?
+
+- Mixed data: continuous ${\bf x}_{con}$ + categorical ${\bf x}_{cat}$
+- Interactions may be modeled:
+  - continuous $\rightarrow$ categorical  
+  - categorical $\rightarrow$ continuous  
+
+**Claim**
+
+> Once categorical dissimilarities account for the continuous variables,  
+> the reverse interaction is unnecessary.
+
+---
+
+## Probabilistic view of dissimilarity
+
+Any dissimilarity can be written as a negative log-likelihood:
+
+$$
+d({\bf x}_i,{\bf x}_{i'}) \;\propto\; -\log f({\bf x}_i \mid {\bf x}_{i'})
+$$
+
+For mixed data, we factor:
+
+$$
+f({\bf x}_{con},{\bf x}_{cat})
+=
+f({\bf x}_{con})\,f({\bf x}_{cat}\mid{\bf x}_{con})
+$$
+
+- continuous variables define geometry
+- categorical variables are compared **conditionally**
+
+This factorization already introduces **asymmetry**.
+
+---
+
+## Where interaction is needed
+
+### Continuous component
+
+Assume:
+
+$$
+{\bf x}_{con}\mid{\bf x}'_{con} \sim N({\bf x}'_{con},\mathbf S)
+$$
+
+$$
+-\log f({\bf x}_{con}\mid{\bf x}'_{con})
+=
+\frac12
+({\bf x}_{con}-{\bf x}'_{con})^\top
+\mathbf S^{-1}
+({\bf x}_{con}-{\bf x}'_{con})
+$$
+
+- captures all continuous structure
+- no categorical correction required
+
+---
+
+## Final mixed dissimilarity
+
+$$
+d({\bf x}_i,{\bf x}_{i'})
+=
+\underbrace{
+\frac12
+({\bf x}_{i_{con}}-{\bf x}_{i'_{con}})^\top
+\mathbf S^{-1}
+({\bf x}_{i_{con}}-{\bf x}_{i'_{con}})
+}_{\text{continuous geometry}}
+-
+\underbrace{
+\log p({\bf x}_{i_{cat}}
+\mid
+{\bf x}_{i_{con}},{\bf x}_{i'_{con}},{\bf x}_{i'_{cat}})
+}_{\text{all cross-type interaction}}
+$$
+
+**Key message**
+
+> All continuous–categorical interaction is absorbed in one direction only.

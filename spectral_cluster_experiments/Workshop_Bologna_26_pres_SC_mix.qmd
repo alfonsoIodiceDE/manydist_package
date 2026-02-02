@@ -307,10 +307,6 @@ toy_data |>
 
 ```
 
-## 
-
-[**independence-based** ]{style="color:indianred"}
-
 
 
 
@@ -340,7 +336,7 @@ Most commonly used dissimilarity (or, distance) measures are based on by-variabl
 
 
 
-##
+## [independence-based]{style="color: dodgerblue"} 
 
 -  When variables are correlated or associated, shared information is
 effectively counted multiple times 
@@ -414,7 +410,7 @@ ggplot(mtcars_tbl, aes(x = disp, y = wt)) +
 ```
 
 
-##
+## [independence-based]{style="color: dodgerblue"} 
 
 -  When variables are correlated or associated, shared information is
 effectively counted multiple times 
@@ -436,9 +432,9 @@ ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
   theme_minimal(base_size = 10)
 ```
 
-##
+## [independence-based]{style="color: dodgerblue"} 
 
-Independence-based measures, such as Euclidean distance, treats the variables as independent
+The [Euclidean distance]{style="color:dodgerblue"}   $\longrightarrow$  shared information is  over-counted
 
 ```{r}
 ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
@@ -484,9 +480,9 @@ ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
 ```
 
 
-##
+## [association-based]{style="color: indianred"} 
 
-The [Mahalanobis distance]{style="color:dodgerblue"}  takes correlations into account so that shared information is not over-counted
+The [Mahalanobis distance]{style="color:indianred"}  $\longrightarrow$ shared information is not over-counted
 
 
 ```{r}
@@ -601,9 +597,10 @@ $$
 -   differences in line with the inter-variables association/correlation are down-weighted
 
 :::{.callout-tip title="Association-based for categorical: <span style='color: indianred;'>total variation distance (TVD)</span>^[`r Citet(bib=wp_bologna_26_bib,'le2005association')`] (2)" icon=false}
-- In the [IB]{style="color: dodgerblue"} case, the off-diagonal elements of ${\Delta}_j$ depend only on variable $j$. 
 
-- In the [AB]{style="color: indianred"} case, they depend on the association of each category pair with all other categorical variables. 
+<!-- - In the [IB]{style="color: dodgerblue"} case, the off-diagonal elements of ${\Delta}_j$ depend only on variable $j$.  -->
+
+<!-- - In the [AB]{style="color: indianred"} case, they depend on the association of each category pair with all other categorical variables.  -->
 
 Consider the empirical joint probability distributions stored in the off-diagonal blocks of  ${\bf P}$:
 
@@ -665,7 +662,7 @@ $$
 
 # AB for mixed?
 
-## AB for mixed
+## [association-based]{style="color: indianred"} for mixed
 
 A straightforward AB-distance for mixed data is given by the convex combination of Mahalanobis and TVD distances:
 
@@ -687,9 +684,11 @@ $$
 
 :::
 
-## how to measure interactions: aim
+## how to measure interactions
 
-define  $\Delta_{int}$, that accounts for the interactions and augment $\Delta_{(tvd)}$, so that the dissimilarity measure becomes 
+define  $\Delta_{int}$, that accounts for the interactions and augment $\Delta_{(tvd)}$
+
+- the dissimilarity measure becomes 
 
 $$
 {\bf D}_{mix}^{(int)}
@@ -707,22 +706,19 @@ $$
 and
 
 $$
-\tilde{\Delta} = (1-\alpha)\Delta^{tvd} + \alpha \frac{1}{Q_{c}}\Delta^{int}
+\tilde{\Delta} = (1-\alpha)\Delta^{tvd} + \alpha \Delta^{int}
 $$
 where $\alpha=\frac{1}{Q_{c}}$.
 
 
-How to define $\Delta^{int}$
+
+
+## how to measure interactions
+
+What is  $\Delta^{int}$?
 
 
 - the general entry for the $j^{th}$ diagonal block is $\delta_{int}^{j}(a,b)$ accounts for the interaction by measuring how the continuous variables help in discriminating between the observations choosing category $a$ and those choosing category $b$ for the $j^{th}$ categorical variable  
-
-
-## how to measure interactions: aim
-
-- a straightforward option is to compare the continuous variables means, conditional to $a$ and $b$ 
-
-  - not suited for non-spherical clusters 
 
 . . .
 
@@ -730,7 +726,7 @@ How to define $\Delta^{int}$
   -  use a distance-based classifier: [nearest-neighbors]{style="color:dodgerblue"}
 
 
-<!-- \frac{1}{2}\left(\right) -->
+<!-- \frac{1}{2}\left(\right) --> 
 
 <!-- ## -->
 
@@ -739,7 +735,7 @@ How to define $\Delta^{int}$
 <!-- ![](figures/phi_plots.png){fig-align="center"} -->
 
 
-##  $\Delta^{(int)}_{j}$ computation
+##  $\Delta^{int}_{j}$ computation
 
 - consider ${\bf D}_{mah}$ and sort it  to identify the neighbors for each observation.
 
@@ -762,46 +758,266 @@ How to define $\Delta^{int}$
     $$
 
 
-
-
 ##
 
-[**computing $\Delta_{int}$**]{style="color:indianred"}
+[**well separated or not**]{style="color:indianred"}
 
-![](figures/AB_plot.png){fig-align="center" width="70%"}
-
-
-##
-
-[**computing $\Delta_{int}$**]{style="color:indianred"}
-
-![](figures/AC_plot.png){fig-align="center" width="70%"}
+![](figures/phi_plots.png){fig-align="center" width="70%"}
 
 
-##
-
-[**computing $\Delta_{int}$**]{style="color:indianred"}
-
-![](figures/AD_plot.png){fig-align="center" width="70%"}
-
-##
-
-[**computing $\Delta_{int}$**]{style="color:indianred"}
-
-![](figures/BC_plot.png){fig-align="center" width="70%"}
 
 
-##
+## Building $\Delta^{int}_{j}$
 
-[**computing $\Delta_{int}$**]{style="color:indianred"}
 
-![](figures/BD_plot.png){fig-align="center" width="70%"}
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
 
-##
 
-[**computing $\Delta_{int}$**]{style="color:indianred"}
+::: columns
+::: {.column width="55%"}
 
-![](figures/CD_plot.png){fig-align="center" width="70%"}
+![](/figures/AB_plot.png){width=100%}
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & \color{indianred}{0.94} & \cdot & \cdot \\
+\color{indianred}{0.94} & 0 & \cdot & \cdot \\
+\cdot & \cdot & 0 &  \cdot\\
+\cdot & \cdot & \cdot & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+## Building $\Delta^{int}_{j}$
+
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+
+::: columns
+::: {.column width="55%"}
+
+<!-- ![](/figures/AB_plot.png){width=100%} -->
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & \cdot & \cdot & \cdot \\
+\cdot & 0 & \cdot & \cdot \\
+\cdot & \cdot & 0 &  \cdot\\
+\cdot & \cdot & \cdot & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+
+## Building $\Delta^{int}_{j}$
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+::: columns
+::: {.column width="55%"}
+
+![](/figures/AC_plot.png){width=100%}
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & 0.94 & \color{indianred}{0.4} & \cdot \\
+0.94 & 0 & \cdot & \cdot \\
+\color{indianred}{0.4} & \cdot & 0 &  \cdot\\
+\cdot & \cdot & \cdot & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+
+## Building $\Delta^{int}_{j}$
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+::: columns
+::: {.column width="55%"}
+
+![](/figures/AD_plot.png){width=100%}
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & 0.94 & 0.4 & \color{indianred}{0.39} \\
+0.94 & 0 & \cdot & \cdot \\
+0.4 & \cdot & 0 &  \cdot\\
+\color{indianred}{0.39} & \cdot & \cdot & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+
+## Building $\Delta^{int}_{j}$
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+::: columns
+::: {.column width="55%"}
+
+![](/figures/BC_plot.png){width=100%}
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & 0.94 & 0.4 & 0.39 \\
+0.94 & 0 & \color{indianred}{0.54} & \cdot \\
+0.4 & \color{indianred}{0.54} & 0 & \cdot  \\
+0.39 & \cdot & \cdot  & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+
+## Building $\Delta^{int}_{j}$
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+::: columns
+::: {.column width="55%"}
+
+![](/figures/BD_plot.png){width=100%}
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & 0.94 & 0.4 & 0.39 \\
+0.94 & 0 & 0.54 & \color{indianred}{0.55} \\
+0.4 & 0.54 & 0 & \cdot  \\
+0.39 & \color{indianred}{0.55} & \cdot  & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+
+## Building $\Delta^{int}_{j}$
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+::: columns
+::: {.column width="55%"}
+
+![](/figures/CD_plot.png){width=100%}
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & 0.94 & 0.4 & 0.39 \\
+0.94 & 0 & 0.54 & 0.55 \\
+0.4 & 0.54 & 0 & \color{indianred}{0}  \\
+0.39 & 0.55 & \color{indianred}{0}  & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
+
+## Just one-way interaction?
+
+
 
 
 # spectral clustering in a nutshell
