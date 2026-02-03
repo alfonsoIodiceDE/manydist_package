@@ -765,6 +765,42 @@ What is  $\Delta^{int}$?
 ![](figures/phi_plots.png){fig-align="center" width="70%"}
 
 
+## Building $\Delta^{int}_{j}$
+
+
+for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
+
+
+::: columns
+::: {.column width="55%"}
+
+<!-- ![](/figures/AB_plot.png){width=100%} -->
+:::
+
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+$$
+\Delta_{int} =
+\begin{pmatrix}
+0 & \cdot & \cdot & \cdot \\
+\cdot & 0 & \cdot & \cdot \\
+\cdot & \cdot & 0 &  \cdot\\
+\cdot & \cdot & \cdot & 0
+\end{pmatrix}
+$$
+
+:::
+:::
+
 
 
 ## Building $\Delta^{int}_{j}$
@@ -795,42 +831,6 @@ $$
 \begin{pmatrix}
 0 & \color{indianred}{0.94} & \cdot & \cdot \\
 \color{indianred}{0.94} & 0 & \cdot & \cdot \\
-\cdot & \cdot & 0 &  \cdot\\
-\cdot & \cdot & \cdot & 0
-\end{pmatrix}
-$$
-
-:::
-:::
-
-## Building $\Delta^{int}_{j}$
-
-
-for the general categorical variable $j$ with $q_{j}$ you compute the quantities for $\frac{q_j(q_j -1)}{2}$ pairs
-
-
-::: columns
-::: {.column width="55%"}
-
-<!-- ![](/figures/AB_plot.png){width=100%} -->
-:::
-
-
-::: {.column width="45%"}
-
-&nbsp;
-
-&nbsp;
-
-&nbsp;
-
-&nbsp;
-
-$$
-\Delta_{int} =
-\begin{pmatrix}
-0 & \cdot & \cdot & \cdot \\
-\cdot & 0 & \cdot & \cdot \\
 \cdot & \cdot & 0 &  \cdot\\
 \cdot & \cdot & \cdot & 0
 \end{pmatrix}
@@ -1203,45 +1203,190 @@ SC works well, particularly in case of non-convex and overlapping clusters
 :::
 
 
+
+
+```{r eval=FALSE}
+files <- c(
+  "data/ARIM_N1_1020.rdata",
+  "data/ARIM_N2_1020.rdata",
+  "data/ARIM_N1_2010.rdata",
+  "data/ARIM_N2_2010.rdata",
+  "data/ARIM_N1E.rdata",
+  "data/ARIM_N2E.rdata",
+  "data/ARIM_noise_N1.rdata",
+  "data/ARIM_noise_N2.rdata",
+  "data/ARIM_x_N1.rdata",
+  "data/ARIM_x_N2.rdata"
+)
+
+ari_list <- setNames(
+  lapply(files, function(f) {
+    obj_name <- load(f)
+    get(obj_name)
+  }),
+  tools::file_path_sans_ext(basename(files))
+)
+
+
+names(ari_list)= rep(c("more_cat","more_cont","balanced","balanced_noise","interaction"),each=2)
+
+sc_scenario_params = tibble(scenario = c("more_cat","more_cont","balanced","balanced_noise","interaction"),
+  cont_n = c(10,20,15,10,3),
+       cat_n =  c(20,10,15,10,3),
+       noise = c(0,0,0,10,0)
+) |> crossing(obs_n = c(500,1000))
+
+
+ari_tbl <- tibble(
+  scenario = names(ari_list),
+  ari = ari_list
+) |>
+  group_by(scenario) |>
+  mutate(obs_n = c(500, 1000)[row_number()]) |>
+  ungroup() |>
+  mutate(
+    ari_long = map(ari, \(x) {
+      as_tibble(x) |>
+        mutate(rep = row_number()) |>
+        pivot_longer(
+          cols = -rep,
+          names_to = "measure",
+          values_to = "ari"
+        )
+    })
+  ) |>
+  select(-ari) |>
+  unnest(ari_long) |>
+  left_join(sc_scenario_params, by = c("scenario", "obs_n"))
+
+
+ari_tbl <- ari_tbl |>
+  mutate(
+    measure = dplyr::recode(
+      measure,
+      "Udep"     = "ab_dis",
+      "Udep Int." = "ab_dis_int",
+      "naive"    = "naive",
+      "Gower"    = "gower",
+      "mod G."   = "mod_gower"
+    )
+  )
+
+
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(colorspace)
+library(ggplot2)
+
+methods <- sort(unique(ari_tbl$measure))
+base_cols <- qualitative_hcl(length(methods))
+names(base_cols) <- methods
+
+method_cols <- c(
+  setNames(lighten(base_cols, 0.3), paste0(methods, "_500")),
+  setNames(darken(base_cols,  0.3), paste0(methods, "_1000"))
+)
+
+legend_breaks <- as.vector(rbind(
+  paste0(methods, "_500"),
+  paste0(methods, "_1000")
+))
+
+ari_plot <- ari_tbl |>
+  mutate(
+    scenario = factor(scenario,
+                      levels = c("balanced","balanced_noise",
+                                 "more_cat","more_cont",
+                                 "interaction")),
+    obs_n = factor(obs_n, levels = c(500, 1000)),
+    method_n = paste0(measure, "_", obs_n),   # <-- MISSING LINE
+    slide_group = case_when(
+      scenario %in% c("balanced","balanced_noise") ~ "Balanced / Noise",
+      scenario %in% c("more_cat","more_cont")     ~ "Unbalanced",
+      scenario == "interaction"                   ~ "Interaction"
+    )
+  )
+
+plot_ari_box <- function(dat) {
+  ggplot(dat, aes(x = measure, y = ari)) +
+    geom_boxplot(
+      aes(fill = method_n, group = interaction(measure, obs_n)),
+      position = position_dodge(width = 0.8),
+      outlier.alpha = 0.4
+    ) +
+    facet_wrap(~ scenario, nrow = 1, scales = "free_x") +
+    coord_cartesian(ylim = c(0, 1)) +
+    scale_fill_manual(
+      values = method_cols,
+      breaks = legend_breaks,
+      labels = gsub("_(500|1000)$", " (n=\\1)", legend_breaks)
+    ) +
+    labs(x = NULL, y = "ARI", fill = "Method") +
+    theme_bw() +
+    theme(legend.position = "none")
+}
+
+p_balanced <- ari_plot |> filter(slide_group == "Balanced / Noise") |> plot_ari_box()
+p_unbal    <- ari_plot |> filter(slide_group == "Unbalanced")       |> plot_ari_box()
+p_inter    <- ari_plot |> filter(slide_group == "Interaction")      |> plot_ari_box()
+
+p_balanced
+p_unbal
+ggsave(file="figures/ab_interaction_plot.png",p_inter)
+       
+```
+# experiments
+
 ##
+
+[**toy experiment**]{style="color:indianred"}: data generation
+
+is $\delta_{int}^{j}(a,b)$  of help?
+
+
+- three continuous signal, three continuous of Gaussian noise, three categorical variables (one noise)
+
+- different dependence structures and location shifts in the signal cont inuous across the groups defined by the signal categorical variables.
+
+- the continuous signal variables are generated conditionally on the signal categorical variables
+
+$$
+X_j = \beta_{0,nm} + \sum_{k>j}^{6} \beta_{1,nm} X_k, \qquad j = 1,2,3
+$$
+where $\beta_{1,nm}$ take different values depending on the $m$ and $n$, the observed categories of the two signal categorical variables, respectively.
+
+##
+
 
 [**toy experiment**]{style="color:indianred"}
 
-does $\delta_{int}^{j}(a,b)$  of help?
+![](figures/scatterX.png){fig-align="center" width="60%"}
 
-:::{.callout-note appearence="simple" icon="false"}
-## a toy scenario
+##
 
-
-- a latent cluster membership
-
-- 1 signal categorical variable partially associated to the latent clusters
-
-- 4  categorical variables: 1 signal, 3 noise, mutually independent
-
-- 2 continuous variables, unrelated to the latent clusters, but with discriminant power for some categories of the signal categorical variable
-:::
-
-:::{.callout-tip appearence="simple" icon="false"}
-## compared methods
+[**toy experiment**]{style="color:indianred"}: compared methods
 
 -  [gower dissimilarity]{style="color: dodgerblue"}: a straightforward option
 
 - [naive SC for mixed-type]{style="color: dodgerblue"} ^[`r Citet(bib=wp_bologna_26_bib,"mbuga21")`]
   
-- [GUDMM]{style="color: dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"mousavi2023generalized")`]: an entropy based approach that takes into account inter- and intra-variable relation
+- [modified gower]{style="color: dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"liu2024modified")`]: an entropy based approach that takes into account inter- and intra-variable relation
 
-- [unbiased association-based approach]{style="color: dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"vdv_jcgs")`]: association-based, but no interactions considered
-:::
+- [association-based approach]{style="color: dodgerblue"}^[`r Citet(bib=wp_bologna_26_bib,"vdv_jcgs")`]: with and without interaction 
+
+
 
 
 ##
 
 
-
 [**toy experiment**]{style="color:indianred"}
 
-![](figures/toy_experiment_results.png){fig-align="center" width="70%"}
+![](figures/ab_interaction_plot.png){fig-align="center" width="60%"}
+
+
 
 ## {.center}
 
@@ -1252,10 +1397,6 @@ does $\delta_{int}^{j}(a,b)$  of help?
 - [when the signal is limited to few variables, retrieving information from cont/cat interaction may be useful]{style="color:forestgreen"}
 
 - [measuring interactions via non-parametric approach NN-based approach is suitable for non-convex/oddly shaped clusters]{style="color:forestgreen"}
-
-- [commensurability makes the by-variable contributions to distance even]{style="color:forestgreen"}
-
-
 
 - [computationally demanding (but it can be made bearable)]{style="color:dodgerblue"}
 
