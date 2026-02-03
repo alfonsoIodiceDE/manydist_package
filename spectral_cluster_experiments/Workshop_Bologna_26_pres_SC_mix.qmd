@@ -25,7 +25,7 @@ format:
     # csl: asa.csl
     progress: true
     slide-number: true
-    embed-resources: false
+    embed-resources: true
 ---
 
 
