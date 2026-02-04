@@ -596,6 +596,8 @@ $$
 
 -   differences in line with the inter-variables association/correlation are down-weighted
 
+
+
 :::{.callout-tip title="Association-based for categorical: <span style='color: indianred;'>total variation distance (TVD)</span>^[`r Citet(bib=wp_bologna_26_bib,'le2005association')`] (2)" icon=false}
 
 <!-- - In the [IB]{style="color: dodgerblue"} case, the off-diagonal elements of ${\Delta}_j$ depend only on variable $j$.  -->
@@ -1017,6 +1019,127 @@ $$
 
 ## Just one-way interaction?
 
+Let ${\bf X}=\left[{\bf X}_{con}{\bf X}_{cat} \right]$ be a mixed data matrix with $n$ observations described by $Q_{d}$ continuous and $Q_{c}$ categorical variables, respectively, and let  ${\bf x}_{i}=\left[{\bf x}_{i_{con}}{\bf x}_{i_{cat}}\right]$ the $i^{th}$ observation  
+
+We build upon the following results
+
+:::{.fragment}
+
+::: {.callout-note  appearence="simple" icon=false}
+## first result
+
+The distribution of $x_{i}$ can be written as
+ 
+$$
+f({\bf x}_{i_{con}},{\bf x}_{i_{cat}})=f({\bf x}_{i_{con}})f({\bf x}_{i_{con}}\mid{\bf x}_{i_{cat}})
+$$
+:::
+
+:::
+
+
+:::{.fragment}
+
+::: {.callout-tip  appearence="simple" icon=false}
+## second result
+
+starting from any distance from a cluster center $d({\bf x}_{i},{\bf c}_k)$, it is  possible to construct a probabilistic clustering model^[`r Citet(bib=wp_bologna_26_bib,'Hennig19')`] ^[`r Citet(bib=wp_bologna_26_bib,'ben2008probabilistic')`] 
+
+$$
+f({\bf x}_{i};{\bf c}_k, {\bf S}_k)=g({\bf c}_k, {\bf S}_k)\exp\left(-d({\bf x}_{i},{\bf c}_k,)\right)
+$$
+where 
+
+:::
+
+:::
+
+## Just one-way interaction?
+
+::: {.callout-tip  appearence="simple" icon=false}
+## third result
+
+the dissimilarity between ${\bf x}_{i_{con}}$ and a generic cluster $k$
+with center ${\bf c}_k$ and covariance matrix ${\bf S}_k$ is^[`r Citet(bib=wp_bologna_26_bib,'tortora2020probabilistic')`]
+
+$$
+d({\bf x}_{i_{con}},{\bf c}_k)=\log(M_{k} f({\bf x}_{i_{con}};{\bf c}_k, {\bf S}_k)^{-1})
+$$ 
+
+- $f(\cdot)$ a symmetric probability density function.
+
+- $M_k$ is the maximum of the density function
+
+- that is, if ${\bf x}_{i_{con}}={\bf c}_k$ then $d({\bf x}_{i_{con}},{\bf c}_k)$.
+:::
+
+
+::: {.fragment}
+
+replace ${\bf c}_{k}$ with a generic observation $i'$
+
+$$
+d({\bf x}_{i_{con}},{\bf x}_{i'})=\log(M f({\bf x}_{i_{con}};{\bf x}_{i'_{con}}, {\bf S})^{-1})
+$$ 
+
+- $f(\cdot)$ a symmetric probability density function.
+
+- $M$ is the maximum of the density function
+
+:::
+
+## Just one-way interaction!
+
+::: {.callout-tip  appearence="simple" icon=false}
+## proposition 1
+
+If $f({\bf x}_{i_{con}}|{\bf x}_{i'_{con}}, {\bf S})$ is a the multivariate normal distribution, it results that
+
+$$
+d({\bf x}_{i_{con}},{\bf x}_{i'_{con}})=\frac{1}{2}({\bf x}_{i_{con}}-{\bf x}_{i'_{con}}) {\bf S}^{-1}({\bf x}_{i_{con}}-{\bf x}_{i'_{con}})^{\sf T}
+$$
+
+
+:::
+
+
+::: {.fragment}
+
+::: {.callout-tip  appearence="simple" icon=false}
+## categorical analogue
+
+consider the $Q_{cat}$-dimensional categorical vector ${\bf x}_{i_{cat}}$, it results, for its $j^{th}$ element, that
+
+$$
+p(x_{ij_{cat}}=a| x_{i'j_{cat}}=b)  =  \left[\delta^{j}(a,b)\right]^{-1}
+$$
+
+where $a$ and $b$ are two general categories of the $jth$ variable
+
+For the whole vector it results
+$$
+p({\bf x}_{ij_{cat}}| {\bf x}_{i'j_{cat}})  = \prod_{j=1}^{Q_c}  p(x_{ij_{cat}}=a_{j}| x_{i'j_{cat}}=b_{j})=\prod_{j=1}^{Q_c}\left[\delta^{j}(a_{j},b_{j})\right]^{-1}
+$$
+
+
+:::
+
+:::
+
+
+## Just one-way interaction! (wrap-up)
+
+::: {.callout-tip  appearence="simple" icon=false}
+## proposition 2
+
+using the previous results, the dissimilarity between two mixed-data observations 
+${\bf x}_i$ and  ${\bf x}_{i'}$ can be measured as 
+
+$$
+d({\bf x}_{i}, {\bf x}_{i'})=\frac{1}{2}({\bf x}_{i_{con}}-{\bf x}_{i'_{con}}) {\bf S}^{-1}({\bf x}_{i_{con}}-{\bf x}_{i'_{con}})^{\sf T}-\log(p({\bf x}_{i_{cat}}|{\bf x}_{i_{con}}, {\bf x}_{i'_{con}},  {\bf x}_{i'_{cat}} )).
+$$
+
+:::
 
 
 
@@ -1060,10 +1183,6 @@ tib_graph |> kbl(align = 'c')  |> kable_styling(full_width = F,font_size = 16) |
 ```
 
 :::
-
-##
-
-
 
 
 
@@ -1219,12 +1338,26 @@ files <- c(
   "data/ARIM_x_N2.rdata"
 )
 
+files_old <- c(
+  "data_old/ARIM_N1_1020.rdata",
+  "data_old/ARIM_N2_1020.rdata",
+  "data_old/ARIM_N1_2010.rdata",
+  "data_old/ARIM_N2_2010.rdata",
+  "data_old/ARIM_N1E.rdata",
+  "data_old/ARIM_N2E.rdata",
+  "data_old/ARIM_noise_N1.rdata",
+  "data_old/ARIM_noise_N2.rdata",
+  "data_old/ARIM_x_N1.rdata",
+  "data_old/ARIM_x_N2.rdata"
+)
+
+
 ari_list <- setNames(
-  lapply(files, function(f) {
+  lapply(files_old, function(f) {
     obj_name <- load(f)
     get(obj_name)
   }),
-  tools::file_path_sans_ext(basename(files))
+  tools::file_path_sans_ext(basename(files_old))
 )
 
 

@@ -15,7 +15,10 @@ mdist(
   ncomp = NULL,
   threshold = NULL,
   preset = "custom",
-  interaction = FALSE
+  interaction = FALSE,
+  prop_nn = 0.1,
+  score = "ba",
+  decision = "prior_corrected"
 )
 }
 \arguments{
@@ -47,6 +50,12 @@ reduction. If \code{NULL}, no reduction is applied.}
 
 \item{interaction}{Logical; whether to include interaction-based
 distances.}
+
+\item{prop_nn}{proportion of neighbours to consider when measuring interactions}
+
+\item{score}{classification metric either  "ba" (balanced accuracy) or "logloss"}
+
+\item{decision}{rule when score is set to ba}
 }
 \value{
 A dissimilarity object.

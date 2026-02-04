@@ -2,6 +2,7 @@ library(tidyverse)
 library(sampling)
 library(SimDesign)
 library(mclust)
+conflicted::conflicts_prefer(SimDesign::rmvnorm)
 devtools::load_all()
 maxite=2
 ARIM_x_N2=matrix(0,maxite,5)
@@ -89,7 +90,7 @@ for(ite in 1:maxite){
   udep_int = mdist(x=dfc,preset="custom", distance_cont = "euclidean",
                    distance_cat = "tot_var_dist",
                    commensurable = FALSE,
-                   scaling_cont = 'pc_scores',interaction = TRUE)
+                   scaling_cont = 'pc_scores',interaction = TRUE,prop_nn = .05,score="logloss")
   D_int = udep_int$distance |> as.matrix()
   t2=proc.time()
   t_x_N2[ite,1]=t2[3]-t1[3]

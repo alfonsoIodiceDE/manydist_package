@@ -21,14 +21,17 @@
 #' @param preset Character string specifying a predefined setup.
 #' @param interaction Logical; whether to include interaction-based
 #'   distances.
+#' @param prop_nn proportion of neighbours to consider when measuring interactions
 #'
+#' @param score classification metric either  "ba" (balanced accuracy) or "logloss"
+#' @param decision rule when score is set to ba
 #' @return A dissimilarity object.
 #' @export
 mdist <- function(x, new_data=NULL, response=NULL,
                   distance_cont="manhattan", distance_cat="tot_var_dist",
                   commensurable=FALSE, scaling_cont="none",
                   ncomp=NULL, threshold=NULL,
-                  preset="custom", interaction=FALSE) {#,prop_nn=0.1, alpha=.5){
+                  preset="custom", interaction=FALSE,prop_nn=0.1,score="ba", decision = "prior_corrected"){
 
   .safe_comm <- function(b_v_d) {
     den <- mean(b_v_d)
@@ -243,11 +246,11 @@ mdist <- function(x, new_data=NULL, response=NULL,
       }
 
       if(interaction){
-        i_distance_matrix <- idist(D = cont_dist_mat, cat_data = cat_data, pi_nn = 0.2, decision = "prior_corrected")
+        i_distance_matrix <- idist(D = cont_dist_mat, cat_data = cat_data, pi_nn = prop_nn,score= score , decision = decision)
         # rho_w = 1/ncol(df_cat)
         # distance_matrix = cont_dist_mat + (1-rho_w)*cat_dist_mat + rho_w * i_distance_matrix
         distance_mat = cont_dist_mat + (ncol(cat_data))/(ncol(cont_data) )*(cat_dist_mat + i_distance_matrix)
-        # distance_matrix = cont_dist_mat + cat_dist_mat + rho_w*i_distance_matrix
+        # distance_matrix = cont_dist_mat + cat_dist_mat + i_distance_matrix
       }
 
     } else if(preset == "euclidean_onehot"){
