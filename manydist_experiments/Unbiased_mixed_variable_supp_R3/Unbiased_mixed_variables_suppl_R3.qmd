@@ -1,60 +1,55 @@
 ---
 title: "A general framework for unbiased mixed variables distance"
 subtitle: "supplementary material"
-format: html
+format:
+  html:
+    theme: minty
+    toc: true
+    toc-location: left
+    toc-expand: 2
+    page-layout: full
+    code-fold: true
+    code-tools: true
+    embed-resources: true
+callout-icon: false
 bibliography: unbiased_dist_refs.bib
 csl: asa.csl
-code-fold: true
-code-tools: true
-embed-resources: true
-page-layout: full
-toc: true
-toc-location: left
-toc-expand: 2
-theme: minty
-callout-icon: false
-knitr:
-  opts_chunk: 
-    collapse: true
-    R.options:
-    message: false
-    warning: false
-    code-fold: true
-    
+
+execute:
+  collapse: true
+  message: false
+  warning: false
 ---
 
 
 
-
 ```{r setup}
-rm(list=ls())
+#| include: false
+
 packages <- c(
   "aricode", "cluster", "fpc", "manydist", "patchwork", "tidyverse",
   "tidymodels", "varhandle", "vegan", "kdml", "ggplot2", "viridis",
-  "dplyr", "entropy", "kernlab", "mclust", "Matrix", "philentropy", "conflicted"
+  "dplyr", "entropy", "kernlab", "mclust", "Matrix", "philentropy",
+  "conflicted", "ggnewscale", "glue"
 )
 
-# Install any missing packages from CRAN
-missing <- packages[!packages %in% installed.packages()[, "Package"]]
-if (length(missing) > 0) {
-  install.packages(missing)
-}
+invisible(lapply(packages, require, character.only = TRUE))
 
-# Load all packages quietly
-invisible(
-  lapply(packages, function(pkg) {
-    suppressPackageStartupMessages(library(pkg, character.only = TRUE))
-  })
-)
-
-# Optional: Resolve common function conflicts
-# install.packages("conflicted")  # Only once
 tidymodels_prefer()
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("distance", "philentropy")
-conflict_prefer("as.matrix","base")
 
+# prefer base set operations (if needed later)
+conflict_prefer("intersect", "base")
+conflict_prefer("setdiff", "base")
+
+canon_method <- function(m) dplyr::recode(m, dkss = "dkps")
+
+# helper: rinomina colonne solo se esistono (non rompe nulla se non ci sono)
+canon_cols <- function(df) {
+  df |> dplyr::rename_with(canon_method, .cols = dplyr::any_of("dkss"))
+}
 ```
 
 
@@ -99,7 +94,7 @@ my_colors <- c(
   "hl_add"      = "#9EC5E5",  # light blue
   "u_ind"       = "#2CA02C",  # green
   "u_dep"       = "#D62728",  # red
-  "u_mix"       = "#0D3B66",  # dark blue
+  "u_mix" = "#1E90FF",
   "gower"       = "#FFBF00",  # gold
   "mod_gower"   = "#9467BD"   # purple
 )
@@ -312,7 +307,7 @@ simulation_structure <- generated_datasets |>
 
 
 
-```{r, echoFALSE, eval=TRUE}
+```{r, echo=FALSE, eval=TRUE}
 load("simulation_structure.RData")
 ```
 
@@ -452,12 +447,8 @@ rect_data_rel <- tibble(
   xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=mad_max_rel
 )
   
-```
-
-
-```{r,fig.height=8,fig.width=8}
 loo_mad_plot <- meas_to_plot_mad_mean |> 
-  rename(dkps = `dkss`) |> 
+   canon_cols() |> 
   dplyr::select(variable, var_id, any_of(method_levels)) |> 
   pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |> 
   mutate(
@@ -467,7 +458,7 @@ loo_mad_plot <- meas_to_plot_mad_mean |>
   ) |>
   dplyr::left_join(
     meas_to_plot_mad_sd |>
-      rename(dkps = `dkss`) |>
+       canon_cols() |>
       dplyr::select(variable, var_id, any_of(method_levels)) |>
       pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
       mutate(method = factor(method, levels = method_levels)),
@@ -490,49 +481,136 @@ loo_mad_plot <- meas_to_plot_mad_mean |>
   scale_color_manual(values = my_colors) +
   facet_wrap(.~additive)
 
-```
+add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
 
+nonadd_methods <- c("naive","hl","gudmm","dkps")
 
-```{r,fig.height=8,fig.width=8}
-loo_mad_rel_plot <- meas_to_plot_mad_rel_mean |> 
-  rename(dkps = `dkss`) |> 
-  dplyr::select(variable, var_id, any_of(method_levels)) |> 
-  pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
+# add_methods <- c("gower", "mod_gower", "hl_add", "u_ind", "u_dep", "u_mix")
+
+legend_breaks <- c(
+  c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),  # additive first
+  c("naive","hl","gudmm","dkps")                           # non-additive after
+)
+
+legend_labels <- setNames(
+  ifelse(legend_breaks %in% c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),
+         paste0(legend_breaks, " (additive)"),
+         paste0(legend_breaks, " (non-additive)")),
+  legend_breaks
+)
+
+library(ggnewscale)
+
+loo_mad_rel_df <- meas_to_plot_mad_rel_mean |>
+   canon_cols() |>
+  dplyr::select(variable, var_id, any_of(method_levels)) |>
+  tidyr::pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
   mutate(
-    method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
-    additive = ifelse(method %in% c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),
-                      "additive distances", "non-additive distances")
+    method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+    additive = ifelse(as.character(method) %in% add_methods, "additive", "non-additive")
   ) |>
   dplyr::left_join(
     meas_to_plot_mad_rel_sd |>
-      rename(dkps = `dkss`) |>
+       canon_cols() |>
       dplyr::select(variable, var_id, any_of(method_levels)) |>
-      pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
-      mutate(method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
+      tidyr::pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
+      mutate(method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
     by = c("variable","var_id","method")
-  ) |>
-  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
+  )
+
+loo_mad_rel_plot <-
+  ggplot() +
   geom_rect(data=rect_data_rel,
             aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
             alpha=.2, fill="indianred", color="lightgrey", inherit.aes=FALSE) +
   geom_rect(data=rect_data_rel,
             aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
             alpha=.2, fill="dodgerblue", color="lightgrey", inherit.aes=FALSE) +
-  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), width = 0.12, linewidth = 0.35) +
-  geom_point() + geom_line() +
+
+  # --- Additive layer + legend 1 ---
+  # geom_errorbar(
+  #   data = dplyr::filter(loo_mad_rel_df, additive == "additive"),
+  #   aes(x = var_id, ymin = value - sd, ymax = value + sd, color = method),
+  #   width = 0.12, linewidth = 0.35
+  # ) +
+  geom_line(
+    data = dplyr::filter(loo_mad_rel_df, additive == "additive"),
+    aes(x = var_id, y = value, color = method)
+  ) +
+  geom_point(
+    data = dplyr::filter(loo_mad_rel_df, additive == "additive"),
+    aes(x = var_id, y = value, color = method, shape = method)
+  ) +
+  scale_color_manual(
+    name   = "additive",
+    values = my_colors,
+    breaks = add_methods
+  ) +
+  scale_shape_manual(
+    name   = "additive",
+    values = my_shapes,
+    breaks = add_methods
+  ) +
+  guides(
+  color = guide_legend(
+    order = 1,
+    override.aes = list(shape = my_shapes[add_methods])
+  ),
+  shape = "none"
+) +
+
+  ggnewscale::new_scale_color() +
+  ggnewscale::new_scale("shape") +
+
+  # --- Non-additive layer + legend 2 ---
+  # geom_errorbar(
+  #   data = dplyr::filter(loo_mad_rel_df, additive == "non-additive"),
+  #   aes(x = var_id, ymin = value - sd, ymax = value + sd, color = method),
+  #   width = 0.12, linewidth = 0.35
+  # ) +
+  geom_line(
+    data = dplyr::filter(loo_mad_rel_df, additive == "non-additive"),
+    aes(x = var_id, y = value, color = method)
+  ) +
+  geom_point(
+    data = dplyr::filter(loo_mad_rel_df, additive == "non-additive"),
+    aes(x = var_id, y = value, color = method, shape = method)
+  ) +
+  scale_color_manual(
+    name   = "non-additive",
+    values = my_colors,
+    breaks = nonadd_methods
+  ) +
+  scale_shape_manual(
+    name   = "non-additive",
+    values = my_shapes,
+    breaks = nonadd_methods
+  ) +
+  guides(
+  color = guide_legend(
+    order = 2,
+    override.aes = list(shape = my_shapes[nonadd_methods])
+  ),
+  shape = "none"
+) +
+
+  # cosmetics (same as yours)
   ylab("relative variable contribution to distance") +
   xlab("left-out variable") + theme_bw() +
-  scale_x_continuous(breaks=seq(1,6,1),
-                     labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2"))+
-  theme(axis.text.x = element_text(angle = 60, hjust = 1),
-        strip.text = element_blank())+
-  scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) +
-  facet_wrap(.~additive)
+  scale_x_continuous(
+    breaks=seq(1,6,1),
+    labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2")
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.text = element_blank(),
+    legend.position = "bottom",
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+    )+facet_wrap(.~additive)
 
 fig_1_plot = loo_mad_plot / loo_mad_rel_plot
 
-ggsave(fig_1_plot, file = "figure_1_mad_importances.pdf", width = 8, height = 8)
 fig_1_plot
 
 
@@ -540,9 +618,19 @@ fig_1_plot
 
 ```
 
+```{r, eval = FALSE, echo = FALSE}
+ggsave(fig_1_plot, file = "figure_1_mad_importances.pdf", width = 8, height = 8)
+```
+
+
 ### Code for  `Figure 2`
 
 ```{r,fig.height=4,fig.width=8}
+library(ggnewscale)
+
+add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
+nonadd_methods <- c("naive","hl","gudmm","dkps")
+
 meas_to_plot_ac_mean <- split_by_measure_mean |> pluck("ac_relative_importance") |> 
   mutate(measure="ac_relative_importance") |> slice(3:6,1,2) |> mutate(var_id=1:6)
 
@@ -556,45 +644,88 @@ rect_data_ac <- tibble(
   xmin_cat=.5,xmax_cat=4.5,ymin_cat=0,ymax_cat=ac_max
 )
 
-ac_plot <- meas_to_plot_ac_mean |> 
-  rename(dkps = `dkss`) |> ## for consistency with paper name
-  dplyr::select(variable, var_id, any_of(method_levels)) |> 
-  pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
+ac_df <- meas_to_plot_ac_mean |>
+   canon_cols() |>
+  dplyr::select(variable, var_id, any_of(method_levels)) |>
+  tidyr::pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
   mutate(
-    method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
-    additive = ifelse(method %in% c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),
-                      "additive distance", "non-additive distance")
+    method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+    additive = ifelse(as.character(method) %in% add_methods, "additive", "non-additive")
   ) |>
   dplyr::left_join(
     meas_to_plot_ac_sd |>
-      rename(dkps = `dkss`) |>
+       canon_cols() |>
       dplyr::select(variable, var_id, any_of(method_levels)) |>
-      pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
-      mutate(method = factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
+      tidyr::pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
+      mutate(method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
     by = c("variable","var_id","method")
-  ) |>
-  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
+  )
+
+ac_plot <-
+  ggplot() +
   geom_rect(data=rect_data_ac,
             aes(xmin=xmin_cont,xmax=xmax_cont,ymin=ymin_cont,ymax=ymax_cont),
-            alpha=.2, fill="indianred", color="lightgrey", inherit.aes = FALSE) +
+            alpha=.2, fill="indianred", color="lightgrey", inherit.aes=FALSE) +
   geom_rect(data=rect_data_ac,
             aes(xmin=xmin_cat,xmax=xmax_cat,ymin=ymin_cat,ymax=ymax_cat),
-            alpha=.2, fill="dodgerblue", color="lightgrey", inherit.aes = FALSE) +
-  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), width = 0.12, linewidth = 0.35) +
-  geom_point() + geom_line() +
-  ylab("relative alienation coefficient") +
-  xlab("left-out variable") + theme_bw() +
-  scale_x_continuous(breaks=seq(1,6,1),
-                     labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2")) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-  scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) +
-  facet_wrap(.~additive)
+            alpha=.2, fill="dodgerblue", color="lightgrey", inherit.aes=FALSE) +
 
-ggsave("figure_2_ac_importances.pdf", ac_plot, width = 8, height = 4)
+  # --- Additive legend (left / first) ---
+  geom_line(
+    data = dplyr::filter(ac_df, additive == "additive"),
+    aes(x = var_id, y = value, color = method)
+  ) +
+  geom_point(
+    data = dplyr::filter(ac_df, additive == "additive"),
+    aes(x = var_id, y = value, color = method, shape = method)
+  ) +
+  scale_color_manual(name = "additive", values = my_colors, breaks = add_methods) +
+  scale_shape_manual(name = "additive", values = my_shapes, breaks = add_methods) +
+  guides(
+    color = guide_legend(order = 1, override.aes = list(shape = my_shapes[add_methods])),
+    shape = "none"
+  ) +
+
+  ggnewscale::new_scale_color() +
+  ggnewscale::new_scale("shape") +
+
+  # --- Non-additive legend (right / second) ---
+  geom_line(
+    data = dplyr::filter(ac_df, additive == "non-additive"),
+    aes(x = var_id, y = value, color = method)
+  ) +
+  geom_point(
+    data = dplyr::filter(ac_df, additive == "non-additive"),
+    aes(x = var_id, y = value, color = method, shape = method)
+  ) +
+  scale_color_manual(name = "non-additive", values = my_colors, breaks = nonadd_methods) +
+  scale_shape_manual(name = "non-additive", values = my_shapes, breaks = nonadd_methods) +
+  guides(
+    color = guide_legend(order = 2, override.aes = list(shape = my_shapes[nonadd_methods])),
+    shape = "none"
+  ) +
+
+  # cosmetics
+  ylab("relative alienation coefficient") +
+  xlab("left-out variable") +
+  scale_x_continuous(
+    breaks=seq(1,6,1),
+    labels = c("2 cats", "3 cats", "5 cats", "9 cats", "num 1", "num 2")
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    legend.position = "bottom",
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  )+  facet_wrap(.~additive)
 
 ac_plot
 
+```
+
+```{r, echo=FALSE,eval=FALSE}
+ggsave("figure_2_ac_importances.pdf", ac_plot, width = 8, height = 4)
 ```
 
 
@@ -666,27 +797,109 @@ save(file="recovery_structure_lite.RData", recovery_structure_lite)
 
 
 
-```{r}
+```{r,echo=FALSE}
 load("recovery_structure_lite.RData")
 ```
 
 
 ```{r,fig.height=8,fig.width=8}
-boxplot_figure_simu = recovery_structure_lite |> 
- mutate(
-   method = ifelse(method=="dkss","dkps",method), # for consistency with paper name
-   method=factor(method, levels = c("baseline","naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))) |> 
-        # additive = ifelse(method %in% c("gower", "mod_gower", "hl_add","u_ind","u_dep"), "additive", "non-additive")) |> 
-ggplot(aes(x=(method), y=alienation_coeff))+
-  geom_boxplot(aes(fill=method)) +
-  facet_wrap(~categories)+ theme_bw()+ theme(axis.text.x = element_text(angle = 60, hjust = 1))+
-    theme(legend.position = "none")+
-  ylab("alienation coefficient") + xlab("methods")+
-  scale_fill_manual(values = my_colors) 
+library(dplyr)
+library(ggplot2)
+library(ggnewscale)
+
+# n_add   <- length(add_methods)
+
+add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
+nonadd_methods <- c("naive","hl","gudmm","dkps")
+method_order <- c(add_methods, nonadd_methods, "baseline")
+
+n_add    <- length(add_methods)
+n_nonadd <- length(nonadd_methods)
+
+n_total <- length(method_order)
+
+rect_bg <- tibble::tibble(
+  xmin = c(0.5, n_add + 0.5),
+  xmax = c(n_add + 0.5, n_add + n_nonadd + 0.5),
+  ymin = c(-Inf, -Inf),
+  ymax = c( Inf,  Inf),
+  grp  = c("additive", "non-additive")
+)
+# --- method groups ---
 
 
+# x-axis order: additive first, then non-additive, baseline last
 
-print(boxplot_figure_simu, width = 8, height = 4)
+# --- prepare data ---
+box_df <- recovery_structure_lite |>
+  mutate(
+    method = ifelse(is.na(method), "baseline", method),
+    method = canon_method(method),  # paper naming
+    method = factor(method, levels = method_order),
+    additive = ifelse(as.character(method) %in% add_methods, "additive", "non-additive")
+  )
+
+# --- plot ---
+boxplot_figure_simu <-
+  ggplot(box_df, aes(x = method, y = alienation_coeff)) +
+  geom_rect(
+  data = dplyr::filter(rect_bg, grp == "additive"),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  inherit.aes = FALSE,
+  alpha = 0.20, fill = "dodgerblue", color = "lightgrey"
+) +
+geom_rect(
+  data = dplyr::filter(rect_bg, grp == "non-additive"),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  inherit.aes = FALSE,
+  alpha = 0.20, fill = "indianred", color = "lightgrey"
+) +
+  facet_wrap(~ categories) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    legend.position = "bottom",
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  ) +
+  ylab("alienation coefficient") +
+  xlab("methods") +
+
+  # --- additive boxes + legend 1 (left) ---
+  geom_boxplot(
+    data = dplyr::filter(box_df, additive == "additive"),
+    aes(fill = method),
+    outlier.alpha = 0.25,
+    linewidth = 0.35
+  ) +
+  scale_fill_manual(
+    name   = "additive",
+    values = my_colors,
+    breaks = add_methods
+  ) +
+  guides(fill = guide_legend(order = 1)) +
+
+  ggnewscale::new_scale_fill() +
+
+  # --- non-additive boxes (incl baseline) + legend 2 (right) ---
+  geom_boxplot(
+    data = dplyr::filter(box_df, additive == "non-additive"),
+    aes(fill = method),
+    outlier.alpha = 0.25,
+    linewidth = 0.35
+  ) +
+  scale_fill_manual(
+    name   = "non-additive",
+    values = my_colors,
+    breaks = c(nonadd_methods, "baseline")  # baseline included here; appears last in x-axis
+  ) +
+  guides(fill = guide_legend(order = 2))
+
+boxplot_figure_simu
+```
+
+
+```{r,echo=FALSE, eval=FALSE}
 ggsave(file="AC_boxplots.pdf",boxplot_figure_simu,width=8.5,height=6)
 ```
 
@@ -694,146 +907,14 @@ ggsave(file="AC_boxplots.pdf",boxplot_figure_simu,width=8.5,height=6)
 
 ## Clustering experiment: partitioning around medoids
 
-###  numsep =.1 and catsep=0.6 generation
 
-
-```{r}
-nrep <- 100
-k_true <- 4
-q <- 9
-numsep <- 0.1
-catsep <- 0.6
-clustSizeEq <- 50
-
-param_generator_grid <- tibble::tibble(
-  numsignal = c(0,0,4,4,4,8,8,8),
-  numnoise  = c(8,8,4,4,4,0,0,0),
-  catsignal = c(4,8,0,4,8,0,4,8),
-  catnoise  = c(4,0,8,4,0,8,4,0)
-) |>
-  tidyr::crossing(replicate = 1:nrep)
-
-mixed_datasets_grid <- param_generator_grid |>
-  dplyr::mutate(
-    data = purrr::pmap(
-      dplyr::pick(numsignal, catsignal, numnoise, catnoise, replicate),
-      \(numsignal, catsignal, numnoise, catnoise, replicate) {
-        gen_mixed(
-          k_true      = k_true,
-          clustSizeEq = clustSizeEq,
-          numsignal   = numsignal,
-          numnoise    = numnoise,
-          catsignal   = catsignal,
-          catnoise    = catnoise,
-          q           = q,
-          q_err       = q,
-          numsep      = numsep,
-          catsep      = catsep,
-          seed        = replicate
-        )
-      }
-    )
-  )
-
-methods <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
-
-sim_methods_grid <- mixed_datasets_grid |>
-  tidyr::crossing(method = methods) |>
-  dplyr::left_join(manydist:::mdist_method_lookup, by = "method")
-
-stopifnot(!any(is.na(sim_methods_grid$mdist_type)))
-
-ari_pam_results_01_06 <- sim_methods_grid |>
-  dplyr::mutate(
-    ari = purrr::pmap_dbl(
-      dplyr::pick(data, mdist_type, mdist_preset, param_set),
-      \(data, mdist_type, mdist_preset, param_set) {
-        df <- data$df
-        D <- run_mdist_within(df, mdist_type, mdist_preset, param_set, outcome = "y")
-        pam_fit <- cluster::pam(D, k = k_true, diss = TRUE)
-        mclust::adjustedRandIndex(df$y, pam_fit$clustering)
-      }
-    )
-  )
-
-# ari_pam_results_01_06 = ari_pam_results 
-
-save(ari_pam_results_01_06, file = "ari_pam_experiment_numsep_01_catsep_06.RData")
-```
-
-
-###  numsep =.01 and catsep=0.3 generation
-
-
-```{r}
-nrep <- 100
-k_true <- 4
-q <- 9
-numsep <- 0.01
-catsep <- 0.3
-clustSizeEq <- 50
-
-param_generator_grid <- tibble::tibble(
-  numsignal = c(0,0,4,4,4,8,8,8),
-  numnoise  = c(8,8,4,4,4,0,0,0),
-  catsignal = c(4,8,0,4,8,0,4,8),
-  catnoise  = c(4,0,8,4,0,8,4,0)
-) |>
-  tidyr::crossing(replicate = 1:nrep)
-
-mixed_datasets_grid <- param_generator_grid |>
-  dplyr::mutate(
-    data = purrr::pmap(
-      dplyr::pick(numsignal, catsignal, numnoise, catnoise, replicate),
-      \(numsignal, catsignal, numnoise, catnoise, replicate) {
-        gen_mixed(
-          k_true      = k_true,
-          clustSizeEq = clustSizeEq,
-          numsignal   = numsignal,
-          numnoise    = numnoise,
-          catsignal   = catsignal,
-          catnoise    = catnoise,
-          q           = q,
-          q_err       = q,
-          numsep      = numsep,
-          catsep      = catsep,
-          seed        = replicate
-        )
-      }
-    )
-  )
-
-methods <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
-
-sim_methods_grid <- mixed_datasets_grid |>
-  tidyr::crossing(method = methods) |>
-  dplyr::left_join(manydist:::mdist_method_lookup, by = "method")
-
-stopifnot(!any(is.na(sim_methods_grid$mdist_type)))
-
- ari_pam_results_001_03 <- sim_methods_grid |>
-  dplyr::mutate(
-    ari = purrr::pmap_dbl(
-      dplyr::pick(data, mdist_type, mdist_preset, param_set),
-      \(data, mdist_type, mdist_preset, param_set) {
-        df <- data$df
-        D <- run_mdist_within(df, mdist_type, mdist_preset, param_set, outcome = "y")
-        pam_fit <- cluster::pam(D, k = k_true, diss = TRUE)
-        mclust::adjustedRandIndex(df$y, pam_fit$clustering)
-      }
-    )
-  )
-
-
-save(ari_pam_results_001_03, file = "ari_pam_experiment_numsep_001_catsep_03.RData")
-```
 
 
 
 ###  numsep =.1 and catsep=0.35 generation
 
 
-```{r}
+```{r, echo=TRUE,eval=FALSE}
 nrep <- 100
 k_true <- 4
 q <- 9
@@ -891,97 +972,391 @@ ari_pam_results_01_035 <- sim_methods_grid |>
       }
     )
   )
+```
 
+
+```{r, echo=FALSE,eval=FALSE}
 save(ari_pam_results_01_035, file = "ari_pam_experiment_numsep_01_catsep_035.RData")
 ```
 
 
 
 
-```{r}
-load(file="ari_pam_experiment_numsep_01_catsep_06.RData")
-
-ari_plot_df_01_06 <- ari_pam_results_01_06 |>
-  mutate(
-    scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
-    scenario = factor(scenario, levels = unique(scenario))
-  )
-
-ari_plot_01_06 = ggplot(ari_plot_df_01_06, aes(x = method, y = ari, fill = method)) +
-  geom_boxplot(
-    outlier.alpha = 0.25,
-    linewidth = 0.35
-  ) +
-  scale_fill_manual(values = my_colors) +
-  facet_wrap(~ scenario, ncol = 2) +
-  coord_cartesian(ylim = c(0, 1)) +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 60, hjust = 1),
-    strip.text = element_text(size = 9),
-    legend.position = "none"
-  ) +
-  labs(x = "", y = "ARI (PAM on dissimilarities)")
-
-print(ari_plot_01_06, width = 8, height = 4)
-ggsave(file="ari_plot_01_06.pdf",ari_plot_01_06,width=6,height=8)
+```{r, echo=FALSE,eval=TRUE}
+load(file = "ari_pam_experiment_numsep_01_catsep_035.RData")
 ```
 
-```{r}
-load(file="ari_pam_experiment_numsep_001_catsep_03.RData")
-ari_plot_df_001_03 <- ari_pam_results_001_03 |>
-  mutate(
-    scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
-    scenario = factor(scenario, levels = unique(scenario))
-  )
-
-ari_plot_001_03 = ggplot(ari_plot_df_001_03, aes(x = method, y = ari, fill = method)) +
-  geom_boxplot(
-    outlier.alpha = 0.25,
-    linewidth = 0.35
-  ) +
-  scale_fill_manual(values = my_colors) +
-  facet_wrap(~ scenario, ncol = 2) +
-  coord_cartesian(ylim = c(0, 1)) +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 60, hjust = 1),
-    strip.text = element_text(size = 9),
-    legend.position = "none"
-  ) +
-  labs(x = "", y = "ARI (PAM on dissimilarities)")
-
-print(ari_plot_001_03, width = 8, height = 4)
-ggsave(file="ari_plot_001_03.pdf",ari_plot_001_03,width=6,height=8)
-```
 
 ```{r}
-load(file="ari_pam_experiment_numsep_01_catsep_035.RData")
+# Method groups (as you provided)
+add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
+nonadd_methods <- c("naive","hl","gudmm","dkps")
+method_levels  <- c(add_methods, nonadd_methods)
+
+# Facet order (row-wise)
+scenario_order <- c("0844","0880","4408","8008","4444","4480","8044","8080")
+
 ari_plot_df_01_035 <- ari_pam_results_01_035 |>
   mutate(
-    scenario = str_glue("num: {numsignal} signal + {numnoise} noise | cat: {catsignal} signal + {catnoise} noise"),
-    scenario = factor(scenario, levels = unique(scenario))
+    # Used only to match facet order; preserves leading zeros
+    scenario_id = sprintf("%01d%01d%01d%01d", numsignal, numnoise, catsignal, catnoise),
+
+    scenario = str_glue(
+      "num: {numsignal} s. + {numnoise} n. | cat: {catsignal} s. + {catnoise} n."
+    ),
+method = canon_method(method),
+    # Row-wise facet order as provided
+    scenario = factor(scenario, levels = scenario[match(scenario_order, scenario_id)]),
+
+    # Method order
+    method = factor(method, levels = method_levels),
+
+    # Additive / Non-additive label
+    method_type = if_else(as.character(method) %in% add_methods, "Additive", "Non-additive")
   )
 
-ari_plot_01_035 = ggplot(ari_plot_df_01_035, aes(x = method, y = ari, fill = method)) +
+# Background bands (no fill scale consumed)
+k_add <- length(add_methods)
+k_tot <- length(method_levels)
+
+bg_add <- tibble(
+  xmin = 0.5, xmax = k_add + 0.5,
+  ymin = -Inf, ymax = Inf
+)
+bg_nonadd <- tibble(
+  xmin = k_add + 0.5, xmax = k_tot + 0.5,
+  ymin = -Inf, ymax = Inf
+)
+
+ari_plot_01_035 <- ggplot() +
+  # Shaded regions
+  geom_rect(
+    data = bg_add,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "indianred",
+    alpha = 0.12,
+    show.legend = FALSE
+  ) +
+  geom_rect(
+    data = bg_nonadd,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "dodgerblue",
+    alpha = 0.12,
+    show.legend = FALSE
+  ) +
+
+  # Additive boxplots + legend block
   geom_boxplot(
+    data = ari_plot_df_01_035 |> filter(method_type == "Additive"),
+    aes(x = method, y = ari, fill = method),
     outlier.alpha = 0.25,
     linewidth = 0.35
   ) +
-  scale_fill_manual(values = my_colors) +
+  # Additive legend (comes first)
+scale_fill_manual(
+  name   = "Additive",
+  values = my_colors[add_methods],
+  breaks = add_methods,
+  drop   = FALSE,
+  guide  = guide_legend(order = 1)
+) +
+
+  ggnewscale::new_scale_fill() +
+
+  # Non-additive boxplots + legend block
+  geom_boxplot(
+    data = ari_plot_df_01_035 |> filter(method_type == "Non-additive"),
+    aes(x = method, y = ari, fill = method),
+    outlier.alpha = 0.25,
+    linewidth = 0.35
+  ) +
+ # Non-additive legend (comes second)
+scale_fill_manual(
+  name   = "Non-additive",
+  values = my_colors[nonadd_methods],
+  breaks = nonadd_methods,
+  drop   = FALSE,
+  guide  = guide_legend(order = 2)
+) +
   facet_wrap(~ scenario, ncol = 2) +
   coord_cartesian(ylim = c(0, 1)) +
   theme_bw() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
-    strip.text = element_text(size = 9),
-    legend.position = "none"
+    strip.text  = element_text(size = 9),
+    legend.text = element_text(size = 13)
   ) +
   labs(x = "", y = "ARI (PAM on dissimilarities)")
 
-print(ari_plot_01_035, width = 8, height = 4)
-ggsave(file="ari_plot_01_035.pdf",ari_plot_01_035,width=6,height=8)
+print(ari_plot_01_035)
 ```
+
+
+```{r,echo=FALSE,eval=FALSE}
+ggsave(file = "ari_plot_01_035.pdf", ari_plot_01_035, width = 6, height = 8)
+```
+
+```{r,echo=FALSE}
+load(file = "ari_pam_experiment_numsep_01_catsep_035.RData")
+```
+
+
+```{r}
+# ---- method groups ----
+add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
+nonadd_methods <- c("naive","hl","gudmm","dkps")
+
+# ---- scenario order (shared with boxplot figure) ----
+scenario_order <- c("0844","0880","4408","8008","4444","4480","8044","8080")
+
+ari_parallel_df <- ari_pam_results_01_035 |>
+  mutate(
+    # unify method naming
+    method = canon_method(method), 
+
+    # key used for ordering
+    scenario_id = sprintf(
+      "%01d%01d%01d%01d",
+      numsignal, numnoise, catsignal, catnoise
+    ),
+
+    # label shown on the x-axis
+    scenario = stringr::str_glue(
+      "n:({numsignal},{numnoise}); c:({catsignal},{catnoise})"
+    )
+  ) |>
+  group_by(scenario_id, scenario, method) |>
+  summarise(
+    mean_ari = mean(ari, na.rm = TRUE),
+    sd_ari   = sd(ari,   na.rm = TRUE),
+    .groups  = "drop"
+  ) |>
+  mutate(
+    # enforce scenario order explicitly
+    scenario = factor(
+      scenario,
+      levels = scenario[match(scenario_order, scenario_id)]
+    ),
+
+    type = ifelse(method %in% add_methods, "additive", "non-additive"),
+    method = factor(method, levels = c(add_methods, nonadd_methods))
+  )
+```
+
+### Code for `Figure 4`
+
+```{r}
+ari_parallel_plot <-
+  ggplot() +
+
+  # ================= ADDITIVE =================
+  geom_errorbar(
+    data = dplyr::filter(ari_parallel_df, type == "additive"),
+    aes(
+      x = scenario,
+      ymin = mean_ari - sd_ari,
+      ymax = mean_ari + sd_ari,
+      color = method
+    ),
+    width = 0.12,
+    linewidth = 0.35
+  ) +
+  geom_line(
+    data = dplyr::filter(ari_parallel_df, type == "additive"),
+    aes(x = scenario, y = mean_ari, color = method, group = method),
+    linewidth = 0.6,alpha=.75
+  ) +
+  geom_point(
+    data = dplyr::filter(ari_parallel_df, type == "additive"),
+    aes(x = scenario, y = mean_ari, color = method, shape = method),
+    size = 2
+  ) +
+  scale_color_manual(name = "additive", values = my_colors, breaks = add_methods) +
+  scale_shape_manual(name = "additive", values = my_shapes, breaks = add_methods) +
+  guides(
+    color = guide_legend(order = 1, override.aes = list(shape = my_shapes[add_methods])),
+    shape = "none"
+  ) +
+
+  ggnewscale::new_scale_color() +
+  ggnewscale::new_scale("shape") +
+
+  # ================= NON-ADDITIVE =================
+  geom_errorbar(
+    data = dplyr::filter(ari_parallel_df, type == "non-additive"),
+    aes(
+      x = scenario,
+      ymin = mean_ari - sd_ari,
+      ymax = mean_ari + sd_ari,
+      color = method
+    ),
+    width = 0.12,
+    linewidth = 0.35
+  ) +
+  geom_line(
+    data = dplyr::filter(ari_parallel_df, type == "non-additive"),
+    aes(x = scenario, y = mean_ari, color = method, group = method),
+    linewidth = 0.6,alpha=.75
+  ) +
+  geom_point(
+    data = dplyr::filter(ari_parallel_df, type == "non-additive"),
+    aes(x = scenario, y = mean_ari, color = method, shape = method),
+    size = 2
+  ) +
+  scale_color_manual(name = "non-additive", values = my_colors, breaks = nonadd_methods) +
+  scale_shape_manual(name = "non-additive", values = my_shapes, breaks = nonadd_methods) +
+  guides(
+    color = guide_legend(order = 2, override.aes = list(shape = my_shapes[nonadd_methods])),
+    shape = "none"
+  ) +
+
+  labs(x = "scenario", y = "mean ARI (± 1 SD)") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "bottom",
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  )
+
+ari_parallel_plot
+
+ggsave(
+  filename = "figure_parallel_ari.pdf",
+  plot     = ari_parallel_plot,
+  width    = 18,
+  height   = 11,
+  units    = "cm"
+)
+
+```
+
+<!-- ## rankings -->
+
+```{r}
+load(file = "ari_pam_experiment_numsep_01_catsep_035.RData")
+
+add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
+nonadd_methods <- c("naive","hl","gudmm","dkps")
+
+scenario_order <- c("0844","0880","4408","8008","4444","4480","8044","8080")
+
+ari_rank_df <- ari_pam_results_01_035 |>
+  mutate(
+    method = canon_method(method),
+
+    scenario_id = sprintf("%01d%01d%01d%01d", numsignal, numnoise, catsignal, catnoise),
+    scenario = stringr::str_glue("n:({numsignal},{numnoise}); c:({catsignal},{catnoise})")
+  ) |>
+  group_by(scenario_id, scenario, method) |>
+  summarise(
+    mean_ari = mean(ari, na.rm = TRUE),
+    .groups  = "drop"
+  ) |>
+  group_by(scenario_id, scenario) |>
+  mutate(
+    rank_desc = dplyr::dense_rank(dplyr::desc(mean_ari))  # 1 = best
+  ) |>
+  ungroup() |>
+  mutate(
+    # enforce scenario order (same as boxplot panels)
+    scenario = factor(scenario, levels = scenario[match(scenario_order, scenario_id)]),
+
+    type = ifelse(method %in% add_methods, "additive", "non-additive"),
+    method = factor(method, levels = c(add_methods, nonadd_methods))
+  )
+```
+
+
+
+
+
+<!-- ## Figure -->
+
+<!-- ```{r} -->
+<!-- K_methods <- max(ari_rank_df$rank_desc, na.rm = TRUE) -->
+
+<!-- ari_parallel_rank_plot <- -->
+<!--   ggplot() + -->
+
+<!--   # ================= ADDITIVE ================= -->
+<!--   geom_line( -->
+<!--     data = dplyr::filter(ari_rank_df, type == "additive"), -->
+<!--     aes(x = scenario, y = rank_desc, color = method, group = method), -->
+<!--     linewidth = 0.6,alpha=.75 -->
+<!--   ) + -->
+<!--   geom_point( -->
+<!--     data = dplyr::filter(ari_rank_df, type == "additive"), -->
+<!--     aes(x = scenario, y = rank_desc, color = method, shape = method), -->
+<!--     size = 2 -->
+<!--   ) + -->
+<!--   scale_color_manual(name = "additive", values = my_colors, breaks = add_methods) + -->
+<!--   scale_shape_manual(name = "additive", values = my_shapes, breaks = add_methods) + -->
+<!--   guides( -->
+<!--     color = guide_legend(order = 1, -->
+<!--       override.aes = list(shape = my_shapes[add_methods]) -->
+<!--     ), -->
+<!--     shape = "none" -->
+<!--   ) + -->
+
+<!--   ggnewscale::new_scale_color() + -->
+<!--   ggnewscale::new_scale("shape") + -->
+
+<!--   # ================= NON-ADDITIVE ================= -->
+<!--   geom_line( -->
+<!--     data = dplyr::filter(ari_rank_df, type == "non-additive"), -->
+<!--     aes(x = scenario, y = rank_desc, color = method, group = method), -->
+<!--     linewidth = 0.6,alpha=.75 -->
+<!--   ) + -->
+<!--   geom_point( -->
+<!--     data = dplyr::filter(ari_rank_df, type == "non-additive"), -->
+<!--     aes(x = scenario, y = rank_desc, color = method, shape = method), -->
+<!--     size = 2 -->
+<!--   ) + -->
+<!--   scale_color_manual(name = "non-additive", values = my_colors, breaks = nonadd_methods) + -->
+<!--   scale_shape_manual(name = "non-additive", values = my_shapes, breaks = nonadd_methods) + -->
+<!--   guides( -->
+<!--     color = guide_legend(order = 2, -->
+<!--       override.aes = list(shape = my_shapes[nonadd_methods]) -->
+<!--     ), -->
+<!--     shape = "none" -->
+<!--   ) + -->
+
+<!--   # ---- THIS IS THE KEY LINE ---- -->
+<!--   scale_y_reverse( -->
+<!--     breaks = 1:K_methods, -->
+<!--     limits = c(K_methods, 1) -->
+<!--   ) + -->
+
+<!--   labs( -->
+<!--     x = "scenario", -->
+<!--     y = "rank of mean ARI (1 = best)" -->
+<!--   ) + -->
+<!--   theme_bw() + -->
+<!--   theme( -->
+<!--     axis.text.x = element_text(angle = 30, hjust = 1), -->
+<!--     legend.position = "bottom", -->
+<!--     legend.title.position = "top", -->
+<!--     legend.text = element_text(size = 13) -->
+<!--   ) -->
+
+<!-- ari_parallel_rank_plot -->
+
+
+<!-- ggsave( -->
+<!--   filename = "figure_parallel_rank.pdf", -->
+<!--   plot     = ari_parallel_rank_plot, -->
+<!--   width    = 18, -->
+<!--   height   = 11, -->
+<!--   units    = "cm" -->
+<!-- ) -->
+<!-- ``` -->
+
+
+
+
 
 
 ## Illustration: FIFA player data
@@ -990,8 +1365,8 @@ ggsave(file="ari_plot_01_035.pdf",ari_plot_01_035,width=6,height=8)
 
 ```{r, eval=FALSE}
 # Variables are organized: Categorical first, then numerical
-load("../../manydist/data/fifa_nl.rda") # Load the data
-# data(fifa_nl)
+
+data("fifa_nl", package = "manydist")
 #Xorig<-X<-ddata[,-c(1,2)]
 X<-fifa_nl[,-c(1,2,19:24)] # vars 1 and 2 are a bit useless (too many categories)
 # vars 19:24 interesting but same scale and little variation
@@ -1015,7 +1390,6 @@ fifa_clean <- as_tibble(X)  |>
 
 
 ```{r, eval=FALSE}
-
 fifa_structure <- tibble::tibble(
   method = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
 ) |>
@@ -1024,25 +1398,28 @@ fifa_structure <- tibble::tibble(
     loo_results = purrr::pmap(
       dplyr::pick(method, mdist_type, mdist_preset, param_set),
       \(method, mdist_type, mdist_preset, param_set) {
-        # baseline handling removed; just run LOVO on fifa_clean
         run_lovo(
           df = fifa_clean,
           mdist_type = mdist_type,
           mdist_preset = mdist_preset,
           param_set = param_set,
-          outcome = NULL,   # fifa_clean has no outcome; if it does, set it here
+          outcome = NULL,
           dims = nd,
-          keep_dist = FALSE
+          keep_dist = FALSE,
+          legacy_gower_sum = (method == "gower")  # triggers only for preset+gower anyway
         )
       }
     )
   )
+```
 
-save(file="fifa_structure.RData", fifa_structure)
+
+```{r, eval=FALSE,echo=FALSE}
+save(file="fifa_structure_R3.RData", fifa_structure)
 ```
 
 ```{r, echo = FALSE}
-load("fifa_structure.RData")
+load("fifa_structure_R3.RData")
 ```
 
 
@@ -1080,10 +1457,9 @@ fifa_split_by_measure <- purrr::map(
 
 
 
-### Code for `Figure 4`
+### Code for `Figure 5`
 
 ```{r,fig.height=5,fig.width=8}
-
 meas_to_plot_mad = fifa_split_by_measure |> pluck("mad_importance") |>
   mutate(measure="mad_importances") |> slice(c(8:14,1:7)) |>  mutate(var_id=1:n())
 
@@ -1103,87 +1479,210 @@ rect_data_rel = tibble(
   xmin_cont=8.5,xmax_cont=14,ymin_cont=0,ymax_cont=mad_max_rel,
   xmin_cat=.5,xmax_cat=8.5,ymin_cat=0,ymax_cat=mad_max_rel)
 
+# --- DROP-IN: Figure 4 (MAD importances) with split legend (shown only on bottom plot) ---
 
-  
+
 method_levels <- c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")
 additive_set  <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
+conflict_prefer("intersect", "base")
+conflict_prefer("setdiff", "base")
+add_present    <- intersect(additive_set, method_levels)
+nonadd_present <- setdiff(method_levels, additive_set)
 
-loo_mad_plot <- meas_to_plot_mad |>
-  rename(dkps = dkss) |>  # for consistency with paper name
+# ---------- TOP: absolute contributions ----------
+loo_mad_long <- meas_to_plot_mad |>
+   canon_cols() |>
   pivot_longer(
-    cols = dplyr::any_of(method_levels),
+    cols = any_of(method_levels),
     names_to = "method",
     values_to = "value"
   ) |>
   mutate(
-    method = factor(method, levels = method_levels),
-    additive = ifelse(method %in% additive_set, "additive distances", "non-additive distances")
-  ) |>
-  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
-  geom_rect(data = rect_data,
-            aes(xmin = xmin_cont, xmax = xmax_cont, ymin = ymin_cont, ymax = ymax_cont),
-            alpha = .2, fill = "indianred", color = "lightgrey", inherit.aes = FALSE) +
-  geom_rect(data = rect_data,
-            aes(xmin = xmin_cat, xmax = xmax_cat, ymin = ymin_cat, ymax = ymax_cat),
-            alpha = .2, fill = "dodgerblue", color = "lightgrey", inherit.aes = FALSE) +
-  geom_point() + geom_line() +
+    method   = factor(method, levels = method_levels),
+    additive = ifelse(method %in% additive_set, "additive distances", "non-additive distances"),
+    type     = ifelse(method %in% additive_set, "Additive", "Non-additive")
+  )
+
+loo_mad_plot <-
+  ggplot() +
+  geom_rect(
+    data = rect_data,
+    aes(xmin = xmin_cont, xmax = xmax_cont, ymin = ymin_cont, ymax = ymax_cont),
+    alpha = .2, fill = "indianred", color = "lightgrey", inherit.aes = FALSE
+  ) +
+  geom_rect(
+    data = rect_data,
+    aes(xmin = xmin_cat, xmax = xmax_cat, ymin = ymin_cat, ymax = ymax_cat),
+    alpha = .2, fill = "dodgerblue", color = "lightgrey", inherit.aes = FALSE
+  ) +
+  # Additive
+  geom_line(
+    data = filter(loo_mad_long, type == "Additive"),
+    aes(x = var_id, y = value, color = method, group = method),
+    alpha = 0.85
+  ) +
+  geom_point(
+    data = filter(loo_mad_long, type == "Additive"),
+    aes(x = var_id, y = value, color = method, shape = method),
+    size = 2
+  ) +
+  scale_color_manual(
+    name   = "Additive",
+    values = my_colors,
+    breaks = add_present,
+    drop   = FALSE,
+    guide  = guide_legend(order = 1, override.aes = list(shape = my_shapes[add_present]))
+  ) +
+  scale_shape_manual(
+    name   = "Additive",
+    values = my_shapes,
+    breaks = add_present,
+    drop   = FALSE
+  ) +
+  guides(shape = "none") +
+  ggnewscale::new_scale_color() +
+  ggnewscale::new_scale("shape") +
+  # Non-additive
+  geom_line(
+    data = filter(loo_mad_long, type == "Non-additive"),
+    aes(x = var_id, y = value, color = method, group = method),
+    alpha = 0.85
+  ) +
+  geom_point(
+    data = filter(loo_mad_long, type == "Non-additive"),
+    aes(x = var_id, y = value, color = method, shape = method),
+    size = 2
+  ) +
+  scale_color_manual(
+    name   = "Non-additive",
+    values = my_colors,
+    breaks = nonadd_present,
+    drop   = FALSE,
+    guide  = guide_legend(order = 2, override.aes = list(shape = my_shapes[nonadd_present]))
+  ) +
+  scale_shape_manual(
+    name   = "Non-additive",
+    values = my_shapes,
+    breaks = nonadd_present,
+    drop   = FALSE
+  ) +
+  guides(shape = "none") +
   ylab("absolute variable contribution to distance") +
-  theme_bw() + theme(legend.position = "none") +
+  theme_bw() +
   scale_x_continuous(breaks = seq(1, 14, 1), labels = rep("", 14)) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-  scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    legend.position = "none"   # <-- keep legend hidden on TOP plot
+  ) +
   xlab("") +
   facet_wrap(. ~ additive)
 
-
-
-
-loo_mad_rel_plot <- meas_to_plot_mad_rel |>
-  rename(dkps = dkss) |>
+# ---------- BOTTOM: relative contributions ----------
+loo_mad_rel_long <- meas_to_plot_mad_rel |>
+   canon_cols() |>
   pivot_longer(
-    cols = dplyr::any_of(method_levels),
+    cols = any_of(method_levels),
     names_to = "method",
     values_to = "value"
   ) |>
   mutate(
-    method = factor(method, levels = method_levels),
-    additive = ifelse(method %in% additive_set, "additive", "non-additive")
-  ) |>
-  ggplot(aes(x = var_id, y = value, color = method, shape = method)) +
-  geom_rect(data = rect_data_rel,
-            aes(xmin = xmin_cont, xmax = xmax_cont, ymin = ymin_cont, ymax = ymax_cont),
-            alpha = .2, fill = "indianred", color = "lightgrey", inherit.aes = FALSE) +
-  geom_rect(data = rect_data_rel,
-            aes(xmin = xmin_cat, xmax = xmax_cat, ymin = ymin_cat, ymax = ymax_cat),
-            alpha = .2, fill = "dodgerblue", color = "lightgrey", inherit.aes = FALSE) +
-  geom_point() + geom_line() +
+    method   = factor(method, levels = method_levels),
+    additive = ifelse(method %in% additive_set, "additive distances", "non-additive distances"),
+    type     = ifelse(method %in% additive_set, "Additive", "Non-additive")
+  )
+
+loo_mad_rel_plot <-
+  ggplot() +
+  geom_rect(
+    data = rect_data_rel,
+    aes(xmin = xmin_cont, xmax = xmax_cont, ymin = ymin_cont, ymax = ymax_cont),
+    alpha = .2, fill = "indianred", color = "lightgrey", inherit.aes = FALSE
+  ) +
+  geom_rect(
+    data = rect_data_rel,
+    aes(xmin = xmin_cat, xmax = xmax_cat, ymin = ymin_cat, ymax = ymax_cat),
+    alpha = .2, fill = "dodgerblue", color = "lightgrey", inherit.aes = FALSE
+  ) +
+  # Additive
+  geom_line(
+    data = filter(loo_mad_rel_long, type == "Additive"),
+    aes(x = var_id, y = value, color = method, group = method),
+    alpha = 0.85
+  ) +
+  geom_point(
+    data = filter(loo_mad_rel_long, type == "Additive"),
+    aes(x = var_id, y = value, color = method, shape = method),
+    size = 2
+  ) +
+  scale_color_manual(
+    name   = "Additive",
+    values = my_colors,
+    breaks = add_present,
+    drop   = FALSE,
+    guide  = guide_legend(order = 1, override.aes = list(shape = my_shapes[add_present]))
+  ) +
+  scale_shape_manual(
+    name   = "Additive",
+    values = my_shapes,
+    breaks = add_present,
+    drop   = FALSE
+  ) +
+  guides(shape = "none") +
+  ggnewscale::new_scale_color() +
+  ggnewscale::new_scale("shape") +
+  # Non-additive
+  geom_line(
+    data = filter(loo_mad_rel_long, type == "Non-additive"),
+    aes(x = var_id, y = value, color = method, group = method),
+    alpha = 0.85
+  ) +
+  geom_point(
+    data = filter(loo_mad_rel_long, type == "Non-additive"),
+    aes(x = var_id, y = value, color = method, shape = method),
+    size = 2
+  ) +
+  scale_color_manual(
+    name   = "Non-additive",
+    values = my_colors,
+    breaks = nonadd_present,
+    drop   = FALSE,
+    guide  = guide_legend(order = 2, override.aes = list(shape = my_shapes[nonadd_present]))
+  ) +
+  scale_shape_manual(
+    name   = "Non-additive",
+    values = my_shapes,
+    breaks = nonadd_present,
+    drop   = FALSE
+  ) +
+  guides(shape = "none") +
   ylab("relative variable contribution to distance") +
   theme_bw() +
-  scale_x_continuous(breaks = seq(1, 14, 1),
-                     labels = meas_to_plot_mad_rel |> pull(variable)) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1),
-        strip.text = element_blank()) +
-  scale_shape_manual(values = my_shapes) +
-  scale_color_manual(values = my_colors) +
+  scale_x_continuous(breaks = seq(1, 14, 1), labels = meas_to_plot_mad_rel$variable) +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    strip.text  = element_blank(),
+    legend.position = "bottom",
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  ) +
   xlab("") +
   facet_wrap(. ~ additive)
 
-fig_4_plot = loo_mad_plot / loo_mad_rel_plot
-
-ggsave(fig_4_plot, file = "figure_4_mad_importances.pdf", width = 8, height = 8)
-
+# ---------- COMBINE + SAVE ----------
+fig_4_plot <- loo_mad_plot / loo_mad_rel_plot
 fig_4_plot
+```
+
+
+```{r,echo=FALSE,eval=FALSE}
+ggsave(fig_4_plot, file = "figure_4_mad_importances.pdf", width = 7, height = 7)
 
 ```
 
 
-
-
-### Code for  `Figure 5`
+### Code for  `Figure 6`
 
 ```{r,fig.height=5,fig.width=8}
-
 method_levels <- c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")
 additive_set  <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
 
@@ -1203,8 +1702,8 @@ rect_data_ac <- tibble::tibble(
   xmin_cat  = 0.5, xmax_cat  = 7.5, ymin_cat  = 0, ymax_cat  = max_ac
 )
 
-ac_plot <- meas_to_plot_ac |>
-  dplyr::rename(dkps = dkss) |>
+ac_long <- meas_to_plot_ac |>
+  canon_cols() |>
   tidyr::pivot_longer(
     cols = dplyr::any_of(method_levels),
     names_to = "method",
@@ -1212,9 +1711,15 @@ ac_plot <- meas_to_plot_ac |>
   ) |>
   dplyr::mutate(
     method   = factor(method, levels = method_levels),
-    additive = ifelse(method %in% additive_set, "additive distances", "non-additive distances")
-  ) |>
-  ggplot2::ggplot(ggplot2::aes(x = var_id, y = value, color = method, shape = method)) +
+    additive = ifelse(method %in% additive_set, "additive distances", "non-additive distances"),
+    type     = ifelse(method %in% additive_set, "Additive", "Non-additive")
+  )
+
+add_present    <- intersect(additive_set, unique(as.character(ac_long$method)))
+nonadd_present <- intersect(setdiff(method_levels, additive_set), unique(as.character(ac_long$method)))
+
+ac_plot <-
+  ggplot2::ggplot() +
   ggplot2::geom_rect(
     data = rect_data_ac,
     ggplot2::aes(xmin = xmin_cont, xmax = xmax_cont, ymin = ymin_cont, ymax = ymax_cont),
@@ -1225,22 +1730,82 @@ ac_plot <- meas_to_plot_ac |>
     ggplot2::aes(xmin = xmin_cat, xmax = xmax_cat, ymin = ymin_cat, ymax = ymax_cat),
     alpha = .2, fill = "dodgerblue", color = "lightgrey", inherit.aes = FALSE
   ) +
-  ggplot2::geom_point() +
-  ggplot2::geom_line() +
+
+  # ================= ADDITIVE =================
+  ggplot2::geom_line(
+    data = dplyr::filter(ac_long, type == "Additive"),
+    ggplot2::aes(x = var_id, y = value, color = method, group = method),
+    alpha = 0.85
+  ) +
+  ggplot2::geom_point(
+    data = dplyr::filter(ac_long, type == "Additive"),
+    ggplot2::aes(x = var_id, y = value, color = method, shape = method),
+    size = 2
+  ) +
+  ggplot2::scale_color_manual(
+    name   = "Additive",
+    values = my_colors,
+    breaks = add_present,
+    drop   = FALSE,
+    guide  = ggplot2::guide_legend(order = 1, override.aes = list(shape = my_shapes[add_present]))
+  ) +
+  ggplot2::scale_shape_manual(
+    name   = "Additive",
+    values = my_shapes,
+    breaks = add_present,
+    drop   = FALSE
+  ) +
+  ggplot2::guides(shape = "none") +
+
+  ggnewscale::new_scale_color() +
+  ggnewscale::new_scale("shape") +
+
+  # ================= NON-ADDITIVE =================
+  ggplot2::geom_line(
+    data = dplyr::filter(ac_long, type == "Non-additive"),
+    ggplot2::aes(x = var_id, y = value, color = method, group = method),
+    alpha = 0.85
+  ) +
+  ggplot2::geom_point(
+    data = dplyr::filter(ac_long, type == "Non-additive"),
+    ggplot2::aes(x = var_id, y = value, color = method, shape = method),
+    size = 2
+  ) +
+  ggplot2::scale_color_manual(
+    name   = "Non-additive",
+    values = my_colors,
+    breaks = nonadd_present,
+    drop   = FALSE,
+    guide  = ggplot2::guide_legend(order = 2, override.aes = list(shape = my_shapes[nonadd_present]))
+  ) +
+  ggplot2::scale_shape_manual(
+    name   = "Non-additive",
+    values = my_shapes,
+    breaks = nonadd_present,
+    drop   = FALSE
+  ) +
+  ggplot2::guides(shape = "none") +
+
   ggplot2::ylab("alienation coefficient") +
   ggplot2::theme_bw() +
   ggplot2::scale_x_continuous(
     breaks = seq(1, 14, 1),
     labels = meas_to_plot_ac$variable
   ) +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 60, hjust = 1)) +
-  ggplot2::scale_shape_manual(values = my_shapes) +
-  ggplot2::scale_color_manual(values = my_colors) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 60, hjust = 1),
+    legend.position = "bottom",
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  ) +
   ggplot2::xlab("") +
   ggplot2::facet_wrap(. ~ additive)
 
 ac_plot
+```
 
+
+```{r,echo=FALSE,eval=FALSE}
 ggsave("figure_5_ac_rel_importances.pdf", ac_plot, width = 8, height = 4)
 ```
 
@@ -1552,7 +2117,7 @@ skew<-as.character(dis)#as.character(1:nint)
 ```
 
 
-### Code for `Figure 6`
+### Code for `Figure 7`
 
 ```{r,fig.height=7,fig.width=7}
 sk_distance_to_plot = function(exp_mean_dist,distance_name){
@@ -1586,7 +2151,7 @@ print(paper_plot_skew1,width=10,height=6)
 ```
 
 
-### Code for `Figure 7`
+### Code for `Figure 8`
 
 ```{r,fig.height=4,fig.width=8}
 all_exp_mean_dist2=rbind(sk_distance_to_plot(ehl,"Hennig-Liao"),
@@ -1609,7 +2174,7 @@ print(paper_plot_skew2)
 
 
 
-### Code for `Figure 8`
+### Code for `Figure 9`
 
 ```{r,fig.height=4,fig.width=8}
 
@@ -1730,11 +2295,11 @@ print(paper_plot_skew3,width=8,height=4)
 
 ## Appendix E FIFA variable distributions
 
-### Code for  `Figure 9`
+### Code for  `Figure 10`
 
 ```{r, fig.height=12,fig.width=8}
-load("data/Fifa21NL.RData") # Load the data
-# data(fifa_nl)
+# load("data/Fifa21NL.RData") # Load the data
+data(fifa_nl,package="manydist")
 #Xorig<-X<-ddata[,-c(1,2)]
 Xorig<-X<-fifa_nl[,-c(1,2,19:24)] # vars 1 and 2 are a bit useless (too many categories)
 # vars 19:24 interesting but same scale and little variation
@@ -1822,3 +2387,4 @@ fifa_descriptive_plots=(X_tib_cat_nest$bplot[[1]]/
 print(fifa_descriptive_plots)
 
 ```
+  

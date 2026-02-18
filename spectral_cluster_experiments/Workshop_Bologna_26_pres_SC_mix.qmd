@@ -101,11 +101,11 @@ wp_bologna_26_bib <- ReadBib("wp_bologna_26_references.bib", check = FALSE)
 
 &nbsp;
 
-###  dissimilarity- and distance-based unsupervised learning
+### independence-based (IB) vs association-based (AB) dissimilarities
 
 &nbsp;
 
-### independence-based vs association-based 
+### association-based for mixed data
 
 &nbsp;
 
@@ -113,9 +113,15 @@ wp_bologna_26_bib <- ReadBib("wp_bologna_26_references.bib", check = FALSE)
 
 &nbsp;
 
+### AB spectral clustering
+
+&nbsp;
+
 ### example and future work
 
 &nbsp;
+
+### (adveRtising)
 
 :::
 
@@ -124,8 +130,13 @@ wp_bologna_26_bib <- ReadBib("wp_bologna_26_references.bib", check = FALSE)
 ::::
 
 
-#  dissimilarity- and distance-based unsupervised learning
+##  
 
+::: {.vcenter-slide}
+
+<h3>[independence-based (IB)]{style="color:dodgerblue"} vs [association-based (AB)]{style="color:indianred"}  dissimilarities</h3>
+
+:::
 ## 
 
 [**learning from dissimilarities**]{style="color:indianred"}
@@ -672,9 +683,13 @@ $$
 
 
 
+##  
 
+::: {.vcenter-slide}
 
-# AB for mixed?
+<h2>association-based for mixed?</h2>
+
+:::
 
 ## 
 
@@ -1068,7 +1083,7 @@ We build upon the following results
 The distribution of ${\bf x}_{i}$ can be written as
  
 $$
-f({\bf x}_{i_{con}},{\bf x}_{i_{cat}})=f({\bf x}_{i_{con}})f({\bf x}_{i_{con}}\mid{\bf x}_{i_{cat}})
+f({\bf x}_{i_{con}},{\bf x}_{i_{cat}})=f({\bf x}_{i_{con}})f({\bf x}_{i_{cat}}\mid{\bf x}_{i_{con}})
 $$
 :::
 
@@ -1152,7 +1167,7 @@ $$
 consider the $Q_{cat}$-dimensional categorical vector ${\bf x}_{i_{cat}}$, it results, for its $j^{th}$ element, that
 
 $$
-p(x_{ij_{cat}}=a| x_{i'j_{cat}}=b)  =  \left[\delta^{j}(a,b)\right]^{-1}
+p(x_{ij_{cat}}=a;  x_{i'j_{cat}}=b)  =  \left[\delta^{j}(a,b)\right]^{-1}
 $$
 
 where $a$ and $b$ are two general categories of the $jth$ variable
@@ -1529,14 +1544,14 @@ is $\delta_{int}^{j}(a,b)$  of help?
 
 - three continuous signal, three continuous of Gaussian noise, three categorical variables (one noise)
 
-- different dependence structures and location shifts in the signal cont inuous across the groups defined by the signal categorical variables.
+- different dependence structures and location shifts in the signal continuous across the groups defined by the signal categorical variables.
 
 - the continuous signal variables are generated conditionally on the signal categorical variables
 
 $$
-X_j = \beta_{0,nm} + \sum_{k>j}^{6} \beta_{1,nm} X_k, \qquad j = 1,2,3
+X_j = \beta_{0,hq} + \sum_{k>j}^{6} \beta_{1,hq} X_k, \qquad j = 1,2,3
 $$
-where $\beta_{1,nm}$ take different values depending on the $m$ and $n$, the observed categories of the two signal categorical variables, respectively.
+where $\beta_{1,hq}$ takes different values depending on the observed categories of the two signal categorical variables, $h$ and $q$,  respectively.
 
 ##
 
@@ -1586,26 +1601,98 @@ where $\beta_{1,nm}$ take different values depending on the $m$ and $n$, the obs
 
 
 
-## {.center}
+<!-- ## {.center} -->
 
 
-<h2>[an R package to compute distances: anydist?]{style="color:darkorange"}</h2>
+<!-- <h2>[an R package to compute distances: anydist?]{style="color:darkorange"}</h2> -->
 
 
-## {.center}
+## 
 
-<h2> [an R package to compute distances: [m]{style="color:dodgerblue"}anydist!]{style="color:darkorange"} (it's on CRAN!)</h2>
+::: {.vcenter-slide}
+
+<h2>
+[an R package to compute distances: 
+[m]{style="color:dodgerblue"}anydist!]{style="color:indianred"}
+</h2>
 
 
+&nbsp;
+
+:::{.fragment}
+<h3>
+[manydist on CRAN (stable(-ish) version)](https://cran.r-project.org/web/packages/manydist/index.html)
+</h3>
+
+&nbsp;
 
 
-## {.center}
+<h3>
+[manydist on GitHub version (for the latest updates)](https://github.com/alfonsoIodiceDE/manydist_package/tree/main/manydist)
+</h3>
+
+:::
+
+:::
+
+## general features
+
+The `manydist` package is designed around a modular distance-based workflow.
+
+
+| Component | Function / Interface | Role |
+|----------|-------------|---------------|
+| Core distance constructor | `mdist()` | Computes a pairwise dissimilarity matrix for mixed-type data: different indipendence-based and association based are specified, fully customizable |
+| Recipe step | `step_mdist()` | Preprocessing step that computes an `mdist` dissimilarity matrix within a `recipe`, for seamless integration in learning pipelines. |
+| k-nearest neighbors | `mdist_knn()` | Model specification for k-NN using a precomputed `mdist` dissimilarity matrix as input. Supports `tune` |
+| leave-one-variable-out | `lovo_mdist()` | LOVO dissimilarity computations to assess by-variable contributions 
+
+
+## forthcoming features
+
+| Component | Function / Interface | Role |
+|----------|-------------|---------------|
+| Partitioning around medoids | `mdist_pam()` | Model specification for PAM clustering based on `mdist` dissimilarities. 
+| spectral clustering | `mdist_spectral()` | Model specification for spectral clustering based on `mdist` dissimilarities. 
+| and more to come... |  ||
+
+## 
 
 **main references**
 
 ```{r ,echo=FALSE, results='asis', size='tiny'}
 PrintBibliography(wp_bologna_26_bib[c("Hennig19","le2005association","mbuga21","mousavi2023generalized","murugesan2021benchmarking","ng2001spectral","vdv_pr","vdv_jcgs")] )
 ```
+
+
+
+## Acknowledgments
+
+
+*The publication was produced with funding from the Italian Ministry of University and Research under the Call for Proposals related to the scrolling of the final rankings of the PRIN 2022 call.*
+
+ **Latent variable models and dimensionality reduction methods for complex data** (PI Prof. Paolo Giordani) 
+
+**Project No. 20224CRB9E, CUP C53C24000730006** 
+
+**Grant Assignment Decree No. 1401 adopted on 18.9.2024 by MUR**
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+
+
+<h4>[you can check this presentation at]{style="color:indianred"}</h4>
+
+<h4>[https://alfonsoiodicede.github.io/Workshop_Bologna_26_pres_SC_mix.html]{style="color:dodgerblue"}
+</h4>
+
+
 
 
 <!-- . . . -->

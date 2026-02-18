@@ -26,3 +26,11 @@ $institutional-blue: #5189C0;
 .callout-large {
   font-size: 1.5em;
 }
+
+
+.vcenter-slide {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
