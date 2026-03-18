@@ -4,7 +4,9 @@ NULL
 #' @export
 #' @method getCall knn_dist
 getCall.knn_dist <- function(x, ...) {
-  if (!is.null(x$call)) return(x$call)
+  if (!is.null(x$call)) {
+    return(x$call)
+  }
 
   rlang::call2(
     "fit_knn_dist",
@@ -15,14 +17,22 @@ getCall.knn_dist <- function(x, ...) {
 }
 
 #' @export
-#' @method getCall model_spec
-getCall.model_spec <- function(x, ...) {
-  # Only handle your custom model; otherwise fall back
-  if (!identical(x$method$pkg, "manydist") ||
-      !identical(x$method$fun, "nearest_neighbor_dist")) {
-    return(NextMethod())
+#' @method getCall _knn_dist
+getCall._knn_dist <- function(x, ...) {
+  if (!is.null(x$fit) && !is.null(x$fit$call)) {
+    return(x$fit$call)
   }
 
+  if (!is.null(x$call)) {
+    return(x$call)
+  }
+
+  stop("need an object with call component")
+}
+
+#' @export
+#' @method getCall nearest_neighbor_dist
+getCall.nearest_neighbor_dist <- function(x, ...) {
   arg_exprs <- lapply(x$args, rlang::quo_get_expr)
 
   rlang::call2(

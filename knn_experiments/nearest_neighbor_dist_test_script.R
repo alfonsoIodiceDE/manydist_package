@@ -88,11 +88,11 @@ acc_md <- yardstick::accuracy_vec(
 )
 acc_md
 
-fit0 <- fit_knn_dist(x = tr, y = tr$Species, k = 5,
+fit0 <- fit_knn_dist(x = data_tr, y = data_tr$Species, k = 5,
                      dist_fun = dummy_dist_manual, dist_args = list())
 
-pred_class0 <- predict_knn_dist_class(fit0, te, type = "class")
-acc0 <- yardstick::accuracy_vec(truth = te$Species, estimate = pred_class0)
+pred_class0 <- predict_knn_dist_class(fit0, data_ts, type = "class")
+acc0 <- yardstick::accuracy_vec(truth = data_ts$Species, estimate = pred_class0)
 cat("Base dummy kNN accuracy:", acc0, "\n\n")
 
 

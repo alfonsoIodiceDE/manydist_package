@@ -1,0 +1,357 @@
+---
+author: Alfonso Iodice D'Enza
+title: Distance-based learning with manydist and tidymodels
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    number-sections: true
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: true
+
+set.seed(123)
+rm(list = ls())
+devtools::load_all("../")
+# library(manydist)
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+```
+
+# Introduction
+
+The **manydist** package provides a flexible framework for distance-based
+learning with continuous, categorical, and mixed-type predictors. Its
+core function `mdist()` computes mixed-variable dissimilarities under a
+range of presets and custom specifications, while the `MDist` class
+stores both the resulting distance matrix and the associated metadata.
+The package also integrates with the **tidymodels** ecosystem through a
+recipe step, `step_mdist()`, and a custom distance-based nearest-neighbour
+model, `nearest_neighbor_dist()`.
+
+This vignette illustrates the main functionalities of the package:
+
+1. computing mixed-type distances with `mdist()`;
+2. assessing variable influence with `lovo_mdist()`;
+3. comparing diagnostics across methods with `compare_lovo_mdist()`;
+4. creating distance-based representations with `step_mdist()`;
+5. fitting and tuning a KNN model with `nearest_neighbor_dist()` and `tune_grid()`.
+
+The focus is on *classification* of penguin species, but the same ideas
+apply to other supervised or unsupervised tasks that rely on pairwise
+distances.
+
+# Data
+
+We start from the `penguins` data and remove rows with missing values.
+
+```{r penguins}
+penguins_clean <- penguins |>
+  drop_na()
+
+penguins_clean |>
+  count(species)
+```
+
+# Computing mixed-type distances with `mdist()`
+
+The main entry point of the package is `mdist()`, which computes a
+mixed-variable dissimilarity according to a chosen preset or custom
+specification.
+
+```{r mdist-core}
+d_obj_all <- mdist(
+  x = penguins_clean |> select(-species),
+  preset = "unbiased_dependent"
+)
+
+d_obj_all
+```
+
+The resulting object stores the distance matrix together with the
+distance specification.
+
+```{r mdist-core-inspect}
+class(d_obj_all)
+dim(as.matrix(d_obj_all$distance))
+```
+
+# Variable diagnostics with `lovo_mdist()`
+
+The function `lovo_mdist()` provides a leave-one-variable-out diagnostic.
+For each predictor, the function recomputes the distance after removing
+that variable and compares the resulting structure with the full-distance
+solution.
+
+```{r lovo}
+#| cache: false
+lovo_res <- lovo_mdist(
+  x = penguins_clean |> select(-species),
+  preset = "unbiased_dependent"
+)
+
+summary(lovo_res)
+```
+
+A graphical summary is also available through `autoplot()`.
+
+```{r lovo-plot}
+autoplot(lovo_res, "mad_normalized")
+```
+
+# Comparing distance specifications with `compare_lovo_mdist()`
+
+The function `compare_lovo_mdist()` extends the LOVO diagnostic to
+multiple distance specifications. This makes it possible to compare how
+variable contributions change across alternative mixed-type distances.
+
+In the example below, we compare:
+
+- `"gower"`, a standard mixed-type distance;
+- `"unbiased_dependent"`, an association-aware distance that enforces
+  commensurability;
+- a custom specification based on Manhattan distance for numeric
+  variables and Hennig–Liao distance for categorical variables.
+
+```{r lovo-compare}
+#| cache: true
+lovo_cmp <- compare_lovo_mdist(
+  x = penguins_clean |> select(-species),
+  methods = list(
+    gower = list(
+      preset = "gower"
+    ),
+    u_dep = list(
+      preset = "unbiased_dependent"
+    ),
+    custom = list(
+      distance_cont = "manhattan",
+      distance_cat  = "HL",
+      commensurable = FALSE
+    )
+  )
+)
+
+lovo_cmp
+```
+
+```{r lovo-compare-summary}
+summary(lovo_cmp)
+```
+
+```{r lovo-compare-plot}
+#| cache: true
+autoplot(lovo_cmp, metric = "mad_normalized")
+```
+
+# Distance-based KNN in base R
+
+We now move to a simple predictive setting and create a stratified
+train/test split.
+
+```{r split}
+set.seed(123)
+peng_split <- initial_split(penguins_clean, strata = species)
+peng_train <- training(peng_split)
+peng_test  <- testing(peng_split)
+
+dim(peng_train)
+dim(peng_test)
+```
+
+We separate predictors and outcome:
+
+```{r base-mdist}
+x_train <- peng_train |>
+  select(-species)
+x_test  <- peng_test |>
+  select(-species)
+y_train <- peng_train$species
+y_test  <- peng_test$species
+```
+
+We compute train-to-test distances with `mdist()`.
+
+```{r base-mdist-compute}
+d_obj <- mdist(
+  x = x_train,
+  new_data = x_test,
+  preset = "unbiased_dependent"
+)
+
+d_obj
+```
+
+```{r base-mdist-inspect}
+distance_matrix <- as.matrix(d_obj$distance)
+dim(distance_matrix)
+```
+
+These distances can be used directly in a minimal KNN implementation.
+
+```{r base-knn}
+n_neighbours <- 5
+
+nn_idx <- apply(distance_matrix, 1, function(d) order(d)[1:n_neighbours])
+
+pred_base <- apply(nn_idx, 2, function(idx) {
+  names(which.max(table(y_train[idx])))
+})
+
+mean(pred_base == y_test)
+```
+
+# Distance-based representations with `step_mdist()`
+
+To integrate with `tidymodels`, manydist provides the recipe step
+`step_mdist()`, which transforms the predictor set into a
+distance-based representation.
+
+```{r rec-mdist}
+peng_rec <- recipe(species ~ ., data = peng_train) |>
+  step_mdist(all_predictors(), preset = "unbiased_dependent")
+
+peng_rec
+```
+
+```{r rec-mdist-prep}
+prepped_rec <- peng_rec |>
+  prep()
+```
+
+```{r rec-mdist-bake}
+train_dist <- bake(prepped_rec, new_data = peng_train)
+test_dist  <- bake(prepped_rec, new_data = peng_test)
+```
+
+# Distance-based KNN with `nearest_neighbor_dist()`
+
+The package also provides a custom parsnip model,
+`nearest_neighbor_dist()`, with a `"precomputed"` engine.
+
+```{r model-spec}
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = 5
+) |>
+  set_engine("precomputed")
+
+knn_spec
+```
+
+We can combine the recipe and the model in a workflow.
+
+```{r workflow}
+peng_wf <- workflow() |>
+  add_recipe(peng_rec) |>
+  add_model(knn_spec)
+
+peng_wf
+```
+
+```{r fit-workflow}
+peng_fit <- peng_wf |>
+  fit(data = peng_train)
+```
+
+Predictions and performance evaluation are then straightforward.
+
+```{r predict-prob-class}
+peng_pred <- predict(peng_fit, new_data = peng_test, type = "prob") |>
+  bind_cols(
+    predict(peng_fit, new_data = peng_test, type = "class"),
+    peng_test |> select(species)
+  )
+
+peng_pred |>
+  head()
+```
+
+```{r eval-acc}
+peng_pred |>
+  accuracy(truth = species, estimate = .pred_class)
+```
+
+# Tuning the number of neighbors
+
+Because `nearest_neighbor_dist()` is registered as a parsnip model, its
+hyperparameters can be tuned using `tune_grid()`.
+
+```{r tune-spec}
+knn_tune_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+) |>
+  set_engine("precomputed")
+
+knn_tune_spec
+```
+
+```{r tune-workflow}
+peng_wf_tune <- workflow() |>
+  add_recipe(peng_rec) |>
+  add_model(knn_tune_spec)
+```
+
+```{r tune-grid}
+#| cache: true
+set.seed(123)
+peng_folds <- vfold_cv(peng_train, v = 5, strata = species)
+
+k_grid <- tibble(neighbors = seq(3, 15, by = 2))
+k_grid
+
+peng_metrics <- metric_set(accuracy)
+
+tuned_knn <- tune_grid(
+  peng_wf_tune,
+  resamples = peng_folds,
+  grid = k_grid,
+  metrics = peng_metrics
+)
+```
+
+```{r tune-results}
+collect_metrics(tuned_knn)
+show_best(tuned_knn, metric = "accuracy")
+
+autoplot(tuned_knn)
+```
+
+After selecting the best value of `k`, the workflow can be finalized and
+re-fitted on the training set.
+
+```{r finalize}
+best_k <- select_best(tuned_knn, metric = "accuracy")
+
+final_wf <- peng_wf_tune |>
+  finalize_workflow(best_k)
+
+final_fit <- final_wf |>
+  fit(data = peng_train)
+
+final_pred <- predict(final_fit, new_data = peng_test, type = "class") |>
+  bind_cols(peng_test |> select(species))
+
+final_pred |>
+  accuracy(truth = species, estimate = .pred_class)
+```
+
+# Summary
+
+In this vignette we showed how **manydist** can be used for
+distance-based learning on mixed data through:
+
+- mixed-type distance computation with `mdist()`;
+- variable diagnostics with `lovo_mdist()`;
+- method comparison with `compare_lovo_mdist()`;
+- recipe-based representations with `step_mdist()`;
+- distance-based KNN modeling and tuning with `nearest_neighbor_dist()`.

@@ -1,5 +1,5 @@
 ---
-title: "A general framework for unbiased mixed variables distance"
+title: "Unbiased mixed-variable distance"
 subtitle: "supplementary material"
 format:
   html:

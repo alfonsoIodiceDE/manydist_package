@@ -48,16 +48,19 @@
 #' @export
 fit_knn_dist <- function(x, y, k = 5, dist_fun = NULL, dist_args = list()) {
 
+  if (rlang::is_quosure(k) || inherits(k, "formula")) {
+    k <- rlang::eval_tidy(k)
+  }
+
+  k <- as.integer(k)
+
   if (!is.null(dist_fun) && !is.function(dist_fun)) {
     stop("`dist_fun` must be a function or NULL.")
   }
 
-  if (k < 1) {
-    stop("`k` must be >= 1.")
+  if (length(k) != 1 || is.na(k) || k < 1) {
+    stop("`k` must be a single integer >= 1.")
   }
-
-  # store the call for downstream tools that expect a `$call` slot
-  cl <- match.call()
 
   structure(
     list(
@@ -66,7 +69,7 @@ fit_knn_dist <- function(x, y, k = 5, dist_fun = NULL, dist_args = list()) {
       k         = k,
       dist_fun  = dist_fun,
       dist_args = dist_args,
-      call      = match.call()   # <-- THIS is the crucial addition
+      call      = match.call()
     ),
     class = "knn_dist"
   )

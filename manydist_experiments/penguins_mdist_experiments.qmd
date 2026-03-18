@@ -127,11 +127,77 @@ summary(lovo_results)
 
 ```
 
+
+```{r}
+library(manydist)
+library(tidymodels)
+library(palmerpenguins)
+library(dplyr)
+library(tidyr)
+
+penguins_df <- penguins |>
+  select(
+    species,
+    bill_length_mm,
+    bill_depth_mm,
+    flipper_length_mm,
+    body_mass_g,
+    island,
+    sex
+  ) |>
+  drop_na()
+
+set.seed(123)
+
+folds <- vfold_cv(penguins_df, v = 5, strata = species)
+
+rec_gower <- recipe(species ~ ., data = penguins_df) |>
+  step_mdist(all_predictors(), preset = "gower")
+
+rec_udep <- recipe(species ~ ., data = penguins_df) |>
+  step_mdist(all_predictors(), preset = "unbiased_dependent")
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wf_gower <- workflow() |>
+  add_recipe(rec_gower) |>
+  add_model(knn_spec)
+
+wf_udep <- workflow() |>
+  add_recipe(rec_udep) |>
+  add_model(knn_spec)
+
+grid_k <- tibble(neighbors = c(3, 5, 7, 9, 11))
+
+res_gower <- tune_grid(
+  wf_gower,
+  resamples = folds,
+  grid = grid_k,
+  metrics = metric_set(accuracy)
+)
+
+res_udep <- tune_grid(
+  wf_udep,
+  resamples = folds,
+  grid = grid_k,
+  metrics = metric_set(accuracy)
+)
+
+collect_metrics(res_gower)
+collect_metrics(res_udep)
+```
+
+
 ## Next up
 
 - homogeneize the overlapping print and summary output (cosmetic)
 
 - think of some plot (would like to have a function that reproduces the plots we have in the paper, for one or more methods...but if it's not painful)
+
+
 <!-- ## plotting function(s)? -->
 
 <!-- ```{r} -->

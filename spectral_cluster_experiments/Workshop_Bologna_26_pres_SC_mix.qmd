@@ -1207,7 +1207,7 @@ $$
 $$
 
 
-# spectral clustering in a nutshell
+che c# spectral clustering in a nutshell
 
 ## {.center}
 
