@@ -1,3 +1,157 @@
+`%||%` <- function(a, b) if (!is.null(a)) a else b # little helper
+
+
+.resolve_preset <- function(# this function simply matches the
+    preset,
+    distance_cont,
+    distance_cat,
+    commensurable,
+    scaling_cont,
+    interaction
+) {
+
+  preset_defs <- list(
+    custom = list(),
+
+    unbiased_dependent = list(
+      distance_cont = "manhattan",
+      distance_cat  = "tvd",
+      commensurable = TRUE,
+      scaling_cont  = "pc_scores",
+      interaction   = FALSE
+    ),
+    hl = list(
+      distance_cont = "euclidean",
+      distance_cat  = "HLeucl",
+      commensurable = FALSE,
+      scaling_cont  = "std",
+      ncomp         = NULL,
+      threshold     = NULL
+    ),
+    # optional aliases / future-ready
+    u_dep = list(
+      distance_cont = "manhattan",
+      distance_cat  = "tvd",
+      commensurable = TRUE,
+      scaling_cont  = "pc_scores",
+      interaction   = FALSE
+    ),
+
+    u_indep = list(
+      distance_cont = "manhattan",
+      distance_cat  = "matching",
+      commensurable = TRUE,
+      scaling_cont  = "std",
+      interaction   = FALSE
+    ),
+
+    u_mix = list(
+      distance_cont = "manhattan",
+      distance_cat  = "tvd",
+      commensurable = TRUE,
+      scaling_cont  = "pc_scores",
+      interaction   = TRUE
+    )
+  )
+
+  # For special presets (gower, dkss, ...) leave args untouched
+  if (!preset %in% names(preset_defs)) {
+    return(list(
+      distance_cont = distance_cont,
+      distance_cat  = distance_cat,
+      commensurable = commensurable,
+      scaling_cont  = scaling_cont,
+      interaction   = interaction
+    ))
+  }
+
+  defs <- preset_defs[[preset]]
+
+  list(
+    distance_cont = defs$distance_cont %||% distance_cont,
+    distance_cat  = defs$distance_cat  %||% distance_cat,
+    commensurable = defs$commensurable %||% commensurable,
+    scaling_cont  = defs$scaling_cont  %||% scaling_cont,
+    interaction   = defs$interaction   %||% interaction
+  )
+}
+
+
+.mdist_generic <- function(
+    cont_data, cat_data,
+    cont_data_val = NULL, cat_data_val = NULL,
+    y = NULL,
+    distance_cont, distance_cat,
+    commensurable, scaling_cont,
+    ncomp, threshold,
+    interaction, prop_nn, score, decision
+) {
+
+  cont_dist_mat <- NULL
+  cat_dist_mat  <- NULL
+
+  if (!is.null(cont_data)) {
+    cont_dist_mat <- ndist(
+      x = cont_data,
+      validate_x = cont_data_val,
+      method = distance_cont,
+      commensurable = commensurable,
+      scaling = scaling_cont,
+      ncomp = ncomp,
+      threshold = threshold
+    ) |>
+      as.matrix()
+  }
+
+  if (!is.null(cat_data)) {
+    cat_dist_mat <- cdist(
+      x = cat_data,
+      validate_x = cat_data_val,
+      response = y,
+      method = distance_cat,
+      commensurable = commensurable
+    )$distance_mat |>
+      as.matrix()
+  }
+
+  if (!is.null(cont_dist_mat) && !is.null(cat_dist_mat)) {
+    distance_mat <- cont_dist_mat + cat_dist_mat
+  } else if (!is.null(cont_dist_mat)) {
+    distance_mat <- cont_dist_mat
+  } else if (!is.null(cat_dist_mat)) {
+    distance_mat <- cat_dist_mat
+  } else {
+    stop("No variables available to compute distance.", call. = FALSE)
+  }
+
+  if (isTRUE(interaction)) {
+    if (is.null(cont_dist_mat) || is.null(cat_dist_mat) || is.null(cat_data) || is.null(cont_data)) {
+      warning("`interaction = TRUE` requires mixed data; ignored.", call. = FALSE)
+    } else if (!is.null(cont_data_val) || !is.null(cat_data_val)) {
+      warning("`interaction = TRUE` currently only implemented for train-train distances; ignored.", call. = FALSE)
+    } else {
+      i_distance_matrix <- idist(
+        D = cont_dist_mat,
+        cat_data = cat_data,
+        pi_nn = prop_nn,
+        score = score,
+        decision = decision
+      )
+
+      distance_mat <- cont_dist_mat +
+        (ncol(cat_data) / ncol(cont_data)) * (cat_dist_mat + i_distance_matrix)
+    }
+  }
+
+  if (!is.null(cont_dist_mat) && !is.null(cat_dist_mat) &&
+      identical(distance_cont, "euclidean") && identical(distance_cat, "HLeucl")) {
+    distance_mat <- sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
+  }
+
+  distance_mat
+}
+
+
 #' Mixed-type distance for mixed data
 #'
 #' Computes a distance or dissimilarity object for mixed-type data,
@@ -22,16 +176,21 @@
 #' @param interaction Logical; whether to include interaction-based
 #'   distances.
 #' @param prop_nn proportion of neighbours to consider when measuring interactions
-#'
-#' @param score classification metric either  "ba" (balanced accuracy) or "logloss"
+#' @param score classification metric either "ba" (balanced accuracy) or "logloss"
 #' @param decision rule when score is set to ba
 #' @return A dissimilarity object.
 #' @export
-mdist <- function(x, new_data=NULL, response=NULL,
-                  distance_cont="manhattan", distance_cat="tot_var_dist",
-                  commensurable=FALSE, scaling_cont="none",
-                  ncomp=NULL, threshold=NULL,
-                  preset="custom", interaction=FALSE,prop_nn=0.1,score="ba", decision = "prior_corrected"){
+mdist <- function(x, new_data = NULL, response = NULL,
+                  distance_cont = "manhattan", distance_cat = "tvd",
+                  commensurable = FALSE, scaling_cont = "none",
+                  ncomp = NULL, threshold = NULL,
+                  preset = "custom", interaction = FALSE,
+                  prop_nn = 0.1, score = "ba", decision = "prior_corrected") {
+
+  if (identical(distance_cat, "tot_var_dist")) {
+    distance_cat <- "tvd"
+  }
+
 
   .safe_comm <- function(b_v_d) {
     den <- mean(b_v_d)
@@ -39,616 +198,14 @@ mdist <- function(x, new_data=NULL, response=NULL,
     b_v_d / den
   }
 
-  resp_name <- NULL
-  response_quo <- rlang::enquo(response)
-
-  if (!rlang::quo_is_null(response_quo)) {
-    # Resolve the selection on the training data
-    resp_idx <- tidyselect::eval_select(response_quo, x)
-
-    if (length(resp_idx) != 1L) {
-      stop("`response` must select exactly one column.", call. = FALSE)
-    }
-
-    resp_name <- names(resp_idx)
-
-    # Extract response vector
-    y <- x[[resp_name]]
-
-    # Remove response column from x
-    x <- x[, setdiff(colnames(x), resp_name), drop = FALSE]
-
-    # Also drop response column from new_data if present
-    if (!is.null(new_data)) {
-      if (resp_name %in% colnames(new_data)) {
-        new_data <- new_data[, setdiff(colnames(new_data), resp_name), drop = FALSE]
-      } else {
-        warning("`response` column '", resp_name,
-                "' not found in `new_data`; only removed from training `x`.",
-                call. = FALSE)
-      }
-    }
-  } else {
-    y <- NULL
-  }
-
-  x <- tibble::as_tibble(x)
-  if (is.null(ncomp)) ncomp <- ncol(x)
-
-  ################################################
-  ################################################
-  validate_x = new_data
-  if (!is.null(validate_x)) validate_x <- tibble::as_tibble(validate_x)
-  ################################################
-  ################################################
-
-  .x = NULL
-  a <- NULL
-  b <- NULL
-  gowdist <- NULL
-  cat_data  = x %>% dplyr::select(where(is.factor))
-  cont_data = x %>% dplyr::select(where(is.numeric))
-
-
-
-
-  if (ncol(cat_data) == 0) cat_data <- NULL
-  if (ncol(cont_data) == 0) cont_data <- NULL
-
-  # NOW it is safe:
-  if (!is.null(validate_x) && !is.null(cat_data)) {
-    cat_cols <- intersect(names(cat_data), names(validate_x))
-    validate_x <- validate_x %>%
-      dplyr::mutate(dplyr::across(
-        dplyr::all_of(cat_cols),
-        ~ factor(as.character(.x), levels = levels(cat_data[[dplyr::cur_column()]]))
-      ))
-  }
-
-
-
-  # --- Apply preset defaults for later consistency with continuous only and categorical only ---
-  if (preset == "unbiased_dependent") {
-    distance_cont <- "manhattan"
-    distance_cat  <- "tot_var_dist"
-    commensurable <- TRUE
-    scaling_cont  <- "pc_scores"
-  }
-
-  if (preset == "euclidean_onehot") {
-    distance_cont <- "euclidean"
-    commensurable <- FALSE
-    scaling_cont  <- "std"
-  }
-
-
-  # --- Robust fallbacks for all presets ---
-  if (!is.null(cat_data) && distance_cat == "tot_var_dist" && ncol(cat_data) == 1) {
-    warning("'tot_var_dist' requires >1 categorical variable. Switching to 'matching'.", call. = FALSE)
-    distance_cat <- "matching"
-  }
-
-  if (!is.null(cont_data) && scaling_cont == "pc_scores" && ncol(cont_data) == 1) {
-    warning("With 1 continuous variable, 'pc_scores' is equivalent to standardization. Switching to scaling_cont='std'.",
-            call. = FALSE)
-    scaling_cont <- "std"
-    # (or scaling_cont <- "none", depending on how ndist defines "std")
-  }
-
-  cat_data_val = NULL
-  cont_data_val = NULL
-    if (!is.null(validate_x) && !is.null(cat_data)) {
-      cat_data_val <- validate_x %>% dplyr::select(dplyr::all_of(names(cat_data)))
-    } else {
-      cat_data_val <- NULL
-    }
-
-  if (!is.null(validate_x) && !is.null(cont_data)) {
-    cont_data_val <- validate_x %>% dplyr::select(dplyr::all_of(names(cont_data)))
-  } else {
-    cont_data_val <- NULL
-  }
-
-  if (!is.null(cat_data_val)  && ncol(cat_data_val)  == 0) cat_data_val  <- NULL
-  if (!is.null(cont_data_val) && ncol(cont_data_val) == 0) cont_data_val <- NULL
-
-
-
-  #### ACTUAL MIXED DATA
-  if(!is.null(cont_data) && !is.null(cat_data)){
-
-    if(preset == "gower"){
-      if(is.null(validate_x)){
-        if (commensurable == FALSE){
-          distance_mat <-  as.matrix(daisy(x, metric = "gower"))
-        } else {
-
-          gowerlist = x %>% map(~daisy(as_tibble(.x),metric="gower") %>% as.matrix())
-          gowerlist = tibble(gowdist = gowerlist) %>% mutate(commgow = map(.x=gowdist, ~.safe_comm(.x)))
-          distance_mat <- Reduce(`+`, gowerlist$commgow)
-          distance_mat <- distance_mat
-        }
-      }else{
-        gow_prep <- gower_recipe(data=x) |> prep(training=x)
-        x = gow_prep |> bake(new_data = NULL)
-        validate_x = gow_prep |> bake(new_data = validate_x)
-        cat_data  <- x %>% dplyr::select(where(is.factor))
-        cont_data <- x %>% dplyr::select(where(is.numeric))
-        if (ncol(cat_data)  == 0) cat_data  <- NULL
-        if (ncol(cont_data) == 0) cont_data <- NULL
-
-        if (commensurable == FALSE){
-          # distance_mat <-  as.matrix(dist(x, method = "manhattan"))[1:5,1:5]
-
-          gowerlist = map2(
-            .x = as_tibble(x),
-            .y = as_tibble(validate_x),
-            .f = function(x, xnew) {
-              x    <- as.numeric(x)
-              xnew <- as.numeric(xnew)
-
-              # 1D Manhattan (and 1D Euclidean) distance:
-              b_v_d <- abs(outer(xnew, x, "-"))
-
-            }
-          )
-
-          # gowerlist = tibble(gowdist = gowerlist) |>
-          #   mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
-
-          distance_mat <- Reduce(`+`, gowerlist)
-
-
-        }else{
-          gowerlist = map2(
-            .x = as_tibble(x),
-            .y = as_tibble(validate_x),
-            .f = function(x, xnew) {
-              x    <- as.numeric(x)
-              xnew <- as.numeric(xnew)
-
-              # 1D Manhattan (and 1D Euclidean) distance:
-              b_v_d <- abs(outer(xnew, x, "-"))
-
-              .safe_comm(b_v_d)
-            }
-          )
-
-          # gowerlist = tibble(gowdist = gowerlist) |>
-          #   mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
-
-          distance_mat <- Reduce(`+`, gowerlist)
-        }
-      }
-    }  else if(identical(preset, "unbiased_dependent")||
-               (identical(preset, "custom")&&
-                identical(distance_cont , "manhattan")&&
-                identical(distance_cat , "tot_var_dist")&&
-                isFALSE(commensurable)&&identical(scaling_cont , "pc_scores"))){
-      # distance_cont = "manhattan"
-      # distance_cat = "tot_var_dist"
-      # commensurable = TRUE
-      # scaling_cont = "pc_scores"
-
-
-      if(is.null(validate_x)){
-        cont_dist_mat = ndist(x = cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        cat_dist_mat = cdist(x = cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |> as.matrix()
-
-        distance_mat = cat_dist_mat + cont_dist_mat
-
-      }else{
-
-        cont_dist_mat = ndist(x = cont_data, validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        cat_dist_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-
-        distance_mat = cat_dist_mat + cont_dist_mat
-      }
-
-      if(interaction){
-        i_distance_matrix <- idist(D = cont_dist_mat, cat_data = cat_data, pi_nn = prop_nn,score= score , decision = decision)
-        # rho_w = 1/ncol(df_cat)
-        # distance_matrix = cont_dist_mat + (1-rho_w)*cat_dist_mat + rho_w * i_distance_matrix
-        distance_mat = cont_dist_mat + (ncol(cat_data))/(ncol(cont_data) )*(cat_dist_mat + i_distance_matrix)
-        # distance_matrix = cont_dist_mat + cat_dist_mat + i_distance_matrix
-      }
-
-    } else if(preset == "euclidean_onehot"){
-
-      distance_cont = "euclidean"
-      commensurable = FALSE
-      scaling_cont="std"
-
-      dummy_recipe = recipe(~.,data=cat_data) |> step_dummy(all_nominal(),one_hot = TRUE)
-
-      cat_data_dummy = dummy_recipe |>
-        prep(training = cat_data) |>
-        bake(new_data=NULL)
-
-      if(is.null(validate_x)){
-        cont_dist_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        cat_dist_mat = ndist(x=cat_data_dummy, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-        distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        cont_dist_mat = ndist(x=cont_data,validate_x=cont_data_val,
-                              method = distance_cont,
-                              commensurable = commensurable,
-                              scaling=scaling_cont)  |>  as.matrix()
-
-        cat_data_val_dummy = dummy_recipe |>
-          prep(training = cat_data) |>
-          bake(new_data=cat_data_val)
-
-        cat_dist_mat = ndist(x=cat_data_dummy,
-                             validate_x=cat_data_val_dummy,
-                             method = distance_cont,
-                             commensurable = commensurable,
-                             scaling=scaling_cont)  |>  as.matrix()
-
-        distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
-      }
-    }else if(preset=="custom"){
-      #    if(weight_cont != "commensurable"){weight_cont = weight_cont}
-      #    if(weight_cat != "commensurable"){weight_cat = weight_cat}
-      if(is.null(validate_x)){
-        cont_dist_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-        cat_dist_mat = cdist(x=cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-        distance_mat = cat_dist_mat + cont_dist_mat
-        if ((distance_cont == "euclidean") & (distance_cat=="HLeucl")){
-          distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
-        }
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        cont_dist_mat = ndist(x=cont_data,validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-        cat_dist_mat = cdist(x=cat_data,validate_x=cat_data_val, response=y,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-        distance_mat = cat_dist_mat + cont_dist_mat
-        if ((distance_cont == "euclidean") & (distance_cat=="HLeucl"))
-          distance_mat = sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
-      }
-      ############################################
-      ############ EXTERNAL FUNCTIONS ############
-      ############################################
-
-    } else if (preset == "gudmm") {
-      no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
-      df <- cbind(cont_data, cat_data)
-      if (is.null(validate_x)) {
-        X_matrix <- gudmm_preprocessing(df, no_f_cont)
-        Di <- gudmm_distance_dependency_mixed_matrix(X_matrix, no_f_cont, no_f_ord = 0, DM = "DM5")
-        distance_mat <- as.matrix(Di)
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-
-    } else if (preset == "dkss") {
-      no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
-      df <- cbind(cont_data, cat_data)
-      if (is.null(validate_x)) {
-        df <- dkss_preprocessing(df, no_f_cont)
-        dkss_result <- kdml::dkss(
-          df = df, bw = "np",
-          cFUN = "c_gaussian", uFUN = "u_aitken", oFUN = "o_wangvanryzin",
-          stan = TRUE, verbose = FALSE
-        )
-        distance_mat <- dkss_result$distances
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-
-    } else if (preset == "mod_gower") {
-      if (is.null(validate_x)) {
-        df <- cbind(cont_data, cat_data)     # no `no_f_cont` needed here
-        distance_mat <- mg_gower_mod_matrix(df, use_weights = TRUE) |> as.matrix()
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-    }
-    #########
-
-
-  } else if(is.null(cont_data) && !is.null(cat_data)){### categorical only
-
-    if(preset == "gower"){
-      if(is.null(validate_x)){
-        if (commensurable == FALSE){
-          distance_mat=ncol(cat_data)*daisy(cat_data,metric = "gower") %>% as.matrix()
-        }else{
-          gowerlist = cat_data %>% map(~daisy(as_tibble(.x),metric="gower") %>% as.matrix())
-          gowerlist = tibble(gowdist = gowerlist) %>% mutate(commgow = map(.x=gowdist, ~.safe_comm(.x)))
-          distance_mat <- Reduce(`+`, gowerlist$commgow)
-          distance_mat <- distance_mat
-        }
-      }else{
-        gow_prep <- gower_recipe(data=cat_data) |> prep(training=cat_data)
-        cat_data = gow_prep |> bake(new_data = NULL)
-        cat_data_val = gow_prep |> bake(new_data = cat_data_val)
-
-        if (commensurable == FALSE){
-
-          gowerlist = map2(
-            .x = as_tibble(cat_data),
-            .y = as_tibble(cat_data_val),
-            .f = function(x, xnew) {
-              x    <- as.numeric(x)
-              xnew <- as.numeric(xnew)
-
-              # 1D Manhattan (and 1D Euclidean) distance:
-              b_v_d <- abs(outer(xnew, x, "-"))
-
-
-            }
-          )
-
-          # gowerlist = tibble(gowdist = gowerlist) |>
-          #   mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
-
-          distance_mat <- Reduce(`+`, gowerlist)
-        }else{
-          # gowerlist = map2(.x=cat_data,.y=cat_data_val,
-          #                  ~Rfast::dista(xnew = .y,x = .x,
-          #                                type = "manhattan") |> as.matrix()
-          # )
-          gowerlist = map2(
-            .x = as_tibble(cat_data),
-            .y = as_tibble(cat_data_val),
-            .f = function(x, xnew) {
-              x    <- as.numeric(x)
-              xnew <- as.numeric(xnew)
-
-              # 1D Manhattan (and 1D Euclidean) distance:
-              b_v_d <- abs(outer(xnew, x, "-"))
-
-              .safe_comm(b_v_d)
-            }
-          )
-
-          # gowerlist = tibble(gowdist = gowerlist) |>
-          #   mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
-
-          distance_mat <- Reduce(`+`, gowerlist)
-
-        }
-      }
-
-    }else if(preset == "unbiased_dependent"){
-
-      # distance_cat = "tot_var_dist"
-      # commensurable=TRUE
-      if(is.null(validate_x)){
-        distance_mat = cdist(x = cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        distance_mat = cdist(x = cat_data,validate_x= cat_data_val,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-      }
-
-    }else if(preset == "euclidean_onehot"){
-
-
-      distance_cont <- "euclidean"
-      commensurable <- FALSE
-      scaling_cont  <- "std"
-
-
-
-      dummy_recipe = recipe(~.,data=cat_data) |> step_dummy(all_nominal(),one_hot = TRUE)
-
-      cat_data_dummy = dummy_recipe |>
-        prep(training = cat_data) |>
-        bake(new_data=NULL)
-
-      if(is.null(validate_x)){
-
-        distance_mat = ndist(x=cat_data_dummy, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-
-
-        cat_data_val_dummy = dummy_recipe |>
-          prep(training = cat_data) |>
-          bake(new_data=cat_data_val)
-
-        distance_mat = ndist(x=cat_data_dummy,
-                             validate_x=cat_data_val_dummy,
-                             method = distance_cont,
-                             commensurable = commensurable,
-                             scaling=scaling_cont)  |>  as.matrix()
-
-      }
-    }else if(preset=="custom"){
-
-      if(is.null(validate_x)){
-
-        distance_mat = cdist(x=cat_data,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-
-
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-
-        distance_mat = cdist(x=cat_data,validate_x=cat_data_val, response=y,method=distance_cat,commensurable = commensurable)$distance_mat |>  as.matrix()
-
-
-      }
-    }else if (preset == "gudmm") {
-      no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
-      df <- cat_data
-      if (is.null(validate_x)) {
-        X_matrix <- gudmm_preprocessing(df, no_f_cont)
-        Di <- gudmm_distance_dependency_mixed_matrix(X_matrix, no_f_cont, no_f_ord = 0, DM = "DM5")
-        distance_mat <- as.matrix(Di)
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-
-    } else if (preset == "dkss") {
-      no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
-      df <- cat_data
-      if (is.null(validate_x)) {
-        df <- dkss_preprocessing(df, no_f_cont)
-        dkss_result <- kdml::dkss(
-          df = df, bw = "np",
-          cFUN = "c_gaussian", uFUN = "u_aitken", oFUN = "o_wangvanryzin",
-          stan = TRUE, verbose = FALSE
-        )
-        distance_mat <- dkss_result$distances
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-
-    } else if (preset == "mod_gower") {
-      if (is.null(validate_x)) {
-        df <- cat_data
-        distance_mat <- mg_gower_mod_matrix(df, use_weights = TRUE) |> as.matrix()
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-    }
-
-    # Continuous only
-
-  }else if(!is.null(cont_data) && is.null(cat_data)){
-
-    if(preset == "gower"){
-      if(is.null(validate_x)){
-        if (commensurable == FALSE){
-          distance_mat <-  ncol(cont_data)*as.matrix(daisy(cont_data, metric = "gower")) # check if this ncol is needed
-        } else {
-
-          gowerlist = cont_data %>% map(~daisy(as_tibble(.x),metric="gower") %>% as.matrix())
-          gowerlist = tibble(gowdist = gowerlist) %>% mutate(commgow = map(.x=gowdist, ~.safe_comm(.x)))
-          distance_mat <- Reduce(`+`, gowerlist$commgow)
-
-        }
-      }else{
-        gow_prep <- gower_recipe(data=cont_data) |> prep(training=cont_data)
-        cont_data = gow_prep |> bake(new_data = NULL)
-        cont_data_val = gow_prep |> bake(new_data = cont_data_val)
-
-        if (commensurable == FALSE){
-          # distance_mat <-  as.matrix(dist(x, method = "manhattan"))[1:5,1:5]
-          gowerlist = map2(
-            .x = as_tibble(cont_data),
-            .y = as_tibble(cont_data_val),
-            .f = function(x, xnew) {
-              x    <- as.numeric(x)
-              xnew <- as.numeric(xnew)
-
-              # 1D Manhattan (and 1D Euclidean) distance:
-              b_v_d <- abs(outer(xnew, x, "-"))
-
-
-            }
-          )
-
-          # gowerlist = tibble(gowdist = gowerlist) |>
-          #   mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
-
-          distance_mat <- Reduce(`+`, gowerlist)
-
-        }else{
-          gowerlist = map2(
-            .x = as_tibble(cont_data),
-            .y = as_tibble(cont_data_val),
-            .f = function(x, xnew) {
-              x    <- as.numeric(x)
-              xnew <- as.numeric(xnew)
-
-              # 1D Manhattan (and 1D Euclidean) distance:
-              b_v_d <- abs(outer(xnew, x, "-"))
-
-              .safe_comm(b_v_d)
-            }
-          )
-
-          # gowerlist = tibble(gowdist = gowerlist) |>
-          #   mutate(commgow = map(.x=gowdist, ~.x / mean(.x)))
-
-          distance_mat <- Reduce(`+`, gowerlist)
-        }
-      }
-    }else if(preset == "unbiased_dependent"){
-      # distance_cont = "manhattan"
-      # commensurable = TRUE
-      # scaling_cont = "pc_scores"
-
-
-      if(is.null(validate_x)){
-        distance_mat = ndist(x = cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        distance_mat = ndist(x = cont_data, validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-      }
-    }else if(preset == "euclidean_onehot"){
-      distance_cont = "euclidean"
-      commensurable = FALSE
-      scaling_cont="std"
-
-
-
-      if(is.null(validate_x)){
-        distance_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont)  |>  as.matrix()
-
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        distance_mat = ndist(x=cont_data,validate_x=cont_data_val,
-                             method = distance_cont,
-                             commensurable = commensurable,
-                             scaling=scaling_cont)  |>  as.matrix()
-
-      }
-
-    }else if(preset=="custom"){
-
-      if(is.null(validate_x)){
-        distance_mat = ndist(x=cont_data, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-
-      }else{### MODIFY TO TAKE THE ASSESSMENT INTO ACCOUNT
-        distance_mat = ndist(x=cont_data,validate_x=cont_data_val, method = distance_cont,commensurable = commensurable,scaling=scaling_cont, ncomp = ncomp, threshold=threshold)  |>  as.matrix()
-      }
-
-    }else if (preset == "gudmm") {
-      no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
-      df <- cont_data
-      if (is.null(validate_x)) {
-        X_matrix <- gudmm_preprocessing(df, no_f_cont)
-        Di <- gudmm_distance_dependency_mixed_matrix(X_matrix, no_f_cont, no_f_ord = 0, DM = "DM5")
-        distance_mat <- as.matrix(Di)
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-
-    } else if (preset == "dkss") {
-      no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
-      df <- cont_data
-      if (is.null(validate_x)) {
-        df <- dkss_preprocessing(df, no_f_cont)
-        dkss_result <- kdml::dkss(
-          df = df, bw = "np",
-          cFUN = "c_gaussian", uFUN = "u_aitken", oFUN = "o_wangvanryzin",
-          stan = TRUE, verbose = FALSE
-        )
-        distance_mat <- dkss_result$distances
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-
-    } else if (preset == "mod_gower") {
-      if (is.null(validate_x)) {
-        df <- cont_data
-        distance_mat <- mg_gower_mod_matrix(df, use_weights = TRUE) |> as.matrix()
-      } else {
-        stop("train to test distances not implemented for this method")
-      }
-    }
-  }
-
-
 
   to_dissimilarity <- function(dist_matrix, reference = NULL) {
-    # If square and symmetric → convert to "dist"
     if (nrow(dist_matrix) == ncol(dist_matrix) &&
         isTRUE(all.equal(dist_matrix, t(dist_matrix), tolerance = 1e-10))) {
 
       d <- as.dist(dist_matrix)
       class(d) <- c("dissimilarity", "dist")
 
-      # Copy optional attributes from a reference object if provided
       if (!is.null(reference)) {
         for (att in intersect(names(attributes(reference)),
                               c("Labels", "Size", "Diag", "Upper"))) {
@@ -657,12 +214,403 @@ mdist <- function(x, new_data=NULL, response=NULL,
       }
 
     } else {
-      # Rectangular: cannot coerce to 'dist', keep as matrix
       d <- dist_matrix
       class(d) <- c("dissimilarity", "matrix")
     }
 
-    return(d)
+    d
+  }
+
+  resp_name <- NULL
+  response_quo <- rlang::enquo(response)
+
+
+
+  if (!rlang::quo_is_null(response_quo)) {
+    resp_idx <- tidyselect::eval_select(response_quo, x)
+
+    if (length(resp_idx) != 1L) {
+      stop("`response` must select exactly one column.", call. = FALSE)
+    }
+
+    resp_name <- names(resp_idx)
+    y <- x[[resp_name]]
+
+    x <- x[, setdiff(colnames(x), resp_name), drop = FALSE]
+
+    if (!is.null(new_data)) {
+      if (resp_name %in% colnames(new_data)) {
+        new_data <- new_data[, setdiff(colnames(new_data), resp_name), drop = FALSE]
+      } else {
+        warning(
+          "`response` column '", resp_name,
+          "' not found in `new_data`; only removed from training `x`.",
+          call. = FALSE
+        )
+      }
+    }
+  } else {
+    y <- NULL
+  }
+
+  x <- tibble::as_tibble(x)
+  if (!is.null(new_data)) {
+    validate_x <- tibble::as_tibble(new_data)
+  } else {
+    validate_x <- NULL
+  }
+
+  if (is.null(ncomp)) ncomp <- ncol(x)
+
+  args <- .resolve_preset(
+    preset = preset,
+    distance_cont = distance_cont,
+    distance_cat  = distance_cat,
+    commensurable = commensurable,
+    scaling_cont  = scaling_cont,
+    interaction   = interaction
+  )
+
+  distance_cont <- args$distance_cont
+  distance_cat  <- args$distance_cat
+  commensurable <- args$commensurable
+  scaling_cont  <- args$scaling_cont
+  interaction   <- args$interaction
+
+  cat_data  <- x |> dplyr::select(where(is.factor))
+  cont_data <- x |> dplyr::select(where(is.numeric))
+
+  if (ncol(cat_data) == 0) cat_data <- NULL
+  if (ncol(cont_data) == 0) cont_data <- NULL
+
+  if (!is.null(validate_x) && !is.null(cat_data)) {
+    cat_cols <- intersect(names(cat_data), names(validate_x))
+    validate_x <- validate_x |>
+      dplyr::mutate(dplyr::across(
+        dplyr::all_of(cat_cols),
+        ~ factor(as.character(.x), levels = levels(cat_data[[dplyr::cur_column()]]))
+      ))
+  }
+
+
+
+  if (!is.null(cat_data) && identical(distance_cat, "tvd") && ncol(cat_data) == 1) {
+    warning("'tvd' requires >1 categorical variable. Switching to 'matching'.", call. = FALSE)
+    distance_cat <- "matching"
+  }
+
+  if (!is.null(cont_data) && identical(scaling_cont, "pc_scores") && ncol(cont_data) == 1) {
+    warning(
+      "With 1 continuous variable, 'pc_scores' is equivalent to standardization. Switching to scaling_cont='std'.",
+      call. = FALSE
+    )
+    scaling_cont <- "std"
+  }
+
+  if (!is.null(validate_x) && !is.null(cat_data)) {
+    cat_data_val <- validate_x |> dplyr::select(dplyr::all_of(names(cat_data)))
+    if (ncol(cat_data_val) == 0) cat_data_val <- NULL
+  } else {
+    cat_data_val <- NULL
+  }
+
+  if (!is.null(validate_x) && !is.null(cont_data)) {
+    cont_data_val <- validate_x |> dplyr::select(dplyr::all_of(names(cont_data)))
+    if (ncol(cont_data_val) == 0) cont_data_val <- NULL
+  } else {
+    cont_data_val <- NULL
+  }
+
+  generic_presets <- c("custom", "unbiased_dependent", "u_dep", "u_indep", "u_mix")
+
+  if (preset %in% generic_presets) {
+
+    distance_mat <- .mdist_generic(
+      cont_data = cont_data,
+      cat_data = cat_data,
+      cont_data_val = cont_data_val,
+      cat_data_val = cat_data_val,
+      y = y,
+      distance_cont = distance_cont,
+      distance_cat = distance_cat,
+      commensurable = commensurable,
+      scaling_cont = scaling_cont,
+      ncomp = ncomp,
+      threshold = threshold,
+      interaction = interaction,
+      prop_nn = prop_nn,
+      score = score,
+      decision = decision
+    )
+
+  } else if (preset == "gower") {
+
+    if (is.null(validate_x)) {
+
+      if (is.null(cont_data) && !is.null(cat_data)) {
+
+        if (isFALSE(commensurable)) {
+          distance_mat <- ncol(cat_data) * cluster::daisy(cat_data, metric = "gower") |> as.matrix()
+        } else {
+          gowerlist <- cat_data |>
+            purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |> as.matrix())
+          gowerlist <- tibble::tibble(gowdist = gowerlist) |>
+            dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
+          distance_mat <- Reduce(`+`, gowerlist$commgow)
+        }
+
+      } else if (!is.null(cont_data) && is.null(cat_data)) {
+
+        if (isFALSE(commensurable)) {
+          distance_mat <- ncol(cont_data) * cluster::daisy(cont_data, metric = "gower") |> as.matrix()
+        } else {
+          gowerlist <- cont_data |>
+            purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |> as.matrix())
+          gowerlist <- tibble::tibble(gowdist = gowerlist) |>
+            dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
+          distance_mat <- Reduce(`+`, gowerlist$commgow)
+        }
+
+      } else if (!is.null(cont_data) && !is.null(cat_data)) {
+
+        if (isFALSE(commensurable)) {
+          distance_mat <- cluster::daisy(x, metric = "gower") |> as.matrix()
+        } else {
+          gowerlist <- x |>
+            purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |> as.matrix())
+          gowerlist <- tibble::tibble(gowdist = gowerlist) |>
+            dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
+          distance_mat <- Reduce(`+`, gowerlist$commgow)
+        }
+
+      } else {
+        stop("No variables available to compute distance.", call. = FALSE)
+      }
+
+    } else {
+
+      if (is.null(cont_data) && !is.null(cat_data)) {
+        gow_prep <- gower_recipe(data = cat_data) |> recipes::prep(training = cat_data)
+        cat_data_gow <- recipes::bake(gow_prep, new_data = NULL)
+        cat_data_val_gow <- recipes::bake(gow_prep, new_data = cat_data_val)
+
+        gowerlist <- purrr::map2(
+          .x = tibble::as_tibble(cat_data_gow),
+          .y = tibble::as_tibble(cat_data_val_gow),
+          .f = function(x, xnew) {
+            b_v_d <- abs(outer(as.numeric(xnew), as.numeric(x), "-"))
+            if (isTRUE(commensurable)) .safe_comm(b_v_d) else b_v_d
+          }
+        )
+        distance_mat <- Reduce(`+`, gowerlist)
+
+      } else if (!is.null(cont_data) && is.null(cat_data)) {
+        gow_prep <- gower_recipe(data = cont_data) |> recipes::prep(training = cont_data)
+        cont_data_gow <- recipes::bake(gow_prep, new_data = NULL)
+        cont_data_val_gow <- recipes::bake(gow_prep, new_data = cont_data_val)
+
+        gowerlist <- purrr::map2(
+          .x = tibble::as_tibble(cont_data_gow),
+          .y = tibble::as_tibble(cont_data_val_gow),
+          .f = function(x, xnew) {
+            b_v_d <- abs(outer(as.numeric(xnew), as.numeric(x), "-"))
+            if (isTRUE(commensurable)) .safe_comm(b_v_d) else b_v_d
+          }
+        )
+        distance_mat <- Reduce(`+`, gowerlist)
+
+      } else if (!is.null(cont_data) && !is.null(cat_data)) {
+        gow_prep <- gower_recipe(data = x) |> recipes::prep(training = x)
+        x_gow <- recipes::bake(gow_prep, new_data = NULL)
+        validate_x_gow <- recipes::bake(gow_prep, new_data = validate_x)
+
+        gowerlist <- purrr::map2(
+          .x = tibble::as_tibble(x_gow),
+          .y = tibble::as_tibble(validate_x_gow),
+          .f = function(x, xnew) {
+            b_v_d <- abs(outer(as.numeric(xnew), as.numeric(x), "-"))
+            if (isTRUE(commensurable)) .safe_comm(b_v_d) else b_v_d
+          }
+        )
+        distance_mat <- Reduce(`+`, gowerlist)
+
+      } else {
+        stop("No variables available to compute distance.", call. = FALSE)
+      }
+    }
+
+  } else if (preset == "euclidean_onehot") {
+
+    distance_cont <- "euclidean"
+    commensurable <- FALSE
+    scaling_cont  <- "std"
+
+    if (is.null(cat_data) && !is.null(cont_data)) {
+
+      distance_mat <- ndist(
+        x = cont_data,
+        validate_x = cont_data_val,
+        method = distance_cont,
+        commensurable = commensurable,
+        scaling = scaling_cont
+      ) |>
+        as.matrix()
+
+    } else if (!is.null(cat_data) && is.null(cont_data)) {
+
+      dummy_recipe <- recipes::recipe(~ ., data = cat_data) |>
+        recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
+
+      cat_data_dummy <- dummy_recipe |>
+        recipes::prep(training = cat_data) |>
+        recipes::bake(new_data = NULL)
+
+      if (is.null(validate_x)) {
+        distance_mat <- ndist(
+          x = cat_data_dummy,
+          method = distance_cont,
+          commensurable = commensurable,
+          scaling = scaling_cont
+        ) |>
+          as.matrix()
+      } else {
+        cat_data_val_dummy <- dummy_recipe |>
+          recipes::prep(training = cat_data) |>
+          recipes::bake(new_data = cat_data_val)
+
+        distance_mat <- ndist(
+          x = cat_data_dummy,
+          validate_x = cat_data_val_dummy,
+          method = distance_cont,
+          commensurable = commensurable,
+          scaling = scaling_cont
+        ) |>
+          as.matrix()
+      }
+
+    } else if (!is.null(cat_data) && !is.null(cont_data)) {
+
+      dummy_recipe <- recipes::recipe(~ ., data = cat_data) |>
+        recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
+
+      cat_data_dummy <- dummy_recipe |>
+        recipes::prep(training = cat_data) |>
+        recipes::bake(new_data = NULL)
+
+      if (is.null(validate_x)) {
+        cont_dist_mat <- ndist(
+          x = cont_data,
+          method = distance_cont,
+          commensurable = commensurable,
+          scaling = scaling_cont
+        ) |>
+          as.matrix()
+
+        cat_dist_mat <- ndist(
+          x = cat_data_dummy,
+          method = distance_cont,
+          commensurable = commensurable,
+          scaling = scaling_cont
+        ) |>
+          as.matrix()
+
+      } else {
+        cont_dist_mat <- ndist(
+          x = cont_data,
+          validate_x = cont_data_val,
+          method = distance_cont,
+          commensurable = commensurable,
+          scaling = scaling_cont
+        ) |>
+          as.matrix()
+
+        cat_data_val_dummy <- dummy_recipe |>
+          recipes::prep(training = cat_data) |>
+          recipes::bake(new_data = cat_data_val)
+
+        cat_dist_mat <- ndist(
+          x = cat_data_dummy,
+          validate_x = cat_data_val_dummy,
+          method = distance_cont,
+          commensurable = commensurable,
+          scaling = scaling_cont
+        ) |>
+          as.matrix()
+      }
+
+      distance_mat <- sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
+
+    } else {
+      stop("No variables available to compute distance.", call. = FALSE)
+    }
+
+  } else if (preset == "gudmm") {
+
+    no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
+    df <- if (!is.null(cont_data) && !is.null(cat_data)) {
+      cbind(cont_data, cat_data)
+    } else if (!is.null(cont_data)) {
+      cont_data
+    } else if (!is.null(cat_data)) {
+      cat_data
+    } else {
+      stop("No variables available to compute distance.", call. = FALSE)
+    }
+
+    if (is.null(validate_x)) {
+      X_matrix <- gudmm_preprocessing(df, no_f_cont)
+      Di <- gudmm_distance_dependency_mixed_matrix(X_matrix, no_f_cont, no_f_ord = 0, DM = "DM5")
+      distance_mat <- as.matrix(Di)
+    } else {
+      stop("train to test distances not implemented for this method", call. = FALSE)
+    }
+
+  } else if (preset == "dkss") {
+
+    no_f_cont <- if (!is.null(cont_data)) ncol(cont_data) else 0
+    df <- if (!is.null(cont_data) && !is.null(cat_data)) {
+      cbind(cont_data, cat_data)
+    } else if (!is.null(cont_data)) {
+      cont_data
+    } else if (!is.null(cat_data)) {
+      cat_data
+    } else {
+      stop("No variables available to compute distance.", call. = FALSE)
+    }
+
+    if (is.null(validate_x)) {
+      df <- dkss_preprocessing(df, no_f_cont)
+      dkss_result <- kdml::dkss(
+        df = df, bw = "np",
+        cFUN = "c_gaussian", uFUN = "u_aitken", oFUN = "o_wangvanryzin",
+        stan = TRUE, verbose = FALSE
+      )
+      distance_mat <- dkss_result$distances
+    } else {
+      stop("train to test distances not implemented for this method", call. = FALSE)
+    }
+
+  } else if (preset == "mod_gower") {
+
+    if (is.null(validate_x)) {
+      df <- if (!is.null(cont_data) && !is.null(cat_data)) {
+        cbind(cont_data, cat_data)
+      } else if (!is.null(cont_data)) {
+        cont_data
+      } else if (!is.null(cat_data)) {
+        cat_data
+      } else {
+        stop("No variables available to compute distance.", call. = FALSE)
+      }
+
+      distance_mat <- mg_gower_mod_matrix(df, use_weights = TRUE) |>
+        as.matrix()
+    } else {
+      stop("train to test distances not implemented for this method", call. = FALSE)
+    }
+
+  } else {
+    stop("Unknown preset: ", preset, call. = FALSE)
   }
 
   distance_mat <- to_dissimilarity(distance_mat)
@@ -680,16 +628,13 @@ mdist <- function(x, new_data=NULL, response=NULL,
     cat_p         = if (!is.null(cat_data))  ncol(cat_data)  else 0,
     cont_p        = if (!is.null(cont_data)) ncol(cont_data) else 0,
     response_col  = if (!rlang::quo_is_null(response_quo)) resp_name else NULL,
-    y             = y  # optional: store labels if useful
+    y             = y
   )
 
-  return(MDist$new(
+  MDist$new(
     distance = distance_mat,
     preset   = preset,
-    data     = x,        # or x if you want to keep it
+    data     = x,
     params   = params
-  ))
-
+  )
 }
-
-

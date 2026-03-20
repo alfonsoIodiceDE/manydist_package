@@ -1,4 +1,4 @@
-cdist<-function(x,response=NULL,validate_x=NULL,method="tot_var_dist", commensurable = TRUE, weights=1){
+cdist<-function(x,response=NULL,validate_x=NULL,method="tvd", commensurable = TRUE, weights=1){
 
   full_delta <- NULL
   level_stop <- NULL
@@ -14,6 +14,9 @@ cdist<-function(x,response=NULL,validate_x=NULL,method="tot_var_dist", commensur
   id <- NULL
   delta_ms <- NULL
 
+  if (method %in% c("tot_var_dist", "tvd")) {
+    method <- "tvd"
+  }
 
   y=response
 

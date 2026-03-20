@@ -1,0 +1,142 @@
+---
+author: Alfonso Iodice D'Enza
+title: Distance-based learning with manydist and tidymodels
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    number-sections: true
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: true
+
+set.seed(123)
+rm(list = ls())
+devtools::load_all("../")
+# library(manydist)
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+```
+
+
+## Mixed distance presets
+
+-	Add a preset for u_mix.
+-	Consider adding a complete set of unbiased presets:
+  -	u_dep, u_indep, u_mix (for consistency with the paper).
+	-	Current implementation of u_mix via "custom" + commensurable is not transparent → simplify.
+-	Naming improvements:
+	-	Shorten "unbiased_dependent" (too verbose).
+	-	Possibly shorten "euclidean_onehot".
+	
+	
+## Categorical distance options (distance_cat)
+
+- Provide a way to list all available categorical distances:
+		e.g., a function like getDistMethods() (philentropy-style).
+	-	Enable programmatic access to all options for benchmarking:
+	  loop over all distance_cat options with mdist.
+	-	Consider compatibility/extension with philentropy distances:
+  		especially for unsupervised association-based distances.
+	-	Replace "tot_var_dist" with "tvd".
+	
+	
+## Supervised distance variants
+
+  -	When a response is provided:
+	  -	Default distance_cat should switch to a supervised association-based version.
+	  -	Default choice: "tot_var_dist" (or "tvd").
+	
+	-	Allow any philentropy (or similar) association-based distance in supervised mode.
+	-	Handle inconsistent user inputs:
+	-	If response + non-association distance (e.g., "matching"):
+	  	Either:
+	  -	Override with supervised association-based distance + warning, or
+	-	Ignore response + warning.
+	-	Future extension:
+- Allow supervised variants for distance_cont as well.
+
+
+
+
+## Response input handling
+-	Allow response to be provided as:
+-	Column name (current behavior),  (we may want to keep this)
+-	Column vector (e.g., df[,1]) for flexibility.
+
+
+
+## Clustering / downstream methods
+
+-	Supporting clustering methods (e.g., spectral, PAM) is useful.
+
+-	Improve spectral_from_dist:
+	-	Accept both:
+	  -	Distance matrix, and
+	  -	Distance object (mdist$distance).
+-	Consider expanding built-in methods:
+	-	PAM, hierarchical clustering, etc.
+
+
+## Variable weights
+
+-	Reintroduce or support user-defined variable weights:
+	-	Already partially supported via commensurable.
+-	Potential uses:
+	-	Emphasize certain variables.
+	-	Weight continuous vs categorical differently.
+	-	Randomized weighting for robustness.
+	-	Consider future tuning strategies for weights.
+
+
+
+## Variable importance / LOVO framework
+-	Current measures:
+	-	Alienation coefficient (AC)
+	-	Congruence coefficient (CC)
+-	Concerns:
+	-	AC may be too specific to the paper.
+	-	Interpretation may not be obvious for all users.
+-	Suggestion:
+	-	Make variable importance method-dependent, e.g.:
+	-	MDS → AC / CC
+	-	PAM → ARI (cluster stability)
+	-	Spectral → ARI or similar
+	-	General idea:
+	-	Evaluate variable importance relative to downstream task.
+
+
+
+## Generalization of LOVO analysis
+-	Allow specifying a method argument, e.g.:
+-	method = (mds, d = 2)
+-	method = (pam, k = 4)
+-	method = (spectral, k = 4)
+-	Compute task-specific importance metrics:
+-	MDS → AC / CC
+-	Clustering → ARI or similar
+
+
+
+## LOVO comparison (lovo_cmp)
+-	Rename mad_normalized:
+-	Suggested: “relative distance” (clearer interpretation).
+-	Extend LOVO comparison to:
+-	Support multiple evaluation criteria (depending on downstream method).
+
+
+
+## General design direction
+Move toward:
+-	Consistency with the paper (u_dep, u_indep, u_mix)
+-	Transparency of defaults
+-	Extensibility (philentropy, supervised variants, downstream methods)
+-	User control (weights, methods, metrics)

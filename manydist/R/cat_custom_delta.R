@@ -31,9 +31,11 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
     return(Dsel)
   }
 
+  if (method %in% c("tvd", "tot_var_dist")) {
+    method <- "tvd"
+  }
 
-
-  if(method=="tot_var_dist"){
+  if(method=="tvd"){
     p=1
 
     full_delta = blocks * create_delta(ZZod, nvar,p,chi2=FALSE)
@@ -52,8 +54,8 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
     p=2
    # full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm)), nvar,p,chi2=TRUE)
     full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm/n)), nvar,p,chi2=TRUE) # New: Corrected probability zm/n. Takes average over nvar-1
-    
-    
+
+
   }
   # if(method=="w_chi2"){
   #   #print("in w_chi2")
@@ -144,7 +146,7 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
 
   if(method=="lin"){
     prop = as.matrix(zm/n)
-   
+
 
     pv<-prop
     pr<-pv %*% rep(1,Qs)
