@@ -591,6 +591,133 @@ predict(
   head()
 ```
 
+
+## Sanity check: direct distance matrix versus recipe-based clustering
+
+Before illustrating the two clustering interfaces, we verify that the
+recipe-based workflow is consistent with the direct use of `mdist()`.
+
+We first compute the training dissimilarity matrix directly with
+`mdist()`.
+
+```{r clust-direct-distance}
+d_train_obj <- mdist(
+  x = peng_train |> select(-species),
+  preset = "u_dep"
+)
+
+D_train_direct <- as.matrix(d_train_obj$distance)
+dim(D_train_direct)
+```
+
+We then fit PAM directly on this matrix.
+
+```{r clust-direct-pam}
+pam_direct <- cluster::pam(
+  x = stats::as.dist(D_train_direct),
+  k = 3,
+  diss = TRUE
+)
+
+pam_direct_clust <- pam_direct$clustering
+head(pam_direct_clust)
+```
+
+Now we fit the recipe-based `pam_dist()` model.
+
+```{r clust-recipe-pam}
+pam_spec <- pam_dist(num_clusters = 3)
+
+pam_fit <- generics::fit(
+  pam_spec,
+  recipe = peng_rec_clust,
+  data = peng_train |> select(-species)
+)
+
+pam_recipe_clust <- predict(pam_fit)$.pred_cluster |>
+  as.integer()
+
+head(pam_recipe_clust)
+```
+
+The two PAM partitions coincide up to label permutation. We check this
+through the adjusted Rand index.
+
+```{r clust-check-pam}
+mclust::adjustedRandIndex(
+  pam_direct_clust,
+  pam_recipe_clust
+)
+```
+
+We can do the same for spectral clustering. First, fit the model
+directly from the distance matrix.
+
+```{r clust-direct-spectral}
+spectral_direct_spec <- spectral_dist(num_clusters = 3)
+
+spectral_direct_fit <- .fit_spectral_dist(
+  spec = spectral_direct_spec,
+  recipe = peng_rec_clust,
+  data = peng_train |> select(-species)
+)
+
+spectral_direct_clust <- spectral_direct_fit$clusters
+head(spectral_direct_clust)
+```
+
+For a stricter direct check based only on the distance matrix, we can
+also reconstruct the spectral solution from `D_train_direct`.
+
+```{r clust-direct-spectral-matrix}
+aff <- .affinity_from_dist(D_train_direct, sigma = NULL)
+A <- aff$A
+
+d <- rowSums(A)
+Dhalf_inv <- diag(ifelse(d > 0, 1 / sqrt(d), 0), nrow(A), ncol(A))
+S <- Dhalf_inv %*% A %*% Dhalf_inv
+
+ev <- eigen(S, symmetric = TRUE)
+U <- ev$vectors[, seq_len(3), drop = FALSE]
+U_norm <- .row_normalize(U)
+
+set.seed(123)
+spectral_direct_matrix <- stats::kmeans(U_norm, centers = 3, nstart = 50)$cluster
+
+head(spectral_direct_matrix)
+```
+
+Now fit the recipe-based `spectral_dist()` model.
+
+```{r clust-recipe-spectral}
+spectral_spec <- spectral_dist(num_clusters = 3)
+
+spectral_fit <- generics::fit(
+  spectral_spec,
+  recipe = peng_rec_clust,
+  data = peng_train |> select(-species)
+)
+
+spectral_recipe_clust <- predict(spectral_fit)$.pred_cluster |>
+  as.integer()
+
+head(spectral_recipe_clust)
+```
+
+Again, we compare the resulting partitions via the adjusted Rand index.
+
+```{r clust-check-spectral}
+mclust::adjustedRandIndex(
+  spectral_direct_matrix,
+  spectral_recipe_clust
+)
+```
+
+An ARI equal to 1 confirms that the clustering obtained through the
+recipe-based pipeline matches the one obtained by first computing the
+distance matrix with `mdist()` and then applying the clustering method
+directly.
+
 # Summary
 
 In this vignette we showed how **manydist** can be used for
