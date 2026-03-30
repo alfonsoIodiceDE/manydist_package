@@ -78,7 +78,7 @@ d_obj_all <- mdist(
   preset = "u_dep"
 )
 
-d_obj_all
+summary(d_obj_all)
 ```
 
 The resulting object stores the distance matrix together with the
@@ -238,7 +238,7 @@ test_d_obj <- mdist(
   preset = "u_dep"
 )
 
-test_d_obj
+summary(test_d_obj)
 ```
 
 ```{r base-mdist-inspect}
