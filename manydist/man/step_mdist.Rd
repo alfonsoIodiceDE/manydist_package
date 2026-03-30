@@ -9,6 +9,7 @@ step_mdist(
   ...,
   role = "predictor",
   trained = FALSE,
+  output = "distance_to_training",
   preset = "custom",
   distance_cont = "manhattan",
   distance_cat = "tot_var_dist",
@@ -18,6 +19,7 @@ step_mdist(
   threshold = NULL,
   columns = NULL,
   train_predictors = NULL,
+  preprocessor = NULL,
   skip = FALSE,
   id = recipes::rand_id("mdist")
 )
@@ -31,11 +33,17 @@ step_mdist(
 
 \item{trained}{Logical for recipes internals (do not set manually).}
 
+\item{output}{Type of dissimilarity output. `"distance_to_training"`
+returns distances from the baked data to the training data;
+`"pairwise"` returns the within-training pairwise dissimilarity matrix.}
+
 \item{preset, distance_cont, distance_cat, commensurable, scaling_cont, }{ncomp,threshold Arguments forwarded to `mdist()`.}
 
 \item{columns}{Names of columns selected at prep time (recipes internals).}
 
 \item{train_predictors}{Training predictors stored at prep time (internals).}
+
+\item{preprocessor}{Internal fitted manydist preprocessor.}
 
 \item{skip, id}{Standard recipes arguments.}
 }

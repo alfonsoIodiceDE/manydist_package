@@ -1,0 +1,64 @@
+%%%%%%%%%%%%%%%%%%%% author.tex %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% sample root file for your "contribution" to a proceedings volume
+%
+%%%%%%%%%%%%%%%% Springer %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass{svproc}
+
+\usepackage{url}
+\def\UrlFont{\rmfamily}
+
+\begin{document}
+\mainmatter
+%
+\title{Association-Aware Spectral Clustering for Mixed Data}
+%
+\titlerunning{Association-Aware Spectral Clustering for Mixed Data}
+%
+\author{Alfonso Iodice D'Enza\inst{1} \and
+Cristina Tortora\inst{2} \and
+Francesco Palumbo\inst{1}}
+%
+\authorrunning{Iodice D'Enza et al.}
+
+\institute{Department of Political Sciences, University of Naples Federico II, Naples, Italy
+\and
+Department of Mathematics and Statistics, San Jos\'e State University, San Jos\'e, CA, USA\\
+\email{iodicede@unina.it}, \email{cristina.tortora@sjsu.edu}, \email{francesco.palumbo@unina.it}}
+
+\maketitle
+
+\bigskip % DO NOT REMOVE IT
+
+Distance-based methods play a central role in unsupervised learning because many clustering and visualization techniques operate on pairwise dissimilarities rather than directly on the original variables. This is particularly relevant for mixed-type data, where observations are described by both continuous and categorical variables and where defining an appropriate dissimilarity is often the key modelling step. In practice, the most widely used mixed-data measures, such as the Gower index \cite{gower1971}, are based on variable-wise comparisons that are computed separately for each variable and then aggregated additively across dimensions. While this strategy is simple and general, it implicitly assumes that each variable contributes independently to the final dissimilarity. As a consequence, important dependence structures among variables may be ignored, and redundant information can be counted multiple times. This issue is especially critical when continuous and categorical variables are associated.
+
+In this contribution we propose an association-aware dissimilarity for mixed-type data and show how it can be effectively combined with spectral clustering. The starting point is an additive decomposition in which the continuous component is described through an association-aware distance for numerical variables, while the categorical part is represented within a general category-dissimilarity framework \cite{velden2024}. Building on this structure, we introduce an additional interaction term aimed at capturing continuous--categorical associations. The key idea is to model categorical distinctions conditionally on the continuous variables, so that the contribution of a categorical variable depends on how well its categories can be separated in the continuous feature space. This yields a dissimilarity that is no longer purely variable-wise, but instead reflects context-dependent contrasts between observations.
+
+The interaction term is constructed through a $k$-nearest neighbour predictive separability mechanism. For each categorical variable and for each pair of categories, we evaluate how well the two groups can be discriminated using neighbourhood structure induced by the continuous-variable dissimilarity. This produces a pairwise category dissimilarity index based on balanced accuracy, which is then translated into an observation-level interaction contribution. Although the modelling step is directional, since categorical distinctions are explained through the continuous variables, the resulting interaction index is symmetric with respect to category pairs and therefore induces a symmetric dissimilarity matrix. In this way, the proposed measure explicitly incorporates cross-type dependence while preserving the symmetry required by a large class of distance-based learning methods.
+
+
+The paper discusses the formulation of the proposed dissimilarity, its interpretation, and its integration within a spectral clustering \cite{ng2002} framework, which is well suited to exploiting the affinity structure induced by association-aware pairwise comparisons. Through this perspective, we aim to show that association-aware dissimilarities can provide a principled and effective way to cluster mixed-type observations when cross-type interactions are substantively important. The approach is general and can be extended to other distance-based unsupervised learning tasks in which variable associations should be explicitly reflected in the input dissimilarity.
+%
+% ---- Bibliography ----
+%
+\begin{thebibliography}{9}
+
+\bibitem{gower1971}
+Gower, J.C.: A general coefficient of similarity and some of its properties.
+Biometrics 27(4), 857--871 (1971)
+
+\bibitem{velden2024}
+van de Velden, M., Iodice D'Enza, A., Cavicchia, C., Markos, A.:
+A general framework for implementing distances for categorical variables.
+Pattern Recognition 153, 110547 (2024)
+
+\bibitem{ng2002}
+Ng, A.Y., Jordan, M.I., Weiss, Y.:
+On spectral clustering: Analysis and an algorithm.
+In: Dietterich, T.G., Becker, S., Ghahramani, Z. (eds.)
+Advances in Neural Information Processing Systems 14, pp. 849--856 (2002)
+
+
+\end{thebibliography}
+\end{document}

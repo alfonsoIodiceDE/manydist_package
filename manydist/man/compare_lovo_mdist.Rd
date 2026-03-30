@@ -44,7 +44,10 @@ LOVO computations are retained. This increases memory usage.}
 while computing LOVO diagnostics for each method.}
 
 \item{...}{Additional arguments passed to \code{\link{lovo_mdist}}
-unless overridden in the method-specific argument list.}
+unless overridden in the method-specific argument list.
+
+These may include optional clustering diagnostics, for example
+\code{cluster_k}, \code{cluster_methods}, and \code{hclust_method}.}
 }
 \value{
 An object of class \code{MDistLOVOCompare} containing:
@@ -67,7 +70,8 @@ For each distance specification, the function:
 \item Computes the full mixed-type distance using \code{mdist()}.
 \item Recomputes the distance repeatedly leaving out one variable at a time.
 \item Measures the impact of each variable using metrics such as
-mean absolute deviation (MAD) and the alienation coefficient.
+mean absolute deviation (MAD), congruence-based diagnostics, and,
+when requested, clustering-based agreement measures.
 }
 
 The results are combined across methods and returned as an
@@ -88,11 +92,13 @@ cmp <- compare_lovo_mdist(
   methods = list(
     gower = list(preset = "gower"),
     u_dep = list(preset = "unbiased_dependent")
-  )
+  ),
+  cluster_k = 3
 )
 
 summary(cmp)
 autoplot(cmp, metric = "mad_importance")
+autoplot(cmp, metric = "pam_importance")
 }
 
 }
