@@ -2225,6 +2225,14 @@ vertical-align: -.125em;
   <li><a href="#distance-based-pam-clustering-with-pam_dist" id="toc-distance-based-pam-clustering-with-pam_dist" class="nav-link" data-scroll-target="#distance-based-pam-clustering-with-pam_dist"><span class="header-section-number">10.1</span> Distance-based PAM clustering with <code>pam_dist()</code></a></li>
   <li><a href="#distance-based-spectral-clustering-with-spectral_dist" id="toc-distance-based-spectral-clustering-with-spectral_dist" class="nav-link" data-scroll-target="#distance-based-spectral-clustering-with-spectral_dist"><span class="header-section-number">10.2</span> Distance-based spectral clustering with <code>spectral_dist()</code></a></li>
   <li><a href="#sanity-check-direct-distance-matrix-versus-recipe-based-clustering" id="toc-sanity-check-direct-distance-matrix-versus-recipe-based-clustering" class="nav-link" data-scroll-target="#sanity-check-direct-distance-matrix-versus-recipe-based-clustering"><span class="header-section-number">10.3</span> Sanity check: direct distance matrix versus recipe-based clustering</a></li>
+  <li><a href="#consistency-checks-on-continuous-data" id="toc-consistency-checks-on-continuous-data" class="nav-link" data-scroll-target="#consistency-checks-on-continuous-data"><span class="header-section-number">10.4</span> Consistency checks on continuous data</a>
+  <ul class="collapse">
+  <li><a href="#euclidean-distances-direct-computation-versus-mdist" id="toc-euclidean-distances-direct-computation-versus-mdist" class="nav-link" data-scroll-target="#euclidean-distances-direct-computation-versus-mdist"><span class="header-section-number">10.4.1</span> Euclidean distances: direct computation versus <code>mdist()</code></a></li>
+  <li><a href="#knn-direct-euclidean-knn-versus-nearest_neighbor_dist" id="toc-knn-direct-euclidean-knn-versus-nearest_neighbor_dist" class="nav-link" data-scroll-target="#knn-direct-euclidean-knn-versus-nearest_neighbor_dist"><span class="header-section-number">10.4.2</span> KNN: direct Euclidean KNN versus <code>nearest_neighbor_dist()</code></a></li>
+  <li><a href="#pam-direct-euclidean-pam-versus-pam_dist" id="toc-pam-direct-euclidean-pam-versus-pam_dist" class="nav-link" data-scroll-target="#pam-direct-euclidean-pam-versus-pam_dist"><span class="header-section-number">10.4.3</span> PAM: direct Euclidean PAM versus <code>pam_dist()</code></a></li>
+  <li><a href="#spectral-clustering-direct-gaussian-kernel-clustering-versus-spectral_dist" id="toc-spectral-clustering-direct-gaussian-kernel-clustering-versus-spectral_dist" class="nav-link" data-scroll-target="#spectral-clustering-direct-gaussian-kernel-clustering-versus-spectral_dist"><span class="header-section-number">10.4.4</span> Spectral clustering: direct Gaussian-kernel clustering versus <code>spectral_dist()</code></a></li>
+  <li><a href="#summary-of-consistency-checks" id="toc-summary-of-consistency-checks" class="nav-link" data-scroll-target="#summary-of-consistency-checks"><span class="header-section-number">10.4.5</span> Summary of consistency checks</a></li>
+  </ul></li>
   </ul></li>
   <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">11</span> Summary</a></li>
   </ul>
@@ -3305,6 +3313,314 @@ Computational engine: precomputed </code></pre>
 </div>
 </div>
 <p>An ARI equal to 1 confirms that the clustering obtained through the recipe-based pipeline matches the one obtained by first computing the distance matrix with <code>mdist()</code> and then applying the clustering method directly.</p>
+</section>
+<section id="consistency-checks-on-continuous-data" class="level2" data-number="10.4">
+<h2 data-number="10.4" class="anchored" data-anchor-id="consistency-checks-on-continuous-data"><span class="header-section-number">10.4</span> Consistency checks on continuous data</h2>
+<p>In the special case of purely continuous predictors, the downstream interfaces provided by <strong>manydist</strong> should be consistent with the corresponding standard methods applied directly to the original data matrix under Euclidean geometry. For simplicity, we illustrate these checks on continuous data only, since Euclidean distance provides a natural and unambiguous reference in that setting. We then verify this for distance computation, nearest neighbours, PAM clustering, and spectral clustering. We start by restricting the penguin data to continuous predictors only.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb112"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb112-1"><a href="#cb112-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(class)</span>
+<span id="cb112-2"><a href="#cb112-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(cluster)</span>
+<span id="cb112-3"><a href="#cb112-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(kernlab)</span>
+<span id="cb112-4"><a href="#cb112-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mclust)</span>
+<span id="cb112-5"><a href="#cb112-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb112-6"><a href="#cb112-6" aria-hidden="true" tabindex="-1"></a>peng_train_cont <span class="ot">&lt;-</span> peng_train <span class="sc">|&gt;</span></span>
+<span id="cb112-7"><a href="#cb112-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(species, <span class="fu">where</span>(is.numeric))</span>
+<span id="cb112-8"><a href="#cb112-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb112-9"><a href="#cb112-9" aria-hidden="true" tabindex="-1"></a>peng_test_cont <span class="ot">&lt;-</span> peng_test <span class="sc">|&gt;</span></span>
+<span id="cb112-10"><a href="#cb112-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(species, <span class="fu">where</span>(is.numeric))</span>
+<span id="cb112-11"><a href="#cb112-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb112-12"><a href="#cb112-12" aria-hidden="true" tabindex="-1"></a>x_train_cont <span class="ot">&lt;-</span> peng_train_cont <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>species)</span>
+<span id="cb112-13"><a href="#cb112-13" aria-hidden="true" tabindex="-1"></a>x_test_cont  <span class="ot">&lt;-</span> peng_test_cont  <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>species)</span>
+<span id="cb112-14"><a href="#cb112-14" aria-hidden="true" tabindex="-1"></a>y_train_cont <span class="ot">&lt;-</span> peng_train_cont<span class="sc">$</span>species</span>
+<span id="cb112-15"><a href="#cb112-15" aria-hidden="true" tabindex="-1"></a>y_test_cont  <span class="ot">&lt;-</span> peng_test_cont<span class="sc">$</span>species</span>
+<span id="cb112-16"><a href="#cb112-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb112-17"><a href="#cb112-17" aria-hidden="true" tabindex="-1"></a>X_train <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(x_train_cont)</span>
+<span id="cb112-18"><a href="#cb112-18" aria-hidden="true" tabindex="-1"></a>X_test  <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(x_test_cont)</span>
+<span id="cb112-19"><a href="#cb112-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb112-20"><a href="#cb112-20" aria-hidden="true" tabindex="-1"></a>k_knn   <span class="ot">&lt;-</span> <span class="dv">5</span></span>
+<span id="cb112-21"><a href="#cb112-21" aria-hidden="true" tabindex="-1"></a>k_clust <span class="ot">&lt;-</span> <span class="dv">3</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="euclidean-distances-direct-computation-versus-mdist" class="level3" data-number="10.4.1">
+<h3 data-number="10.4.1" class="anchored" data-anchor-id="euclidean-distances-direct-computation-versus-mdist"><span class="header-section-number">10.4.1</span> Euclidean distances: direct computation versus <code>mdist()</code></h3>
+<p>We first verify that <code>mdist()</code> reproduces ordinary Euclidean distances on continuous data when used with Euclidean distance, no scaling, and no commensurability correction.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb113"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb113-1"><a href="#cb113-1" aria-hidden="true" tabindex="-1"></a>D_train_eucl <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(stats<span class="sc">::</span><span class="fu">dist</span>(X_train))</span>
+<span id="cb113-2"><a href="#cb113-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-3"><a href="#cb113-3" aria-hidden="true" tabindex="-1"></a>.euclid_block <span class="ot">&lt;-</span> <span class="cf">function</span>(x_new, x_ref) {</span>
+<span id="cb113-4"><a href="#cb113-4" aria-hidden="true" tabindex="-1"></a>  x_new <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(x_new)</span>
+<span id="cb113-5"><a href="#cb113-5" aria-hidden="true" tabindex="-1"></a>  x_ref <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(x_ref)</span>
+<span id="cb113-6"><a href="#cb113-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-7"><a href="#cb113-7" aria-hidden="true" tabindex="-1"></a>  n_new <span class="ot">&lt;-</span> <span class="fu">nrow</span>(x_new)</span>
+<span id="cb113-8"><a href="#cb113-8" aria-hidden="true" tabindex="-1"></a>  all_x <span class="ot">&lt;-</span> <span class="fu">rbind</span>(x_new, x_ref)</span>
+<span id="cb113-9"><a href="#cb113-9" aria-hidden="true" tabindex="-1"></a>  D_all <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(stats<span class="sc">::</span><span class="fu">dist</span>(all_x))</span>
+<span id="cb113-10"><a href="#cb113-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-11"><a href="#cb113-11" aria-hidden="true" tabindex="-1"></a>  D_all[<span class="fu">seq_len</span>(n_new), n_new <span class="sc">+</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(x_ref)), drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb113-12"><a href="#cb113-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb113-13"><a href="#cb113-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-14"><a href="#cb113-14" aria-hidden="true" tabindex="-1"></a>D_test_train_eucl <span class="ot">&lt;-</span> <span class="fu">.euclid_block</span>(X_test, X_train)</span>
+<span id="cb113-15"><a href="#cb113-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-16"><a href="#cb113-16" aria-hidden="true" tabindex="-1"></a>d_train_mdist <span class="ot">&lt;-</span> <span class="fu">mdist</span>(</span>
+<span id="cb113-17"><a href="#cb113-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> x_train_cont,</span>
+<span id="cb113-18"><a href="#cb113-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">distance_cont =</span> <span class="st">&quot;euclidean&quot;</span>,</span>
+<span id="cb113-19"><a href="#cb113-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">scaling_cont =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb113-20"><a href="#cb113-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">commensurable =</span> <span class="cn">FALSE</span></span>
+<span id="cb113-21"><a href="#cb113-21" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb113-22"><a href="#cb113-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-23"><a href="#cb113-23" aria-hidden="true" tabindex="-1"></a>D_train_mdist <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(d_train_mdist<span class="sc">$</span>distance)</span>
+<span id="cb113-24"><a href="#cb113-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-25"><a href="#cb113-25" aria-hidden="true" tabindex="-1"></a>d_test_mdist <span class="ot">&lt;-</span> <span class="fu">mdist</span>(</span>
+<span id="cb113-26"><a href="#cb113-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> x_train_cont,</span>
+<span id="cb113-27"><a href="#cb113-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">new_data =</span> x_test_cont,</span>
+<span id="cb113-28"><a href="#cb113-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">distance_cont =</span> <span class="st">&quot;euclidean&quot;</span>,</span>
+<span id="cb113-29"><a href="#cb113-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">scaling_cont =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb113-30"><a href="#cb113-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">commensurable =</span> <span class="cn">FALSE</span></span>
+<span id="cb113-31"><a href="#cb113-31" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb113-32"><a href="#cb113-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb113-33"><a href="#cb113-33" aria-hidden="true" tabindex="-1"></a>D_test_train_mdist <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(d_test_mdist<span class="sc">$</span>distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The maximum absolute difference is negligible on the training set and zero on the test-to-training distance block.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb114"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb114-1"><a href="#cb114-1" aria-hidden="true" tabindex="-1"></a>distance_check <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb114-2"><a href="#cb114-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">dataset =</span> <span class="fu">c</span>(<span class="st">&quot;train&quot;</span>, <span class="st">&quot;test&quot;</span>),</span>
+<span id="cb114-3"><a href="#cb114-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="fu">c</span>(</span>
+<span id="cb114-4"><a href="#cb114-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;base Euclidean vs mdist() max abs diff&quot;</span>,</span>
+<span id="cb114-5"><a href="#cb114-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;test-to-train Euclidean vs mdist() max abs diff&quot;</span></span>
+<span id="cb114-6"><a href="#cb114-6" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb114-7"><a href="#cb114-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">value =</span> <span class="fu">c</span>(</span>
+<span id="cb114-8"><a href="#cb114-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">max</span>(<span class="fu">abs</span>(D_train_eucl <span class="sc">-</span> D_train_mdist)),</span>
+<span id="cb114-9"><a href="#cb114-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">max</span>(<span class="fu">abs</span>(D_test_train_eucl <span class="sc">-</span> D_test_train_mdist))</span>
+<span id="cb114-10"><a href="#cb114-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb114-11"><a href="#cb114-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb114-12"><a href="#cb114-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb114-13"><a href="#cb114-13" aria-hidden="true" tabindex="-1"></a>distance_check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 3
+  dataset check                                              value
+  &lt;chr&gt;   &lt;chr&gt;                                              &lt;dbl&gt;
+1 train   base Euclidean vs mdist() max abs diff          7.11e-15
+2 test    test-to-train Euclidean vs mdist() max abs diff 1.78e-15</code></pre>
+</div>
+</div>
+</section>
+<section id="knn-direct-euclidean-knn-versus-nearest_neighbor_dist" class="level3" data-number="10.4.2">
+<h3 data-number="10.4.2" class="anchored" data-anchor-id="knn-direct-euclidean-knn-versus-nearest_neighbor_dist"><span class="header-section-number">10.4.2</span> KNN: direct Euclidean KNN versus <code>nearest_neighbor_dist()</code></h3>
+<p>We now compare standard KNN on the original continuous predictors with the <code>manydist</code> interface based on Euclidean dissimilarities.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb116"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb116-1"><a href="#cb116-1" aria-hidden="true" tabindex="-1"></a>knn_direct_pred <span class="ot">&lt;-</span> class<span class="sc">::</span><span class="fu">knn</span>(</span>
+<span id="cb116-2"><a href="#cb116-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">train =</span> X_train,</span>
+<span id="cb116-3"><a href="#cb116-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">test  =</span> X_test,</span>
+<span id="cb116-4"><a href="#cb116-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">cl    =</span> y_train_cont,</span>
+<span id="cb116-5"><a href="#cb116-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">k     =</span> k_knn</span>
+<span id="cb116-6"><a href="#cb116-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The corresponding <code>manydist</code> pipeline uses <code>step_mdist()</code> to compute the Euclidean test-to-training distance representation.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb117"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb117-1"><a href="#cb117-1" aria-hidden="true" tabindex="-1"></a>rec_knn_cont <span class="ot">&lt;-</span> <span class="fu">recipe</span>(species <span class="sc">~</span> ., <span class="at">data =</span> peng_train_cont) <span class="sc">|&gt;</span></span>
+<span id="cb117-2"><a href="#cb117-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_mdist</span>(</span>
+<span id="cb117-3"><a href="#cb117-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">all_predictors</span>(),</span>
+<span id="cb117-4"><a href="#cb117-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">distance_cont =</span> <span class="st">&quot;euclidean&quot;</span>,</span>
+<span id="cb117-5"><a href="#cb117-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">scaling_cont =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb117-6"><a href="#cb117-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">commensurable =</span> <span class="cn">FALSE</span></span>
+<span id="cb117-7"><a href="#cb117-7" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb117-8"><a href="#cb117-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb117-9"><a href="#cb117-9" aria-hidden="true" tabindex="-1"></a>knn_spec_cont <span class="ot">&lt;-</span> <span class="fu">nearest_neighbor_dist</span>(</span>
+<span id="cb117-10"><a href="#cb117-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">mode =</span> <span class="st">&quot;classification&quot;</span>,</span>
+<span id="cb117-11"><a href="#cb117-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">neighbors =</span> k_knn</span>
+<span id="cb117-12"><a href="#cb117-12" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb117-13"><a href="#cb117-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">&quot;precomputed&quot;</span>)</span>
+<span id="cb117-14"><a href="#cb117-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb117-15"><a href="#cb117-15" aria-hidden="true" tabindex="-1"></a>wf_knn_cont <span class="ot">&lt;-</span> <span class="fu">workflow</span>() <span class="sc">|&gt;</span></span>
+<span id="cb117-16"><a href="#cb117-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(rec_knn_cont) <span class="sc">|&gt;</span></span>
+<span id="cb117-17"><a href="#cb117-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(knn_spec_cont)</span>
+<span id="cb117-18"><a href="#cb117-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb117-19"><a href="#cb117-19" aria-hidden="true" tabindex="-1"></a>knn_fit_cont <span class="ot">&lt;-</span> <span class="fu">fit</span>(wf_knn_cont, <span class="at">data =</span> peng_train_cont)</span>
+<span id="cb117-20"><a href="#cb117-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb117-21"><a href="#cb117-21" aria-hidden="true" tabindex="-1"></a>knn_manydist_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(</span>
+<span id="cb117-22"><a href="#cb117-22" aria-hidden="true" tabindex="-1"></a>  knn_fit_cont,</span>
+<span id="cb117-23"><a href="#cb117-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">new_data =</span> peng_test_cont,</span>
+<span id="cb117-24"><a href="#cb117-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">&quot;class&quot;</span></span>
+<span id="cb117-25"><a href="#cb117-25" aria-hidden="true" tabindex="-1"></a>)<span class="sc">$</span>.pred_class</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>We compare the direct and manydist-based predictions through exact agreement and report the manydist classification accuracy on the test set.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb118"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb118-1"><a href="#cb118-1" aria-hidden="true" tabindex="-1"></a>knn_check <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb118-2"><a href="#cb118-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">dataset =</span> <span class="fu">c</span>(<span class="st">&quot;test&quot;</span>, <span class="st">&quot;test&quot;</span>),</span>
+<span id="cb118-3"><a href="#cb118-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="fu">c</span>(</span>
+<span id="cb118-4"><a href="#cb118-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;direct vs manydist exact agreement&quot;</span>,</span>
+<span id="cb118-5"><a href="#cb118-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;manydist accuracy&quot;</span></span>
+<span id="cb118-6"><a href="#cb118-6" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb118-7"><a href="#cb118-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">value =</span> <span class="fu">c</span>(</span>
+<span id="cb118-8"><a href="#cb118-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>(knn_direct_pred <span class="sc">==</span> knn_manydist_pred),</span>
+<span id="cb118-9"><a href="#cb118-9" aria-hidden="true" tabindex="-1"></a>    yardstick<span class="sc">::</span><span class="fu">accuracy_vec</span>(y_test_cont, knn_manydist_pred)</span>
+<span id="cb118-10"><a href="#cb118-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb118-11"><a href="#cb118-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb118-12"><a href="#cb118-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb118-13"><a href="#cb118-13" aria-hidden="true" tabindex="-1"></a>knn_check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 3
+  dataset check                              value
+  &lt;chr&gt;   &lt;chr&gt;                              &lt;dbl&gt;
+1 test    direct vs manydist exact agreement 0.988
+2 test    manydist accuracy                  0.810</code></pre>
+</div>
+</div>
+</section>
+<section id="pam-direct-euclidean-pam-versus-pam_dist" class="level3" data-number="10.4.3">
+<h3 data-number="10.4.3" class="anchored" data-anchor-id="pam-direct-euclidean-pam-versus-pam_dist"><span class="header-section-number">10.4.3</span> PAM: direct Euclidean PAM versus <code>pam_dist()</code></h3>
+<p>For PAM clustering, the direct reference is <code>cluster::pam()</code> applied to the original continuous feature matrix with Euclidean metric.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb120"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb120-1"><a href="#cb120-1" aria-hidden="true" tabindex="-1"></a>pam_direct_fit <span class="ot">&lt;-</span> cluster<span class="sc">::</span><span class="fu">pam</span>(</span>
+<span id="cb120-2"><a href="#cb120-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> X_train,</span>
+<span id="cb120-3"><a href="#cb120-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">k =</span> k_clust,</span>
+<span id="cb120-4"><a href="#cb120-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric =</span> <span class="st">&quot;euclidean&quot;</span></span>
+<span id="cb120-5"><a href="#cb120-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb120-6"><a href="#cb120-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb120-7"><a href="#cb120-7" aria-hidden="true" tabindex="-1"></a>pam_direct_train <span class="ot">&lt;-</span> pam_direct_fit<span class="sc">$</span>clustering</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The corresponding <code>manydist</code> interface is based on a pairwise Euclidean dissimilarity matrix produced through <code>step_mdist(..., output = &quot;pairwise&quot;)</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb121"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb121-1"><a href="#cb121-1" aria-hidden="true" tabindex="-1"></a>rec_clust_cont <span class="ot">&lt;-</span> <span class="fu">recipe</span>(<span class="sc">~</span> ., <span class="at">data =</span> x_train_cont) <span class="sc">|&gt;</span></span>
+<span id="cb121-2"><a href="#cb121-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_mdist</span>(</span>
+<span id="cb121-3"><a href="#cb121-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">all_predictors</span>(),</span>
+<span id="cb121-4"><a href="#cb121-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">distance_cont =</span> <span class="st">&quot;euclidean&quot;</span>,</span>
+<span id="cb121-5"><a href="#cb121-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">scaling_cont =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb121-6"><a href="#cb121-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">commensurable =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb121-7"><a href="#cb121-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">output =</span> <span class="st">&quot;pairwise&quot;</span></span>
+<span id="cb121-8"><a href="#cb121-8" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb121-9"><a href="#cb121-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb121-10"><a href="#cb121-10" aria-hidden="true" tabindex="-1"></a>pam_spec_cont <span class="ot">&lt;-</span> <span class="fu">pam_dist</span>(<span class="at">num_clusters =</span> k_clust)</span>
+<span id="cb121-11"><a href="#cb121-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb121-12"><a href="#cb121-12" aria-hidden="true" tabindex="-1"></a>pam_manydist_fit <span class="ot">&lt;-</span> generics<span class="sc">::</span><span class="fu">fit</span>(</span>
+<span id="cb121-13"><a href="#cb121-13" aria-hidden="true" tabindex="-1"></a>  pam_spec_cont,</span>
+<span id="cb121-14"><a href="#cb121-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">recipe =</span> rec_clust_cont,</span>
+<span id="cb121-15"><a href="#cb121-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> x_train_cont</span>
+<span id="cb121-16"><a href="#cb121-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb121-17"><a href="#cb121-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb121-18"><a href="#cb121-18" aria-hidden="true" tabindex="-1"></a>pam_manydist_train <span class="ot">&lt;-</span> <span class="fu">predict</span>(pam_manydist_fit)<span class="sc">$</span>.pred_cluster <span class="sc">|&gt;</span></span>
+<span id="cb121-19"><a href="#cb121-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.integer</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>We compare the two training partitions via the adjusted Rand index.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb122"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb122-1"><a href="#cb122-1" aria-hidden="true" tabindex="-1"></a>pam_check <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb122-2"><a href="#cb122-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">dataset =</span> <span class="st">&quot;train&quot;</span>,</span>
+<span id="cb122-3"><a href="#cb122-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="st">&quot;direct vs manydist partition ARI&quot;</span>,</span>
+<span id="cb122-4"><a href="#cb122-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">value =</span> mclust<span class="sc">::</span><span class="fu">adjustedRandIndex</span>(pam_direct_train, pam_manydist_train)</span>
+<span id="cb122-5"><a href="#cb122-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb122-6"><a href="#cb122-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb122-7"><a href="#cb122-7" aria-hidden="true" tabindex="-1"></a>pam_check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  dataset check                            value
+  &lt;chr&gt;   &lt;chr&gt;                            &lt;dbl&gt;
+1 train   direct vs manydist partition ARI     1</code></pre>
+</div>
+</div>
+</section>
+<section id="spectral-clustering-direct-gaussian-kernel-clustering-versus-spectral_dist" class="level3" data-number="10.4.4">
+<h3 data-number="10.4.4" class="anchored" data-anchor-id="spectral-clustering-direct-gaussian-kernel-clustering-versus-spectral_dist"><span class="header-section-number">10.4.4</span> Spectral clustering: direct Gaussian-kernel clustering versus <code>spectral_dist()</code></h3>
+<p>For spectral clustering, we compare <code>spectral_dist()</code> with a direct spectral clustering benchmark on the original continuous data using <code>kernlab::specc()</code> and a Gaussian kernel. The Gaussian bandwidth is matched to the median Euclidean distance used by the manydist implementation.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb124"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb124-1"><a href="#cb124-1" aria-hidden="true" tabindex="-1"></a>sigma_sc <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">median</span>(D_train_eucl[<span class="fu">upper.tri</span>(D_train_eucl)])</span>
+<span id="cb124-2"><a href="#cb124-2" aria-hidden="true" tabindex="-1"></a>gamma_kernlab <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> sigma_sc<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb124-3"><a href="#cb124-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb124-4"><a href="#cb124-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb124-5"><a href="#cb124-5" aria-hidden="true" tabindex="-1"></a>spectral_direct_train <span class="ot">&lt;-</span> kernlab<span class="sc">::</span><span class="fu">specc</span>(</span>
+<span id="cb124-6"><a href="#cb124-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> X_train,</span>
+<span id="cb124-7"><a href="#cb124-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">centers =</span> k_clust,</span>
+<span id="cb124-8"><a href="#cb124-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">kernel =</span> <span class="st">&quot;rbfdot&quot;</span>,</span>
+<span id="cb124-9"><a href="#cb124-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">kpar =</span> <span class="fu">list</span>(<span class="at">sigma =</span> gamma_kernlab)</span>
+<span id="cb124-10"><a href="#cb124-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb124-11"><a href="#cb124-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb124-12"><a href="#cb124-12" aria-hidden="true" tabindex="-1"></a>spectral_direct_train <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(spectral_direct_train)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The corresponding <code>manydist</code> interface uses the same number of clusters and bandwidth, and is fitted on the pairwise Euclidean dissimilarity matrix produced by <code>step_mdist()</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb125"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb125-1"><a href="#cb125-1" aria-hidden="true" tabindex="-1"></a>spectral_spec_cont <span class="ot">&lt;-</span> <span class="fu">spectral_dist</span>(</span>
+<span id="cb125-2"><a href="#cb125-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">num_clusters =</span> k_clust,</span>
+<span id="cb125-3"><a href="#cb125-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">sigma =</span> sigma_sc</span>
+<span id="cb125-4"><a href="#cb125-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb125-5"><a href="#cb125-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb125-6"><a href="#cb125-6" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb125-7"><a href="#cb125-7" aria-hidden="true" tabindex="-1"></a>spectral_manydist_fit <span class="ot">&lt;-</span> generics<span class="sc">::</span><span class="fu">fit</span>(</span>
+<span id="cb125-8"><a href="#cb125-8" aria-hidden="true" tabindex="-1"></a>  spectral_spec_cont,</span>
+<span id="cb125-9"><a href="#cb125-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">recipe =</span> rec_clust_cont,</span>
+<span id="cb125-10"><a href="#cb125-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> x_train_cont</span>
+<span id="cb125-11"><a href="#cb125-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb125-12"><a href="#cb125-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb125-13"><a href="#cb125-13" aria-hidden="true" tabindex="-1"></a>spectral_manydist_train <span class="ot">&lt;-</span> <span class="fu">predict</span>(spectral_manydist_fit)<span class="sc">$</span>.pred_cluster <span class="sc">|&gt;</span></span>
+<span id="cb125-14"><a href="#cb125-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.integer</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>We again compare the two training partitions via the adjusted Rand index.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb126"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb126-1"><a href="#cb126-1" aria-hidden="true" tabindex="-1"></a>spectral_check <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb126-2"><a href="#cb126-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">dataset =</span> <span class="st">&quot;train&quot;</span>,</span>
+<span id="cb126-3"><a href="#cb126-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="st">&quot;direct vs manydist partition ARI&quot;</span>,</span>
+<span id="cb126-4"><a href="#cb126-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">value =</span> mclust<span class="sc">::</span><span class="fu">adjustedRandIndex</span>(spectral_direct_train, spectral_manydist_train)</span>
+<span id="cb126-5"><a href="#cb126-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb126-6"><a href="#cb126-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb126-7"><a href="#cb126-7" aria-hidden="true" tabindex="-1"></a>spectral_check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  dataset check                            value
+  &lt;chr&gt;   &lt;chr&gt;                            &lt;dbl&gt;
+1 train   direct vs manydist partition ARI     1</code></pre>
+</div>
+</div>
+</section>
+<section id="summary-of-consistency-checks" class="level3" data-number="10.4.5">
+<h3 data-number="10.4.5" class="anchored" data-anchor-id="summary-of-consistency-checks"><span class="header-section-number">10.4.5</span> Summary of consistency checks</h3>
+<p>We finally collect the results into a single summary table.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb128"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb128-1"><a href="#cb128-1" aria-hidden="true" tabindex="-1"></a>sanity_summary <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb128-2"><a href="#cb128-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">method =</span> <span class="fu">c</span>(</span>
+<span id="cb128-3"><a href="#cb128-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Distance matrix&quot;</span>,</span>
+<span id="cb128-4"><a href="#cb128-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Distance matrix&quot;</span>,</span>
+<span id="cb128-5"><a href="#cb128-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;KNN&quot;</span>,</span>
+<span id="cb128-6"><a href="#cb128-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;KNN&quot;</span>,</span>
+<span id="cb128-7"><a href="#cb128-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;PAM&quot;</span>,</span>
+<span id="cb128-8"><a href="#cb128-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Spectral&quot;</span></span>
+<span id="cb128-9"><a href="#cb128-9" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb128-10"><a href="#cb128-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">dataset =</span> <span class="fu">c</span>(</span>
+<span id="cb128-11"><a href="#cb128-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;train&quot;</span>,</span>
+<span id="cb128-12"><a href="#cb128-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;test&quot;</span>,</span>
+<span id="cb128-13"><a href="#cb128-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;test&quot;</span>,</span>
+<span id="cb128-14"><a href="#cb128-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;test&quot;</span>,</span>
+<span id="cb128-15"><a href="#cb128-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;train&quot;</span>,</span>
+<span id="cb128-16"><a href="#cb128-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;train&quot;</span></span>
+<span id="cb128-17"><a href="#cb128-17" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb128-18"><a href="#cb128-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="fu">c</span>(</span>
+<span id="cb128-19"><a href="#cb128-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;base Euclidean vs mdist() max abs diff&quot;</span>,</span>
+<span id="cb128-20"><a href="#cb128-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;test-to-train Euclidean vs mdist() max abs diff&quot;</span>,</span>
+<span id="cb128-21"><a href="#cb128-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;direct vs manydist exact agreement&quot;</span>,</span>
+<span id="cb128-22"><a href="#cb128-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;manydist accuracy&quot;</span>,</span>
+<span id="cb128-23"><a href="#cb128-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;direct vs manydist partition ARI&quot;</span>,</span>
+<span id="cb128-24"><a href="#cb128-24" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;direct vs manydist partition ARI&quot;</span></span>
+<span id="cb128-25"><a href="#cb128-25" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb128-26"><a href="#cb128-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">value =</span> <span class="fu">c</span>(</span>
+<span id="cb128-27"><a href="#cb128-27" aria-hidden="true" tabindex="-1"></a>    distance_check<span class="sc">$</span>value[<span class="dv">1</span>],</span>
+<span id="cb128-28"><a href="#cb128-28" aria-hidden="true" tabindex="-1"></a>    distance_check<span class="sc">$</span>value[<span class="dv">2</span>],</span>
+<span id="cb128-29"><a href="#cb128-29" aria-hidden="true" tabindex="-1"></a>    knn_check<span class="sc">$</span>value[<span class="dv">1</span>],</span>
+<span id="cb128-30"><a href="#cb128-30" aria-hidden="true" tabindex="-1"></a>    knn_check<span class="sc">$</span>value[<span class="dv">2</span>],</span>
+<span id="cb128-31"><a href="#cb128-31" aria-hidden="true" tabindex="-1"></a>    pam_check<span class="sc">$</span>value,</span>
+<span id="cb128-32"><a href="#cb128-32" aria-hidden="true" tabindex="-1"></a>    spectral_check<span class="sc">$</span>value</span>
+<span id="cb128-33"><a href="#cb128-33" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb128-34"><a href="#cb128-34" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb128-35"><a href="#cb128-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb128-36"><a href="#cb128-36" aria-hidden="true" tabindex="-1"></a>sanity_summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 4
+  method          dataset check                                            value
+  &lt;chr&gt;           &lt;chr&gt;   &lt;chr&gt;                                            &lt;dbl&gt;
+1 Distance matrix train   base Euclidean vs mdist() max abs diff        7.11e-15
+2 Distance matrix test    test-to-train Euclidean vs mdist() max abs d… 1.78e-15
+3 KNN             test    direct vs manydist exact agreement            9.88e- 1
+4 KNN             test    manydist accuracy                             8.10e- 1
+5 PAM             train   direct vs manydist partition ARI              1   e+ 0
+6 Spectral        train   direct vs manydist partition ARI              1   e+ 0</code></pre>
+</div>
+</div>
+<p>These results confirm that, on purely continuous data, <code>mdist()</code> reproduces Euclidean geometry essentially exactly, and that the downstream <code>manydist</code> interfaces are consistent with the corresponding standard methods applied directly to the original data matrix.</p>
+</section>
 </section>
 </section>
 <section id="summary" class="level1" data-number="11">

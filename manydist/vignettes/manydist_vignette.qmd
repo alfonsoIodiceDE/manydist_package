@@ -718,6 +718,328 @@ recipe-based pipeline matches the one obtained by first computing the
 distance matrix with `mdist()` and then applying the clustering method
 directly.
 
+## Consistency checks on continuous data
+
+In the special case of purely continuous predictors, the downstream
+interfaces provided by **manydist** should be consistent with the
+corresponding standard methods applied directly to the original data
+matrix under Euclidean geometry. For simplicity, we illustrate these
+checks on continuous data only, since Euclidean distance provides a
+natural and unambiguous reference in that setting. We then verify this
+for distance computation, nearest neighbours, PAM clustering, and
+spectral clustering.
+We start by restricting the penguin data to continuous predictors only.
+
+```{r sanity-continuous-setup}
+#| warning: false
+
+library(class)
+library(cluster)
+library(kernlab)
+library(mclust)
+
+peng_train_cont <- peng_train |>
+  select(species, where(is.numeric))
+
+peng_test_cont <- peng_test |>
+  select(species, where(is.numeric))
+
+x_train_cont <- peng_train_cont |> select(-species)
+x_test_cont  <- peng_test_cont  |> select(-species)
+y_train_cont <- peng_train_cont$species
+y_test_cont  <- peng_test_cont$species
+
+X_train <- as.matrix(x_train_cont)
+X_test  <- as.matrix(x_test_cont)
+
+k_knn   <- 5
+k_clust <- 3
+```
+
+### Euclidean distances: direct computation versus `mdist()`
+
+We first verify that `mdist()` reproduces ordinary Euclidean distances on
+continuous data when used with Euclidean distance, no scaling, and no
+commensurability correction.
+
+```{r sanity-distance-direct}
+D_train_eucl <- as.matrix(stats::dist(X_train))
+
+.euclid_block <- function(x_new, x_ref) {
+  x_new <- as.matrix(x_new)
+  x_ref <- as.matrix(x_ref)
+
+  n_new <- nrow(x_new)
+  all_x <- rbind(x_new, x_ref)
+  D_all <- as.matrix(stats::dist(all_x))
+
+  D_all[seq_len(n_new), n_new + seq_len(nrow(x_ref)), drop = FALSE]
+}
+
+D_test_train_eucl <- .euclid_block(X_test, X_train)
+
+d_train_mdist <- mdist(
+  x = x_train_cont,
+  distance_cont = "euclidean",
+  scaling_cont = "none",
+  commensurable = FALSE
+)
+
+D_train_mdist <- as.matrix(d_train_mdist$distance)
+
+d_test_mdist <- mdist(
+  x = x_train_cont,
+  new_data = x_test_cont,
+  distance_cont = "euclidean",
+  scaling_cont = "none",
+  commensurable = FALSE
+)
+
+D_test_train_mdist <- as.matrix(d_test_mdist$distance)
+```
+
+The maximum absolute difference is negligible on the training set and
+zero on the test-to-training distance block.
+
+```{r sanity-distance-check}
+distance_check <- tibble::tibble(
+  dataset = c("train", "test"),
+  check = c(
+    "base Euclidean vs mdist() max abs diff",
+    "test-to-train Euclidean vs mdist() max abs diff"
+  ),
+  value = c(
+    max(abs(D_train_eucl - D_train_mdist)),
+    max(abs(D_test_train_eucl - D_test_train_mdist))
+  )
+)
+
+distance_check
+```
+
+### KNN: direct Euclidean KNN versus `nearest_neighbor_dist()`
+
+We now compare standard KNN on the original continuous predictors with
+the `manydist` interface based on Euclidean dissimilarities.
+
+```{r sanity-knn-direct}
+knn_direct_pred <- class::knn(
+  train = X_train,
+  test  = X_test,
+  cl    = y_train_cont,
+  k     = k_knn
+)
+```
+
+The corresponding `manydist` pipeline uses `step_mdist()` to compute the
+Euclidean test-to-training distance representation.
+
+```{r sanity-knn-manydist}
+rec_knn_cont <- recipe(species ~ ., data = peng_train_cont) |>
+  step_mdist(
+    all_predictors(),
+    distance_cont = "euclidean",
+    scaling_cont = "none",
+    commensurable = FALSE
+  )
+
+knn_spec_cont <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = k_knn
+) |>
+  set_engine("precomputed")
+
+wf_knn_cont <- workflow() |>
+  add_recipe(rec_knn_cont) |>
+  add_model(knn_spec_cont)
+
+knn_fit_cont <- fit(wf_knn_cont, data = peng_train_cont)
+
+knn_manydist_pred <- predict(
+  knn_fit_cont,
+  new_data = peng_test_cont,
+  type = "class"
+)$.pred_class
+```
+
+We compare the direct and manydist-based predictions through exact
+agreement and report the manydist classification accuracy on the test
+set.
+
+```{r sanity-knn-check}
+knn_check <- tibble::tibble(
+  dataset = c("test", "test"),
+  check = c(
+    "direct vs manydist exact agreement",
+    "manydist accuracy"
+  ),
+  value = c(
+    mean(knn_direct_pred == knn_manydist_pred),
+    yardstick::accuracy_vec(y_test_cont, knn_manydist_pred)
+  )
+)
+
+knn_check
+```
+
+### PAM: direct Euclidean PAM versus `pam_dist()`
+
+For PAM clustering, the direct reference is `cluster::pam()` applied to
+the original continuous feature matrix with Euclidean metric.
+
+```{r sanity-pam-direct}
+pam_direct_fit <- cluster::pam(
+  x = X_train,
+  k = k_clust,
+  metric = "euclidean"
+)
+
+pam_direct_train <- pam_direct_fit$clustering
+```
+
+The corresponding `manydist` interface is based on a pairwise Euclidean
+dissimilarity matrix produced through `step_mdist(..., output = "pairwise")`.
+
+```{r sanity-pam-manydist}
+rec_clust_cont <- recipe(~ ., data = x_train_cont) |>
+  step_mdist(
+    all_predictors(),
+    distance_cont = "euclidean",
+    scaling_cont = "none",
+    commensurable = FALSE,
+    output = "pairwise"
+  )
+
+pam_spec_cont <- pam_dist(num_clusters = k_clust)
+
+pam_manydist_fit <- generics::fit(
+  pam_spec_cont,
+  recipe = rec_clust_cont,
+  data = x_train_cont
+)
+
+pam_manydist_train <- predict(pam_manydist_fit)$.pred_cluster |>
+  as.integer()
+```
+
+We compare the two training partitions via the adjusted Rand index.
+
+```{r sanity-pam-check}
+pam_check <- tibble::tibble(
+  dataset = "train",
+  check = "direct vs manydist partition ARI",
+  value = mclust::adjustedRandIndex(pam_direct_train, pam_manydist_train)
+)
+
+pam_check
+```
+
+### Spectral clustering: direct Gaussian-kernel clustering versus `spectral_dist()`
+
+For spectral clustering, we compare `spectral_dist()` with a direct
+spectral clustering benchmark on the original continuous data using
+`kernlab::specc()` and a Gaussian kernel. The Gaussian bandwidth is
+matched to the median Euclidean distance used by the manydist
+implementation.
+
+```{r sanity-spectral-direct}
+sigma_sc <- stats::median(D_train_eucl[upper.tri(D_train_eucl)])
+gamma_kernlab <- 1 / (2 * sigma_sc^2)
+
+set.seed(123)
+spectral_direct_train <- kernlab::specc(
+  x = X_train,
+  centers = k_clust,
+  kernel = "rbfdot",
+  kpar = list(sigma = gamma_kernlab)
+)
+
+spectral_direct_train <- as.integer(spectral_direct_train)
+```
+
+The corresponding `manydist` interface uses the same number of clusters
+and bandwidth, and is fitted on the pairwise Euclidean dissimilarity
+matrix produced by `step_mdist()`.
+
+```{r sanity-spectral-manydist}
+spectral_spec_cont <- spectral_dist(
+  num_clusters = k_clust,
+  sigma = sigma_sc
+)
+
+set.seed(123)
+spectral_manydist_fit <- generics::fit(
+  spectral_spec_cont,
+  recipe = rec_clust_cont,
+  data = x_train_cont
+)
+
+spectral_manydist_train <- predict(spectral_manydist_fit)$.pred_cluster |>
+  as.integer()
+```
+
+We again compare the two training partitions via the adjusted Rand
+index.
+
+```{r sanity-spectral-check}
+spectral_check <- tibble::tibble(
+  dataset = "train",
+  check = "direct vs manydist partition ARI",
+  value = mclust::adjustedRandIndex(spectral_direct_train, spectral_manydist_train)
+)
+
+spectral_check
+```
+
+### Summary of consistency checks
+
+We finally collect the results into a single summary table.
+
+```{r sanity-summary}
+sanity_summary <- tibble::tibble(
+  method = c(
+    "Distance matrix",
+    "Distance matrix",
+    "KNN",
+    "KNN",
+    "PAM",
+    "Spectral"
+  ),
+  dataset = c(
+    "train",
+    "test",
+    "test",
+    "test",
+    "train",
+    "train"
+  ),
+  check = c(
+    "base Euclidean vs mdist() max abs diff",
+    "test-to-train Euclidean vs mdist() max abs diff",
+    "direct vs manydist exact agreement",
+    "manydist accuracy",
+    "direct vs manydist partition ARI",
+    "direct vs manydist partition ARI"
+  ),
+  value = c(
+    distance_check$value[1],
+    distance_check$value[2],
+    knn_check$value[1],
+    knn_check$value[2],
+    pam_check$value,
+    spectral_check$value
+  )
+)
+
+sanity_summary
+```
+
+These results confirm that, on purely continuous data, `mdist()`
+reproduces Euclidean geometry essentially exactly, and that the
+downstream `manydist` interfaces are consistent with the corresponding
+standard methods applied directly to the original data matrix.
+
+
 # Summary
 
 In this vignette we showed how **manydist** can be used for
