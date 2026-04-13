@@ -35,13 +35,21 @@ cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
     method <- "tvd"
   }
 
-  if(method=="tvd"){
-    p=1
-
-    full_delta = blocks * create_delta(ZZod, nvar,p,chi2=FALSE)
-
-
+  if (method == "tvd") {
+    if (is.null(Z_y)) {
+      full_delta = blocks * create_delta(ZZod, nvar, p = 1, chi2 = FALSE)
+    } else {
+      full_delta = blocks * create_delta((t(Z) %*% Z_y) / zm, 3/2, 1, chi2 = FALSE)
+    }
   }
+
+  # if(method=="tvd"){
+  #   p=1
+  #
+  #   full_delta = blocks * create_delta(ZZod, nvar,p,chi2=FALSE)
+  #
+  #
+  # }
   # if(method=="euclid_prof"){
   #   #print("in euclid_prof")
   #   p=2

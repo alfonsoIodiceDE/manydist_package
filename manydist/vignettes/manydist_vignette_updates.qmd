@@ -140,3 +140,31 @@ Move toward:
 -	Transparency of defaults
 -	Extensibility (philentropy, supervised variants, downstream methods)
 -	User control (weights, methods, metrics)
+
+
+### Possible issues
+
+### 1. Supervised distance may not be using the response
+
+He computed a supervised distance with:
+
+```{r setup}
+#| include: true
+
+set.seed(123)
+rm(list = ls())
+devtools::load_all("../")
+# library(manydist)
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+```
+
+
+```{r}
+load("../vignettes/Dartpoints.RData")
+D_ab <- mdist(df, response = "Name")
+D <- mdist(df[,-1], response = NULL)
+sum(abs(D_ab$distance - D$distance))
+
+```
