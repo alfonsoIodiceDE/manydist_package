@@ -1,0 +1,613 @@
+---
+author: Alfonso Iodice D'Enza
+title: Distance-based learning with manydist and tidymodels
+subtitle: development log
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    number-sections: true
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: true
+
+set.seed(123)
+rm(list = ls())
+devtools::load_all("../")
+# library(manydist)
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+library(kableExtra)
+```
+
+
+
+
+This document consolidates the current comments and open issues into a single working to-do list, removing redundancies and grouping related points together.
+
+##  Presets and defaults
+
+###  Presets
+
+
+-  Consider adding a complete set of unbiased presets for consistency with the paper: 
+    - ✅  `u_dep` 
+    - ✅  `u_indep`
+    - ✅  `u_mix`
+  
+
+###  Naming
+
+-   ✅ Shorten `"unbiased_dependent"` if possible.
+  - it is now `u_dep`
+  
+- 🟡 Consider shortening `"euclidean_onehot"`.
+  
+  - not sure about this: the name is self-explanatory, one could just use `euclidean`, but it would not be clear the encoding for the categorical...
+
+###  Defaults
+
+✅  Reconsider the default settings of `mdist()`.
+
+ default values:
+
+```{r, eval=FALSE}
+preset="custom"
+distance_cont = "manhattan"
+scaling_cont  = "std"
+distance_cat  = "tvd"
+commensurable = TRUE
+```
+
+
+##  Categorical distances
+
+This section tracks the ongoing refactoring of the categorical-distance machinery, mainly through `cdist()`, `cat_delta()`, and `cat_custom_delta()`.
+
+The previous CRAN implementation has been frozen under:
+- `cdist_old_cran`
+- `cat_delta_old_cran`
+- `cat_custom_delta_old_cran`
+
+This makes it possible to check backward compatibility while extending the new implementation.
+
+###  Backward-compatibility checks
+
+The first step was to verify that the refactored code reproduces the previous behavior where it should.
+
+```{r}
+load(file = "Dartpoints.RData")
+
+x_cat <- df |>
+  dplyr::select(-Name) |>
+  dplyr::select(where(is.factor))
+
+all.equal(
+  base::as.matrix(cdist_old_cran(x_cat, method = "tvd", response = NULL)$distance_mat),
+  base::as.matrix(cdist(x_cat,          method = "tvd", response = NULL)$distance_mat)
+)
+
+all.equal(
+  base::as.matrix(cdist_old_cran(x_cat, method = "matching")$distance_mat),
+  base::as.matrix(cdist(x_cat,          method = "matching")$distance_mat)
+)
+
+all.equal(
+  base::as.matrix(cdist_old_cran(x_cat, method = "tvd", response = df$Name)$distance_mat),
+  base::as.matrix(cdist(x_cat,          method = "tvd", response = df$Name)$distance_mat)
+)
+```
+
+At this stage, the new implementation is being checked incrementally against the frozen CRAN version before introducing broader extensions.
+
+
+### Available distances and benchmarking
+
+A key step in the redesign was to make the distance options in `manydist` easier to inspect programmatically. This is useful for at least three reasons:
+
+- it makes the package interface more transparent;
+- it supports systematic benchmarking across alternative specifications;
+- it clarifies which methods are internally implemented and which rely on external engines such as `philentropy`.
+
+::: {.callout-note appearance="minimal" icon=false}
+Provide a way to list all available categorical distances. Consider a helper like `getDistMethods()` in the style of `philentropy`, and allow programmatic access to all options for benchmarking loops.
+:::
+
+A first implementation strategy is to rely on:
+
+```{r}
+philentropy::getDistMethods()
+```
+
+which already provides a full programmatic list of philentropy-supported categorical measures.
+
+However, this alone is not sufficient for `manydist`, because the package exposes a broader interface than the philentropy set alone. In particular, the available methods must also distinguish:
+
+- whether they refer to `distance_cont`, `distance_cat`, `scaling_cont`, or `preset`;
+- whether they apply to numeric, categorical, or mixed data;
+- whether they are association-based, independence-based, indicator-scaling based, or mixed-block based;
+- whether they are response-aware;
+- which engine computes them.
+
+To address this, I introduced a helper returning a tibble of method metadata:
+
+```{r}
+dist_methods_tbl() |> kbl()
+```
+
+The goal of this helper is descriptive rather than operational. It acts as a compact dictionary of the currently available distance-related options in `manydist`, including continuous distances, categorical distances, scaling options, and mixed-data presets.
+
+The current columns record, for each method:
+
+- `method`: the method name;
+- `argument`: the argument of `mdist()` to which the method belongs;
+- `data_type`: whether it refers to numeric, categorical, or mixed data;
+- `distance_basis`: the main methodological family;
+- `response_aware`: whether the method can make use of a supplied response;
+- `engine`: whether the method is computed by `manydist`, `philentropy`, `kdml`, or through an external port.
+
+This makes the package interface much easier to inspect programmatically. For example, one can now retrieve only the categorical distances, only response-aware methods, or only methods computed through a given engine.
+
+The next step was to move from a descriptive inventory to an actionable benchmarking grid. For that purpose, I added a second helper:
+
+```{r}
+selected_specs = all_dist_method_specs(mode = "response_aware",scaling_cont="std",distance_cat=c("jensen-shannon","tvd"))
+```
+
+
+
+- `dist_methods_tbl()` is descriptive: it tells the user what is available;
+- `all_dist_method_specs()` is actionable: it builds a tibble of valid `mdist()` specifications that can actually be run.
+
+Each row of `all_dist_method_specs()` represents one candidate specification for `mdist()`. Depending on the row, this may correspond either to:
+
+- a preset-based specification;
+- or a component-based specification combining `distance_cont`, `distance_cat`, `scaling_cont`, and `commensurable`.
+
+This provides the basis for benchmarking workflows, because the specification tibble can be passed directly to a benchmarking wrapper.
+
+To make this concrete, I added:
+
+```{r}
+bench_res = benchmark_mdist(df,response = "Name",specs = selected_specs)
+bench_res
+```
+
+
+
+which applies `mdist()` over the rows of a specification tibble, typically created with `all_dist_method_specs()`. In this way, benchmarking no longer depends on ad hoc loops written by the user; instead, the package now has a more explicit infrastructure for method enumeration and comparison.
+
+Overall, this redesign separates three related but distinct tasks:
+
+- method description (`dist_methods_tbl()`);
+- method-specification generation (`all_dist_method_specs()`);
+- repeated execution for benchmarking (`benchmark_mdist()`).
+
+This makes the package interface more transparent and should also help future extensions, documentation, and systematic comparison studies.
+
+###  Validation of philentropy-based distances
+
+The refactored `cdist()` now supports the philentropy family more systematically.
+
+Initial spot checks:
+
+```{r}
+D_hel <- cdist(x_cat, method = "hellinger", commensurable = FALSE)
+D_js  <- cdist(x_cat, method = "jensen-shannon", commensurable = FALSE)
+D_euc <- cdist(x_cat, method = "euclidean", commensurable = FALSE)
+```
+
+Full screening over all philentropy methods:
+
+```{r}
+phil_methods <- philentropy::getDistMethods()
+
+phil_checks <- purrr::map_dfr(phil_methods, function(m) {
+  out <- tryCatch({
+    D <- cdist(x_cat, method = m, commensurable = FALSE)
+    mat <- base::as.matrix(D$distance_mat)
+    Delta <- base::as.matrix(D$delta)
+
+    tibble::tibble(
+      method = m,
+      ok = TRUE,
+      dist_any_na = any(is.na(mat)),
+      dist_any_inf = any(is.infinite(mat)),
+      dist_sym = isTRUE(all.equal(mat, t(mat), tolerance = 1e-10)),
+      delta_any_na = any(is.na(Delta)),
+      delta_any_inf = any(is.infinite(Delta)),
+      delta_sym = isTRUE(all.equal(Delta, t(Delta), tolerance = 1e-10)),
+      dist_min = min(mat, na.rm = TRUE),
+      dist_max = max(mat, na.rm = TRUE)
+    )
+  }, error = function(e) {
+    tibble::tibble(
+      method = m,
+      ok = FALSE,
+      dist_any_na = NA,
+      dist_any_inf = NA,
+      dist_sym = NA,
+      delta_any_na = NA,
+      delta_any_inf = NA,
+      delta_sym = NA,
+      dist_min = NA_real_,
+      dist_max = NA_real_,
+      error = conditionMessage(e)
+    )
+  })
+
+  if (!"error" %in% names(out)) out$error <- NA_character_
+  out
+})
+
+phil_checks
+```
+
+The same check under commensurability:
+
+```{r}
+phil_checks_comm <- purrr::map_dfr(phil_methods, function(m) {
+  out <- tryCatch({
+    D <- cdist(x_cat, method = m, commensurable = TRUE)
+    mat <- base::as.matrix(D$distance_mat)
+    Delta <- base::as.matrix(D$delta)
+
+    tibble::tibble(
+      method = m,
+      ok = TRUE,
+      dist_any_na = any(is.na(mat)),
+      dist_any_inf = any(is.infinite(mat)),
+      dist_sym = isTRUE(all.equal(mat, t(mat), tolerance = 1e-10)),
+      delta_any_na = any(is.na(Delta)),
+      delta_any_inf = any(is.infinite(Delta)),
+      delta_sym = isTRUE(all.equal(Delta, t(Delta), tolerance = 1e-10)),
+      dist_min = min(mat, na.rm = TRUE),
+      dist_max = max(mat, na.rm = TRUE)
+    )
+  }, error = function(e) {
+    tibble::tibble(
+      method = m,
+      ok = FALSE,
+      dist_any_na = NA,
+      dist_any_inf = NA,
+      dist_sym = NA,
+      delta_any_na = NA,
+      delta_any_inf = NA,
+      delta_sym = NA,
+      dist_min = NA_real_,
+      dist_max = NA_real_,
+      error = conditionMessage(e)
+    )
+  })
+
+  if (!"error" %in% names(out)) out$error <- NA_character_
+  out
+})
+
+phil_checks_comm
+```
+
+These checks establish which philentropy distances behave well inside the manydist framework, both with and without commensurability.
+
+::: {.callout-note appearance="minimal" icon=false}
+Original comment:
+Extend `mdist()` so that unsupervised association-based distances work beyond `tvd`, ideally including `le_and_ho`, relevant philentropy-based options, and other compatible association-based distances.
+:::
+
+The current outcome is that philentropy-based distances can now be validated systematically within `cdist()`, and this provides the basis for extending the supported association-based categorical distances beyond `tvd`.
+
+
+###  Validation of `le_and_ho`
+
+`le_and_ho` was checked separately because it does not pass through the generic philentropy wrapper.
+
+```{r}
+D_lh <- cdist(x_cat, method = "le_and_ho", commensurable = FALSE)
+
+mat_lh <- base::as.matrix(D_lh$distance_mat)
+Delta_lh <- base::as.matrix(D_lh$delta)
+
+any(is.na(mat_lh))
+any(is.infinite(mat_lh))
+isTRUE(all.equal(mat_lh, t(mat_lh), tolerance = 1e-10))
+
+any(is.na(Delta_lh))
+any(is.infinite(Delta_lh))
+isTRUE(all.equal(Delta_lh, t(Delta_lh), tolerance = 1e-10))
+
+range(mat_lh, na.rm = TRUE)
+range(Delta_lh, na.rm = TRUE)
+```
+
+At the unsupervised level, `le_and_ho` behaves correctly:
+- the distance matrix is finite;
+- the distance matrix is symmetric;
+- the Delta matrix is finite;
+- the Delta matrix is symmetric.
+
+This confirms that `le_and_ho` can be treated as a valid association-based categorical distance within the current `cdist()` framework.
+
+::: {.callout-note appearance="minimal" icon=false}
+Original comment:
+Extend `mdist()` so that unsupervised association-based distances work beyond `tvd`, ideally including `le_and_ho`.
+:::
+
+This specific check supports that extension, at least in the unsupervised setting.
+
+###  Supervised vs unsupervised profile-based distances
+
+The current redesign distinguishes between:
+
+- **response-irrelevant methods**, which ignore `response` and issue a warning;
+- **profile-based methods**, which use:
+  - unsupervised profiles when `response = NULL`,
+  - supervised category-by-response profiles when `response` is supplied.
+
+This logic is now implemented through the interaction between:
+- `cdist()`,
+- `cat_delta()`,
+- `cat_custom_delta()`.
+
+::: {.callout-note appearance="minimal" icon=false}
+Original comment:
+Clarify and implement the intended supervised behavior. When `response = NULL`, `distance_cat = "tvd"` should behave as the ordinary unsupervised version; when `response` is provided, it should switch to the supervised association-based version. Also consider extending this logic to other association-based categorical distances.
+:::
+
+#### `tvd`
+
+```{r}
+tvd_unsup <- cdist(x_cat, method = "tvd", response = NULL)
+tvd_sup   <- cdist(x_cat, method = "tvd", response = df$Name)
+
+mat_unsup  <- base::as.matrix(tvd_unsup$distance_mat)
+mat_sup    <- base::as.matrix(tvd_sup$distance_mat)
+
+delta_unsup <- base::as.matrix(tvd_unsup$delta)
+delta_sup   <- base::as.matrix(tvd_sup$delta)
+
+c(
+  unsup_na   = any(is.na(mat_unsup)),
+  unsup_inf  = any(is.infinite(mat_unsup)),
+  unsup_sym  = isTRUE(all.equal(mat_unsup, t(mat_unsup), tolerance = 1e-10)),
+  sup_na     = any(is.na(mat_sup)),
+  sup_inf    = any(is.infinite(mat_sup)),
+  sup_sym    = isTRUE(all.equal(mat_sup, t(mat_sup), tolerance = 1e-10))
+)
+
+sum(abs(mat_unsup - mat_sup))
+sum(abs(delta_unsup - delta_sup))
+
+isTRUE(all.equal(unname(diag(delta_unsup)), rep(0, nrow(delta_unsup))))
+isTRUE(all.equal(unname(diag(delta_sup)), rep(0, nrow(delta_sup))))
+```
+
+These checks confirm that:
+
+- both unsupervised and supervised `tvd` are valid;
+- both remain symmetric;
+- supervision changes both the distance matrix and the Delta matrix;
+- both Delta matrices retain zero diagonal.
+
+#### `gifi_chi2`
+
+```{r}
+gifi_unsup <- cdist(x_cat, method = "gifi_chi2", response = NULL)
+gifi_sup   <- cdist(x_cat, method = "gifi_chi2", response = df$Name)
+
+mat_unsup   <- base::as.matrix(gifi_unsup$distance_mat)
+mat_sup     <- base::as.matrix(gifi_sup$distance_mat)
+delta_unsup <- base::as.matrix(gifi_unsup$delta)
+delta_sup   <- base::as.matrix(gifi_sup$delta)
+
+c(
+  unsup_na  = any(is.na(mat_unsup)),
+  unsup_inf = any(is.infinite(mat_unsup)),
+  unsup_sym = isTRUE(all.equal(mat_unsup, t(mat_unsup), tolerance = 1e-10)),
+  sup_na    = any(is.na(mat_sup)),
+  sup_inf   = any(is.infinite(mat_sup)),
+  sup_sym   = isTRUE(all.equal(mat_sup, t(mat_sup), tolerance = 1e-10))
+)
+
+sum(abs(mat_unsup - mat_sup))
+sum(abs(delta_unsup - delta_sup))
+
+all(diag(delta_unsup) == 0)
+all(diag(delta_sup) == 0)
+
+range(mat_unsup, na.rm = TRUE)
+range(mat_sup, na.rm = TRUE)
+
+range(delta_unsup, na.rm = TRUE)
+range(delta_sup, na.rm = TRUE)
+```
+
+These checks show that supervised and unsupervised logic also works for `gifi_chi2`, with valid and symmetric outputs in both cases.
+
+#### `le_and_ho` and philentropy-based profile distances
+
+A first representative check uses `le_and_ho` and `jensen-shannon`:
+
+```{r}
+lh_unsup <- cdist(x_cat, method = "le_and_ho", response = NULL)
+lh_sup   <- cdist(x_cat, method = "le_and_ho", response = df$Name)
+
+js_unsup <- cdist(x_cat, method = "jensen-shannon", response = NULL)
+js_sup   <- cdist(x_cat, method = "jensen-shannon", response = df$Name)
+```
+
+Difference checks:
+
+```{r}
+sum(abs(base::as.matrix(lh_unsup$distance_mat) - base::as.matrix(lh_sup$distance_mat)))
+sum(abs(base::as.matrix(lh_unsup$delta) - base::as.matrix(lh_sup$delta)))
+
+sum(abs(base::as.matrix(js_unsup$distance_mat) - base::as.matrix(js_sup$distance_mat)))
+sum(abs(base::as.matrix(js_unsup$delta) - base::as.matrix(js_sup$delta)))
+```
+
+These checks are intended to verify that:
+
+- the supervised profile-based branch is active;
+- the supervised version does not collapse to the unsupervised one.
+
+
+
+###  Response handling policy
+
+Current design choice:
+
+- profile-based categorical distances use `response` when provided;
+- non-profile-based methods ignore `response` and emit a warning.
+
+This is currently the cleanest policy, and it avoids silently overriding the user’s chosen distance.
+
+::: {.callout-note appearance="minimal" icon=false}
+Original comment:
+When the user provides `response` together with a non-association-based distance such as `"matching"`, decide whether to ignore `response` with a warning or override to a supervised association-based distance.
+:::
+
+Current choice:
+- **ignore `response` and warn**.
+
+Illustrative checks:
+
+```{r, eval=FALSE}
+chk1 <- cdist(x_cat, method = "matching", response = df$Name)
+chk2 <- cdist(x_cat, method = "mca", response = df$Name)
+chk3 <- cdist(x_cat, method = "tvd", response = df$Name)
+chk4 <- cdist(x_cat, method = "le_and_ho", response = df$Name)
+```
+
+This policy is consistent with the current separation between:
+- response-irrelevant methods;
+- profile-based methods.
+
+
+
+###  Naming cleanup
+
+The naming transition from `"tot_var_dist"` to `"tvd"` is now part of the cleanup and should be made consistent throughout the package and documentation.
+
+::: {.callout-note appearance="minimal" icon=false}
+Original comment:
+Replace `"tot_var_dist"` with `"tvd"` consistently.
+:::
+
+Current direction:
+- normalize `"tot_var_dist"` to `"tvd"` internally;
+- use `"tvd"` consistently in examples, checks, and documentation;
+- progressively remove legacy references where no longer needed.
+
+
+
+##  LOVO framework and outputs
+
+### LOVO with supervised distances
+
+Enable supervised association-based distances in `lovo_mdist()`.
+
+Desired interface:
+
+```{r}
+#lovo_res <- lovo_mdist(df, response = "Name", distance_cat = "tvd")
+```
+
+and, more generally, with other supported association-based distances.
+
+###  LOVO comparison design
+
+Rework `lovo_cmp` / `compare_lovo_mdist()` so that supervised and non-supervised methods can be compared in a unified framework.
+
+A possible interface is:
+
+```{r}
+#compare_lovo_mdist(X, y, methods)
+```
+
+with: - non-supervised methods ignoring `y`; - supervised association-based methods using `y`.
+
+Need to decide whether: - `y` should be passed directly to the comparison function, or - `y` should be embedded inside each method specification.
+
+###  Variable-importance logic
+
+Generalize LOVO so that importance depends on the downstream task.
+
+Possible structure: - MDS → AC / CC - PAM → ARI or cluster stability metric - Spectral clustering → ARI or similar - More generally: importance should reflect the target use of the distance
+
+###  LOVO metrics and naming
+
+-   Reconsider whether Alienation Coefficient (AC) should remain prominent, since it is closely tied to the paper and may be hard to interpret for general users.
+-   Rename `mad_normalized` to something clearer, for example:
+    -   `"relative distance"`
+
+###  LOVO plots and output
+
+-   Improve the y-scale in `autoplot()` for normalized MAD / relative distance.
+-   Add targeted `summary()` and/or `print()` methods for:
+    -   `lovo`
+    -   `lovo_cmp`
+-   Ensure summary output can produce usable tables, not just raw tibbles.
+
+### Additional LOVO questions
+
+-   Should there be a spectral clustering importance measure?
+-   Should LOVO default to one-cluster methods only, or to all available methods?
+
+## . Downstream clustering support
+
+### Spectral clustering
+
+Improve `spectral_from_dist()` so that it accepts both: - a distance matrix; - a distance object such as `mdist$distance`.
+
+###  Built-in downstream methods
+
+Consider expanding built-in support for: - PAM - hierarchical clustering - spectral clustering - other downstream methods using distances
+
+###  Hierarchical clustering documentation
+
+Document clearly which linkage is used in hierarchical clustering workflows. Current assumption: complete linkage. This should be confirmed and made explicit.
+
+##  Variable weights
+
+-   Reintroduce or expand support for user-defined variable weights.
+-   Potential uses include:
+    -   emphasizing specific variables;
+    -   weighting continuous and categorical blocks differently;
+    -   randomized weighting for robustness analyses;
+    -   future tuning strategies for weights.
+
+Need to clarify how this should interact with commensurability.
+
+##  MCA issue
+
+Investigate the behavior of `distance_cat = "mca"` under commensurability.
+
+Expected: - methods whose Delta matrix is only a constant multiple of matching should collapse under commensurability, e.g.: - matching - eskin - HL - naive
+
+Unexpected: - `mca` currently appears to collapse to commensurable matching as well.
+
+Why this is problematic: - MCA uses marginal frequencies in its Delta matrix; - therefore, unless category distributions are exactly balanced, commensurable `mca` should not become identical to commensurable matching.
+
+This issue needs clarification and likely a code check.
+
+## Documentation and transparency
+
+
+### Specific documentation needs
+
+-   Document clearly which distances are:
+    -   association-based;
+    -   supervised-capable;
+    -   independent of the response.
+-   Document what happens when `response` is supplied with a distance that does not use it.
+-   Document hierarchical clustering defaults.
+-   Document LOVO output and interpretation more clearly.
+

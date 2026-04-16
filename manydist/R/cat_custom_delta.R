@@ -1,213 +1,192 @@
-cat_custom_delta<-function(ZZod,Z,Z_y,Z_list,zm,Q,nvar,method,Qs){
+cat_custom_delta <- function(ZZod, Z, Z_y, Z_list, zm, Q, nvar, method, Qs) {
 
-  .x = NULL
-  a = NULL
-  b = NULL
-  blocks = NULL
-  id = NULL
-  # Qs=ncol(Z)
-  n=nrow(Z)
-  Qlist=split(Q,1:length(Q))
-  blocks = bdiag(map(.x=Qlist,~matrix(1,nrow=.x,ncol=.x)))
+  .x <- NULL
 
-  Qlisty=split(c(Q,ncol(Z_y)),1:length(c(Q,ncol(Z_y))))
-  blocksy = bdiag(map(.x=Qlisty,~matrix(1,nrow=.x,ncol=.x)))
-
-
-  create_delta <- function(Z,nvar,p,chi2=FALSE){
-    if(chi2==FALSE){
-      if(nvar !=1)
-        Dsel<-as.matrix(dist(Z,method="minkowski", p=p))/((3-p)*(nvar-1)) # divide by 2 if ln=1
-      else
-        ### CHECK IF THIS IS OK 30-Oct-2024
-        Dsel<-as.matrix(dist(Z,method="minkowski", p=p))/((3-p)*(nvar)) # divide by 2 if ln=1
-    }else{
-      if(nvar !=1)
-        Dsel<-as.matrix(dist(Z,method="minkowski", p=p)^2)/((3-p)*(nvar-1)) # divide by 2 if ln=1
-      else
-        ### CHECK IF THIS IS OK 30-Oct-2024
-        Dsel<-as.matrix(dist(Z,method="minkowski", p=p))/((3-p)*(nvar)) # divide by 2 if ln=1
-    }
-    return(Dsel)
-  }
+  n <- nrow(Z)
 
   if (method %in% c("tvd", "tot_var_dist")) {
     method <- "tvd"
   }
 
-  if (method == "tvd") {
-    if (is.null(Z_y)) {
-      full_delta = blocks * create_delta(ZZod, nvar, p = 1, chi2 = FALSE)
+  # ------------------------------------------------------------------
+  # helpers
+  # ------------------------------------------------------------------
+
+  Qlist <- split(Q, seq_along(Q))
+  blocks <- Matrix::bdiag(purrr::map(.x = Qlist, ~ matrix(1, nrow = .x, ncol = .x)))
+
+  create_delta <- function(profile_mat, n_profiles, p, chi2 = FALSE) {
+    if (!chi2) {
+      if (n_profiles != 1) {
+        Dsel <- as.matrix(stats::dist(profile_mat, method = "minkowski", p = p)) /
+          ((3 - p) * (n_profiles - 1))
+      } else {
+        Dsel <- as.matrix(stats::dist(profile_mat, method = "minkowski", p = p)) /
+          ((3 - p) * n_profiles)
+      }
     } else {
-      full_delta = blocks * create_delta((t(Z) %*% Z_y) / zm, 3/2, 1, chi2 = FALSE)
+      if (n_profiles != 1) {
+        Dsel <- as.matrix(stats::dist(profile_mat, method = "minkowski", p = p)^2) /
+          ((3 - p) * (n_profiles - 1))
+      } else {
+        Dsel <- as.matrix(stats::dist(profile_mat, method = "minkowski", p = p)) /
+          ((3 - p) * n_profiles)
+      }
     }
+    Dsel
   }
 
-  # if(method=="tvd"){
-  #   p=1
-  #
-  #   full_delta = blocks * create_delta(ZZod, nvar,p,chi2=FALSE)
-  #
-  #
-  # }
-  # if(method=="euclid_prof"){
-  #   #print("in euclid_prof")
-  #   p=2
-  #   full_delta = blocks * create_delta(ZZod, nvar,p,chi2=FALSE)
-  #
-  # }
-  if(method=="gifi_chi2" ){
-    #print("in chi2")
-    #ZZod2
-    p=2
-   # full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm)), nvar,p,chi2=TRUE)
-    full_delta = blocks *  create_delta(t(t(ZZod)/sqrt(zm/n)), nvar,p,chi2=TRUE) # New: Corrected probability zm/n. Takes average over nvar-1
-
-
-  }
-  # if(method=="w_chi2"){
-  #   #print("in w_chi2")
-  #   #ZZod4
-  #   p=2
-  #   delta_input=t(t(ZZod)/sqrt(zm)) * zm^(.5)
-  #   full_delta = blocks * create_delta(delta_input,nvar,p,chi2=FALSE)
-  #
-  # }
-  # if(method=="std_res"){
-  #   #print("in std_res")
-  #   #ZZod3
-  #   p=2
-  #   full_delta = blocks * create_delta(t(t(ZZod)/sqrt(zm)) / zm^(.5), nvar,p,chi2=FALSE)
-  #
-  # }
-  if(method=="supervised"){
-    #  print("in suvervised")
-    #ZZyod
-    full_delta = blocks * create_delta((t(Z)%*%Z_y)/zm,3/2,1,chi2=FALSE) # so that ((3-1)*(nv-1))= 1
-
+  get_supervised_profiles <- function() {
+    if (is.null(Z_y)) {
+      stop("Supervised profiles requested but `Z_y` is NULL.", call. = FALSE)
+    }
+    sweep(t(Z) %*% Z_y, 1, zm, "/")
   }
 
-  if(method=="supervised_full"){
-    # print("in suvervised")
-    #ZZyod
-    ZZy <- cbind(Z,Z_y)
-    zmy <- c(zm,colSums(t(Z_y)%*%Z_y))
-    BBy <- (t(ZZy)%*%ZZy)/zmy
-    full_delta = blocksy * create_delta(BBy,3/2,1,chi2=FALSE) # so that ((3-1)*(nv-1))= 1
-    full_delta = full_delta[1:ncol(Z),1:ncol(Z)]
+  get_unsupervised_profiles <- function() {
+    ZZod
   }
 
-  if(method=="matching"){
-    #print("in matching")
-    full_delta = blocks ### /length(Q) WARNING 3 OCT SH1TSHOW
+  # ------------------------------------------------------------------
+  # response-irrelevant methods
+  # ------------------------------------------------------------------
 
-    diag(full_delta) = 0
-
-  }
-  if(method=="eskin"){
-
-    # print("in eskin")
-
-    full_delta = bdiag(map(.x=Z_list,.f=function(x=.x){
-      Qi=ncol(x)
-      sk=Qi^2/(Qi^2+2)
-      return(
-        #matrix((1/sk -1),nrow=Qi,ncol=Qi)/nvar
-        matrix((1/sk -1),nrow=Qi,ncol=Qi)
-      )
-    })
-    )
-
-    diag(full_delta)=0
-
-
-  }
-  if(method=="goodall_3"){
-    #print("in good3")
-    full_delta = (blocks* (rep(1,Qs,Qs)-
-                             diag(1 - (zm *  (zm- 1)) / (n*(n-1)),
-                                  nrow = Qs,ncol = Qs)))/nvar
-
-  }
-  if(method=="goodall_4"){
-    #print("in good4")
-    full_delta = (blocks* (rep(1,Qs,Qs)-
-                             diag(((zm *  (zm- 1)) / (n*(n-1))),
-                                  nrow = Qs,ncol = Qs)))/nvar
-
-  }
-  if(method=="iof"){
-    #print("in iof")
-    full_delta = 1/(1+(log(zm)%*%t(log(zm))))
-    diag(full_delta) = 1
-    full_delta = (blocks*(1/full_delta -1))/nvar
-
-  }
-  if(method=="of"){
-    #print("in of")
-    full_delta = 1/(1+(log(n/zm)%*%t(log(n/zm))))
-    diag(full_delta) = 1
-    full_delta = (blocks*(1/full_delta -1))/nvar
-    #  if (sum(is.nan(full_delta))>0)
-    #    print('NaNs!!')
+  if (method == "matching") {
+    full_delta <- as.matrix(blocks)
+    diag(full_delta) <- 0
+    return(full_delta)
   }
 
-  if(method=="lin"){
-    prop = as.matrix(zm/n)
+  if (method == "eskin") {
+    full_delta <- Matrix::bdiag(
+      purrr::map(.x = Z_list, .f = function(x) {
+        Qi <- ncol(x)
+        sk <- Qi^2 / (Qi^2 + 2)
+        matrix((1 / sk - 1), nrow = Qi, ncol = Qi)
+      })
+    ) |>
+      as.matrix()
 
+    diag(full_delta) <- 0
+    return(full_delta)
+  }
 
-    pv<-prop
-    pr<-pv %*% rep(1,Qs)
-    pc<-rep(1,Qs) %*% t(pv)
-    pp<-pr+pc
-    pplog<-log(pr)+log(pc)
-    diag(pp)<-prop
- #   print(log(pp))
-  #  linsim2<- (pplog - 2*log(pp))/2*log(pp)
-    linsim2<- (pplog - 2*log(pp))/2*log(pp) # NEW CODE, ADDED BRACKETS FOR DIVISION AND ADDED EPS 27-12-2024
-    linsim2[is.nan(linsim2)] <- 0 # ADDED 8 July 2025 - NEEDS FURTHER INVESTIGTION
-    # print(blocks)
-    full_delta<-as.matrix(blocks*linsim2)
-    #full_delta<-as.matrix(blocks*linsim2)/nvar
-    # For all 2x2 blocks corresponding to q_j=2, set full_delta equal to 0
+  if (method == "goodall_3") {
+    full_delta <- (blocks * (
+      rep(1, Qs, Qs) -
+        diag(1 - (zm * (zm - 1)) / (n * (n - 1)), nrow = Qs, ncol = Qs)
+    )) / nvar
+    return(as.matrix(full_delta))
+  }
+
+  if (method == "goodall_4") {
+    full_delta <- (blocks * (
+      rep(1, Qs, Qs) -
+        diag(((zm * (zm - 1)) / (n * (n - 1))), nrow = Qs, ncol = Qs)
+    )) / nvar
+    return(as.matrix(full_delta))
+  }
+
+  if (method == "iof") {
+    full_delta <- 1 / (1 + (log(zm) %*% t(log(zm))))
+    diag(full_delta) <- 1
+    full_delta <- (blocks * (1 / full_delta - 1)) / nvar
+    return(as.matrix(full_delta))
+  }
+
+  if (method == "of") {
+    full_delta <- 1 / (1 + (log(n / zm) %*% t(log(n / zm))))
+    diag(full_delta) <- 1
+    full_delta <- (blocks * (1 / full_delta - 1)) / nvar
+    return(as.matrix(full_delta))
+  }
+
+  if (method == "lin") {
+    prop <- as.matrix(zm / n)
+
+    pv <- prop
+    pr <- pv %*% rep(1, Qs)
+    pc <- rep(1, Qs) %*% t(pv)
+    pp <- pr + pc
+    pplog <- log(pr) + log(pc)
+    diag(pp) <- prop
+
+    linsim2 <- (pplog - 2 * log(pp)) / 2 * log(pp)
+    linsim2[is.nan(linsim2)] <- 0
+
+    full_delta <- as.matrix(blocks * linsim2)
+
     start_index <- 1
     for (j in seq_along(Q)) {
-      if (Q[j] == 2) { # Check if q_j = 2
+      if (Q[j] == 2) {
         end_index <- start_index + 1
-        # full_delta[start_index:end_index, start_index:end_index] <- 0 # Set 2x2 block to 0
-        # # Create simple matching dissimilarity matrix for this block
         simple_matching_block <- matrix(1, nrow = 2, ncol = 2) - diag(2)
         full_delta[start_index:end_index, start_index:end_index] <- simple_matching_block
       }
-      start_index <- start_index + Q[j] # Move to the next block
+      start_index <- start_index + Q[j]
     }
-   # print(full_delta)
+
+    return(full_delta)
   }
 
-  if(method=="var_entropy"){
-    prop = as.matrix(zm/n)
-    full_delta = matrix(0,Qs,Qs)
-    pos=0
-    for(i in 1:nvar){
-      sk= -1/log(Q[i])
-      plogp<-prop[(pos+1):(pos+Q[i])] %*% log(prop[(pos+1):(pos+Q[i])])
-      full_delta[(pos+1):(pos+Q[i]),(pos+1):(pos+Q[i])]<-1 - sk*diag(rep(plogp,Q[i]))
-      pos<-pos+Q[i]
+  if (method == "var_entropy") {
+    prop <- as.matrix(zm / n)
+    full_delta <- matrix(0, Qs, Qs)
+    pos <- 0
+
+    for (i in seq_len(nvar)) {
+      sk <- -1 / log(Q[i])
+      plogp <- prop[(pos + 1):(pos + Q[i])] %*% log(prop[(pos + 1):(pos + Q[i])])
+      full_delta[(pos + 1):(pos + Q[i]), (pos + 1):(pos + Q[i])] <- 1 - sk * diag(rep(plogp, Q[i]))
+      pos <- pos + Q[i]
     }
-    full_delta=full_delta/nvar
+
+    full_delta <- full_delta / nvar
+    return(full_delta)
   }
 
-  if(method=="var_mutability"){
-    prop = as.matrix(zm/n)
-    full_delta = matrix(0,Qs,Qs)
-    pos=0
-    for(i in 1:nvar){
-      sk2<-Q[i]/(Q[i]-1)
-      pp<-1-prop[(pos+1):(pos+Q[i])] %*% prop[(pos+1):(pos+Q[i])]
-      full_delta[(pos+1):(pos+Q[i]),(pos+1):(pos+Q[i])]<- 1 - sk2*diag(rep(pp,Q[i]))
-      pos<-pos+Q[i]
+  if (method == "var_mutability") {
+    prop <- as.matrix(zm / n)
+    full_delta <- matrix(0, Qs, Qs)
+    pos <- 0
+
+    for (i in seq_len(nvar)) {
+      sk2 <- Q[i] / (Q[i] - 1)
+      pp <- 1 - prop[(pos + 1):(pos + Q[i])] %*% prop[(pos + 1):(pos + Q[i])]
+      full_delta[(pos + 1):(pos + Q[i]), (pos + 1):(pos + Q[i])] <- 1 - sk2 * diag(rep(pp, Q[i]))
+      pos <- pos + Q[i]
     }
-    full_delta=full_delta/nvar
+
+    full_delta <- full_delta / nvar
+    return(full_delta)
   }
-  return(full_delta)
+
+  # ------------------------------------------------------------------
+  # profile-based custom methods
+  # ------------------------------------------------------------------
+
+  if (method == "tvd") {
+    profile_mat <- if (is.null(Z_y)) get_unsupervised_profiles() else get_supervised_profiles()
+    n_profiles  <- if (is.null(Z_y)) nvar else 3 / 2
+
+    full_delta <- blocks * create_delta(profile_mat, n_profiles = n_profiles, p = 1, chi2 = FALSE)
+    return(as.matrix(full_delta))
+  }
+
+  if (method == "gifi_chi2") {
+    if (is.null(Z_y)) {
+      profile_mat <- t(t(get_unsupervised_profiles()) / sqrt(zm / n))
+      n_profiles  <- nvar
+    } else {
+      sup_prof <- get_supervised_profiles()
+      sup_marg <- rowSums(t(Z) %*% Z_y)
+      profile_mat <- t(t(sup_prof) / sqrt(sup_marg / n))
+      n_profiles  <- 3 / 2
+    }
+
+    full_delta <- blocks * create_delta(profile_mat, n_profiles = n_profiles, p = 2, chi2 = TRUE)
+    return(as.matrix(full_delta))
+  }
+
+  stop("Unsupported custom categorical method: ", method, call. = FALSE)
 }

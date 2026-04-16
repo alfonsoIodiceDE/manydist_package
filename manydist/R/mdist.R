@@ -76,8 +76,8 @@
       distance_cont = "manhattan",
       distance_cat  = "tvd",
       commensurable = TRUE,
-      scaling_cont  = "pc_scores",
-      interaction   = TRUE
+      scaling_cont  = "std",
+      interaction   = FALSE
     )
   )
 
@@ -180,7 +180,7 @@
 
 .prep_mdist <- function(x, response = NULL,
                         distance_cont = "manhattan", distance_cat = "tvd",
-                        commensurable = FALSE, scaling_cont = "none",
+                        commensurable = TRUE, scaling_cont = "std",
                         ncomp = NULL, threshold = NULL,
                         preset = "custom", interaction = FALSE,
                         prop_nn = 0.1, score = "ba", decision = "prior_corrected") {
@@ -617,7 +617,7 @@
 #' @export
 mdist <- function(x, new_data = NULL, response = NULL,
                   distance_cont = "manhattan", distance_cat = "tvd",
-                  commensurable = FALSE, scaling_cont = "none",
+                  commensurable = TRUE, scaling_cont = "std",
                   ncomp = NULL, threshold = NULL,
                   preset = "custom", interaction = FALSE,
                   prop_nn = 0.1, score = "ba", decision = "prior_corrected") {

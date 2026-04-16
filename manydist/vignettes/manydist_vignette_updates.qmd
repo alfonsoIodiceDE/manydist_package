@@ -1,30 +1,3 @@
----
-author: Alfonso Iodice D'Enza
-title: Distance-based learning with manydist and tidymodels
-format:
-  html:
-    toc: true
-    toc-depth: 3
-    code-fold: false
-    number-sections: true
-    embed-resources: true
-execute:
-  echo: true
-  warning: false
-  message: false
----
-
-```{r setup}
-#| include: true
-
-set.seed(123)
-rm(list = ls())
-devtools::load_all("../")
-# library(manydist)
-library(tidyverse)
-library(tidymodels)
-library(palmerpenguins)
-```
 
 
 ## Mixed distance presets
@@ -168,3 +141,142 @@ D <- mdist(df[,-1], response = NULL)
 sum(abs(D_ab$distance - D$distance))
 
 ```
+
+## 1. Association-based + supervised
+
+Association-based variants do not work yet with  null response, except for `tvd`.
+
+Ideally, we should be able to do:
+
+```{r}
+D <- mdist(df, distance_cat = "any option from philentropy + tvd + le_and_ho")
+```
+
+Then, once that works, we should also be able to combine association-based distances with supervision:
+
+```{r}
+D <- mdist(df, response = "VARNAME", distance_cat = "any option from philentropy + tvd + le_and_ho")
+```
+
+with "tvd" as the default distance_cat.
+
+## 2. LOVO association-based + supervised
+
+We need to be able to include supervised variants in the LOVO functions.
+
+Simple LOVO
+
+For the simpler lovo_mdist(), this should be relatively straightforward. I would expect something like:
+
+```{r}
+lovo_res <- lovo_mdist(df, response = "Name", distance_cat = "tvd")
+```
+
+and, more generally, this should also work with different distance_cat variants.
+
+This should then return the LOVO values for the selected distance variant.
+
+LOVO comparison
+
+For lovo_cmp, things may be more difficult, because the supervised variant currently takes a different input structure from the unsupervised one:
+	•	supervised currently uses an input that includes a response,
+	•	unsupervised uses only the predictor data.
+
+The vignette currently suggests defining a named list with all relevant inputs.
+
+My first idea for comparing supervised and non-supervised variants would be to always include the response field, even for non-supervised variants. Then, as above, the response would simply be ignored whenever a non-association-based distance is used. In this way, we could compare different supervised association-based variants by changing distance_cat, for example:
+	•	"tvd"
+	•	"le_and_ho"
+	•	and so on.
+
+However, this creates some complications:
+	•	preset variants should only receive the predictor variables, so the response would have to be ignored there as well;
+	•	this approach would still not make it easy to compare association-based non-supervised variants with their supervised counterparts directly.
+
+For example, it would still not be straightforward to compare:
+	•	tvd
+	•	tvd supervised
+
+or, more generally, any association-based distance in supervised versus non-supervised form.
+
+I think the root of the problem is that the current design uses a single data frame containing the response as one of its columns, instead of separating predictors and labels.
+
+So perhaps we should rethink this and require supervised distances to use separate inputs:
+	•	X for the non-label variables
+	•	y for the labels
+
+Then the interface would become:
+
+```{r}
+mdist(X, response = y, ...)
+```
+
+
+In that setup:
+	•	non-supervised methods in methods would simply ignore y;
+	•	supervised association-based methods would use it.
+
+Additional LOVO questions
+
+A few smaller questions also came up.
+
+summary() for lovo_cmp
+Can we easily obtain tables with the values?
+
+autoplot() for lovo_cmp
+When I plot normalized MAD, the y-scale does not seem optimal. The scale appears too large, so the relative differences are hard to see.
+
+For the LOVO comparison function, we would then need to decide whether y should be stored inside each method specification or passed directly when calling the function. I am not yet sure which option is best.
+
+
+Hierarchical clustering
+For hierarchical clustering, which linkage do we use? I assume complete linkage. This should be clearly documented.
+
+Spectral clustering importance
+Should there also be a spectral clustering importance measure?
+
+Also, should LOVO default to only one-cluster methods, or to all methods as it currently seems to do?
+
+3. Defaults
+
+I think the default should be commensurable, or equivalently unbiased. Otherwise, the results can be rather unpredictable.
+
+In fact, I would suggest the following defaults for mdist():
+
+```{r}
+distance_cont = "manhattan"
+scaling_cont  = "std"
+distance_cat  = "tvd"
+commensurable = TRUE
+```
+
+## 4. MCA
+
+When using commensurable scaling, we expect all variants whose Delta matrix is just a constant multiple of matching to become equivalent. So we expect:
+	•	matching
+	•	eskin
+	•	HL
+	•	naive
+
+to coincide under commensurability.
+
+However, when I use:
+
+```{r}
+distance_cat = "mca"
+```
+
+
+the commensurable distance becomes equal to commensurable "matching".
+
+I do not think this should happen.
+
+MCA uses a Delta matrix depending on the marginals, so unless the category distributions are all equal, the category dissimilarities should still differ according to the observed marginal frequencies.
+
+So this point needs clarification.
+
+## Additional LOVO output question
+
+Can we add summary() or print() methods for lovo and lovo_cmp?
+
+At the moment they return tibbles, but not all information is shown, and the output is not especially targeted.
