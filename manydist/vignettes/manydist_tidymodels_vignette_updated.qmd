@@ -96,6 +96,15 @@ For each predictor, the function recomputes the distance after removing
 that variable and compares the resulting structure with the full-distance
 solution.
 
+The main user-facing LOVO summaries emphasize:
+
+- `mad_importance`, the average absolute perturbation induced by leaving
+  a variable out;
+- `relative_distance`, the relative share of total distance perturbation
+  attributable to the variable;
+- `mds_congruence`, a congruence-based measure comparing the leave-one-out
+  and full MDS configurations.
+
 ```{r lovo}
 #| cache: false
 lovo_res <- lovo_mdist(
@@ -109,7 +118,7 @@ summary(lovo_res)
 A graphical summary is also available through `autoplot()`.
 
 ```{r lovo-plot}
-autoplot(lovo_res, "mad_normalized")
+autoplot(lovo_res, metric = "relative_distance")
 ```
 
 ## LOVO with clustering-based diagnostics
@@ -200,7 +209,7 @@ summary(lovo_cmp)
 
 ```{r lovo-compare-plot}
 #| cache: true
-autoplot(lovo_cmp, metric = "mad_normalized")
+autoplot(lovo_cmp, metric = "relative_distance")
 ```
 
 # Distance-based KNN in base R
@@ -506,9 +515,9 @@ predict(
 ## Distance-based spectral clustering with `spectral_dist()`
 
 The usage of `spectral_dist()` parallels that of `pam_dist()`: the model
-is fitted on the pairwise training dissimilarity matrix computed by
-`step_mdist()`, and predictions for new observations are obtained by
-extending the spectral embedding to the test set.
+can be fitted either on the pairwise training dissimilarity matrix
+computed by `step_mdist()`, or directly from a precomputed distance
+object such as the output of `mdist()`.
 
 We define a spectral clustering specification with three clusters.
 
@@ -520,7 +529,7 @@ spectral_spec <- spectral_dist(
 spectral_spec
 ```
 
-The model is fitted in the same way as `pam_dist()`.
+The recipe-based model is fitted in the same way as `pam_dist()`.
 
 ```{r spectral-fit}
 spectral_fit <- generics::fit(
@@ -591,7 +600,6 @@ predict(
   head()
 ```
 
-
 ## Sanity check: direct distance matrix versus recipe-based clustering
 
 Before illustrating the two clustering interfaces, we verify that the
@@ -650,8 +658,8 @@ mclust::adjustedRandIndex(
 )
 ```
 
-We can do the same for spectral clustering. First, fit the model
-directly from the distance matrix.
+We can do the same for spectral clustering, this time using the public
+direct-distance interface provided by `spectral_dist()`.
 
 ```{r clust-direct-spectral}
 spectral_direct_spec <- spectral_dist(num_clusters = 3)
@@ -665,28 +673,6 @@ spectral_direct_clust <- predict(spectral_direct_fit)$.pred_cluster |>
   as.integer()
 
 head(spectral_direct_clust)
-
-```
-
-For a stricter direct check based only on the distance matrix, we can
-also reconstruct the spectral solution from `D_train_direct`.
-
-```{r clust-direct-spectral-matrix}
-aff <- .affinity_from_dist(D_train_direct, sigma = NULL)
-A <- aff$A
-
-d <- rowSums(A)
-Dhalf_inv <- diag(ifelse(d > 0, 1 / sqrt(d), 0), nrow(A), ncol(A))
-S <- Dhalf_inv %*% A %*% Dhalf_inv
-
-ev <- eigen(S, symmetric = TRUE)
-U <- ev$vectors[, seq_len(3), drop = FALSE]
-U_norm <- .row_normalize(U)
-
-set.seed(123)
-spectral_direct_matrix <- stats::kmeans(U_norm, centers = 3, nstart = 50)$cluster
-
-head(spectral_direct_matrix)
 ```
 
 Now fit the recipe-based `spectral_dist()` model.
@@ -710,16 +696,15 @@ Again, we compare the resulting partitions via the adjusted Rand index.
 
 ```{r clust-check-spectral}
 mclust::adjustedRandIndex(
-  spectral_direct_matrix,
+  spectral_direct_clust,
   spectral_recipe_clust
 )
-
 ```
 
 An ARI equal to 1 confirms that the clustering obtained through the
 recipe-based pipeline matches the one obtained by first computing the
 distance matrix with `mdist()` and then applying the clustering method
-directly.
+through the direct distance-based interface.
 
 ## Consistency checks on continuous data
 
@@ -1041,7 +1026,6 @@ These results confirm that, on purely continuous data, `mdist()`
 reproduces Euclidean geometry essentially exactly, and that the
 downstream `manydist` interfaces are consistent with the corresponding
 standard methods applied directly to the original data matrix.
-
 
 # Summary
 

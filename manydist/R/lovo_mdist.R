@@ -28,19 +28,26 @@ MDistLOVO <- R6::R6Class(
     cluster_k       = NULL,
     cluster_methods = NULL,
     hclust_method   = NULL,
+    response_used   = NULL,
 
-    initialize = function(x, ..., dims = 2, keep_dist = FALSE,
+    initialize = function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
                           cluster_k = NULL,
                           cluster_methods = c("pam", "hclust"),
-                          hclust_method = "average") {
+                          hclust_method = "average",
+                          response_used = TRUE) {
 
       x <- tibble::as_tibble(x)
+      dots <- rlang::list2(...)
 
       cluster_methods <- unique(cluster_methods)
       valid_methods <- c("pam", "hclust")
 
       if (!all(cluster_methods %in% valid_methods)) {
         stop("cluster_methods must be a subset of c('pam', 'hclust').")
+      }
+
+      if (!is.logical(response_used) || length(response_used) != 1L || is.na(response_used)) {
+        stop("response_used must be a single TRUE/FALSE value.")
       }
 
       if (!is.null(cluster_k)) {
@@ -53,16 +60,52 @@ MDistLOVO <- R6::R6Class(
         }
       }
 
-      var_types <- vapply(
-        x,
-        function(col) if (is.numeric(col)) "numeric" else "categorical",
-        character(1)
-      )
+      response_col <- NULL
+      if (!is.null(response)) {
+        if (!is.character(response) || length(response) != 1L) {
+          stop("`response` must be a single column name.", call. = FALSE)
+        }
+        response_col <- response
+      }
 
-      md_full <- mdist(x = x, ...)
+      if (!is.null(response_col) && !response_col %in% names(x)) {
+        stop("`response` must name a column inside `x`.", call. = FALSE)
+      }
+
+      if (isTRUE(response_used)) {
+        x_work <- x
+        mdist_args <- c(list(x = x_work), dots)
+        if (!is.null(response_col)) {
+          mdist_args$response <- response_col
+        }
+      } else {
+        x_work <- x
+
+        if (!is.null(response_col) && response_col %in% names(x_work)) {
+          x_work <- x_work |>
+            dplyr::select(-dplyr::all_of(response_col))
+        }
+
+        mdist_args <- c(list(x = x_work), dots)
+      }
+
+
+      md_full <- rlang::exec(mdist, !!!mdist_args)
       self$preset <- md_full$preset
       self$params <- md_full$params
+      self$response_used <- response_used
 
+      # variables eligible for LOVO are always predictors only
+      x_predictors <- x_work
+      if (!is.null(response_col) && response_col %in% names(x_predictors)) {
+        x_predictors <- x_predictors |>
+          dplyr::select(-dplyr::all_of(response_col))
+      }
+
+      var_types <- purrr::map_chr(
+        .x = x_predictors,
+        .f = ~ if (is.numeric(.x)) "numeric" else "categorical"
+      )
       full_mat <- md_full$to_dist() |> as.matrix()
       self$n_obs <- nrow(full_mat)
       self$dims  <- dims
@@ -103,7 +146,8 @@ MDistLOVO <- R6::R6Class(
         self$full_dist <- full_mat
       }
 
-      vars <- names(x)
+      vars <- names(x_predictors)
+
       loo_list <- vector("list", length(vars))
       names(loo_list) <- vars
 
@@ -112,8 +156,11 @@ MDistLOVO <- R6::R6Class(
 
       for (i in seq_along(vars)) {
         var <- vars[i]
-        x_subset <- dplyr::select(x, -dplyr::any_of(var))
-        md_loo <- mdist(x = x_subset, ...)
+
+        x_subset <- x_work |>
+          dplyr::select(-dplyr::any_of(var))
+
+        md_loo <- rlang::exec(mdist, x = x_subset, !!!mdist_args[names(mdist_args) != "x"])
         loo_mat <- md_loo$to_dist() |> as.matrix()
         loo_list[[i]] <- loo_mat
 
@@ -149,18 +196,36 @@ MDistLOVO <- R6::R6Class(
 
       ac <- sqrt(1 - cc^2)
 
-      self$results <- tibble::tibble(
-        variable            = vars,
-        variable_type       = unname(var_types[vars]),
-        mad_importance      = mad,
-        cc_importance       = cc,
-        ac_importance       = ac,
-        mad_normalized      = mad / sum(mad),
-        ari_pam             = ari_pam,
-        pam_importance      = 1 - ari_pam,
-        ari_hclust          = ari_hclust,
-        hclust_importance   = 1 - ari_hclust
+      res <- tibble::tibble(
+        variable          = vars,
+        variable_type     = unname(var_types[vars]),
+        mad_importance    = mad,
+        cc_importance     = cc,
+        mds_congruence    = cc,
+        ac_importance     = ac,
+        mad_normalized    = mad / sum(mad),
+        relative_distance = mad / sum(mad)
       )
+
+      if (!is.null(cluster_k)) {
+        if ("pam" %in% cluster_methods) {
+          res <- res |>
+            dplyr::mutate(
+              ari_pam = ari_pam,
+              pam_importance = 1 - ari_pam
+            )
+        }
+
+        if ("hclust" %in% cluster_methods) {
+          res <- res |>
+            dplyr::mutate(
+              ari_hclust = ari_hclust,
+              hclust_importance = 1 - ari_hclust
+            )
+        }
+      }
+
+      self$results <- res
     },
 
     print = function(...) {
@@ -168,6 +233,7 @@ MDistLOVO <- R6::R6Class(
       cat("  preset :", self$preset, "\n")
       cat("  dims   :", self$dims, "\n")
       cat("  n_obs  :", self$n_obs, "\n")
+      cat("  response used :", self$response_used, "\n")
 
       if (!is.null(self$cluster_k)) {
         cat("  cluster_k :", self$cluster_k, "\n")
@@ -179,8 +245,8 @@ MDistLOVO <- R6::R6Class(
 
       r <- self$results
 
-      has_pam    <- "ari_pam" %in% names(r) && !all(is.na(r$ari_pam))
-      has_hclust <- "ari_hclust" %in% names(r) && !all(is.na(r$ari_hclust))
+      has_pam <- "pam_importance" %in% names(r) && !all(is.na(r$pam_importance))
+      has_hclust <- "hclust_importance" %in% names(r) && !all(is.na(r$hclust_importance))
 
       if (has_pam || has_hclust) {
         cat("  clustering diagnostics :")
@@ -189,20 +255,34 @@ MDistLOVO <- R6::R6Class(
         cat("\n")
       }
 
-      ord <- order(r$mad_importance, decreasing = TRUE, na.last = NA)
-      top_cols <- c("variable", "mad_importance", "ac_importance")
+      ord_metric <- if ("relative_distance" %in% names(r)) "relative_distance" else "mad_importance"
+      ord <- order(r[[ord_metric]], decreasing = TRUE, na.last = NA)
 
-      if ("pam_importance" %in% names(r) && !all(is.na(r$pam_importance))) {
+      top_cols <- c("variable", "variable_type")
+
+      if ("relative_distance" %in% names(r)) {
+        top_cols <- c(top_cols, "relative_distance")
+      } else if ("mad_normalized" %in% names(r)) {
+        top_cols <- c(top_cols, "mad_normalized")
+      }
+
+      top_cols <- c(top_cols, "mad_importance")
+
+      if (has_pam) {
         top_cols <- c(top_cols, "pam_importance")
       }
-      if ("hclust_importance" %in% names(r) && !all(is.na(r$hclust_importance))) {
+      if (has_hclust) {
         top_cols <- c(top_cols, "hclust_importance")
       }
 
       top <- utils::head(r[ord, top_cols, drop = FALSE], 5)
 
       cat("  top vars:\n")
-      print(top, row.names = FALSE)
+      if (nrow(top) == 0) {
+        cat("   no finite LOVO importance values available\n")
+      } else {
+        print(top, row.names = FALSE)
+      }
 
       invisible(self)
     },
@@ -212,6 +292,7 @@ MDistLOVO <- R6::R6Class(
       cat("  preset :", self$preset, "\n")
       cat("  dims   :", self$dims, "\n")
       cat("  n_obs  :", self$n_obs, "\n")
+      cat("  response used :", self$response_used, "\n")
 
       if (!is.null(self$cluster_k)) {
         cat("  cluster_k :", self$cluster_k, "\n")
@@ -236,15 +317,28 @@ MDistLOVO <- R6::R6Class(
       .print_top <- function(df, col, label, n = 5, decreasing = TRUE) {
         if (!(col %in% names(df)) || all(is.na(df[[col]]))) return(invisible(NULL))
         ord <- order(df[[col]], decreasing = decreasing, na.last = NA)
+        cols_to_show <- c("variable", "variable_type", col)
+        cols_to_show <- cols_to_show[cols_to_show %in% names(df)]
         cat(label, ":\n", sep = "")
-        print(utils::head(df[ord, c("variable", col), drop = FALSE], n), row.names = FALSE)
+        print(utils::head(df[ord, cols_to_show, drop = FALSE], n), row.names = FALSE)
         cat("\n")
       }
 
       .print_metric_summary(r$mad_importance, "MAD importance")
-      .print_metric_summary(r$mad_normalized, "Normalized MAD importance")
+
+      if ("relative_distance" %in% names(r)) {
+        .print_metric_summary(r$relative_distance, "Relative distance")
+      } else if ("mad_normalized" %in% names(r)) {
+        .print_metric_summary(r$mad_normalized, "Normalized MAD importance")
+      }
+
+      if ("mds_congruence" %in% names(r)) {
+        .print_metric_summary(r$mds_congruence, "MDS congruence")
+      } else if ("cc_importance" %in% names(r)) {
+        .print_metric_summary(r$cc_importance, "Congruence coefficient (CC)")
+      }
+
       .print_metric_summary(r$ac_importance, "Alienation coefficient (AC)")
-      .print_metric_summary(r$cc_importance, "Congruence coefficient (CC)")
 
       if ("ari_pam" %in% names(r)) {
         .print_metric_summary(r$ari_pam, "ARI vs full PAM partition")
@@ -260,16 +354,31 @@ MDistLOVO <- R6::R6Class(
         .print_metric_summary(r$hclust_importance, "HCLUST importance (1 - ARI)")
       }
 
+      if ("relative_distance" %in% names(r)) {
+        .print_top(r, "relative_distance", "Top by relative distance")
+      } else if ("mad_normalized" %in% names(r)) {
+        .print_top(r, "mad_normalized", "Top by normalized MAD")
+      }
+
       .print_top(r, "mad_importance", "Top by MAD")
-      .print_top(r, "ac_importance", "Top by AC")
+
+      if ("mds_congruence" %in% names(r)) {
+        .print_top(r, "mds_congruence", "Top by MDS congruence", decreasing = FALSE)
+      } else if ("cc_importance" %in% names(r)) {
+        .print_top(r, "cc_importance", "Top by congruence coefficient", decreasing = FALSE)
+      }
+
+      .print_top(r, "ac_importance", "Top by alienation coefficient")
+
       .print_top(r, "pam_importance", "Top by PAM importance")
       .print_top(r, "hclust_importance", "Top by HCLUST importance")
 
       invisible(self)
     },
 
-    autoplot = function(metric = c("mad_importance", "mad_normalized",
-                                   "ac_importance", "cc_importance",
+    autoplot = function(metric = c("relative_distance", "mad_importance",
+                                   "mds_congruence", "ac_importance",
+                                   "cc_importance", "mad_normalized",
                                    "ari_pam", "ari_hclust",
                                    "pam_importance", "hclust_importance"),
                         reorder = FALSE,
@@ -278,10 +387,12 @@ MDistLOVO <- R6::R6Class(
 
       metric_label <- switch(
         metric,
+        relative_distance = "Relative distance",
         mad_importance    = "MAD importance",
-        mad_normalized    = "Normalized MAD importance",
-        ac_importance     = "Alienation coefficient importance",
+        mds_congruence    = "MDS congruence",
+        ac_importance     = "Alienation coefficient",
         cc_importance     = "Congruence coefficient",
+        mad_normalized    = "Normalized MAD importance",
         ari_pam           = "ARI vs full PAM partition",
         ari_hclust        = "ARI vs full HCLUST partition",
         pam_importance    = "PAM importance (1 - ARI)",
@@ -299,7 +410,7 @@ MDistLOVO <- R6::R6Class(
         stop(sprintf("Metric '%s' is available but contains only NA values.", metric))
       }
 
-      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "cc_importance")
+      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "cc_importance", "mds_congruence")
 
       if (!is.null(top_n)) {
         top_vars <- df |>
@@ -446,8 +557,7 @@ MDistLOVO <- R6::R6Class(
           axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
         )
 
-      if (metric %in% c("mad_normalized", "ac_importance",
-                        "ari_pam", "ari_hclust",
+      if (metric %in% c("ari_pam", "ari_hclust",
                         "pam_importance", "hclust_importance")) {
         p <- p + ggplot2::coord_cartesian(ylim = c(0, 1))
       }
@@ -459,16 +569,34 @@ MDistLOVO <- R6::R6Class(
 
 # tiny factory for symmetry with mdist()
 #' @export
-lovo_mdist <- function(x, ..., dims = 2, keep_dist = FALSE,
+lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
                        cluster_k = NULL,
                        cluster_methods = c("pam", "hclust"),
-                       hclust_method = "average") {
+                       hclust_method = "average",
+                       response_used = TRUE) {
+
+  response_name <- NULL
+  response_quo <- rlang::enquo(response)
+
+  if (!rlang::quo_is_null(response_quo)) {
+    response_expr <- rlang::quo_get_expr(response_quo)
+
+    if (rlang::is_string(response_expr)) {
+      response_name <- response_expr
+    } else {
+      response_name <- rlang::as_name(response_expr)
+    }
+  }
+
   MDistLOVO$new(
-    x = x, ...,
+    x = x,
+    response = response_name,
+    ...,
     dims = dims,
     keep_dist = keep_dist,
     cluster_k = cluster_k,
     cluster_methods = cluster_methods,
-    hclust_method = hclust_method
+    hclust_method = hclust_method,
+    response_used = response_used
   )
 }

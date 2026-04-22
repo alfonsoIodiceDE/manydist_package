@@ -24,22 +24,42 @@ MDistLOVOCompare <- R6::R6Class(
 
       r <- self$results
 
-      top_cols <- c("method", "variable", "mad_importance", "ac_importance")
-      if ("pam_importance" %in% names(r) && !all(is.na(r$pam_importance))) {
+      has_pam <- "pam_importance" %in% names(r) && !all(is.na(r$pam_importance))
+      has_hclust <- "hclust_importance" %in% names(r) && !all(is.na(r$hclust_importance))
+
+      ord_metric <- if ("relative_distance" %in% names(r)) "relative_distance" else "mad_importance"
+
+      top_cols <- c("method", "variable")
+      if ("variable_type" %in% names(r)) {
+        top_cols <- c(top_cols, "variable_type")
+      }
+      if ("relative_distance" %in% names(r)) {
+        top_cols <- c(top_cols, "relative_distance")
+      } else if ("mad_normalized" %in% names(r)) {
+        top_cols <- c(top_cols, "mad_normalized")
+      }
+      top_cols <- c(top_cols, "mad_importance")
+
+      if (has_pam) {
         top_cols <- c(top_cols, "pam_importance")
       }
-      if ("hclust_importance" %in% names(r) && !all(is.na(r$hclust_importance))) {
+      if (has_hclust) {
         top_cols <- c(top_cols, "hclust_importance")
       }
 
       top <- r |>
         dplyr::group_by(method) |>
-        dplyr::slice_max(order_by = mad_importance, n = 3, with_ties = FALSE) |>
+        dplyr::slice_max(order_by = .data[[ord_metric]], n = 3, with_ties = FALSE) |>
         dplyr::ungroup() |>
         dplyr::select(dplyr::all_of(top_cols))
 
-      cat("Top variables by MAD within each method:\n")
-      print(top, n = min(nrow(top), 12))
+      cat("Top variables within each method:\n")
+      if (nrow(top) == 0) {
+        cat("  no finite LOVO importance values available\n")
+      } else {
+        print(top, n = min(nrow(top), 12))
+      }
+
       invisible(self)
     },
 
@@ -52,12 +72,18 @@ MDistLOVOCompare <- R6::R6Class(
           mad_min  = min(mad_importance, na.rm = TRUE),
           mad_max  = max(mad_importance, na.rm = TRUE),
           mad_mean = mean(mad_importance, na.rm = TRUE),
+
+          rel_min  = min(dplyr::coalesce(.data$relative_distance, .data$mad_normalized), na.rm = TRUE),
+          rel_max  = max(dplyr::coalesce(.data$relative_distance, .data$mad_normalized), na.rm = TRUE),
+          rel_mean = mean(dplyr::coalesce(.data$relative_distance, .data$mad_normalized), na.rm = TRUE),
+
+          mds_min  = min(dplyr::coalesce(.data$mds_congruence, .data$cc_importance), na.rm = TRUE),
+          mds_max  = max(dplyr::coalesce(.data$mds_congruence, .data$cc_importance), na.rm = TRUE),
+          mds_mean = mean(dplyr::coalesce(.data$mds_congruence, .data$cc_importance), na.rm = TRUE),
+
           ac_min   = min(ac_importance, na.rm = TRUE),
           ac_max   = max(ac_importance, na.rm = TRUE),
           ac_mean  = mean(ac_importance, na.rm = TRUE),
-          cc_min   = min(cc_importance, na.rm = TRUE),
-          cc_max   = max(cc_importance, na.rm = TRUE),
-          cc_mean  = mean(cc_importance, na.rm = TRUE),
           .groups = "drop"
         )
 
@@ -105,8 +131,9 @@ MDistLOVOCompare <- R6::R6Class(
       invisible(out)
     },
 
-    autoplot = function(metric = c("mad_importance", "mad_normalized",
-                                   "ac_importance", "cc_importance",
+    autoplot = function(metric = c("relative_distance", "mad_importance",
+                                   "mds_congruence", "ac_importance",
+                                   "cc_importance", "mad_normalized",
                                    "ari_pam", "ari_hclust",
                                    "pam_importance", "hclust_importance"),
                         reorder = FALSE,
@@ -115,10 +142,12 @@ MDistLOVOCompare <- R6::R6Class(
 
       metric_label <- switch(
         metric,
+        relative_distance = "Relative distance",
         mad_importance    = "MAD importance",
-        mad_normalized    = "Normalized MAD importance",
-        ac_importance     = "Alienation coefficient importance",
+        mds_congruence    = "MDS congruence",
+        ac_importance     = "Alienation coefficient",
         cc_importance     = "Congruence coefficient",
+        mad_normalized    = "Normalized MAD importance",
         ari_pam           = "ARI vs full PAM partition",
         ari_hclust        = "ARI vs full HCLUST partition",
         pam_importance    = "PAM importance (1 - ARI)",
@@ -135,7 +164,7 @@ MDistLOVOCompare <- R6::R6Class(
         stop(sprintf("Metric '%s' is available but contains only NA values.", metric))
       }
 
-      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "cc_importance")
+      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "cc_importance", "mds_congruence")
 
       if (!is.null(top_n)) {
         top_vars <- df |>
@@ -282,8 +311,7 @@ MDistLOVOCompare <- R6::R6Class(
           axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
         )
 
-      if (metric %in% c("mad_normalized", "ac_importance",
-                        "ari_pam", "ari_hclust",
+      if (metric %in% c("ari_pam", "ari_hclust",
                         "pam_importance", "hclust_importance")) {
         p <- p + ggplot2::coord_cartesian(ylim = c(0, 1))
       }
@@ -425,7 +453,6 @@ compare_lovo_mdist <- function(x,
     obj$results |>
       dplyr::mutate(
         method = method_name,
-        variable_type = unname(var_types[variable]),
         .before = 1
       )
   }) |>

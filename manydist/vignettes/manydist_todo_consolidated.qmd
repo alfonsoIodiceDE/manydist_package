@@ -352,12 +352,14 @@ The current redesign distinguishes between:
   - supervised category-by-response profiles when `response` is supplied.
 
 This logic is now implemented through the interaction between:
+
 - `cdist()`,
+
 - `cat_delta()`,
+
 - `cat_custom_delta()`.
 
 ::: {.callout-note appearance="minimal" icon=false}
-Original comment:
 Clarify and implement the intended supervised behavior. When `response = NULL`, `distance_cat = "tvd"` should behave as the ordinary unsupervised version; when `response` is provided, it should switch to the supervised association-based version. Also consider extending this logic to other association-based categorical distances.
 :::
 
@@ -514,13 +516,40 @@ Current direction:
 
 Enable supervised association-based distances in `lovo_mdist()`.
 
-Desired interface:
-
 ```{r}
-#lovo_res <- lovo_mdist(df, response = "Name", distance_cat = "tvd")
+mdist(df, response = Name)
+mdist(df, response = "Name")
+lovo_mdist(df, response = Name, distance_cat = "tvd")
+lovo_mdist(df, response = "Name", distance_cat = "tvd")
+
+
+
+lovo_res <- lovo_mdist(df, response = Name, distance_cat = "tvd")
+lovo_res$results
+
+
+lovo_comm <- lovo_mdist(df, response = Name, distance_cat = "tvd", commensurable = TRUE)
+lovo_nocomm <- lovo_mdist(df, response = Name, distance_cat = "tvd", commensurable = FALSE)
+lovo_comm$results
+
+lovo_nocomm$results
 ```
 
-and, more generally, with other supported association-based distances.
+
+
+```{r}
+lovo_res_unsup <- lovo_mdist(df |> select(-Name), distance_cat = "tvd")
+summary(lovo_res_unsup)
+```
+Added  the argument `response_used` that can be TRUE or FALSE, if the user want's to compare what the response brings to the table
+
+```{r}
+l1 <- lovo_mdist(df, response = Name, distance_cat = "tvd", response_used = FALSE)
+l2 <- lovo_mdist(df |> dplyr::select(-Name), distance_cat = "tvd", response_used = FALSE)
+
+all.equal(l1$results, l2$results)
+```
+
 
 ###  LOVO comparison design
 
@@ -532,9 +561,13 @@ A possible interface is:
 #compare_lovo_mdist(X, y, methods)
 ```
 
-with: - non-supervised methods ignoring `y`; - supervised association-based methods using `y`.
+with: - non-supervised methods ignoring `y`; 
 
-Need to decide whether: - `y` should be passed directly to the comparison function, or - `y` should be embedded inside each method specification.
+- supervised association-based methods using `y`.
+
+Need to decide whether: 
+
+- `y` should be passed directly to the comparison function, or - `y` should be embedded inside each method specification.
 
 ###  Variable-importance logic
 
@@ -556,12 +589,406 @@ Possible structure: - MDS → AC / CC - PAM → ARI or cluster stability metric 
     -   `lovo_cmp`
 -   Ensure summary output can produce usable tables, not just raw tibbles.
 
+
+### `lovo_mdist()` output-method sanity checks
+
+```{r}
+# load(file = "Dartpoints.RData")
+
+# core LOVO object without clustering diagnostics
+lovo_basic <- lovo_mdist(
+  df,
+  response = Name,
+  distance_cat = "tvd",
+  response_used = TRUE,
+  commensurable = FALSE
+)
+
+# LOVO object with clustering diagnostics
+lovo_cluster <- lovo_mdist(
+  df,
+  response = Name,
+  distance_cat = "tvd",
+  response_used = TRUE,
+  commensurable = FALSE,
+  cluster_k = 3
+)
+
+check_tbl <- tibble::tibble(
+  check = character(),
+  passed = logical(),
+  detail = character()
+)
+
+add_check <- function(tbl, check, expr) {
+  out <- tryCatch(
+    {
+      val <- force(expr)
+      tibble::tibble(
+        check = check,
+        passed = isTRUE(val),
+        detail = if (isTRUE(val)) "TRUE" else paste(capture.output(print(val)), collapse = " ")
+      )
+    },
+    error = function(e) {
+      tibble::tibble(
+        check = check,
+        passed = FALSE,
+        detail = conditionMessage(e)
+      )
+    }
+  )
+  dplyr::bind_rows(tbl, out)
+}
+
+# 1. renamed metrics exist in results
+check_tbl <- add_check(
+  check_tbl,
+  "results contain relative_distance",
+  "relative_distance" %in% names(lovo_basic$results)
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "results contain mds_congruence",
+  "mds_congruence" %in% names(lovo_basic$results)
+)
+
+# 2. backward-compatible metric names still exist
+check_tbl <- add_check(
+  check_tbl,
+  "results retain mad_normalized for compatibility",
+  "mad_normalized" %in% names(lovo_basic$results)
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "results retain cc_importance for compatibility",
+  "cc_importance" %in% names(lovo_basic$results)
+)
+
+# 3. new and old aliases are equal
+check_tbl <- add_check(
+  check_tbl,
+  "relative_distance equals mad_normalized",
+  all.equal(lovo_basic$results$relative_distance, lovo_basic$results$mad_normalized)
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "mds_congruence equals cc_importance",
+  all.equal(lovo_basic$results$mds_congruence, lovo_basic$results$cc_importance)
+)
+
+# 4. print() runs without error
+check_tbl <- add_check(
+  check_tbl,
+  "print() works on basic LOVO object",
+  {
+    capture.output(print(lovo_basic))
+    TRUE
+  }
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "print() works on clustering LOVO object",
+  {
+    capture.output(print(lovo_cluster))
+    TRUE
+  }
+)
+
+# 5. summary() runs without error
+check_tbl <- add_check(
+  check_tbl,
+  "summary() works on basic LOVO object",
+  {
+    capture.output(summary(lovo_basic))
+    TRUE
+  }
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "summary() works on clustering LOVO object",
+  {
+    capture.output(summary(lovo_cluster))
+    TRUE
+  }
+)
+
+# 6. autoplot() returns ggplot objects for key metrics
+p_rel <- lovo_basic$autoplot(metric = "relative_distance")
+p_mad <- lovo_basic$autoplot(metric = "mad_importance")
+p_mds <- lovo_basic$autoplot(metric = "mds_congruence")
+p_ac  <- lovo_basic$autoplot(metric = "ac_importance")
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(relative_distance) returns ggplot",
+  inherits(p_rel, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(mad_importance) returns ggplot",
+  inherits(p_mad, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(mds_congruence) returns ggplot",
+  inherits(p_mds, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(ac_importance) returns ggplot",
+  inherits(p_ac, "ggplot")
+)
+
+# 7. clustering metrics only plot when available
+p_pam <- lovo_cluster$autoplot(metric = "pam_importance")
+p_hc  <- lovo_cluster$autoplot(metric = "hclust_importance")
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(pam_importance) works when clustering is enabled",
+  inherits(p_pam, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(hclust_importance) works when clustering is enabled",
+  inherits(p_hc, "ggplot")
+)
+
+# 8. clustering columns absent/present as expected
+check_tbl <- add_check(
+  check_tbl,
+  "basic LOVO object has no clustering importance columns",
+  !any(c("pam_importance", "hclust_importance") %in% names(lovo_basic$results))
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "clustering LOVO object has clustering importance columns",
+  all(c("pam_importance", "hclust_importance") %in% names(lovo_cluster$results))
+)
+
+check_tbl
+```
+
+```{r}
+# optional visual check of the updated defaults
+p_rel
+```
+
+
+### `compare_lovo_mdist()` sanity checks
+
+```{r}
+
+cmp_methods <- list(
+  tvd_sup = lovo_method_spec(
+    response = Name,
+    distance_cat = "tvd",
+    response_used = TRUE,
+    commensurable = FALSE
+  ),
+  tvd_unsup = lovo_method_spec(
+    response = Name,
+    distance_cat = "tvd",
+    response_used = FALSE,
+    commensurable = FALSE
+  )
+)
+
+
+cmp_basic <- compare_lovo_mdist(
+  x = df,
+  methods = cmp_methods
+)
+
+
+cmp_cluster <- compare_lovo_mdist(
+  x = df,
+  methods = cmp_methods ,
+  cluster_k = 3
+)
+
+check_tbl <- tibble::tibble(
+  check = character(),
+  passed = logical(),
+  detail = character()
+)
+
+add_check <- function(tbl, check, expr) {
+  out <- tryCatch(
+    {
+      val <- force(expr)
+      tibble::tibble(
+        check = check,
+        passed = isTRUE(val),
+        detail = if (isTRUE(val)) "TRUE" else paste(capture.output(print(val)), collapse = " ")
+      )
+    },
+    error = function(e) {
+      tibble::tibble(
+        check = check,
+        passed = FALSE,
+        detail = conditionMessage(e)
+      )
+    }
+  )
+  dplyr::bind_rows(tbl, out)
+}
+
+# 1. object creation
+check_tbl <- add_check(
+  check_tbl,
+  "compare_lovo_mdist() returns MDistLOVOCompare",
+  inherits(cmp_basic, "MDistLOVOCompare")
+)
+
+# 2. methods column present and correct
+check_tbl <- add_check(
+  check_tbl,
+  "results contain expected method labels",
+  setequal(as.character(unique(cmp_basic$results$method)), c("tvd_sup", "tvd_unsup"))
+)
+
+# 3. updated metric names available
+check_tbl <- add_check(
+  check_tbl,
+  "results contain relative_distance",
+  "relative_distance" %in% names(cmp_basic$results)
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "results contain mds_congruence",
+  "mds_congruence" %in% names(cmp_basic$results)
+)
+
+# 4. backward-compatible aliases retained
+check_tbl <- add_check(
+  check_tbl,
+  "results retain mad_normalized",
+  "mad_normalized" %in% names(cmp_basic$results)
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "results retain cc_importance",
+  "cc_importance" %in% names(cmp_basic$results)
+)
+
+# 5. aliases are equal
+check_tbl <- add_check(
+  check_tbl,
+  "relative_distance equals mad_normalized",
+  all.equal(cmp_basic$results$relative_distance, cmp_basic$results$mad_normalized)
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "mds_congruence equals cc_importance",
+  all.equal(cmp_basic$results$mds_congruence, cmp_basic$results$cc_importance)
+)
+
+# 6. no clustering columns without cluster_k
+check_tbl <- add_check(
+  check_tbl,
+  "no clustering columns when cluster_k is NULL",
+  !any(c("ari_pam", "pam_importance", "ari_hclust", "hclust_importance") %in%
+         names(cmp_basic$results))
+)
+
+# 7. clustering columns present with cluster_k
+check_tbl <- add_check(
+  check_tbl,
+  "clustering columns added when cluster_k is supplied",
+  all(c("ari_pam", "pam_importance", "ari_hclust", "hclust_importance") %in%
+        names(cmp_cluster$results))
+)
+
+# 8. print/summary work
+check_tbl <- add_check(
+  check_tbl,
+  "print() works on compare object",
+  {
+    capture.output(print(cmp_basic))
+    TRUE
+  }
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "summary() works on compare object",
+  {
+    capture.output(summary(cmp_basic))
+    TRUE
+  }
+)
+
+# 9. autoplot works for updated metrics
+p_rel <- autoplot(cmp_basic, metric = "relative_distance")
+p_mad <- autoplot(cmp_basic, metric = "mad_importance")
+p_mds <- autoplot(cmp_basic, metric = "mds_congruence")
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(relative_distance) returns ggplot",
+  inherits(p_rel, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(mad_importance) returns ggplot",
+  inherits(p_mad, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(mds_congruence) returns ggplot",
+  inherits(p_mds, "ggplot")
+)
+
+# 10. clustering autoplot works when enabled
+p_pam <- autoplot(cmp_cluster, metric = "pam_importance")
+p_hclust <- autoplot(cmp_cluster, metric = "hclust_importance")
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(pam_importance) works when clustering is enabled",
+  inherits(p_pam, "ggplot")
+)
+
+check_tbl <- add_check(
+  check_tbl,
+  "autoplot(hclust_importance) works when clustering is enabled",
+  inherits(p_hclust, "ggplot")
+)
+
+check_tbl
+```
+
+```{r}
+# optional visual check
+p_rel
+```
+::: {.callout-note appearance="minimal" icon=false}
+This section verifies that the renamed metrics are present, backward-compatible aliases are retained, and the updated `print()`, `summary()`, and `autoplot()` methods behave correctly both with and without clustering diagnostics.
+:::
+
 ### Additional LOVO questions
 
 -   Should there be a spectral clustering importance measure?
--   Should LOVO default to one-cluster methods only, or to all available methods?
+-   Should LOVO default to one-cluster methods only, or to all available methods? -> cluster only if number of clusters is provided.
 
-## . Downstream clustering support
+## Downstream clustering support
 
 ### Spectral clustering
 

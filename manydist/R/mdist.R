@@ -193,13 +193,25 @@
   response_quo <- rlang::enquo(response)
 
   if (!rlang::quo_is_null(response_quo)) {
-    resp_idx <- tidyselect::eval_select(response_quo, x)
+    response_expr <- rlang::quo_get_expr(response_quo)
 
-    if (length(resp_idx) != 1L) {
-      stop("`response` must select exactly one column.", call. = FALSE)
+    if (rlang::is_string(response_expr)) {
+      resp_name <- response_expr
+
+      if (!resp_name %in% colnames(x)) {
+        stop("`response` must name a column inside `x`.", call. = FALSE)
+      }
+
+    } else {
+      resp_idx <- tidyselect::eval_select(response_quo, x)
+
+      if (length(resp_idx) != 1L) {
+        stop("`response` must select exactly one column.", call. = FALSE)
+      }
+
+      resp_name <- names(resp_idx)
     }
 
-    resp_name <- names(resp_idx)
     y <- x[[resp_name]]
     x <- x[, setdiff(colnames(x), resp_name), drop = FALSE]
   } else {
