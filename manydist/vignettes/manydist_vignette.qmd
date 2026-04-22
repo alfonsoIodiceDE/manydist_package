@@ -1,21 +1,28 @@
 ---
 author: Alfonso Iodice D'Enza
-title: Distance-based learning with manydist and tidymodels
+title: manydist an R package for distance-based learning
 format:
   html:
-    toc: true
+    toc: false
     toc-depth: 3
     code-fold: false
     number-sections: true
     embed-resources: true
+    title-block-banner: false
 execute:
   echo: true
   warning: false
   message: false
 ---
 
+<div style="text-align: right; margin-top: -1em; margin-bottom: 1em;">
+  <img src="manydist_logo.png" alt="manydist logo" width="160"/>
+</div>
+
 ```{r setup}
 #| include: true
+#| message: false
+
 
 set.seed(123)
 rm(list = ls())
