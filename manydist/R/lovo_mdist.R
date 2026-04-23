@@ -1,7 +1,10 @@
 # R/lovo_mdist.R
 
 # internal helper (not exported)
-.get_partition <- function(D, method, k, hclust_method = "average") {
+.get_partition <- function(D, method, k,
+                           hclust_method = "average",
+                           spectral_sigma = NULL,
+                           spectral_nstart = 50) {
   if (method == "pam") {
     return(cluster::pam(stats::as.dist(D), k = k, diss = TRUE)$clustering)
   }
@@ -9,6 +12,18 @@
   if (method == "hclust") {
     hc <- stats::hclust(stats::as.dist(D), method = hclust_method)
     return(stats::cutree(hc, k = k))
+  }
+
+  if (method == "spectral") {
+    spec <- spectral_dist(
+      num_clusters = k,
+      sigma = spectral_sigma,
+      nstart = spectral_nstart
+    )
+
+    fit <- generics::fit(spec, x = D)
+
+    return(as.integer(predict(fit)$.pred_cluster))
   }
 
   stop("Unknown clustering method.")
@@ -34,16 +49,18 @@ MDistLOVO <- R6::R6Class(
                           cluster_k = NULL,
                           cluster_methods = c("pam", "hclust"),
                           hclust_method = "average",
+                          spectral_sigma = NULL,
+                          spectral_nstart = 50,
                           response_used = TRUE) {
 
       x <- tibble::as_tibble(x)
       dots <- rlang::list2(...)
 
       cluster_methods <- unique(cluster_methods)
-      valid_methods <- c("pam", "hclust")
+      valid_methods <- c("pam", "hclust","spectral")
 
       if (!all(cluster_methods %in% valid_methods)) {
-        stop("cluster_methods must be a subset of c('pam', 'hclust').")
+        stop("cluster_methods must be a subset of c('pam', 'hclust', 'spectral').")
       }
 
       if (!is.logical(response_used) || length(response_used) != 1L || is.na(response_used)) {
@@ -128,17 +145,39 @@ MDistLOVO <- R6::R6Class(
       if (!is.null(cluster_k)) {
         if ("pam" %in% cluster_methods) {
           full_partitions$pam <- .get_partition(
-            D = full_mat, method = "pam", k = cluster_k,
-            hclust_method = hclust_method
+            D = full_mat,
+            method = "pam",
+            k = cluster_k,
+            hclust_method = hclust_method,
+            spectral_sigma = spectral_sigma,
+            spectral_nstart = spectral_nstart
           )
         }
+
         if ("hclust" %in% cluster_methods) {
           full_partitions$hclust <- .get_partition(
-            D = full_mat, method = "hclust", k = cluster_k,
-            hclust_method = hclust_method
+            D = full_mat,
+            method = "hclust",
+            k = cluster_k,
+            hclust_method = hclust_method,
+            spectral_sigma = spectral_sigma,
+            spectral_nstart = spectral_nstart
+          )
+        }
+
+        if ("spectral" %in% cluster_methods) {
+          full_partitions$spectral <- .get_partition(
+            D = full_mat,
+            method = "spectral",
+            k = cluster_k,
+            hclust_method = hclust_method,
+            spectral_sigma = spectral_sigma,
+            spectral_nstart = spectral_nstart
           )
         }
       }
+
+
 
       self$base_mds <- stats::cmdscale(full_mat, eig = TRUE, k = dims)$points[, 1:dims, drop = FALSE]
 
@@ -153,6 +192,7 @@ MDistLOVO <- R6::R6Class(
 
       ari_pam <- rep(NA_real_, length(vars))
       ari_hclust <- rep(NA_real_, length(vars))
+      ari_spectral <- rep(NA_real_, length(vars))
 
       for (i in seq_along(vars)) {
         var <- vars[i]
@@ -167,18 +207,38 @@ MDistLOVO <- R6::R6Class(
         if (!is.null(cluster_k)) {
           if ("pam" %in% cluster_methods) {
             loo_pam <- .get_partition(
-              D = loo_mat, method = "pam", k = cluster_k,
-              hclust_method = hclust_method
+              D = loo_mat,
+              method = "pam",
+              k = cluster_k,
+              hclust_method = hclust_method,
+              spectral_sigma = spectral_sigma,
+              spectral_nstart = spectral_nstart
             )
             ari_pam[i] <- mclust::adjustedRandIndex(full_partitions$pam, loo_pam)
           }
 
           if ("hclust" %in% cluster_methods) {
             loo_hc <- .get_partition(
-              D = loo_mat, method = "hclust", k = cluster_k,
-              hclust_method = hclust_method
+              D = loo_mat,
+              method = "hclust",
+              k = cluster_k,
+              hclust_method = hclust_method,
+              spectral_sigma = spectral_sigma,
+              spectral_nstart = spectral_nstart
             )
             ari_hclust[i] <- mclust::adjustedRandIndex(full_partitions$hclust, loo_hc)
+          }
+
+          if ("spectral" %in% cluster_methods) {
+            loo_spectral <- .get_partition(
+              D = loo_mat,
+              method = "spectral",
+              k = cluster_k,
+              hclust_method = hclust_method,
+              spectral_sigma = spectral_sigma,
+              spectral_nstart = spectral_nstart
+            )
+            ari_spectral[i] <- mclust::adjustedRandIndex(full_partitions$spectral, loo_spectral)
           }
         }
       }
@@ -223,6 +283,13 @@ MDistLOVO <- R6::R6Class(
               hclust_importance = 1 - ari_hclust
             )
         }
+        if ("spectral" %in% cluster_methods) {
+          res <- res |>
+            dplyr::mutate(
+              ari_spectral = ari_spectral,
+              spectral_importance = 1 - ari_spectral
+            )
+        }
       }
 
       self$results <- res
@@ -247,11 +314,13 @@ MDistLOVO <- R6::R6Class(
 
       has_pam <- "pam_importance" %in% names(r) && !all(is.na(r$pam_importance))
       has_hclust <- "hclust_importance" %in% names(r) && !all(is.na(r$hclust_importance))
+      has_spectral <- "spectral_importance" %in% names(r) && !all(is.na(r$spectral_importance))
 
-      if (has_pam || has_hclust) {
+      if (has_pam || has_hclust || has_spectral) {
         cat("  clustering diagnostics :")
         if (has_pam) cat(" PAM")
         if (has_hclust) cat(" HCLUST")
+        if (has_spectral) cat(" SPECTRAL")
         cat("\n")
       }
 
@@ -273,6 +342,9 @@ MDistLOVO <- R6::R6Class(
       }
       if (has_hclust) {
         top_cols <- c(top_cols, "hclust_importance")
+      }
+      if (has_spectral) {
+        top_cols <- c(top_cols, "spectral_importance")
       }
 
       top <- utils::head(r[ord, top_cols, drop = FALSE], 5)
@@ -324,54 +396,25 @@ MDistLOVO <- R6::R6Class(
         cat("\n")
       }
 
-      .print_metric_summary(r$mad_importance, "MAD importance")
-
       if ("relative_distance" %in% names(r)) {
         .print_metric_summary(r$relative_distance, "Relative distance")
+        .print_top(r, "relative_distance", "Top by relative distance")
       } else if ("mad_normalized" %in% names(r)) {
         .print_metric_summary(r$mad_normalized, "Normalized MAD importance")
+        .print_top(r, "mad_normalized", "Top by normalized MAD")
       }
-
-      if ("mds_congruence" %in% names(r)) {
-        .print_metric_summary(r$mds_congruence, "MDS congruence")
-      } else if ("cc_importance" %in% names(r)) {
-        .print_metric_summary(r$cc_importance, "Congruence coefficient (CC)")
-      }
-
-      .print_metric_summary(r$ac_importance, "Alienation coefficient (AC)")
 
       if ("ari_pam" %in% names(r)) {
         .print_metric_summary(r$ari_pam, "ARI vs full PAM partition")
-      }
-      if ("pam_importance" %in% names(r)) {
-        .print_metric_summary(r$pam_importance, "PAM importance (1 - ARI)")
       }
 
       if ("ari_hclust" %in% names(r)) {
         .print_metric_summary(r$ari_hclust, "ARI vs full HCLUST partition")
       }
-      if ("hclust_importance" %in% names(r)) {
-        .print_metric_summary(r$hclust_importance, "HCLUST importance (1 - ARI)")
+
+      if ("ari_spectral" %in% names(r)) {
+        .print_metric_summary(r$ari_spectral, "ARI vs full spectral partition")
       }
-
-      if ("relative_distance" %in% names(r)) {
-        .print_top(r, "relative_distance", "Top by relative distance")
-      } else if ("mad_normalized" %in% names(r)) {
-        .print_top(r, "mad_normalized", "Top by normalized MAD")
-      }
-
-      .print_top(r, "mad_importance", "Top by MAD")
-
-      if ("mds_congruence" %in% names(r)) {
-        .print_top(r, "mds_congruence", "Top by MDS congruence", decreasing = FALSE)
-      } else if ("cc_importance" %in% names(r)) {
-        .print_top(r, "cc_importance", "Top by congruence coefficient", decreasing = FALSE)
-      }
-
-      .print_top(r, "ac_importance", "Top by alienation coefficient")
-
-      .print_top(r, "pam_importance", "Top by PAM importance")
-      .print_top(r, "hclust_importance", "Top by HCLUST importance")
 
       invisible(self)
     },
@@ -379,8 +422,8 @@ MDistLOVO <- R6::R6Class(
     autoplot = function(metric = c("relative_distance", "mad_importance",
                                    "mds_congruence", "ac_importance",
                                    "cc_importance", "mad_normalized",
-                                   "ari_pam", "ari_hclust",
-                                   "pam_importance", "hclust_importance"),
+                                   "ari_pam", "ari_hclust", "ari_spectral",
+                                   "pam_importance", "hclust_importance", "spectral_importance"),
                         reorder = FALSE,
                         top_n = NULL) {
       metric <- match.arg(metric)
@@ -395,6 +438,8 @@ MDistLOVO <- R6::R6Class(
         mad_normalized    = "Normalized MAD importance",
         ari_pam           = "ARI vs full PAM partition",
         ari_hclust        = "ARI vs full HCLUST partition",
+        ari_spectral        = "ARI vs full spectral partition",
+        spectral_importance = "Spectral importance (1 - ARI)",
         pam_importance    = "PAM importance (1 - ARI)",
         hclust_importance = "HCLUST importance (1 - ARI)"
       )
@@ -410,7 +455,8 @@ MDistLOVO <- R6::R6Class(
         stop(sprintf("Metric '%s' is available but contains only NA values.", metric))
       }
 
-      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "cc_importance", "mds_congruence")
+      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "ari_spectral",
+                                           "cc_importance", "mds_congruence")
 
       if (!is.null(top_n)) {
         top_vars <- df |>
@@ -557,8 +603,8 @@ MDistLOVO <- R6::R6Class(
           axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
         )
 
-      if (metric %in% c("ari_pam", "ari_hclust",
-                        "pam_importance", "hclust_importance")) {
+      if (metric %in% c("ari_pam", "ari_hclust", "ari_spectral",
+                        "pam_importance", "hclust_importance", "spectral_importance")) {
         p <- p + ggplot2::coord_cartesian(ylim = c(0, 1))
       }
 
@@ -571,8 +617,10 @@ MDistLOVO <- R6::R6Class(
 #' @export
 lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
                        cluster_k = NULL,
-                       cluster_methods = c("pam", "hclust"),
+                       cluster_methods = c("pam", "hclust","spectral"),
                        hclust_method = "average",
+                       spectral_sigma = NULL,
+                       spectral_nstart = 50,
                        response_used = TRUE) {
 
   response_name <- NULL
@@ -597,6 +645,8 @@ lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
     cluster_k = cluster_k,
     cluster_methods = cluster_methods,
     hclust_method = hclust_method,
+    spectral_sigma = spectral_sigma,
+    spectral_nstart = spectral_nstart,
     response_used = response_used
   )
 }

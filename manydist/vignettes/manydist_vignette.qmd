@@ -41,6 +41,12 @@ core function `mdist()` computes mixed-variable dissimilarities under a
 range of presets and custom specifications, while the `MDist` class
 stores both the resulting distance matrix and the associated metadata.
 
+Distances can be computed either in a purely unsupervised way or, for
+response-aware categorical distances, by incorporating an outcome
+variable through the `response` argument. This allows the same framework
+to support both unsupervised distance construction and supervised
+distance-based learning pipelines.
+
 The package also integrates with the tidymodels ecosystem through a
 recipe step, `step_mdist()`, a custom distance-based nearest-neighbour
 model, `nearest_neighbor_dist()`, a distance-based partitioning around
@@ -49,13 +55,17 @@ clustering implementation, `spectral_dist()`.
 
 This vignette illustrates the main functionalities of the package:
 
+This vignette illustrates the main functionalities of the package:
+
 1. computing mixed-type distances with `mdist()`;
-2. assessing variable influence with `lovo_mdist()`;
-3. comparing diagnostics across methods with `compare_lovo_mdist()`;
-4. creating distance-based representations with `step_mdist()`;
-5. fitting and tuning a KNN model with `nearest_neighbor_dist()`;
-6. fitting a distance-based PAM clustering model with `pam_dist()`;
-7. fitting a distance-based spectral clustering model with `spectral_dist()`.
+2. using response-aware distance computation when a target variable is available;
+3. assessing variable influence with `lovo_mdist()`;
+4. comparing diagnostics across methods with `compare_lovo_mdist()`;
+5. creating distance-based representations with `step_mdist()`;
+6. fitting and tuning a KNN model with `nearest_neighbor_dist()`;
+7. fitting a distance-based PAM clustering model with `pam_dist()`;
+8. fitting a distance-based spectral clustering model with `spectral_dist()`.
+
 
 The focus is on classification of penguin species, but the same ideas
 apply to other supervised or unsupervised tasks that rely on pairwise
@@ -68,9 +78,6 @@ We start from the `penguins` data and remove rows with missing values.
 ```{r penguins}
 penguins_clean <- palmerpenguins::penguins |>
   drop_na()
-
-penguins_clean |>
-  dplyr::count(species)
 ```
 
 # Computing mixed-type distances with `mdist()`
@@ -91,10 +98,54 @@ summary(d_obj_all)
 The resulting object stores the distance matrix together with the
 distance specification.
 
-```{r mdist-core-inspect}
-class(d_obj_all)
-dim(base::as.matrix(d_obj_all$distance))
+## Response-aware distance computation
+
+When a response variable is available, some categorical distances can use
+it to construct supervised, response-aware dissimilarities. This is
+particularly relevant for association-based categorical distances such as
+`"tvd"`.
+
+The same function `mdist()` can therefore be used in two ways:
+
+- without a response, yielding a purely unsupervised distance;
+- with a response, yielding a supervised version whenever the selected
+  categorical distance supports it.
+  
+```{r mdist-response-unsup}
+d_unsup <- mdist(
+  x = penguins_clean,
+  response = NULL,
+  distance_cat = "tvd",
+  distance_cont = "manhattan",
+  commensurable = TRUE
+)
+
+summary(d_unsup)
 ```
+
+```{r mdist-response-sup}
+d_sup <- mdist(
+  x = penguins_clean,
+  response = species,
+  distance_cat = "tvd",
+  distance_cont = "manhattan",
+  commensurable = TRUE
+)
+
+summary(d_sup)
+```
+
+
+```{r mdist-response-compare}
+D_unsup <- as.matrix(d_unsup$distance)
+D_sup   <- as.matrix(d_sup$distance)
+
+all.equal(D_unsup,D_sup)
+```
+
+A non-zero difference confirms that including the response changes the
+resulting distance matrix. 
+
 
 # Variable diagnostics with `lovo_mdist()`
 
@@ -116,7 +167,7 @@ summary(lovo_res)
 A graphical summary is also available through `autoplot()`.
 
 ```{r lovo-plot}
-autoplot(lovo_res, "mad_normalized")
+autoplot(lovo_res, "relative_distance")
 ```
 
 ## LOVO with clustering-based diagnostics
@@ -156,6 +207,10 @@ autoplot(lovo_res_clust, metric = "pam_importance")
 autoplot(lovo_res_clust, metric = "hclust_importance")
 ```
 
+```{r lovo-cluster-plot-spectral}
+autoplot(lovo_res_clust, metric = "spectral_importance")
+```
+
 If needed, only one clustering method can be requested.
 
 ```{r lovo-cluster-pam-only}
@@ -169,7 +224,53 @@ lovo_res_pam <- lovo_mdist(
 autoplot(lovo_res_pam, metric = "pam_importance")
 ```
 
+## LOVO with and without response information
+
+If a response variable is supplied to `lovo_mdist()`, the diagnostic can
+be computed either:
+
+- using the response inside the distance computation (`response_used = TRUE`);
+- or excluding the response from the distance computation while still
+  starting from a data frame that contains it (`response_used = FALSE`).
+
+This makes it possible to compare supervised and unsupervised LOVO
+profiles under otherwise matched specifications.
+
+```{r lovo-response-sup}
+lovo_sup <- lovo_mdist(
+  x = penguins_clean,
+  response = species,
+  distance_cat = "tvd",
+  distance_cont = "manhattan",
+  commensurable = TRUE,
+  response_used = TRUE
+)
+
+summary(lovo_sup)
+```
+
+```{r lovo-response-unsup}
+lovo_unsup <- lovo_mdist(
+  x = penguins_clean,
+  response = species,
+  distance_cat = "tvd",
+  distance_cont = "manhattan",
+  commensurable = TRUE,
+  response_used = FALSE
+)
+
+summary(lovo_unsup)
+```
+
+```{r}
+autoplot(lovo_sup, metric = "relative_distance")
+autoplot(lovo_unsup, metric = "relative_distance")
+```
+
 # Comparing distance specifications with `compare_lovo_mdist()`
+
+
+
 
 The function `compare_lovo_mdist()` extends the LOVO diagnostic to
 multiple distance specifications. This makes it possible to compare how
@@ -184,7 +285,7 @@ In the example below, we compare:
   variables and Hennig--Liao distance for categorical variables.
 
 ```{r lovo-compare}
-#| cache: true
+#| cache: false
 lovo_cmp <- compare_lovo_mdist(
   x = penguins_clean |> select(-species),
   methods = list(
@@ -206,9 +307,44 @@ summary(lovo_cmp)
 ```
 
 ```{r lovo-compare-plot}
-#| cache: true
-autoplot(lovo_cmp, metric = "mad_normalized")
+#| cache: false
+autoplot(lovo_cmp, metric = "relative_distance")
 ```
+
+## Comparing supervised and unsupervised LOVO profiles
+
+The helper `lovo_method_spec()` makes it convenient to define method
+specifications when the response is part of the comparison design.
+
+In the next example, we compare the same distance specification with and
+without using the response inside the categorical distance computation.
+
+```{r lovo-compare-response}
+lovo_cmp_resp_clust <- compare_lovo_mdist(
+  x = penguins_clean,
+  methods = list(
+    u_dep_unsup = lovo_method_spec(
+      response = species,
+      preset = "u_dep",
+      response_used = FALSE
+    ),
+    u_dep_sup = lovo_method_spec(
+      response = species,
+      preset = "u_dep",
+      response_used = TRUE
+    )
+  ),
+  cluster_k = 3,
+  cluster_methods = "spectral"
+)
+
+summary(lovo_cmp_resp_clust)
+autoplot(lovo_cmp_resp_clust, metric = "ari_spectral")
+autoplot(lovo_cmp_resp_clust, metric = "spectral_importance")
+autoplot(lovo_cmp_resp_clust, metric = "relative_distance")
+```
+
+
 
 # Distance-based KNN in base R
 
@@ -370,7 +506,7 @@ peng_wf_tune <- workflow() |>
 ```
 
 ```{r tune-grid}
-#| cache: true
+#| cache: false
 set.seed(123)
 peng_folds <- vfold_cv(peng_train, v = 5, strata = species)
 

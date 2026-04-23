@@ -26,6 +26,7 @@ MDistLOVOCompare <- R6::R6Class(
 
       has_pam <- "pam_importance" %in% names(r) && !all(is.na(r$pam_importance))
       has_hclust <- "hclust_importance" %in% names(r) && !all(is.na(r$hclust_importance))
+      has_spectral <- "spectral_importance" %in% names(r) && !all(is.na(r$spectral_importance))
 
       ord_metric <- if ("relative_distance" %in% names(r)) "relative_distance" else "mad_importance"
 
@@ -45,6 +46,9 @@ MDistLOVOCompare <- R6::R6Class(
       }
       if (has_hclust) {
         top_cols <- c(top_cols, "hclust_importance")
+      }
+      if (has_spectral) {
+        top_cols <- c(top_cols, "spectral_importance")
       }
 
       top <- r |>
@@ -123,6 +127,24 @@ MDistLOVOCompare <- R6::R6Class(
           )
       }
 
+      if ("ari_spectral" %in% names(r) && !all(is.na(r$ari_spectral))) {
+        out <- out |>
+          dplyr::left_join(
+            r |>
+              dplyr::group_by(method) |>
+              dplyr::summarise(
+                ari_spectral_min  = min(ari_spectral, na.rm = TRUE),
+                ari_spectral_max  = max(ari_spectral, na.rm = TRUE),
+                ari_spectral_mean = mean(ari_spectral, na.rm = TRUE),
+                spectral_imp_min  = min(spectral_importance, na.rm = TRUE),
+                spectral_imp_max  = max(spectral_importance, na.rm = TRUE),
+                spectral_imp_mean = mean(spectral_importance, na.rm = TRUE),
+                .groups = "drop"
+              ),
+            by = "method"
+          )
+      }
+
       cat("Summary of MDistLOVOCompare\n")
       cat("  methods:", paste(names(self$methods), collapse = ", "), "\n")
       cat("  dims   :", self$dims, "\n")
@@ -134,8 +156,8 @@ MDistLOVOCompare <- R6::R6Class(
     autoplot = function(metric = c("relative_distance", "mad_importance",
                                    "mds_congruence", "ac_importance",
                                    "cc_importance", "mad_normalized",
-                                   "ari_pam", "ari_hclust",
-                                   "pam_importance", "hclust_importance"),
+                                   "ari_pam", "ari_hclust", "ari_spectral",
+                                   "pam_importance", "hclust_importance", "spectral_importance"),
                         reorder = FALSE,
                         top_n = NULL) {
       metric <- match.arg(metric)
@@ -150,8 +172,10 @@ MDistLOVOCompare <- R6::R6Class(
         mad_normalized    = "Normalized MAD importance",
         ari_pam           = "ARI vs full PAM partition",
         ari_hclust        = "ARI vs full HCLUST partition",
+        ari_spectral      = "ARI vs full spectral partition",
         pam_importance    = "PAM importance (1 - ARI)",
-        hclust_importance = "HCLUST importance (1 - ARI)"
+        hclust_importance = "HCLUST importance (1 - ARI)",
+        spectral_importance = "Spectral importance (1 - ARI)"
       )
 
       df <- self$results
@@ -164,7 +188,8 @@ MDistLOVOCompare <- R6::R6Class(
         stop(sprintf("Metric '%s' is available but contains only NA values.", metric))
       }
 
-      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "cc_importance", "mds_congruence")
+      smaller_is_stronger <- metric %in% c("ari_pam", "ari_hclust", "ari_spectral",
+                                           "cc_importance", "mds_congruence")
 
       if (!is.null(top_n)) {
         top_vars <- df |>
