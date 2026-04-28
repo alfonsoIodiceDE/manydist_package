@@ -1,0 +1,379 @@
+/* =========================================================
+   Quarto RevealJS — manydist Styling
+   Clean, balanced, professional hierarchy
+   Palette inspired by the manydist package logo
+   ========================================================= */
+
+/* =========================================================
+   COLOUR PALETTE
+   ========================================================= */
+
+:root {
+  --manydist-navy: #5B7F86;
+  --manydist-teal:   #2A9D8F;
+  --manydist-coral:  #E76F51;
+  --manydist-gold:   #E9C46A;
+  --manydist-cream:  #FAF8F3;
+  --manydist-grey:   #E9ECEF;
+  --manydist-dark:   #1F2D33;
+}
+
+/* =========================================================
+   GLOBAL SLIDE STYLE
+   ========================================================= */
+
+.reveal {
+  color: var(--manydist-dark);
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  color: var(--manydist-navy);
+}
+
+.reveal strong {
+  color: var(--manydist-coral);
+  font-weight: 700;
+}
+
+/* Useful inline highlight classes */
+.reveal .highlight-ab {
+  color: var(--manydist-coral);
+  font-weight: 700;
+}
+
+.reveal .highlight-ib {
+  color: var(--manydist-teal);
+  font-weight: 700;
+}
+
+.reveal .highlight-neutral {
+  color: var(--manydist-navy);
+  font-weight: 700;
+}
+
+/* =========================================================
+   TITLE SLIDE HIERARCHY
+   ========================================================= */
+
+/* Main title — coral box on navy title slide */
+.reveal section.quarto-title-block h1,
+.reveal #title-slide h1 {
+  font-size: 2.2em !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+
+  color: var(--manydist-cream) !important;
+  background: var(--manydist-coral) !important;
+  display: inline-block !important;
+  padding: 0.18em 0.55em !important;
+  border-radius: 12px !important;
+}
+
+/* Subtitle — plain on navy background */
+.reveal section.quarto-title-block h2,
+.reveal #title-slide p.subtitle {
+  font-size: 1.45em !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+
+  color: var(--manydist-cream) !important;
+  background: transparent !important;
+  display: block !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  margin-top: 0.6em !important;
+}
+
+/* Author block */
+.reveal section.quarto-title-block .quarto-title-authors,
+.reveal #title-slide .quarto-title-authors,
+.reveal section.quarto-title-block .quarto-title-author,
+.reveal #title-slide .quarto-title-author {
+  font-size: 1.15em !important;
+  font-weight: 600 !important;
+}
+
+/* Author block on title slide */
+.reveal #title-slide .quarto-title-authors,
+.reveal #title-slide .quarto-title-author {
+  color: var(--manydist-cream) !important;
+}
+
+/* Author block outside title slide, if used */
+.reveal section.quarto-title-block .quarto-title-authors,
+.reveal section.quarto-title-block .quarto-title-author {
+  color: var(--manydist-navy) !important;
+}
+
+/* Joint work line */
+.reveal section.quarto-title-block .joint-work,
+.reveal #title-slide .joint-work {
+  font-size: 0.8em;
+  font-weight: 400;
+  display: block;
+  margin-top: 0.3em;
+  opacity: 0.9;
+}
+
+/* Joint work line on title slide */
+.reveal #title-slide .joint-work {
+  color: var(--manydist-cream) !important;
+}
+
+/* Joint work line outside title slide, if used */
+.reveal section.quarto-title-block .joint-work {
+  color: var(--manydist-dark);
+}
+
+/* Date */
+.reveal section.quarto-title-block .quarto-title-date,
+.reveal #title-slide .quarto-title-date {
+  font-size: 1.05em !important;
+  font-weight: 400 !important;
+}
+
+/* Date on title slide */
+.reveal #title-slide .quarto-title-date {
+  color: var(--manydist-cream) !important;
+}
+
+/* Date outside title slide, if used */
+.reveal section.quarto-title-block .quarto-title-date {
+  color: var(--manydist-dark) !important;
+}
+
+/* Extra info line on title slide */
+.reveal #title-slide .title-extra,
+.reveal section#title-slide .title-extra {
+  margin-top: 0.8em;
+  font-size: 0.9em;
+  font-style: italic;
+  opacity: 0.95;
+  color: var(--manydist-cream) !important;
+}
+
+/* Extra info line outside title slide, if used */
+.reveal section.quarto-title-block .title-extra {
+  margin-top: 0.8em;
+  font-size: 0.9em;
+  font-style: italic;
+  opacity: 0.95;
+  color: var(--manydist-navy);
+}
+
+/* =========================================================
+   CALLOUT READABILITY
+   ========================================================= */
+
+.reveal section .callout,
+.reveal section .callout .callout-body,
+.reveal section .callout .callout-content,
+.reveal section .callout .callout-body-container {
+  font-size: inherit !important;
+  line-height: 1.38 !important;
+}
+
+/* General callout border/accent */
+.reveal section .callout {
+  border-left: 6px solid var(--manydist-coral) !important;
+  background-color: var(--manydist-cream) !important;
+  border-radius: 10px !important;
+}
+
+/* Callout title */
+.reveal section .callout .callout-title,
+.reveal section .callout .callout-title p,
+.reveal section .callout .callout-title strong {
+  font-size: 1em !important;
+  font-weight: 650 !important;
+  line-height: 1.2 !important;
+  color: var(--manydist-navy) !important;
+}
+
+/* Callout lists */
+.reveal section .callout li {
+  margin-bottom: 0.35em !important;
+}
+
+/* Optional semantic callout classes */
+.reveal section .callout-ib {
+  border-left: 6px solid var(--manydist-teal) !important;
+  background-color: #F1FAF8 !important;
+}
+
+.reveal section .callout-ab {
+  border-left: 6px solid var(--manydist-coral) !important;
+  background-color: #FFF4EF !important;
+}
+
+.reveal section .callout-package {
+  border-left: 6px solid var(--manydist-gold) !important;
+  background-color: #FFF9E8 !important;
+}
+
+/* =========================================================
+   GENERAL SLIDE TYPOGRAPHY
+   ========================================================= */
+
+/* Lists breathing room */
+.reveal ul,
+.reveal ol {
+  line-height: 1.32;
+}
+
+.reveal li {
+  margin-bottom: 0.25em;
+}
+
+/* Links */
+.reveal a {
+  color: var(--manydist-teal);
+}
+
+.reveal a:hover {
+  color: var(--manydist-coral);
+}
+
+/* Code blocks */
+.reveal pre code {
+  font-size: 0.95em;
+  line-height: 1.25;
+}
+
+.reveal pre {
+  border-left: 5px solid var(--manydist-teal);
+  border-radius: 8px;
+}
+
+.reveal code {
+  font-size: 0.95em;
+  color: var(--manydist-navy);
+}
+
+/* Inline code */
+.reveal p code,
+.reveal li code {
+  background-color: var(--manydist-grey);
+  color: var(--manydist-navy);
+  padding: 0.05em 0.25em;
+  border-radius: 5px;
+}
+
+/* =========================================================
+   TABLES
+   ========================================================= */
+
+.reveal table {
+  border-collapse: collapse;
+}
+
+.reveal table th {
+  color: var(--manydist-navy);
+  border-bottom: 2px solid var(--manydist-coral);
+}
+
+.reveal table td {
+  border-bottom: 1px solid var(--manydist-grey);
+}
+
+/* =========================================================
+   REFERENCES
+   ========================================================= */
+
+/* Whole bibliography container */
+.reveal .csl-bib-body {
+  font-size: 1.15em;
+  line-height: 1.35;
+}
+
+/* Each entry */
+.reveal .csl-entry {
+  margin-bottom: 0.6em;
+  padding-left: 1.6em;
+  text-indent: -1.6em;
+}
+
+.reveal section#refs-slide .csl-bib-body {
+  font-size: 1.2em;
+  line-height: 1.35;
+}
+
+
+
+.reveal #title-slide .title-conference {
+  display: block;
+  margin-top: 0.7em;
+  color: var(--manydist-cream) !important;
+  font-size: 0.75em !important;
+  font-weight: 400 !important;
+  line-height: 1.25 !important;
+}
+
+
+/* =========================================================
+   OUTLINE SLIDE BOXES
+   ========================================================= */
+
+.reveal section.outline-slide {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.reveal section.outline-slide h2 {
+  margin-bottom: 0.8em;
+}
+
+.reveal section.outline-slide .outline-boxes {
+  width: 88%;
+  max-width: 1050px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1em;
+}
+
+.reveal section.outline-slide .outline-box {
+  background: var(--manydist-cream);
+  border-left: 7px solid var(--manydist-coral);
+  border-radius: 12px;
+  padding: 0.50em 0.85em;
+  box-shadow: 0 3px 10px rgba(31, 45, 51, 0.12);
+  font-size: 0.90em;
+  line-height: 1.22;
+  text-align: left;
+}
+
+.reveal section.outline-slide .outline-box strong {
+  color: var(--manydist-navy);
+  font-size: 1.03em;
+}
+
+.reveal section.outline-slide .outline-box code {
+  color: var(--manydist-coral);
+  background: transparent;
+  padding: 0;
+}
+
+/* Alternating accents */
+.reveal section.outline-slide .outline-1,
+.reveal section.outline-slide .outline-3,
+.reveal section.outline-slide .outline-5 {
+  border-left-color: var(--manydist-coral);
+}
+
+.reveal section.outline-slide .outline-2,
+.reveal section.outline-slide .outline-4 {
+  border-left-color: var(--manydist-teal);
+}
+
+
+.reveal .text-coral {
+  color: var(--manydist-coral);
+}
+
+.reveal .text-teal {
+  color: var(--manydist-teal);
+}
