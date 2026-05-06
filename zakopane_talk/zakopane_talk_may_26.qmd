@@ -40,6 +40,7 @@ format:
 ```{r}
 #| include: false
 
+
 library(tidyverse)
 library(tidymodels)
 library(ggrepel)
@@ -48,6 +49,12 @@ library(sna)
 library(GGally)
 library(knitr)
 library(kableExtra)
+library(conflicted)
+devtools::load_all("../manydist")
+
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::lag)
+conflicts_prefer(base::attr)
 ```
 
 ## Outline {.outline-slide}
@@ -55,8 +62,8 @@ library(kableExtra)
 ::: {.outline-boxes}
 
 ::: {.outline-box .outline-1}
-**1. Why distances need awareness**  
-Mixed-type data and learning from dissimilarities
+**1. Distance-based learning with mixed data**  
+Increasing awareness in distance construction
 :::
 
 ::::{.fragment}
@@ -90,23 +97,29 @@ Distance construction, diagnostics, and learning workflows
 :::
 
 
-## Mixed-type data are everywhere
+# 1. Distance-based learning with mixed data
+
+## Mixed-type data 
 
 Most real data applications do not contain only numerical variables.
 
 &nbsp;
 
-::: {.callout-tip icon=false}
-## tabular data
+::: {.callout-tip appearance="simple" icon=false}
+## Tabular data
+
 In socio-economic applications, observations are often described by a mixture of  
-**measurements**, **counts**, **categories**, **ordered scales**.
+**measurements**, **counts**, **categories**, and **ordered scales**.
 :::
 
 &nbsp;
 
 ::: {.columns}
+
 ::: {.column width="50%"}
-### Numerical variables
+
+::: {.callout-note appearance="simple" icon=false}
+## Numerical variables
 
 - income
 - age
@@ -116,8 +129,12 @@ In socio-economic applications, observations are often described by a mixture of
 - employment rates
 :::
 
+:::
+
 ::: {.column width="50%"}
-### Categorical variables
+
+::: {.callout-important appearance="simple" icon=false}
+## Categorical variables
 
 - region
 - education level
@@ -126,89 +143,116 @@ In socio-economic applications, observations are often described by a mixture of
 - household type
 - policy regime
 :::
+
 :::
 
-## Mixed data are not just “different formats”
-
-Continuous and categorical variables often describe **different aspects of the same phenomenon**.
-
-&nbsp;
-
-::: {.callout-note icon=false}
-For example, income, education level, occupation, region, and sector are not independent descriptors:  
-they are structurally related.
 :::
 
-&nbsp;
 
-:::{.fragment .centered}
-### the difficulty is to define a geometry that respects this structure
-:::
+## Learning from mixed-type data
 
-## Why this matters for learning
+Many statistical learning methods rely, explicitly or implicitly, on **comparing observations**.
 
-Many statistical learning methods rely, explicitly or implicitly, on comparing observations.
 
-&nbsp;
 
-If the data are mixed-type, then comparison is not straightforward:
+- If the data are mixed-type, then comparison is **not straightforward**:
 
 &nbsp;
 
 ::: {.columns}
+
 ::: {.column width="33%"}
-### Scale
+
+::: {.callout-note appearance="simple" icon=false}
+## Scale
 
 How do we compare variables measured in different units?
 :::
 
+:::
+
 ::: {.column width="33%"}
-### Type
+
+::: {.callout-tip appearance="simple" icon=false}
+## Type
 
 How do we combine numerical differences with category mismatches?
 :::
 
+:::
+
 ::: {.column width="33%"}
-### Structure
+
+::: {.callout-important appearance="simple" icon=false}
+## Structure
 
 How do we avoid counting associated information multiple times?
 :::
+
+:::
+
 :::
 
 &nbsp;
 
+
 :::{.fragment .centered}
-### this is where distances become a modelling choice
+### the aim is to compare observations while accounting for scale, type, and structure
 :::
 
 
-## Learning from dissimilarities
+## Learning from distances
 
+::: {.callout-important appearance="simple" icon=false}
+## [Terminology alert!]{.text-coral}
 
+I will often use **distance** as shorthand for pairwise dissimilarity.
+
+Some measures discussed here are not metrics in the strict mathematical sense,  
+but they all quantify how different two observations are.
+:::
 
 Many learning methods can operate directly on a dissimilarity matrix.
 
-&nbsp;
+::: {.columns}
 
-### [Dimension reduction]{style="color:#2A9D8F"}: multidimensional scaling (MDS)^[@borg2005modern]
+::: {.column width="33%"}
 
-&nbsp;
+::: {.callout-tip appearance="simple" icon=false}
+## Dimension reduction
 
-### [Clustering methods]{style="color:#2A9D8F"}: hierarchical clustering (HC), partitioning around medoids (PAM)^[@kaufman2009finding], and spectral clustering^[@ng2002spectral]
-
-&nbsp;
-
-### [Prediction methods]{style="color:#2A9D8F"}: nearest-neighbour classification and nearest-neighbour averaging for regression
-
-&nbsp;
-
-:::{.fragment .centered}
-### the [dissimilarity]{style="color:#E76F51"} measure of choice defines the [geometry]{style="color:#E76F51"} of the analysis
+Multidimensional scaling (MDS)^[@borg2005modern]
 :::
 
-## 
+:::
 
-building pairwise dissimilarities: **intuition**
+::: {.column width="33%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Clustering methods
+
+Hierarchical clustering (HC), PAM^[@kaufman2009finding], and spectral clustering^[@ng2002spectral]
+:::
+
+:::
+
+::: {.column width="33%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Nearest-neighbour prediction
+
+Nearest-neighbour classification and nearest-neighbour averaging for regression
+:::
+
+:::
+
+:::
+
+:::{.fragment .centered}
+### choosing a different [distance]{.text-coral} can lead to a different downstream analysis result
+:::
+
+## building pairwise dissimilarities: **intuition**
 
 2 continuous variables: add up by-variable  (absolute value or squared) differences 
 
@@ -258,9 +302,9 @@ toy_data |>
   geom_point(size=8) + geom_text(color="white") +
   # geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="#2A9D8F",size=4)+
   # geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+
-  geom_line(data=toy_data |> filter(X4 %in%c("A","B")), 
+  geom_line(data=toy_data |> dplyr::filter(X4 %in%c("A","B")), 
                inherit.aes = FALSE,aes(x=X1,y=0),color="#2A9D8F",size=2)+
-  geom_line(data=toy_data |> filter(X4 %in%c("A","B")), 
+  geom_line(data=toy_data |> dplyr::filter(X4 %in%c("A","B")), 
                inherit.aes = FALSE,aes(y=X2,x=0),color="forestgreen",size=2)+
   annotate("label",x=2, y=2,label="d(A,B)",size=10)+theme_void()
   
@@ -279,9 +323,9 @@ toy_data |>
   geom_point(size=8) + geom_text(color="white") +
   # geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="#2A9D8F",size=4)+
   # geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+
-  geom_line(data=toy_data |> filter(X4 %in%c("A","C")), 
+  geom_line(data=toy_data |> dplyr::filter(X4 %in%c("A","C")), 
                inherit.aes = FALSE,aes(x=X1,y=0),color="#2A9D8F",size=2)+
-  geom_line(data=toy_data |> filter(X4 %in%c("A","C")), 
+  geom_line(data=toy_data |> dplyr::filter(X4 %in%c("A","C")), 
                inherit.aes = FALSE,aes(y=X2,x=0),color="forestgreen",size=2)+
   annotate("label",x=2, y=2,label="d(A,C)",size=10)+theme_void()
   
@@ -301,9 +345,9 @@ toy_data |>
   geom_point(size=8) + geom_text(color="white") +
   # geom_point(inherit.aes = FALSE,aes(x=X1,y=0),color="#2A9D8F",size=4)+
   # geom_point(inherit.aes = FALSE,aes(x=0,y=X2),color="forestgreen",size=4)+
-  geom_line(data=toy_data |> filter(X4 %in%c("B","C")), 
+  geom_line(data=toy_data |> dplyr::filter(X4 %in%c("B","C")), 
                inherit.aes = FALSE,aes(x=X1,y=0),color="#2A9D8F",size=2)+
-  geom_line(data=toy_data |> filter(X4 %in%c("B","C")), 
+  geom_line(data=toy_data |> dplyr::filter(X4 %in%c("B","C")), 
                inherit.aes = FALSE,aes(y=X2,x=0),color="forestgreen",size=2)+
   annotate("label",x=2, y=2,label="d(B,C)",size=10)+theme_void()
   
@@ -345,9 +389,9 @@ toy_data |>
 
 ```
 
+# 2. Scale/type-aware distances
 
-
-## Desirable properties [^1]
+## Desirable properties^[@vdv_jcgs]
 
 ::: {.callout-tip appearance="simple" icon=false}
 ## Multivariate Additivity
@@ -365,9 +409,9 @@ $$
 - **Manhattan** distance satisfies the additivity property; the **Euclidean** distance does not
 
 
-[^1]: [@vdv_jcgs]
 
-## Desirable properties
+
+## Desirable properties^[@vdv_jcgs]
 
 If additivity holds, by-variable distances are added together: they should be on equivalent scales
 
@@ -389,8 +433,7 @@ where $c$ is some constant.
 :::
 
 
-
-## Desirable properties
+## Desirable properties^[@vdv_jcgs]
 
 If the multivariate distance function $d(\cdot,\cdot)$ satisfies additivity and commensurability, then 
 *ad hoc* distance functions can be used for each variable and then aggregated.
@@ -412,6 +455,7 @@ then
 ::::
 
 :::
+
 
 ## Mixed-data setup
 
@@ -538,7 +582,7 @@ as long as variables have the same underlying distribution and scaling, commensu
 :::
 
 
-## Categorical distances: the delta framework [^2]
+## Categorical distances: the delta framework^[@vdv_pr]
 
 ::: {.callout-note appearance="simple" icon=false}
 ## From categories to distances
@@ -565,16 +609,14 @@ $${\bf D}_{c}={\bf Z}{\bf \Delta}{\bf Z}^{\sf T}=
 - therefore, categorical distances can also suffer from scale and frequency-driven bias
 
 
-[^2]: [@vdv_pr]
 
 
 
 
 
 
-##
 
-[**distributions, scaling and bias: the categorical case** ]{style="color:indianred"}
+## distributions, scaling and bias: the categorical case
 
 ```{r}
 #| echo: false
@@ -684,7 +726,7 @@ commensurability makes variable contributions comparable across **scales** and d
 ### the next step is to account for the **structure** among variables
 :::
 
-
+# 3. Association-aware distances
 
 ## by variable differences: **independence-based**
 
@@ -713,7 +755,7 @@ Z <- mtcars_tbl |> select(disp_z, wt_z) |> as.matrix()
 
 # Euclidean distance between selected cars (on standardized data)
 seg_eucl <- mtcars_tbl |>
-  filter(car %in% cars_sel) |>
+  dplyr::filter(car %in% cars_sel) |>
   summarise(
     x    = disp_z[car == cars_sel[1]],
     y    = wt_z[car == cars_sel[1]],
@@ -738,7 +780,7 @@ whitened_tbl <- mtcars_tbl |>
 
 # segment in whitened space (Euclidean here == Mahalanobis in original standardized space)
 seg_mah <- whitened_tbl |>
-  filter(car %in% cars_sel) |>
+  dplyr::filter(car %in% cars_sel) |>
   summarise(
     x    = w1[car == cars_sel[1]],
     y    = w2[car == cars_sel[1]],
@@ -794,7 +836,7 @@ ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
   geom_point(size = 2, color = "grey70") +
   stat_ellipse(type = "norm", level = 0.68, linewidth = .5,alpha=.25,color="indianred") +
   geom_point(
-    data = filter(mtcars_tbl, car %in% cars_sel),
+    data = dplyr::filter(mtcars_tbl, car %in% cars_sel),
     aes(color = car),
     size = 3
   ) +
@@ -806,7 +848,7 @@ ggplot(mtcars_tbl, aes(x = disp_z, y = wt_z)) +
     inherit.aes = FALSE
   ) +
   geom_text_repel(
-    data = filter(mtcars_tbl, car %in% cars_sel),
+    data = dplyr::filter(mtcars_tbl, car %in% cars_sel),
     aes(label = car, color = car),
     size = 4,
     box.padding = 0.3,
@@ -843,7 +885,7 @@ ggplot(whitened_tbl, aes(w1, w2)) +
   geom_point(size = 2, color = "grey70") +
   stat_ellipse(type = "norm", level = 0.68, linewidth = .5,alpha=.25,color="#2A9D8F") +
   geom_point(
-    data = filter(whitened_tbl, car %in% cars_sel),
+    data = dplyr::filter(whitened_tbl, car %in% cars_sel),
     aes(color = car),
     size = 4
   ) +
@@ -855,7 +897,7 @@ ggplot(whitened_tbl, aes(w1, w2)) +
     inherit.aes = FALSE
   ) +
   geom_text_repel(
-    data = filter(whitened_tbl, car %in% cars_sel),
+    data = dplyr::filter(whitened_tbl, car %in% cars_sel),
     aes(label = car, color = car),
     size = 4,
     box.padding = 0.35,
@@ -885,9 +927,7 @@ ggplot(whitened_tbl, aes(w1, w2)) +
 this is an **association-based** distance for continuous data
 :::
 
-## 
-
-**association-based** pairwise distance
+## **association-based** distance
 
 
 :::{.callout-note  title="Association-based for continuous: <span style='color: #E76F51;'>Mahalanobis distance</span>" icon=false}
@@ -911,9 +951,7 @@ $$
 :::
 
 
-## 
-
-**association-based** pairwise distance
+## **association-based** distance
 
 
 :::{.callout-tip title = "Association-based for categorical: <span style='color: #E76F51;'>total variation distance (TVD)</span>[@le2005association]" icon=false}
@@ -939,9 +977,7 @@ $$
 - in the framework, setting ${\Delta}_j$ determines the categorical distance measure of choice (independent- or association-based)
 
 
-## 
-
-**association-based** pairwise distance
+## **association-based** distance
 
 
 :::{.callout-tip title="Association-based for categorical: <span style='color: #E76F51;'>total variation distance (TVD)</span> [@le2005association] (2)" icon=false}
@@ -973,9 +1009,8 @@ where ${\bf P}_z = {\bf P} \odot {\bf I}_{Q^*}$, and ${\bf I}_{Q^*}$ is the $Q^*
 :::
 
 
-## 
 
-**association-based** pairwise distance
+## **association-based** distance
 
 
 
@@ -1003,6 +1038,340 @@ $$
 {\bf D}_{tvd}= {\bf Z}{\Delta}^{(tvd)}{\bf Z}^{\sf T}.
 $$
 
+:::
+
+## **association-based** distance: a small example
+
+
+::: {.columns}
+
+::: {.column width="38%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+Consider two categorical variables:
+
+- $X_1$ with categories $A,B,C$
+- $X_2$ with categories $u,v$
+
+
+```{r}
+#| echo: false
+
+toy_cat <- tibble::tibble(
+  id = 1:10,
+  X1 = factor(
+    c("A","A","A","B","B","B","C","C","C","C"),
+    levels = c("A","B","C")
+  ),
+  X2 = factor(
+    c("u","u","v","u","u","v","u","v","v","v"),
+    levels = c("u","v")
+  )
+)
+
+toy_cat
+```
+
+:::
+
+:::
+
+::: {.column width="52%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Indicator matrices
+
+$$
+{\bf Z}_1 =
+\begin{pmatrix}
+1&0&0\\
+1&0&0\\
+1&0&0\\
+0&1&0\\
+0&1&0\\
+0&1&0\\
+0&0&1\\
+0&0&1\\
+0&0&1\\
+0&0&1
+\end{pmatrix},
+\qquad
+{\bf Z}_2 =
+\begin{pmatrix}
+1&0\\
+1&0\\
+0&1\\
+1&0\\
+1&0\\
+0&1\\
+1&0\\
+0&1\\
+0&1\\
+0&1
+\end{pmatrix}.
+$$
+
+:::
+
+:::
+
+:::
+
+
+## **association-based** distance: from ${\bf Z}$ to ${\bf P}$
+
+Let
+
+$$
+{\bf Z} = [{\bf Z}_1,{\bf Z}_2].
+$$
+
+The empirical co-occurrence matrix is
+
+$$
+{\bf P}
+=
+\frac{1}{10}{\bf Z}^{\sf T}{\bf Z}.
+$$
+
+For this example,
+
+$$
+{\bf P}
+=
+\begin{pmatrix}
+\color{#2A9D8F}{0.30} & \color{#2A9D8F}{0}    & \color{#2A9D8F}{0}    & \color{#E76F51}{0.20} & \color{#E76F51}{0.10}\\
+\color{#2A9D8F}{0}    & \color{#2A9D8F}{0.30} & \color{#2A9D8F}{0}    & \color{#E76F51}{0.20} & \color{#E76F51}{0.10}\\
+\color{#2A9D8F}{0}    & \color{#2A9D8F}{0}    & \color{#2A9D8F}{0.40} & \color{#E76F51}{0.10} & \color{#E76F51}{0.30}\\
+\color{#E76F51}{0.20} & \color{#E76F51}{0.20} & \color{#E76F51}{0.10} & \color{#2A9D8F}{0.50} & \color{#2A9D8F}{0}\\
+\color{#E76F51}{0.10} & \color{#E76F51}{0.10} & \color{#E76F51}{0.30} & \color{#2A9D8F}{0}    & \color{#2A9D8F}{0.50}
+\end{pmatrix}.
+$$
+
+::: {.fragment .centered}
+### diagonal blocks contain marginal information; off-diagonal blocks contain joint proportions
+:::
+
+## **association-based** distance: from ${\bf P}$ to ${\bf R}$
+
+The diagonal part of ${\bf P}$ is
+
+$$
+{\bf P}_z
+=
+{\bf P} \odot {\bf I}_{Q^*}
+=
+\operatorname{diag}(0.30,0.30,0.40,0.50,0.50).
+$$
+
+The block matrix of conditional profiles is
+
+$$
+{\bf R}
+=
+{\bf P}_z^{-1}({\bf P}-{\bf P}_z).
+$$
+
+For this example,
+
+$$
+{\bf R}
+=
+\begin{pmatrix}
+\color{#2A9D8F}{0} & \color{#2A9D8F}{0} & \color{#2A9D8F}{0} & \color{#E76F51}{0.67} & \color{#E76F51}{0.33}\\
+\color{#2A9D8F}{0} & \color{#2A9D8F}{0} & \color{#2A9D8F}{0} & \color{#E76F51}{0.67} & \color{#E76F51}{0.33}\\
+\color{#2A9D8F}{0} & \color{#2A9D8F}{0} & \color{#2A9D8F}{0} & \color{#E76F51}{0.25} & \color{#E76F51}{0.75}\\
+\color{#E76F51}{0.40} & \color{#E76F51}{0.40} & \color{#E76F51}{0.20} & \color{#2A9D8F}{0} & \color{#2A9D8F}{0}\\
+\color{#E76F51}{0.20} & \color{#E76F51}{0.20} & \color{#E76F51}{0.60} & \color{#2A9D8F}{0} & \color{#2A9D8F}{0}
+\end{pmatrix}.
+$$
+
+::: {.fragment .centered}
+### each off-diagonal block contains conditional profiles across variables
+:::
+
+
+## **association-based** distance: reading ${\bf R}_{12}$
+
+For the categories of $X_1$, the relevant block is
+
+$$
+{\bf R}_{12}
+=
+\begin{pmatrix}
+0.67 & 0.33\\
+0.67 & 0.33\\
+0.25 & 0.75
+\end{pmatrix}.
+$$
+
+::: {.callout-note appearance="simple" icon=false}
+## Interpretation
+
+Rows of ${\bf R}_{12}$ describe the distribution of $X_2$ within each category of $X_1$:
+
+- category $A$: $P(X_2=u \mid X_1=A)=0.67$, $P(X_2=v \mid X_1=A)=0.33$
+- category $B$: $P(X_2=u \mid X_1=B)=0.67$, $P(X_2=v \mid X_1=B)=0.33$
+- category $C$: $P(X_2=u \mid X_1=C)=0.25$, $P(X_2=v \mid X_1=C)=0.75$
+:::
+
+:::{.fragment .centered}
+### categories are compared through their association profiles
+:::
+
+## **association-based** distance: from ${\bf R}$ to $\Delta_1^{(tvd)}$
+
+Compare the rows of ${\bf R}_{12}$ using TVD.
+
+$$
+\delta^{1}_{tvd}(A,B)
+=
+\frac{1}{2}
+\left(
+|0.67-0.67| + |0.33-0.33|
+\right)
+=
+0.
+$$
+
+$$
+\delta^{1}_{tvd}(A,C)
+=
+\frac{1}{2}
+\left(
+|0.67-0.25| + |0.33-0.75|
+\right)
+=
+0.42.
+$$
+
+$$
+\delta^{tvd}_{1}(B,C)
+=
+0.42.
+$$
+
+Therefore,
+
+$$
+\Delta^{(tvd)}_1
+=
+\begin{pmatrix}
+0 & 0 & 0.42\\
+0 & 0 & 0.42\\
+0.42 & 0.42 & 0
+\end{pmatrix}.
+$$
+
+:::{.fragment .centered}
+### $A$ and $B$ are close because they have the same profile with respect to $X_2$
+:::
+
+## **association-based** distance: reading ${\bf R}_{21}$
+
+For the categories of $X_2$, the relevant block is
+
+$$
+{\bf R}_{21}
+=
+\begin{pmatrix}
+0.40 & 0.40 & 0.20\\
+0.20 & 0.20 & 0.60
+\end{pmatrix}.
+$$
+
+::: {.callout-note appearance="simple" icon=false}
+## Interpretation
+
+Rows of ${\bf R}_{21}$ describe the distribution of $X_1$ within each category of $X_2$:
+
+- category $u$: $P(X_1=A \mid X_2=u)=0.40$, $P(X_1=B \mid X_2=u)=0.40$, $P(X_1=C \mid X_2=u)=0.20$
+- category $v$: $P(X_1=A \mid X_2=v)=0.20$, $P(X_1=B \mid X_2=v)=0.20$, $P(X_1=C \mid X_2=v)=0.60$
+:::
+
+:::{.fragment .centered}
+### categories of $X_2$ are compared through their association profiles with respect to $X_1$
+:::
+
+
+## **association-based** distance: from ${\bf R}_{21}$ to $\Delta_2^{(tvd)}$
+
+Compare the rows of ${\bf R}_{21}$ using TVD.
+
+$$
+\delta^{tvd}_{1}(u,v)
+=
+\frac{1}{2}
+\left(
+|0.40-0.20| + |0.40-0.20| + |0.20-0.60|
+\right)
+=
+0.40.
+$$
+
+Therefore,
+
+$$
+\Delta^{(tvd)}_2
+=
+\begin{pmatrix}
+0 & 0.40\\
+0.40 & 0
+\end{pmatrix}.
+$$
+
+:::{.fragment .centered}
+### $u$ and $v$ are different because they imply different profiles over $X_1$
+:::
+
+
+## **association-based** distance: from $\Delta$ to ${\bf D}$
+
+We collect the category dissimilarity matrices in a block-diagonal matrix:
+
+$$
+\Delta^{(tvd)}
+=
+\begin{pmatrix}
+\color{#2A9D8F}{\Delta^{(tvd)}_1} & \color{#E76F51}{0}\\
+\color{#E76F51}{0} & \color{#2A9D8F}{\Delta^{(tvd)}_2}
+\end{pmatrix}.
+$$
+
+The observation-level categorical distance matrix is then
+
+$$
+{\bf D}_{tvd}
+=
+{\bf Z}\Delta^{(tvd)}{\bf Z}^{\sf T}
+=
+\begin{bmatrix}
+{\bf Z}_1 & {\bf Z}_2
+\end{bmatrix}
+\begin{pmatrix}
+\Delta^{(tvd)}_1 & 0\\
+0 & \Delta^{(tvd)}_2
+\end{pmatrix}
+\begin{bmatrix}
+{\bf Z}_1^{\sf T}\\
+{\bf Z}_2^{\sf T}
+\end{bmatrix}.
+$$
+
+Equivalently,
+
+$$
+{\bf D}_{tvd}
+=
+{\bf Z}_1\Delta^{(tvd)}_1{\bf Z}_1^{\sf T}
++
+{\bf Z}_2\Delta^{(tvd)}_2{\bf Z}_2^{\sf T}.
+$$
+
+:::{.fragment .centered}
+### category-level dissimilarities are translated into observation-level distances
 :::
 
 ## From distances to data representation
@@ -1180,9 +1549,10 @@ Recovery of the true cluster labels is measured using the adjusted Rand index.
 :::{.fragment}
 - `hl` performs well when categorical variables are noise, but poorly when numerical variables are noise
 - `gower` tends to show the opposite pattern
-- `u_mix` is comparatively stable in the mixed signal/noise scenarios
+- `u_mix` and `u_dep`  are comparatively stable in the mixed signal/noise scenarios
 :::
 
+# 4. Interaction- and response-aware extensions
 
 ## Interaction-aware distances
 
@@ -1415,7 +1785,7 @@ $$
 :::
 :::
 
-:::{.fragment .centered}
+:::{.fragment }
 ### the interaction matrix summarizes category-pair separability in the continuous space
 :::
 
@@ -1737,35 +2107,208 @@ The `Carseats` data are used to predict whether sales are high.
 :::
 
 
+
+## 
+
+# Building distance-based pipelines: manydist
+
+::: {.fragment .centered}
+![](figures/manydist_logo.png){width=35%}
+:::
+
+:::{.fragment .centered}
+### from distance construction to reproducible learning workflows
+:::
+
 ## Building distance-based pipelines: `manydist`
 
-::: {.callout-tip appearance="simple" icon=false}
-## Main idea
+![](figures/manydist_logo.png){.slide-logo-small}
 
-`manydist` provides tools to construct, diagnose, and use distances for continuous, categorical, and mixed-type data.
+::: {.callout-tip appearance="simple" icon=false}
+## `manydist`
+
+A package to construct, diagnose, and use distances for continuous, categorical, and mixed-type data.
 :::
 
 ::: {.columns}
-::: {.column width="50%"}
 
-### Distance construction
+::: {.column width="33%"}
 
-- `mdist()`, recipe step: `step_mdist()`
+::: {.callout-note appearance="simple" icon=false}
+## Distance construction
+
+- `mdist()`
+- `step_mdist()`
 - presets and custom specifications
 - response-aware distances
+:::
 
 :::
 
-::: {.column width="50%"}
+::: {.column width="33%"}
 
-### model specifications
+::: {.callout-tip appearance="simple" icon=false}
+## Diagnostics
 
 - `lovo_mdist()`
-- `nearest_neighbor_dist()`
+- `compare_lovo_mdist()`
+- `benchmark_mdist()`
+:::
+
+:::
+
+::: {.column width="33%"}
+
+::: {.callout-important appearance="simple" icon=false}
+## Learning: model specs
+
+**Unsupervised learning**
+
 - `pam_dist()`
 - `spectral_dist()`
 
+**Supervised learning**
+
+- `nearest_neighbor_dist()`
 :::
+
+:::
+
+:::
+
+:::{.fragment .centered}
+### from distance construction to reproducible learning workflows
+:::
+
+## `manydist`: socio-economic country profiles
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+A 2022 World Bank / WDI snapshot of country-level socio-economic indicators.
+
+- observations: countries
+- numerical variables: GDP per capita, life expectancy, unemployment, urban population, population growth
+- categorical variables: world region and income group
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## 
+
+Use `manydist` to build a mixed-type distance between countries and diagnose which variables shape the resulting dissimilarity structure.
+:::
+
+## Preparing the WDI data
+
+```{r}
+#| echo: false
+
+load("../zakopane_talk/data/wdi_socio_2022.RData")
+set.seed(123)
+wdi_data |> 
+  dplyr::slice_sample(n = 8) |> 
+  dplyr::rename_with(~ wdi_labels[.x], .cols = dplyr::everything()) |> 
+  knitr::kable(format = "html") |> 
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 15
+  )
+```
+
+
+
+## Constructing a mixed-type distance
+
+```{r}
+#| echo: true
+
+wdi_x <- wdi_data |> 
+  dplyr::select(-country)
+
+d_wdi <- mdist(
+  wdi_x,
+  preset = "u_dep"
+)
+
+
+```
+
+::: {.callout-tip appearance="simple" icon=false}
+## `mdist()`
+
+The core function computes the distance matrix and returns an `MDist` object containing both the pairwise distances and the metadata needed to reproduce the computation.
+:::
+
+
+## Visualizing country proximities
+
+```{r}
+#| echo: true
+#| fig-height: 6
+
+D_wdi <- d_wdi$distance
+
+wdi_mds <- D_wdi |> 
+  as.matrix() |> 
+  cmdscale(k = 2) |> 
+  as_tibble(.name_repair = "minimal") |> 
+  set_names(c("Dim1", "Dim2")) |> 
+  bind_cols(wdi_data |> select(country, region, income))
+
+wdi_mds |> 
+  ggplot(aes(Dim1, Dim2, color = income)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  labs(
+    x = "MDS dimension 1",
+    y = "MDS dimension 2",
+    color = "Income group"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+::: {.fragment .centered}
+### the distance matrix induces a low-dimensional representation of socio-economic profiles
+:::
+
+## Comparing distance constructions
+
+```{r}
+#| warning: false
+
+lovo_wdi_compare <- compare_lovo_mdist(
+  x = wdi_x,
+  methods = list(
+    gower = list(preset = "gower",commensurable=FALSE),
+     u_indep = list(preset = "u_indep"),
+    hl = list(preset = "hl"),
+    u_dep = list(preset = "u_dep"),
+    custom = list(
+      scaling="std",
+      distance_cont = "euclidean",
+      distance_cat  = "matching",
+      commensurable = FALSE
+    )
+  ),
+  cluster_k = 4
+)
+
+autoplot(lovo_wdi_compare, metric = "relative_distance")
+
+```
+
+
+::: {.callout-note appearance="simple" icon=false}
+## `lovo_mdist_compare()`
+
+The same leave-one-variable-out diagnostic can be computed for several distance definitions and compared in one display.
+:::
+
+:::{.fragment .centered}
+### this makes distance choice explicit and diagnosable
 :::
 
 ## Main references {.refs}

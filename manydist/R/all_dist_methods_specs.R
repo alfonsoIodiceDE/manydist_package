@@ -136,12 +136,18 @@ all_dist_method_specs <- function(
       preset = "custom"
     ) |>
     dplyr::select(
-      .data$spec_type,
-      .data$preset,
-      .data$distance_cont,
-      .data$distance_cat,
-      .data$scaling_cont,
-      .data$commensurable
-    )
+      spec_type,
+      preset,
+      distance_cont,
+      distance_cat,
+      scaling_cont,
+      commensurable
+    ) |> dplyr::filter(
+    !(commensurable == TRUE & !scaling_cont %in% c("std", "robust", "pc_scores"))
+  )
+
+
+
+
   dplyr::bind_rows(preset_specs, component_specs)
 }

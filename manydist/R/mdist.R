@@ -353,7 +353,14 @@
   cont_data <- prep$cont_data
   cat_data  <- prep$cat_data
 
-  generic_presets <- c("custom", "unbiased_dependent", "u_dep", "u_indep", "u_mix")
+  generic_presets <- c(
+    "custom",
+    "unbiased_dependent",
+    "u_dep",
+    "u_indep",
+    "u_mix",
+    "hl"
+  )
 
   if (prep$preset %in% generic_presets) {
 

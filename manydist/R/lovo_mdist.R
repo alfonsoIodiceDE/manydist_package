@@ -2,7 +2,7 @@
 
 # internal helper (not exported)
 .get_partition <- function(D, method, k,
-                           hclust_method = "average",
+                           hclust_method = "complete",
                            spectral_sigma = NULL,
                            spectral_nstart = 50) {
   if (method == "pam") {
@@ -48,7 +48,7 @@ MDistLOVO <- R6::R6Class(
     initialize = function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
                           cluster_k = NULL,
                           cluster_methods = c("pam", "hclust"),
-                          hclust_method = "average",
+                          hclust_method = "complete",
                           spectral_sigma = NULL,
                           spectral_nstart = 50,
                           response_used = TRUE) {
