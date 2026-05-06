@@ -1785,7 +1785,7 @@ $$
 :::
 :::
 
-:::{.fragment }
+:::{.fragment}
 ### the interaction matrix summarizes category-pair separability in the continuous space
 :::
 
@@ -1800,7 +1800,7 @@ f({\bf x}_{con})
 f({\bf x}_{cat}\mid {\bf x}_{con}).
 $$
 
-::: {.callout-note appearance="simple" icon=false}
+::: {.callout-note appearance="simple" icon=false .centered}
 The interaction term asks how categorical distinctions are reflected in the continuous geometry.
 :::
 
@@ -2108,9 +2108,9 @@ The `Carseats` data are used to predict whether sales are high.
 
 
 
-## 
 
-# Building distance-based pipelines: manydist
+
+# Building distance-based pipelines
 
 ::: {.fragment .centered}
 ![](figures/manydist_logo.png){width=35%}
@@ -2120,7 +2120,7 @@ The `Carseats` data are used to predict whether sales are high.
 ### from distance construction to reproducible learning workflows
 :::
 
-## Building distance-based pipelines: `manydist`
+## Building distance-based pipelines
 
 ![](figures/manydist_logo.png){.slide-logo-small}
 
@@ -2138,9 +2138,11 @@ A package to construct, diagnose, and use distances for continuous, categorical,
 ## Distance construction
 
 - `mdist()`
+  - presets and custom specifications
+  - response-aware distances
+
 - `step_mdist()`
-- presets and custom specifications
-- response-aware distances
+  - provides full integration of `mdist()` reusults in `tidymodels`-based learninng pipelines
 :::
 
 :::
@@ -2176,9 +2178,6 @@ A package to construct, diagnose, and use distances for continuous, categorical,
 
 :::
 
-:::{.fragment .centered}
-### from distance construction to reproducible learning workflows
-:::
 
 ## `manydist`: socio-economic country profiles
 ![](figures/manydist_logo.png){.slide-logo-small}
@@ -2217,8 +2216,14 @@ wdi_data |>
 ```
 
 
-
 ## Constructing a mixed-type distance
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Directly with `mdist()`
 
 ```{r}
 #| echo: true
@@ -2226,19 +2231,59 @@ wdi_data |>
 wdi_x <- wdi_data |> 
   dplyr::select(-country)
 
-d_wdi <- mdist(
+d_custom <- mdist(
   wdi_x,
-  preset = "u_dep"
+  distance_cont = "euclidean",
+  distance_cat  = "eskin",
+  scaling_cont  = "std",
+  commensurable = FALSE
 )
-
-
 ```
+:::
+
+:::
+
+::: {.column width="50%"}
 
 ::: {.callout-tip appearance="simple" icon=false}
-## `mdist()`
+## Inside a recipe with `step_mdist()`
 
-The core function computes the distance matrix and returns an `MDist` object containing both the pairwise distances and the metadata needed to reproduce the computation.
+```{r}
+#| echo: true
+
+rec_custom <- recipe(~ ., data = wdi_x) |>
+  step_mdist(
+    all_predictors(),
+    distance_cont = "euclidean",
+    distance_cat  = "eskin",
+    scaling_cont  = "std",
+    commensurable = FALSE
+  )
+
+d_custom_step <- rec_custom |>
+  prep(training = wdi_x) |>
+  bake(new_data = NULL)
+```
 :::
+
+:::
+
+:::
+
+```{r}
+#| echo: true
+
+all.equal(
+  unname(as.matrix(d_custom$distance)),
+  unname(as.matrix(d_custom_step))
+)
+```
+
+:::{.fragment .centered}
+### `step_mdist()` embeds the same distance specification into a modelling workflow
+:::
+
+
 
 
 ## Visualizing country proximities
@@ -2246,6 +2291,11 @@ The core function computes the distance matrix and returns an `MDist` object con
 ```{r}
 #| echo: true
 #| fig-height: 6
+
+d_wdi <- mdist(
+  wdi_x,
+  preset = "u_dep"
+)
 
 D_wdi <- d_wdi$distance
 

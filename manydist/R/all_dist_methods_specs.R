@@ -71,8 +71,19 @@ all_dist_method_specs <- function(
   cont_tbl <- tbl |>
     dplyr::filter(.data$argument == "distance_cont")
 
+  philentropy_to_remove <- c(
+    "euclidean",
+    "manhattan",
+    "gower",
+    "minkowski",
+    "avg"
+  )
+
   cat_tbl <- tbl |>
-    dplyr::filter(.data$argument == "distance_cat")
+    dplyr::filter(.data$argument == "distance_cat",
+                  !(engine == "philentropy" & method %in% philentropy_to_remove))
+
+
 
   scaling_tbl <- tbl |>
     dplyr::filter(.data$argument == "scaling_cont")
