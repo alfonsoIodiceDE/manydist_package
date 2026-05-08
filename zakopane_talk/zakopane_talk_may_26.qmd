@@ -1571,7 +1571,7 @@ In mixed data, categorical differences may be meaningful because they are reflec
 ### the next step is to make distances [interaction-aware]{.text-coral}
 :::
 
-## How to measure interactions
+## How to measure interactions^[@iod2026_sc_mix]
 
 Define $\Delta^{int}$ to account for continuous--categorical interactions and use it to augment $\Delta^{tvd}$.
 
