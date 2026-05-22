@@ -1,6 +1,6 @@
 Package: manydist
 Type: Package
-Title: Unbiased Distances for Mixed-Type Data
+Title: Distance-Based Learning for Mixed-Type Data
 Version: 0.5.0
 Authors@R: c(
     person(given = "Alfonso",
@@ -17,27 +17,32 @@ Authors@R: c(
     person(given = "Carlo",
            family = "Cavicchia",
            role = "aut"))
-Maintainer: Angelos Markos <amarkos@gmail.com>
-Description: Tools for computing unbiased distance measures for datasets containing 
-    mixed-type variables (numerical and categorical). The package implements a general 
-    formulation ensuring multivariate additivity and commensurability, so that variables 
-    contribute equally to the overall distance regardless of type, scale, or distribution. 
-    Supported measures include Gower, Euclidean, and Manhattan distances, as well as 
-    categorical dissimilarities such as simple matching, Eskin, occurrence frequency, 
-    and association-based distances. The package provides variable scaling methods 
-    (standard deviation, range, robust range, and principal component scaling) and 
-    supports both independent and association-based category dissimilarities. Bias 
-    corrections for differences in variable type, distribution, and number of categories 
-    are included. Methods are based on van de Velden et al. (2024) 
-    <doi:10.48550/arXiv.2411.00429>.
-Imports: cluster, data.table, distances, dplyr, 
+Description: Provides tools for constructing, computing, and using distance
+    measures for numerical, categorical, and mixed-type data. The package
+    implements a flexible framework in which continuous and categorical
+    components can be combined under additive, commensurable, and
+    association-aware specifications. Supported methods include classical
+    distances such as Gower, Euclidean, Manhattan, and Mahalanobis-type
+    distances; categorical dissimilarities such as simple matching,
+    occurrence-frequency, and association-based measures; and mixed-type
+    presets designed to reduce biases due to variable type, scale,
+    distribution, redundancy, and number of categories. The package also
+    provides scaling options, supervised and unsupervised distance
+    constructions, leave-one-variable-out tools for distance-based variable
+    importance, and integration with distance-based learning workflows such
+    as nearest-neighbour prediction, partitioning around medoids, and
+    spectral clustering. Methods are motivated by van de Velden et al.
+    (2024) <doi:10.48550/arXiv.2411.00429> and related work on categorical
+    and mixed-type dissimilarities.
+Imports: aricode, cluster, data.table, distances, dplyr, 
           dials, entropy, fastDummies, forcats, 
-          fpc, ggplot2, magrittr,  Matrix, 
+          fpc, generics, ggplot2, magrittr, Matrix, 
           philentropy, purrr, readr, Rfast, 
-          rsample,  stats, tibble, tidyr, 
-          tidyselect, tune, parsnip, rlang,recipes, clusterGeneration, kdml
-Depends: R (>= 4.5.0)  
-Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType
+          rsample, stats, tibble, tidyr, 
+          tidyselect, tune, parsnip, rlang, recipes, 
+          clusterGeneration, kdml
+Depends: R (>= 4.5.0)
+Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType, mclust
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

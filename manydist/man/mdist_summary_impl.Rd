@@ -6,6 +6,14 @@
 \usage{
 mdist_summary_impl(object, ...)
 }
+\arguments{
+\item{object}{An `MDist` object to summarize.}
+
+\item{...}{Additional arguments currently not used.}
+}
+\value{
+Invisibly returns `object`.
+}
 \description{
 Internal: summary method implementation for MDist R6 objects
 }

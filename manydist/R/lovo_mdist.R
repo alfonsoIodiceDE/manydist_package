@@ -75,6 +75,14 @@ MDistLOVO <- R6::R6Class(
         if (cluster_k < 2 || cluster_k >= nrow(x)) {
           stop("cluster_k must be an integer between 2 and nrow(x) - 1.")
         }
+
+        if (!requireNamespace("mclust", quietly = TRUE)) {
+          stop(
+            "Package 'mclust' is required for clustering-based LOVO diagnostics. ",
+            "Install it or set `cluster_k = NULL`.",
+            call. = FALSE
+          )
+        }
       }
 
       response_col <- NULL
@@ -613,7 +621,70 @@ MDistLOVO <- R6::R6Class(
   )
 )
 
-# tiny factory for symmetry with mdist()
+#' Leave-one-variable-out variable importance for distance-based analyses
+#'
+#' Computes leave-one-variable-out (LOVO) diagnostics for a distance
+#' specification. The function first computes the full distance matrix using
+#' [mdist()], then removes one predictor at a time, recomputes the distance
+#' matrix, and compares each leave-one-variable-out distance matrix with the
+#' full one.
+#'
+#' The resulting object contains variable-importance summaries based on the
+#' mean absolute difference between distance matrices, the congruence between
+#' multidimensional scaling configurations, and the corresponding alienation
+#' coefficient. Optionally, it can also compare cluster partitions obtained
+#' from the full and leave-one-variable-out distances using PAM,
+#' hierarchical clustering, or spectral clustering.
+#'
+#' @param x A data frame or object coercible to a tibble. Rows are
+#'   observations and columns are variables used to compute the distance.
+#' @param response Optional response variable. It can be supplied as an
+#'   unquoted column name or as a character string. When supplied and
+#'   `response_used = TRUE`, it is passed to [mdist()] for response-aware
+#'   distance construction. The response column is not treated as a predictor
+#'   in the leave-one-variable-out loop.
+#' @param ... Additional arguments passed to [mdist()], such as `preset`,
+#'   `distance_cont`, `distance_cat`, `scaling_cont`, or `commensurable`.
+#' @param dims Integer. Number of dimensions used by classical
+#'   multidimensional scaling when computing congruence-based diagnostics.
+#' @param keep_dist Logical. If `TRUE`, store the full distance matrix and the
+#'   leave-one-variable-out distance matrices in the returned object.
+#' @param cluster_k Optional integer. Number of clusters to use when computing
+#'   clustering-based LOVO diagnostics. If `NULL`, clustering diagnostics are
+#'   not computed.
+#' @param cluster_methods Character vector specifying the clustering methods
+#'   used for clustering-based diagnostics. Possible values are `"pam"`,
+#'   `"hclust"`, and `"spectral"`.
+#' @param hclust_method Character string specifying the linkage method passed
+#'   to [stats::hclust()] when `"hclust"` is included in `cluster_methods`.
+#' @param spectral_sigma Optional numeric value for the Gaussian affinity
+#'   bandwidth used by spectral clustering. If `NULL`, the default used by
+#'   [spectral_dist()] is applied.
+#' @param spectral_nstart Integer. Number of random starts used by the
+#'   k-means step in spectral clustering.
+#' @param response_used Logical. If `TRUE`, the response variable, when
+#'   supplied, is used in the distance construction. If `FALSE`, the response
+#'   column is removed before computing distances.
+#'
+#' @return An object of class `"MDistLOVO"` with methods for printing,
+#'   summarising, and plotting LOVO diagnostics. The main results are stored in
+#'   the `$results` field.
+#'
+#' @seealso [mdist()], [compare_lovo_mdist()], [spectral_dist()]
+#'
+#' @examples
+#' data(iris)
+#'
+#' res <- lovo_mdist(
+#'   iris,
+#'   preset = "gower",
+#'   response = Species,
+#'   response_used = FALSE
+#' )
+#'
+#' res
+#' summary(res)
+#'
 #' @export
 lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
                        cluster_k = NULL,

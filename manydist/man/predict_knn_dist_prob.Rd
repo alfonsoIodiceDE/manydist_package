@@ -11,6 +11,8 @@ predict_knn_dist_prob(object, new_data, ...)
 
 \item{new_data}{A data frame or matrix of precomputed distances
 *or* raw predictors, depending on `dist_fun`.}
+
+\item{...}{Additional arguments currently not used.}
 }
 \description{
 Thin wrapper used by parsnip for `type = "prob"`.

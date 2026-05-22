@@ -27,25 +27,49 @@ step_mdist(
 \arguments{
 \item{recipe}{A recipe object.}
 
-\item{...}{Selector(s) for the predictor columns to be used in mdist.}
+\item{...}{Selector(s) for the predictor columns to be used in [mdist()].}
 
-\item{role}{Role for the new distance columns (usually "predictor").}
+\item{role}{Role for the new distance columns, usually `"predictor"`.}
 
-\item{trained}{Logical for recipes internals (do not set manually).}
+\item{trained}{Logical for recipes internals. Do not set manually.}
 
 \item{output}{Type of dissimilarity output. `"distance_to_training"`
 returns distances from the baked data to the training data;
 `"pairwise"` returns the within-training pairwise dissimilarity matrix.}
 
-\item{preset, distance_cont, distance_cat, commensurable, scaling_cont, }{ncomp,threshold Arguments forwarded to `mdist()`.}
+\item{preset}{Character string. Distance preset passed to [mdist()].}
 
-\item{columns}{Names of columns selected at prep time (recipes internals).}
+\item{distance_cont}{Character string. Continuous-variable distance passed
+to [mdist()] when `preset = "custom"`.}
 
-\item{train_predictors}{Training predictors stored at prep time (internals).}
+\item{distance_cat}{Character string. Categorical-variable distance passed
+to [mdist()] when `preset = "custom"`.}
+
+\item{commensurable}{Logical. If `TRUE`, use a commensurable mixed-distance
+specification when supported by [mdist()].}
+
+\item{scaling_cont}{Character string. Scaling method for continuous
+variables passed to [mdist()].}
+
+\item{ncomp}{Integer or `NULL`. Number of principal components to retain
+when principal-component scaling is used.}
+
+\item{threshold}{Numeric or `NULL`. Cumulative proportion of variance to
+retain when principal-component scaling is used and `ncomp` is not
+supplied.}
+
+\item{columns}{Names of columns selected at prep time. Used internally by
+recipes.}
+
+\item{train_predictors}{Training predictors stored at prep time. Used
+internally by recipes.}
 
 \item{preprocessor}{Internal fitted manydist preprocessor.}
 
-\item{skip, id}{Standard recipes arguments.}
+\item{skip}{Logical. Standard recipes argument indicating whether the step
+should be skipped when baking new data.}
+
+\item{id}{Character string. Unique step identifier.}
 }
 \description{
 Distance-based representation via manydist

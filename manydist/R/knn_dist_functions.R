@@ -117,11 +117,12 @@ predict_knn_dist_class <- function(object, new_data, type = c("class", "prob")) 
 #' @param object A `knn_dist` object created by `fit_knn_dist()`.
 #' @param new_data A data frame or matrix of precomputed distances
 #'   *or* raw predictors, depending on `dist_fun`.
+#' @param ... Additional arguments currently not used.
+#'
 #' @export
 predict_knn_dist_prob <- function(object, new_data, ...) {
   predict_knn_dist_class(object, new_data, type = "prob")
 }
-
 #' Predict from a KNN-distance model (regression)
 #'
 #' Used by parsnip for regression mode (`type = "numeric"`).

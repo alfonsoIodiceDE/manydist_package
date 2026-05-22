@@ -1,18 +1,34 @@
 #' Distance-based representation via manydist
 #'
 #' @param recipe A recipe object.
-#' @param ... Selector(s) for the predictor columns to be used in mdist.
-#' @param role Role for the new distance columns (usually "predictor").
-#' @param trained Logical for recipes internals (do not set manually).
+#' @param ... Selector(s) for the predictor columns to be used in [mdist()].
+#' @param role Role for the new distance columns, usually `"predictor"`.
+#' @param trained Logical for recipes internals. Do not set manually.
 #' @param output Type of dissimilarity output. `"distance_to_training"`
 #'   returns distances from the baked data to the training data;
 #'   `"pairwise"` returns the within-training pairwise dissimilarity matrix.
-#' @param preset,distance_cont,distance_cat,commensurable,scaling_cont,
-#'   ncomp,threshold Arguments forwarded to `mdist()`.
-#' @param columns Names of columns selected at prep time (recipes internals).
-#' @param train_predictors Training predictors stored at prep time (internals).
+#' @param preset Character string. Distance preset passed to [mdist()].
+#' @param distance_cont Character string. Continuous-variable distance passed
+#'   to [mdist()] when `preset = "custom"`.
+#' @param distance_cat Character string. Categorical-variable distance passed
+#'   to [mdist()] when `preset = "custom"`.
+#' @param commensurable Logical. If `TRUE`, use a commensurable mixed-distance
+#'   specification when supported by [mdist()].
+#' @param scaling_cont Character string. Scaling method for continuous
+#'   variables passed to [mdist()].
+#' @param ncomp Integer or `NULL`. Number of principal components to retain
+#'   when principal-component scaling is used.
+#' @param threshold Numeric or `NULL`. Cumulative proportion of variance to
+#'   retain when principal-component scaling is used and `ncomp` is not
+#'   supplied.
+#' @param columns Names of columns selected at prep time. Used internally by
+#'   recipes.
+#' @param train_predictors Training predictors stored at prep time. Used
+#'   internally by recipes.
 #' @param preprocessor Internal fitted manydist preprocessor.
-#' @param skip,id Standard recipes arguments.
+#' @param skip Logical. Standard recipes argument indicating whether the step
+#'   should be skipped when baking new data.
+#' @param id Character string. Unique step identifier.
 #'
 #' @export
 step_mdist <- function(

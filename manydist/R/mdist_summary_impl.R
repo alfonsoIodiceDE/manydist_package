@@ -1,4 +1,9 @@
 #' Internal: summary method implementation for MDist R6 objects
+#'
+#' @param object An `MDist` object to summarize.
+#' @param ... Additional arguments currently not used.
+#'
+#' @return Invisibly returns `object`.
 mdist_summary_impl <- function(object, ...) {
   `%||%` <- function(x, y) if (is.null(x)) y else x
 
