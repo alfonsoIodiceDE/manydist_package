@@ -18,7 +18,8 @@ mdist(
   interaction = FALSE,
   prop_nn = 0.1,
   score = "ba",
-  decision = "prior_corrected"
+  decision = "prior_corrected",
+  gower_average = TRUE
 )
 }
 \arguments{
@@ -51,11 +52,18 @@ reduction. If \code{NULL}, no reduction is applied.}
 \item{interaction}{Logical; whether to include interaction-based
 distances.}
 
-\item{prop_nn}{proportion of neighbours to consider when measuring interactions}
+\item{prop_nn}{proportion of neighbours to consider when measuring interactions.}
 
-\item{score}{classification metric either "ba" (balanced accuracy) or "logloss"}
+\item{score}{classification metric either "ba" (balanced accuracy) or "logloss".}
 
-\item{decision}{rule when score is set to ba}
+\item{decision}{rule when score is set to ba.}
+
+\item{gower_average}{Logical; only used when \code{preset = "gower"}.
+If \code{TRUE}, returns the standard Gower dissimilarity averaged over
+variables, matching the scale of \code{cluster::daisy(metric = "gower")}.
+If \code{FALSE}, returns the sum of per-variable Gower contributions,
+equivalent to multiplying the averaged Gower dissimilarity by the number
+of active variables.}
 }
 \value{
 A dissimilarity object.

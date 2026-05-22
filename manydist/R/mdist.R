@@ -43,6 +43,14 @@
   preset_defs <- list(
     custom = list(),
 
+    gower = list(
+      distance_cont = "manhattan",
+      distance_cat  = "matching",
+      commensurable = FALSE,
+      scaling_cont  = "range",
+      interaction   = FALSE
+    ),
+
     unbiased_dependent = list(
       distance_cont = "manhattan",
       distance_cat  = "tvd",
@@ -50,14 +58,15 @@
       scaling_cont  = "pc_scores",
       interaction   = FALSE
     ),
+
     hl = list(
       distance_cont = "euclidean",
       distance_cat  = "HLeucl",
       commensurable = FALSE,
       scaling_cont  = "std",
-      ncomp         = NULL,
-      threshold     = NULL
+      interaction   = FALSE
     ),
+
     u_dep = list(
       distance_cont = "manhattan",
       distance_cat  = "tvd",
@@ -65,6 +74,7 @@
       scaling_cont  = "pc_scores",
       interaction   = FALSE
     ),
+
     u_indep = list(
       distance_cont = "manhattan",
       distance_cat  = "matching",
@@ -72,6 +82,7 @@
       scaling_cont  = "std",
       interaction   = FALSE
     ),
+
     u_mix = list(
       distance_cont = "manhattan",
       distance_cat  = "tvd",
@@ -81,14 +92,45 @@
     )
   )
 
+  user_args <- list(
+    distance_cont = distance_cont,
+    distance_cat  = distance_cat,
+    commensurable = commensurable,
+    scaling_cont  = scaling_cont,
+    interaction   = interaction
+  )
+
+  default_args <- list(
+    distance_cont = "manhattan",
+    distance_cat  = "tvd",
+    commensurable = TRUE,
+    scaling_cont  = "std",
+    interaction   = FALSE
+  )
+
   if (!preset %in% names(preset_defs)) {
-    return(list(
-      distance_cont = distance_cont,
-      distance_cat  = distance_cat,
-      commensurable = commensurable,
-      scaling_cont  = scaling_cont,
-      interaction   = interaction
-    ))
+    return(user_args)
+  }
+
+  if (identical(preset, "custom")) {
+    return(user_args)
+  }
+
+  non_default_args <- names(user_args)[
+    !vapply(
+      names(user_args),
+      function(arg) identical(user_args[[arg]], default_args[[arg]]),
+      logical(1)
+    )
+  ]
+
+  if (length(non_default_args) > 0) {
+    warning(
+      "When `preset` is not 'custom', distance-related arguments are ignored: ",
+      paste0("`", non_default_args, "`", collapse = ", "),
+      ". Set `preset = 'custom'` to specify them manually.",
+      call. = FALSE
+    )
   }
 
   defs <- preset_defs[[preset]]
@@ -101,7 +143,6 @@
     interaction   = defs$interaction   %||% interaction
   )
 }
-
 
 .mdist_generic <- function(
     cont_data, cat_data,
@@ -183,7 +224,8 @@
                         commensurable = TRUE, scaling_cont = "std",
                         ncomp = NULL, threshold = NULL,
                         preset = "custom", interaction = FALSE,
-                        prop_nn = 0.1, score = "ba", decision = "prior_corrected") {
+                        prop_nn = 0.1, score = "ba", decision = "prior_corrected",
+                        gower_average = TRUE) {
 
   if (identical(distance_cat, "tot_var_dist")) {
     distance_cat <- "tvd"
@@ -261,7 +303,6 @@
     cat_levels <- purrr::map(cat_data, levels)
   }
 
-  # objects fitted on training and reused later
   gower_prep <- NULL
   dummy_recipe <- NULL
 
@@ -297,6 +338,7 @@
       prop_nn        = prop_nn,
       score          = score,
       decision       = decision,
+      gower_average  = gower_average,
       cont_data      = cont_data,
       cat_data       = cat_data,
       cont_names     = names(cont_data),
@@ -308,7 +350,6 @@
     class = "mdist_preprocessor"
   )
 }
-
 
 .apply_mdist <- function(prep, new_data = NULL) {
   stopifnot(inherits(prep, "mdist_preprocessor"))
@@ -386,44 +427,39 @@
 
     if (is.null(validate_x)) {
 
-      if (is.null(cont_data) && !is.null(cat_data)) {
+      df <- if (!is.null(cont_data) && !is.null(cat_data)) {
+        prep$x_train
+      } else if (!is.null(cont_data)) {
+        cont_data
+      } else if (!is.null(cat_data)) {
+        cat_data
+      } else {
+        stop("No variables available to compute distance.", call. = FALSE)
+      }
 
-        if (isFALSE(prep$commensurable)) {
-          distance_mat <- ncol(cat_data) * cluster::daisy(cat_data, metric = "gower") |> as.matrix()
-        } else {
-          gowerlist <- cat_data |>
-            purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |> as.matrix())
-          gowerlist <- tibble::tibble(gowdist = gowerlist) |>
-            dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
-          distance_mat <- Reduce(`+`, gowerlist$commgow)
-        }
+      if (isFALSE(prep$commensurable)) {
 
-      } else if (!is.null(cont_data) && is.null(cat_data)) {
+        distance_mat <- cluster::daisy(df, metric = "gower") |>
+          as.matrix()
 
-        if (isFALSE(prep$commensurable)) {
-          distance_mat <- ncol(cont_data) * cluster::daisy(cont_data, metric = "gower") |> as.matrix()
-        } else {
-          gowerlist <- cont_data |>
-            purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |> as.matrix())
-          gowerlist <- tibble::tibble(gowdist = gowerlist) |>
-            dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
-          distance_mat <- Reduce(`+`, gowerlist$commgow)
-        }
-
-      } else if (!is.null(cont_data) && !is.null(cat_data)) {
-
-        if (isFALSE(prep$commensurable)) {
-          distance_mat <- cluster::daisy(prep$x_train, metric = "gower") |> as.matrix()
-        } else {
-          gowerlist <- prep$x_train |>
-            purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |> as.matrix())
-          gowerlist <- tibble::tibble(gowdist = gowerlist) |>
-            dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
-          distance_mat <- Reduce(`+`, gowerlist$commgow)
+        if (isFALSE(prep$gower_average)) {
+          distance_mat <- ncol(df) * distance_mat
         }
 
       } else {
-        stop("No variables available to compute distance.", call. = FALSE)
+
+        gowerlist <- df |>
+          purrr::map(~ cluster::daisy(tibble::as_tibble(.x), metric = "gower") |>
+                       as.matrix())
+
+        gowerlist <- tibble::tibble(gowdist = gowerlist) |>
+          dplyr::mutate(commgow = purrr::map(.data$gowdist, ~ .safe_comm(.x)))
+
+        distance_mat <- Reduce(`+`, gowerlist$commgow)
+
+        if (isTRUE(prep$gower_average)) {
+          distance_mat <- distance_mat / length(gowerlist$commgow)
+        }
       }
 
     } else {
@@ -439,10 +475,14 @@
           if (isTRUE(prep$commensurable)) .safe_comm(b_v_d) else b_v_d
         }
       )
-      distance_mat <- Reduce(`+`, gowerlist)
-    }
 
-  } else if (prep$preset == "euclidean_onehot") {
+      distance_mat <- Reduce(`+`, gowerlist)
+
+      if (isTRUE(prep$gower_average)) {
+        distance_mat <- distance_mat / length(gowerlist)
+      }
+}
+    }else if (prep$preset == "euclidean_onehot") {
 
     distance_cont <- "euclidean"
     commensurable <- FALSE
@@ -629,9 +669,16 @@
 #' @param preset Character string specifying a predefined setup.
 #' @param interaction Logical; whether to include interaction-based
 #'   distances.
-#' @param prop_nn proportion of neighbours to consider when measuring interactions
-#' @param score classification metric either "ba" (balanced accuracy) or "logloss"
-#' @param decision rule when score is set to ba
+#' @param prop_nn proportion of neighbours to consider when measuring interactions.
+#' @param score classification metric either "ba" (balanced accuracy) or "logloss".
+#' @param decision rule when score is set to ba.
+#' @param gower_average Logical; only used when \code{preset = "gower"}.
+#'   If \code{TRUE}, returns the standard Gower dissimilarity averaged over
+#'   variables, matching the scale of \code{cluster::daisy(metric = "gower")}.
+#'   If \code{FALSE}, returns the sum of per-variable Gower contributions,
+#'   equivalent to multiplying the averaged Gower dissimilarity by the number
+#'   of active variables.
+#'
 #' @return A dissimilarity object.
 #' @export
 mdist <- function(x, new_data = NULL, response = NULL,
@@ -639,7 +686,8 @@ mdist <- function(x, new_data = NULL, response = NULL,
                   commensurable = TRUE, scaling_cont = "std",
                   ncomp = NULL, threshold = NULL,
                   preset = "custom", interaction = FALSE,
-                  prop_nn = 0.1, score = "ba", decision = "prior_corrected") {
+                  prop_nn = 0.1, score = "ba", decision = "prior_corrected",
+                  gower_average = TRUE) {
 
   prep <- .prep_mdist(
     x = x,
@@ -654,7 +702,8 @@ mdist <- function(x, new_data = NULL, response = NULL,
     interaction = interaction,
     prop_nn = prop_nn,
     score = score,
-    decision = decision
+    decision = decision,
+    gower_average = gower_average
   )
 
   distance_mat <- .apply_mdist(prep, new_data = new_data)
@@ -665,6 +714,7 @@ mdist <- function(x, new_data = NULL, response = NULL,
     distance_cat  = prep$distance_cat,
     scaling_cont  = prep$scaling_cont,
     commensurable = prep$commensurable,
+    gower_average = prep$gower_average,
     ncomp         = prep$ncomp,
     threshold     = prep$threshold,
     rectangular   = (nrow(as.matrix(distance_mat)) != ncol(as.matrix(distance_mat))),

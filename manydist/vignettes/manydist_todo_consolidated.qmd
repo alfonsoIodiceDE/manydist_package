@@ -1038,3 +1038,101 @@ This issue needs clarification and likely a code check.
 -   Document hierarchical clustering defaults.
 -   Document LOVO output and interpretation more clearly.
 
+
+
+### Latest points raised
+
+::: {.callout-warning appearance="minimal" icon=false}
+## Imports and naming
+
+- For the gower preset in mdist I think that (unless loaded already) one needs to manually do library(tidymodels)
+
+  - ✅  [fixed]{style="color:indianred"}
+
+- For dkss, I needed to manually install kdml
+
+- Also: dkss is now (in the paper at least) dkps. In the package this still is dkss. (TRUE and to be fixed)
+well the packages kdml has both
+
+one is distance using kernel product similarity
+
+the other is distance using kernel summation similarity
+
+- ✅  [fixed]{style="color:indianred"}: the only implementation is now dkss
+:::
+
+
+::: {.callout-warning appearance="minimal" icon=false}
+## Gower preset 
+
+If I use preset=gower, it seems to do commensurable gower. That is not correct. When I add commensurable=FALSE, it seems more like the correct one. But, due to the differences between daisy and our formulations (division through q I think), this sometimes for lovo) tricky. I get back to that. 
+
+- ✅  [fixed]{style="color:indianred"}:
+
+I added a flag `gower_average` such that when `gower_average=TRUE` (the default) then `mdist(x,preset="gower")` is the same as `cluster::daisy(x, metric="gower")`.
+
+:::
+
+::: {.callout-important appearance="minimal" icon=false}
+## presets override other arguments
+
+For all other (not unbiased) presets, the "commensurable" input appears to be ignored. This is good. In fact, I think we should also do this for gower (and even for the unbiased ones: if a preset is used, you cannot edit the inputs (scalings, distances, commensurability: all fixed according to the settings of the preset).
+
+- ✅ [DONE]{style="color:indianred"}
+:::
+
+
+
+
+::: {.callout-note appearance="minimal" icon=false}
+## Gower/Daisy lovo vs Gower/custom lovo:
+As a result of 4) (presets do not allow modifications). If one wants to make gower commensurable, you have to use custom and do:
+cont_scaling="range", distance_cat="matching", commensurable=TRUE
+This is fine for me. But: Doing gower in this way is then not the same as daisy gower. It has the factor q (#variables) in there. Again, I think this is not a problem (and also, since for all our distances we do not have this /q, it seems consistent. There is however one odd thing when I consider the preset gower and "our" gower when it comes to variable importances. That is, in the lovo results:
+If I do:
+```{r eval= FALSE}
+meths<-list(g = list(preset="gower", commensurable=FALSE),   g2 = list(scaling_cont="range", distance_cat="matching", commensurable=FALSE))
+}
+# And: I added commensurable FALSE for gower to get it to not give unbiased results; but this should be fixed so that it is not necessary to add this when using the preset.
+
+ So: g = daisy gower (I think) . g2 is “our” gower.
+# Then: running lovo_cmp on df (minus first column but that is not important now):
+ 
+```{r eval= FALSE}
+lovo_cmp <- compare_lovo_mdist(df[,-1],methods = meths)  
+autoplot(lovo_cmp)
+}
+```
+
+Oddly, I get different results for lovo. And: not trivially so (I mean: not constant inflated/deflated). I have no explanation for this...
+
+
+- 
+```{r}
+meths <- list(
+  g_daisy = list(
+    preset = "gower"
+  ),
+  g_sum = list(
+    preset = "gower",
+    gower_average = FALSE
+  ),
+  g_custom = list(
+    preset = "custom",
+    distance_cont = "manhattan",
+    scaling_cont = "range",
+    distance_cat = "matching",
+    commensurable = FALSE
+  )
+)
+
+
+
+lovo_cmp <- compare_lovo_mdist(df[,-1], methods = meths[c("g_custom","g_sum")])
+lovo_cmp2 <- compare_lovo_mdist(df[,-1], methods = meths[c("g_custom","g_daisy")])
+library(patchwork)
+autoplot(lovo_cmp)|autoplot(lovo_cmp2)
+```
+
+
+:::

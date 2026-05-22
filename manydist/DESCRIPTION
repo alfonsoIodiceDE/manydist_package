@@ -33,9 +33,9 @@ Description: Tools for computing unbiased distance measures for datasets contain
 Imports: cluster, data.table, distances, dplyr, 
           dials, entropy, fastDummies, forcats, 
           fpc, ggplot2, magrittr,  Matrix, 
-          philentropy, purrr, readr, recipes, Rfast, 
+          philentropy, purrr, readr, Rfast, 
           rsample,  stats, tibble, tidyr, 
-          tidyselect, tune, parsnip, rlang,recipes, clusterGeneration 
+          tidyselect, tune, parsnip, rlang,recipes, clusterGeneration, kdml
 Depends: R (>= 4.5.0)  
 Suggests: parallelDist, klaR, arules, FD, StatMatch, clustMixType
 License: GPL-3

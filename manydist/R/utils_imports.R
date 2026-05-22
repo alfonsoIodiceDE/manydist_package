@@ -14,8 +14,8 @@ NULL
 NULL
 
 # recipes / rsample
-#' @importFrom recipes recipe prep bake step_dummy step_range step_center step_select
-#' @importFrom recipes step_scale step_pca step_mutate all_predictors all_nominal all_nominal_predictors all_numeric_predictors
+#' @importFrom recipes recipe prep bake step_dummy step_range step_center step_select step_unknown step_novel
+#' @importFrom recipes step_scale step_pca step_mutate  all_predictors all_nominal all_nominal_predictors all_numeric_predictors
 #' @importFrom rsample initial_split training testing
 NULL
 

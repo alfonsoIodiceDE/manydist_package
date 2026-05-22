@@ -44,12 +44,6 @@ conflict_prefer("distance", "philentropy")
 conflict_prefer("intersect", "base")
 conflict_prefer("setdiff", "base")
 
-canon_method <- function(m) dplyr::recode(m, dkss = "dkps")
-
-# helper: rinomina colonne solo se esistono (non rompe nulla se non ci sono)
-canon_cols <- function(df) {
-  df |> dplyr::rename_with(canon_method, .cols = dplyr::any_of("dkss"))
-}
 ```
 
 
@@ -79,7 +73,7 @@ pcat<-length(qoptions) # Number of cat variables underlying config
 
 
 methods = c("baseline","naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
-method_levels <- c("baseline", "naive", "hl", "hl_add", "gower","gudmm", "dkps", "mod_gower", "u_ind", "u_dep", "u_mix")
+method_levels <- c("baseline", "naive", "hl", "hl_add", "gower","gudmm", "dkss", "mod_gower", "u_ind", "u_dep", "u_mix")
 
 
 my_colors <- c(
@@ -88,7 +82,7 @@ my_colors <- c(
   "naive"       = "#E377C2",  # pink
   "hl"          = "#9C9E00",  # darker yellow-green (better contrast)
   "gudmm"       = "#FF7F0E",  # orange
-  "dkps"        = "#7F7F7F",  # darker grey (more visible)
+  "dkss"        = "#7F7F7F",  # darker grey (more visible)
 
   # Set A
   "hl_add"      = "#9EC5E5",  # light blue
@@ -106,7 +100,7 @@ my_shapes <- c(
   "hl_add"      = 3,   # plus
   "gower"       = 4,   # cross
   "gudmm"       = 18,  # filled diamond
-  "dkps"        = 8,   # star
+  "dkss"        = 8,   # star
   "mod_gower"   = 0,   # empty square
   "u_ind"       = 1,   # empty circle
   "u_dep"       = 2,    # empty triangle
@@ -147,7 +141,7 @@ The considered methods are
 
 - `gudmm`: Generalized Unified Distance Metric for Mixed-type data as proposed by @MS:2023
 
-- `dkps`: Distance using kernel product similarity as proposed by @GT:2024
+- `dkss`: Distance using kernel product similarity as proposed by @GT:2024
 
 
 <!-- The `distance_by_method.r` recalls `manydist` where applicable, and the external functions when needed.  -->
@@ -448,7 +442,6 @@ rect_data_rel <- tibble(
 )
   
 loo_mad_plot <- meas_to_plot_mad_mean |> 
-   canon_cols() |> 
   dplyr::select(variable, var_id, any_of(method_levels)) |> 
   pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |> 
   mutate(
@@ -458,7 +451,6 @@ loo_mad_plot <- meas_to_plot_mad_mean |>
   ) |>
   dplyr::left_join(
     meas_to_plot_mad_sd |>
-       canon_cols() |>
       dplyr::select(variable, var_id, any_of(method_levels)) |>
       pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
       mutate(method = factor(method, levels = method_levels)),
@@ -483,13 +475,13 @@ loo_mad_plot <- meas_to_plot_mad_mean |>
 
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
 
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 
 # add_methods <- c("gower", "mod_gower", "hl_add", "u_ind", "u_dep", "u_mix")
 
 legend_breaks <- c(
   c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix"),  # additive first
-  c("naive","hl","gudmm","dkps")                           # non-additive after
+  c("naive","hl","gudmm","dkss")                           # non-additive after
 )
 
 legend_labels <- setNames(
@@ -502,19 +494,17 @@ legend_labels <- setNames(
 library(ggnewscale)
 
 loo_mad_rel_df <- meas_to_plot_mad_rel_mean |>
-   canon_cols() |>
   dplyr::select(variable, var_id, any_of(method_levels)) |>
   tidyr::pivot_longer(cols = naive:u_mix, names_to="method", values_to="value") |>
   mutate(
-    method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")),
+    method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")),
     additive = ifelse(as.character(method) %in% add_methods, "additive", "non-additive")
   ) |>
   dplyr::left_join(
     meas_to_plot_mad_rel_sd |>
-       canon_cols() |>
       dplyr::select(variable, var_id, any_of(method_levels)) |>
       tidyr::pivot_longer(cols = naive:u_mix, names_to="method", values_to="sd") |>
-      mutate(method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix"))),
+      mutate(method = factor(method, levels = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix"))),
     by = c("variable","var_id","method")
   )
 
@@ -609,7 +599,7 @@ loo_mad_rel_df <- meas_to_plot_mad_rel_mean |>
 #     legend.text = element_text(size = 13)
 #     )+facet_wrap(.~additive)
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 
 loo_mad_rel_plot <-
   ggplot() +
@@ -716,7 +706,7 @@ fig_1_plot
 
 ```
 
-```{r, eval = FALSE, echo = FALSE}
+```{r, eval = TRUE, echo = FALSE}
 ggsave(fig_1_plot, file = "figure_1_mad_importances.pdf", width = 8, height = 8)
 ```
 
@@ -727,7 +717,7 @@ ggsave(fig_1_plot, file = "figure_1_mad_importances.pdf", width = 8, height = 8)
 library(ggnewscale)
 
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 
 meas_to_plot_ac_mean <- split_by_measure_mean |> 
   pluck("ac_relative_importance") |> 
@@ -749,25 +739,23 @@ rect_data_ac <- tibble(
 )
 
 ac_df <- meas_to_plot_ac_mean |>
-  canon_cols() |>
   dplyr::select(variable, var_id, any_of(method_levels)) |>
   tidyr::pivot_longer(cols = naive:u_mix, names_to = "method", values_to = "value") |>
   mutate(
     method = factor(
       method,
-      levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")
+      levels = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
     ),
     additive = ifelse(as.character(method) %in% add_methods, "additive", "non-additive")
   ) |>
   dplyr::left_join(
     meas_to_plot_ac_sd |>
-      canon_cols() |>
       dplyr::select(variable, var_id, any_of(method_levels)) |>
       tidyr::pivot_longer(cols = naive:u_mix, names_to = "method", values_to = "sd") |>
       mutate(
         method = factor(
           method,
-          levels = c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")
+          levels = c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
         )
       ),
     by = c("variable", "var_id", "method")
@@ -872,7 +860,7 @@ ac_plot <-
 ac_plot
 ```
 
-```{r, echo=FALSE,eval=FALSE}
+```{r, echo=FALSE,eval=TRUE}
 ggsave("figure_2_ac_importances.pdf", ac_plot, width = 8, height = 4)
 ```
 
@@ -958,7 +946,7 @@ library(ggnewscale)
 # n_add   <- length(add_methods)
 
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 method_order <- c(add_methods, nonadd_methods, "baseline")
 
 n_add    <- length(add_methods)
@@ -982,7 +970,6 @@ rect_bg <- tibble::tibble(
 box_df <- recovery_structure_lite |>
   mutate(
     method = ifelse(is.na(method), "baseline", method),
-    method = canon_method(method),  # paper naming
     method = factor(method, levels = method_order),
     additive = ifelse(as.character(method) %in% add_methods, "additive", "non-additive")
   )
@@ -1047,7 +1034,7 @@ boxplot_figure_simu
 ```
 
 
-```{r,echo=FALSE, eval=FALSE}
+```{r,echo=FALSE, eval=TRUE}
 ggsave(file="AC_boxplots.pdf",boxplot_figure_simu,width=8.5,height=6)
 ```
 
@@ -1138,7 +1125,7 @@ load(file = "ari_pam_experiment_numsep_01_catsep_035.RData")
 ```{r}
 # Method groups (as you provided)
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 method_levels  <- c(add_methods, nonadd_methods)
 
 # Facet order (row-wise)
@@ -1152,7 +1139,6 @@ ari_plot_df_01_035 <- ari_pam_results_01_035 |>
     scenario = str_glue(
       "num: {numsignal} s. + {numnoise} n. | cat: {catsignal} s. + {catnoise} n."
     ),
-method = canon_method(method),
     # Row-wise facet order as provided
     scenario = factor(scenario, levels = scenario[match(scenario_order, scenario_id)]),
 
@@ -1242,7 +1228,7 @@ print(ari_plot_01_035)
 ```
 
 
-```{r,echo=FALSE,eval=FALSE}
+```{r,echo=FALSE,eval=TRUE}
 ggsave(file = "ari_plot_01_035.pdf", ari_plot_01_035, width = 6, height = 8)
 ```
 
@@ -1254,16 +1240,13 @@ load(file = "ari_pam_experiment_numsep_01_catsep_035.RData")
 ```{r}
 # ---- method groups ----
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 
 # ---- scenario order (shared with boxplot figure) ----
 scenario_order <- c("0844","0880","4408","8008","4444","4480","8044","8080")
 
 ari_parallel_df <- ari_pam_results_01_035 |>
   mutate(
-    # unify method naming
-    method = canon_method(method), 
-
     # key used for ordering
     scenario_id = sprintf(
       "%01d%01d%01d%01d",
@@ -1431,14 +1414,12 @@ ggsave(
 load(file = "ari_pam_experiment_numsep_01_catsep_035.RData")
 
 add_methods    <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
-nonadd_methods <- c("naive","hl","gudmm","dkps")
+nonadd_methods <- c("naive","hl","gudmm","dkss")
 
 scenario_order <- c("0844","0880","4408","8008","4444","4480","8044","8080")
 
 ari_rank_df <- ari_pam_results_01_035 |>
   mutate(
-    method = canon_method(method),
-
     scenario_id = sprintf("%01d%01d%01d%01d", numsignal, numnoise, catsignal, catnoise),
     scenario = stringr::str_glue("n:({numsignal},{numnoise}); c:({catsignal},{catnoise})")
   ) |>
@@ -1672,7 +1653,7 @@ rect_data_rel = tibble(
   xmin_cat  = .5,  xmax_cat  = 8.5, ymin_cat  = 0, ymax_cat  = mad_max_rel
 )
 
-method_levels <- c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")
+method_levels <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
 additive_set  <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
 conflict_prefer("intersect", "base")
 conflict_prefer("setdiff", "base")
@@ -1681,7 +1662,6 @@ nonadd_present <- setdiff(method_levels, additive_set)
 
 # ---------- TOP: absolute contributions ----------
 loo_mad_long <- meas_to_plot_mad |>
-  canon_cols() |>
   pivot_longer(
     cols = any_of(method_levels),
     names_to = "method",
@@ -1788,7 +1768,6 @@ loo_mad_plot <-
 
 # ---------- BOTTOM: relative contributions ----------
 loo_mad_rel_long <- meas_to_plot_mad_rel |>
-  canon_cols() |>
   pivot_longer(
     cols = any_of(method_levels),
     names_to = "method",
@@ -1902,7 +1881,7 @@ fig_4_plot
 ```
 
 
-```{r,echo=FALSE,eval=FALSE}
+```{r,echo=FALSE,eval=TRUE}
 ggsave(fig_4_plot, file = "figure_4_mad_importances.pdf", width = 7, height = 8)
 
 ```
@@ -1911,7 +1890,7 @@ ggsave(fig_4_plot, file = "figure_4_mad_importances.pdf", width = 7, height = 8)
 ### Code for  `Figure 6`
 
 ```{r,fig.height=5,fig.width=8}
-method_levels <- c("naive","hl","hl_add","gower","gudmm","dkps","mod_gower","u_ind","u_dep","u_mix")
+method_levels <- c("naive","hl","hl_add","gower","gudmm","dkss","mod_gower","u_ind","u_dep","u_mix")
 additive_set  <- c("gower","mod_gower","hl_add","u_ind","u_dep","u_mix")
 
 meas_to_plot_ac <- fifa_split_by_measure |>
@@ -1931,7 +1910,6 @@ rect_data_ac <- tibble::tibble(
 )
 
 ac_long <- meas_to_plot_ac |>
-  canon_cols() |>
   tidyr::pivot_longer(
     cols = dplyr::any_of(method_levels),
     names_to = "method",
@@ -2052,7 +2030,7 @@ ac_plot
 ```
 
 
-```{r,echo=FALSE,eval=FALSE}
+```{r,echo=FALSE,eval=TRUE}
 ggsave("figure_5_ac_rel_importances.pdf", ac_plot, width = 8, height = 4)
 ```
 
