@@ -14,7 +14,7 @@
 #' @importFrom recipes all_predictors all_nominal all_nominal_predictors all_numeric_predictors
 #' @importFrom rsample initial_split training testing
 #' @importFrom cluster daisy
-#' @importFrom stats dist as.dist cov var sd median density model.matrix IQR quantile start
+#' @importFrom stats dist as.dist cov var sd median density model.matrix IQR quantile  start
 #' @importFrom stats kmeans predict rchisq rnorm runif
 #' @importFrom utils capture.output
 #' @importFrom distances distances
@@ -28,7 +28,6 @@
 #' @importFrom ggplot2 autoplot
 #' @importFrom rlang .data
 #' @importFrom tune tunable
-#' @importFrom clusterGeneration genRandomClust
 NULL
 
 utils::globalVariables(c(
@@ -42,9 +41,3 @@ utils::globalVariables(c(
   "object",
   "spec_type"
 ))
-
-.onLoad <- function(libname, pkgname) {
-  if (requireNamespace("parsnip", quietly = TRUE)) {
-    try(register_nearest_neighbor_dist(), silent = TRUE)
-  }
-}

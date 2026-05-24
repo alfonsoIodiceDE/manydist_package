@@ -32,17 +32,15 @@
   apply(nn_idx, 2L, function(idx) mean(y_train[idx]))
 }
 
-#' KNN fit with precomputed distances
+#' @rdname nearest_neighbor_dist
+#' @keywords internal
 #'
-#' This is the engine function used by the parsnip
-#' `nearest_neighbor_dist(precomputed)` model.
-#'
-#' @param x A data frame or matrix of predictors (already a distance
-#'   representation if `dist_fun` is NULL).
+#' @param x A data frame or matrix of predictors. If `dist_fun = NULL`,
+#'   `x` is treated as an already computed distance representation.
 #' @param y A vector of outcomes.
-#' @param k Number of neighbors.
-#' @param dist_fun A distance function taking arguments `(x, new_data = ...)`,
-#'   or NULL if `x`/`new_data` are already distance matrices.
+#' @param k Number of neighbours.
+#' @param dist_fun Optional distance function taking arguments `x` and
+#'   `new_data`. If `NULL`, inputs are assumed to already be distance matrices.
 #' @param dist_args A named list of additional arguments passed to `dist_fun`.
 #'
 #' @export
@@ -74,14 +72,15 @@ fit_knn_dist <- function(x, y, k = 5, dist_fun = NULL, dist_args = list()) {
     class = "knn_dist"
   )
 }
-#' Predict from a KNN-distance model (classification)
+
+#' @rdname nearest_neighbor_dist
+#' @keywords internal
 #'
-#' Used by parsnip for `type = "class"` and `type = "prob"`.
-#'
-#' @param object A `knn_dist` object created by `fit_knn_dist()`.
-#' @param new_data A data frame or matrix of precomputed distances
-#'   *or* raw predictors, depending on `dist_fun`.
-#' @param type `"class"` or `"prob"`.
+#' @param object A fitted `knn_dist` object created by `fit_knn_dist()`.
+#' @param new_data A data frame or matrix of precomputed distances, or raw
+#'   predictors when `dist_fun` is supplied.
+#' @param type Prediction type. For classification, `"class"` returns class
+#'   predictions and `"prob"` returns class probabilities.
 #'
 #' @export
 predict_knn_dist_class <- function(object, new_data, type = c("class", "prob")) {
@@ -110,32 +109,19 @@ predict_knn_dist_class <- function(object, new_data, type = c("class", "prob")) 
   else                 .knn_prob_from_dist(D, object$y, object$k)
 }
 
-#' Predict class probabilities from a KNN-distance model
+#' @rdname nearest_neighbor_dist
+#' @keywords internal
 #'
-#' Thin wrapper used by parsnip for `type = "prob"`.
-#'
-#' @param object A `knn_dist` object created by `fit_knn_dist()`.
-#' @param new_data A data frame or matrix of precomputed distances
-#'   *or* raw predictors, depending on `dist_fun`.
-#' @param ... Additional arguments currently not used.
+#' @param ... Additional arguments passed to lower-level methods or currently
+#'   not used.
 #'
 #' @export
 predict_knn_dist_prob <- function(object, new_data, ...) {
   predict_knn_dist_class(object, new_data, type = "prob")
 }
-#' Predict from a KNN-distance model (regression)
-#'
-#' Used by parsnip for regression mode (`type = "numeric"`).
-#' Supports two modes:
-#' - `dist_fun` is NULL  →  `new_data` is assumed to already be a
-#'   distance matrix (e.g., produced by `step_mdist()`).
-#' - `dist_fun` is a function  →  distances are computed as
-#'   `dist_fun(x = object$x, new_data = new_data, ...)`.
-#'
-#' @param object A `knn_dist` object created by `fit_knn_dist()`.
-#' @param new_data A data frame or matrix. Either:
-#'   - precomputed distances to training points (if `dist_fun` is NULL), or
-#'   - raw predictors to be passed to `dist_fun`.
+
+#' @rdname nearest_neighbor_dist
+#' @keywords internal
 #'
 #' @export
 predict_knn_dist_reg <- function(object, new_data) {
