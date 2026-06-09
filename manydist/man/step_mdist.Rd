@@ -2,7 +2,7 @@
 % Please edit documentation in R/step_mdist_functions.R
 \name{step_mdist}
 \alias{step_mdist}
-\title{Distance-based representation via manydist}
+\title{Add manydist dissimilarities to a recipe}
 \usage{
 step_mdist(
   recipe,
@@ -11,10 +11,9 @@ step_mdist(
   trained = FALSE,
   output = "distance_to_training",
   preset = "custom",
-  distance_cont = "manhattan",
-  distance_cat = "tot_var_dist",
+  method_cat = "tot_var_dist",
+  method_num = "none",
   commensurable = FALSE,
-  scaling_cont = "none",
   ncomp = NULL,
   threshold = NULL,
   columns = NULL,
@@ -27,42 +26,53 @@ step_mdist(
 \arguments{
 \item{recipe}{A recipe object.}
 
-\item{...}{Selector(s) for the predictor columns to be used in [mdist()].}
+\item{...}{Selector(s) for the predictor columns to be used in [mdist()].
+These are passed to [recipes::recipes_eval_select()] during preparation.}
 
-\item{role}{Role for the new distance columns, usually `"predictor"`.}
+\item{role}{Role for the new distance columns. The default is `"predictor"`.}
 
 \item{trained}{Logical for recipes internals. Do not set manually.}
 
-\item{output}{Type of dissimilarity output. `"distance_to_training"`
-returns distances from the baked data to the training data;
-`"pairwise"` returns the within-training pairwise dissimilarity matrix.}
+\item{output}{Character string specifying the type of distance output.
+`"distance_to_training"` returns distances from the baked data to the
+training observations and is the usual choice for prediction workflows.
+`"pairwise"` returns the within-training pairwise dissimilarity matrix and
+is intended for training-only distance-based clustering workflows.}
 
-\item{preset}{Character string. Distance preset passed to [mdist()].}
+\item{preset}{Character string specifying the distance preset passed to
+[mdist()]. Available values include `"custom"`, `"gower"`,
+`"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+`"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.}
 
-\item{distance_cont}{Character string. Continuous-variable distance passed
-to [mdist()] when `preset = "custom"`.}
+\item{method_cat}{Character string specifying the categorical-variable
+dissimilarity passed to [mdist()] when `preset = "custom"`. Common values
+include `"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
+available methods.}
 
-\item{distance_cat}{Character string. Categorical-variable distance passed
-to [mdist()] when `preset = "custom"`.}
+\item{method_num}{Character string specifying the numerical-variable
+preprocessing passed to [mdist()] when `preset = "custom"`. Available
+options include `"none"` for no preprocessing, `"std"` for
+standard-deviation scaling, `"range"` for range scaling, `"robust"` for
+inter-quartile-range-based scaling, and `"pc_scores"` for
+principal-component score scaling.}
 
-\item{commensurable}{Logical. If `TRUE`, use a commensurable mixed-distance
-specification when supported by [mdist()].}
-
-\item{scaling_cont}{Character string. Scaling method for continuous
-variables passed to [mdist()].}
+\item{commensurable}{Logical. If `TRUE`, dissimilarities are scaled so that
+the average contribution of each variable to the overall distance is equal
+to 1, when supported by the selected distance specification.}
 
 \item{ncomp}{Integer or `NULL`. Number of principal components to retain
-when principal-component scaling is used.}
+when `method_num = "pc_scores"`. If `NULL`, all available components are
+used unless `threshold` is supplied and supported by the underlying method.}
 
-\item{threshold}{Numeric or `NULL`. Cumulative proportion of variance to
-retain when principal-component scaling is used and `ncomp` is not
-supplied.}
+\item{threshold}{Numeric or `NULL`. Optional cumulative variance threshold
+used when `method_num = "pc_scores"`.}
 
 \item{columns}{Names of columns selected at prep time. Used internally by
 recipes.}
 
 \item{train_predictors}{Training predictors stored at prep time. Used
-internally by recipes.}
+internally by recipes to compute distances from new observations to the
+training observations.}
 
 \item{preprocessor}{Internal fitted manydist preprocessor.}
 
@@ -71,6 +81,78 @@ should be skipped when baking new data.}
 
 \item{id}{Character string. Unique step identifier.}
 }
+\value{
+An updated recipe with a manydist step.
+}
 \description{
-Distance-based representation via manydist
+`step_mdist()` is a [recipes::recipe()] step that replaces selected
+predictors by a distance-based representation computed with [mdist()]. It is
+designed for distance-based learning workflows, especially nearest-neighbour
+prediction and clustering models that operate on dissimilarity matrices.
+}
+\details{
+The step can produce either distances from new observations to the training
+observations, or the within-training pairwise dissimilarity matrix. The
+former is the usual choice for supervised prediction workflows; the latter
+is useful for distance-based clustering workflows fitted on the training
+data.
+
+
+During [recipes::prep()], `step_mdist()` stores the selected training
+predictors and fits the internal manydist preprocessor. During
+[recipes::bake()], the selected predictors are removed and replaced by
+distance columns named `dist_1`, `dist_2`, and so on.
+
+With `output = "distance_to_training"`, baking the training data returns the
+training pairwise distances, while baking new data returns distances from
+each new observation to each training observation. This rectangular
+representation is suitable for nearest-neighbour prediction models.
+
+With `output = "pairwise"`, the step returns the within-training pairwise
+dissimilarity matrix. Baking genuinely new data is not supported in this
+mode, because the output is intended for training-only clustering workflows
+such as [pam_dist()] or [spectral_dist()].
+}
+\examples{
+if (requireNamespace("palmerpenguins", quietly = TRUE)) {
+  data("penguins", package = "palmerpenguins")
+
+  penguins_small <- palmerpenguins::penguins |>
+    dplyr::select(
+      species, bill_length_mm, bill_depth_mm, flipper_length_mm,
+      body_mass_g, island, sex
+    ) |>
+    tidyr::drop_na()
+
+  # Distance-to-training representation for prediction workflows
+  rec <- recipes::recipe(species ~ ., data = penguins_small) |>
+    step_mdist(
+      recipes::all_predictors(),
+      preset = "gower",
+      output = "distance_to_training"
+    )
+
+  rec_prep <- recipes::prep(rec, training = penguins_small)
+  baked <- recipes::bake(rec_prep, new_data = penguins_small)
+
+  baked |> dplyr::slice_head(n=5)
+
+  # Pairwise representation for clustering workflows
+  rec_pairwise <- recipes::recipe(~ ., data = penguins_small) |>
+    step_mdist(
+      recipes::all_predictors(),
+      preset = "gower",
+      output = "pairwise"
+    )
+
+  rec_pairwise_prep <- recipes::prep(rec_pairwise, training = penguins_small)
+  pairwise_dist <- recipes::bake(rec_pairwise_prep, new_data = penguins_small)
+
+  pairwise_dist
+}
+
+}
+\seealso{
+[mdist()], [nearest_neighbor_dist()], [pam_dist()],
+  [spectral_dist()], [all_dist_method_specs()]
 }

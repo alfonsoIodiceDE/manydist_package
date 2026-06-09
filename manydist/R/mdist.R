@@ -33,10 +33,9 @@
 
 .resolve_preset <- function(
     preset,
-    distance_cont,
-    distance_cat,
+    method_cat,
     commensurable,
-    scaling_cont,
+    method_num,
     interaction
 ) {
 
@@ -44,67 +43,64 @@
     custom = list(),
 
     gower = list(
-      distance_cont = "manhattan",
-      distance_cat  = "matching",
+      method_cat    = "matching",
       commensurable = FALSE,
-      scaling_cont  = "range",
+      method_num    = "range",
       interaction   = FALSE
     ),
-
+    euclidean = list(
+      method_cat    = "dummy",
+      commensurable = FALSE,
+      method_num    = "std",
+      interaction   = FALSE
+    ),
     unbiased_dependent = list(
-      distance_cont = "manhattan",
-      distance_cat  = "tvd",
+      method_cat    = "tvd",
       commensurable = TRUE,
-      scaling_cont  = "pc_scores",
+      method_num    = "pc_scores",
       interaction   = FALSE
     ),
 
     hl = list(
-      distance_cont = "euclidean",
-      distance_cat  = "HLeucl",
+      method_cat    = "HLeucl",
       commensurable = FALSE,
-      scaling_cont  = "std",
+      method_num    = "std",
       interaction   = FALSE
     ),
 
     u_dep = list(
-      distance_cont = "manhattan",
-      distance_cat  = "tvd",
+      method_cat    = "tvd",
       commensurable = TRUE,
-      scaling_cont  = "pc_scores",
+      method_num    = "pc_scores",
       interaction   = FALSE
     ),
 
     u_indep = list(
-      distance_cont = "manhattan",
-      distance_cat  = "matching",
+      method_cat    = "matching",
       commensurable = TRUE,
-      scaling_cont  = "std",
+      method_num    = "std",
       interaction   = FALSE
     ),
 
     u_mix = list(
-      distance_cont = "manhattan",
-      distance_cat  = "tvd",
+      method_cat    = "tvd",
       commensurable = TRUE,
-      scaling_cont  = "std",
+      method_num    = "std",
       interaction   = FALSE
     )
   )
 
   user_args <- list(
-    distance_cont = distance_cont,
-    distance_cat  = distance_cat,
+    method_cat    = method_cat,
     commensurable = commensurable,
-    scaling_cont  = scaling_cont,
+    method_num    = method_num,
     interaction   = interaction
   )
 
   default_args <- list(
-    distance_cont = "manhattan",
-    distance_cat  = "tvd",
+    method_cat    = "tvd",
     commensurable = TRUE,
-    scaling_cont  = "std",
+    method_num    = "std",
     interaction   = FALSE
   )
 
@@ -136,20 +132,41 @@
   defs <- preset_defs[[preset]]
 
   list(
-    distance_cont = defs$distance_cont %||% distance_cont,
-    distance_cat  = defs$distance_cat  %||% distance_cat,
+    method_cat    = defs$method_cat    %||% method_cat,
     commensurable = defs$commensurable %||% commensurable,
-    scaling_cont  = defs$scaling_cont  %||% scaling_cont,
+    method_num    = defs$method_num    %||% method_num,
     interaction   = defs$interaction   %||% interaction
   )
+}
+
+
+.normalize_preset <- function(preset) {
+  if (preset %in% c("euclidean_onehot", "euclidean_one_hot")) {
+    warning(
+      "`preset = \"", preset, "\"` is deprecated. ",
+      "Use `preset = \"euclidean\"` instead.",
+      call. = FALSE
+    )
+    return("euclidean")
+  }
+
+  preset
+}
+
+.numeric_metric_from_preset <- function(preset) {
+  if (preset %in% c("hl", "euclidean")) {
+    "euclidean"
+  } else {
+    "manhattan"
+  }
 }
 
 .mdist_generic <- function(
     cont_data, cat_data,
     cont_data_val = NULL, cat_data_val = NULL,
     y = NULL,
-    distance_cont, distance_cat,
-    commensurable, scaling_cont,
+    preset, method_cat,
+    commensurable, method_num,
     ncomp, threshold,
     interaction, prop_nn, score, decision
 ) {
@@ -157,13 +174,15 @@
   cont_dist_mat <- NULL
   cat_dist_mat  <- NULL
 
+  method <- .numeric_metric_from_preset(preset)
+
   if (!is.null(cont_data)) {
     cont_dist_mat <- ndist(
       x = cont_data,
       validate_x = cont_data_val,
-      method = distance_cont,
+      method = method,
       commensurable = commensurable,
-      scaling = scaling_cont,
+      scaling = method_num,
       ncomp = ncomp,
       threshold = threshold
     ) |>
@@ -175,7 +194,7 @@
       x = cat_data,
       validate_x = cat_data_val,
       response = y,
-      method = distance_cat,
+      method = method_cat,
       commensurable = commensurable
     )$distance_mat |>
       as.matrix()
@@ -211,7 +230,7 @@
   }
 
   if (!is.null(cont_dist_mat) && !is.null(cat_dist_mat) &&
-      identical(distance_cont, "euclidean") && identical(distance_cat, "HLeucl")) {
+      preset %in% c("hl", "euclidean")) {
     distance_mat <- sqrt((cat_dist_mat^2) + (cont_dist_mat^2))
   }
 
@@ -220,16 +239,20 @@
 
 
 .prep_mdist <- function(x, response = NULL,
-                        distance_cont = "manhattan", distance_cat = "tvd",
-                        commensurable = TRUE, scaling_cont = "std",
+                        method_cat = "tvd",
+                        commensurable = TRUE,
+                        method_num = "std",
                         ncomp = NULL, threshold = NULL,
                         preset = "custom", interaction = FALSE,
                         prop_nn = 0.1, score = "ba", decision = "prior_corrected",
                         gower_average = TRUE) {
 
-  if (identical(distance_cat, "tot_var_dist")) {
-    distance_cat <- "tvd"
+  preset <- .normalize_preset(preset)
+
+  if (identical(method_cat, "tot_var_dist")) {
+    method_cat <- "tvd"
   }
+
 
   resp_name <- NULL
   response_quo <- rlang::enquo(response)
@@ -266,18 +289,17 @@
 
   args <- .resolve_preset(
     preset = preset,
-    distance_cont = distance_cont,
-    distance_cat  = distance_cat,
+    method_cat = method_cat,
     commensurable = commensurable,
-    scaling_cont  = scaling_cont,
-    interaction   = interaction
+    method_num = method_num,
+    interaction = interaction
   )
 
-  distance_cont <- args$distance_cont
-  distance_cat  <- args$distance_cat
+  method_cat    <- args$method_cat
   commensurable <- args$commensurable
-  scaling_cont  <- args$scaling_cont
+  method_num    <- args$method_num
   interaction   <- args$interaction
+
 
   cat_data  <- x |> dplyr::select(where(is.factor))
   cont_data <- x |> dplyr::select(where(is.numeric))
@@ -285,17 +307,17 @@
   if (ncol(cat_data) == 0) cat_data <- NULL
   if (ncol(cont_data) == 0) cont_data <- NULL
 
-  if (!is.null(cat_data) && identical(distance_cat, "tvd") && ncol(cat_data) == 1) {
+  if (!is.null(cat_data) && identical(method_cat, "tvd") && ncol(cat_data) == 1) {
     warning("'tvd' requires >1 categorical variable. Switching to 'matching'.", call. = FALSE)
-    distance_cat <- "matching"
+    method_cat <- "matching"
   }
 
-  if (!is.null(cont_data) && identical(scaling_cont, "pc_scores") && ncol(cont_data) == 1) {
+  if (!is.null(cont_data) && identical(method_num, "pc_scores") && ncol(cont_data) == 1) {
     warning(
-      "With 1 continuous variable, 'pc_scores' is equivalent to standardization. Switching to scaling_cont='std'.",
+      "With 1 continuous variable, 'pc_scores' is equivalent to standardization. Switching to method_num='std'.",
       call. = FALSE
     )
-    scaling_cont <- "std"
+    method_num <- "std"
   }
 
   cat_levels <- NULL
@@ -316,7 +338,7 @@
     }
   }
 
-  if (preset == "euclidean_onehot" && !is.null(cat_data)) {
+  if (preset == "euclidean" && !is.null(cat_data)) {
     dummy_recipe <- recipes::recipe(~ ., data = cat_data) |>
       recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE) |>
       recipes::prep(training = cat_data)
@@ -328,10 +350,9 @@
       y              = y,
       response_col   = resp_name,
       preset         = preset,
-      distance_cont  = distance_cont,
-      distance_cat   = distance_cat,
+      method_cat     = method_cat,
+      method_num     = method_num,
       commensurable  = commensurable,
-      scaling_cont   = scaling_cont,
       ncomp          = ncomp,
       threshold      = threshold,
       interaction    = interaction,
@@ -411,10 +432,10 @@
       cont_data_val = cont_data_val,
       cat_data_val = cat_data_val,
       y = prep$y,
-      distance_cont = prep$distance_cont,
-      distance_cat = prep$distance_cat,
+      preset = prep$preset,
+      method_cat = prep$method_cat,
       commensurable = prep$commensurable,
-      scaling_cont = prep$scaling_cont,
+      method_num = prep$method_num,
       ncomp = prep$ncomp,
       threshold = prep$threshold,
       interaction = prep$interaction,
@@ -481,21 +502,21 @@
       if (isTRUE(prep$gower_average)) {
         distance_mat <- distance_mat / length(gowerlist)
       }
-}
-    }else if (prep$preset == "euclidean_onehot") {
+    }
+  }else if (prep$preset == "euclidean") {
 
-    distance_cont <- "euclidean"
-    commensurable <- FALSE
-    scaling_cont  <- "std"
+    method <- "euclidean"
+    commensurable <- prep$commensurable
+    method_num <- prep$method_num
 
     if (is.null(cat_data) && !is.null(cont_data)) {
 
       distance_mat <- ndist(
         x = cont_data,
         validate_x = cont_data_val,
-        method = distance_cont,
+        method = method,
         commensurable = commensurable,
-        scaling = scaling_cont
+        scaling = method_num
       ) |>
         as.matrix()
 
@@ -506,9 +527,9 @@
       if (is.null(validate_x)) {
         distance_mat <- ndist(
           x = cat_data_dummy,
-          method = distance_cont,
+          method = method,
           commensurable = commensurable,
-          scaling = scaling_cont
+          scaling = method_num
         ) |>
           as.matrix()
       } else {
@@ -517,9 +538,9 @@
         distance_mat <- ndist(
           x = cat_data_dummy,
           validate_x = cat_data_val_dummy,
-          method = distance_cont,
+          method = method,
           commensurable = commensurable,
-          scaling = scaling_cont
+          scaling = method_num
         ) |>
           as.matrix()
       }
@@ -531,17 +552,17 @@
       if (is.null(validate_x)) {
         cont_dist_mat <- ndist(
           x = cont_data,
-          method = distance_cont,
+          method = method,
           commensurable = commensurable,
-          scaling = scaling_cont
+          scaling = method_num
         ) |>
           as.matrix()
 
         cat_dist_mat <- ndist(
           x = cat_data_dummy,
-          method = distance_cont,
+          method = method,
           commensurable = commensurable,
-          scaling = scaling_cont
+          scaling = method_num
         ) |>
           as.matrix()
 
@@ -549,9 +570,9 @@
         cont_dist_mat <- ndist(
           x = cont_data,
           validate_x = cont_data_val,
-          method = distance_cont,
+          method = method,
           commensurable = commensurable,
-          scaling = scaling_cont
+          scaling = method_num
         ) |>
           as.matrix()
 
@@ -560,9 +581,9 @@
         cat_dist_mat <- ndist(
           x = cat_data_dummy,
           validate_x = cat_data_val_dummy,
-          method = distance_cont,
+          method = method,
           commensurable = commensurable,
-          scaling = scaling_cont
+          scaling = method_num
         ) |>
           as.matrix()
       }
@@ -646,44 +667,140 @@
 }
 
 
-#' Mixed-type distance for mixed data
+#' Mixed-type dissimilarities for distance-based learning
 #'
-#' Computes a distance or dissimilarity object for mixed-type data,
-#' combining continuous and categorical variables.
+#' Computes a dissimilarity object for numerical, categorical, or mixed-type
+#' data. The function combines continuous and categorical components according
+#' to either a predefined `preset` or a user-defined custom specification.
 #'
-#' @param x A data frame or matrix of predictors.
-#' @param new_data Optional new data to compute distances to \code{x}.
-#' @param response Optional response variable used for supervised
-#'   categorical distances.
-#' @param distance_cont Character string specifying the distance
-#'   for continuous variables.
-#' @param distance_cat Character string specifying the distance
-#'   for categorical variables.
-#' @param commensurable Logical; whether to apply commensurability
-#'   scaling between variable types.
-#' @param scaling_cont Character string specifying scaling for
-#'   continuous variables.
-#' @param ncomp Optional number of components used in dimensional
-#'   reduction. If \code{NULL}, no reduction is applied.
-#' @param threshold Optional threshold parameter.
-#' @param preset Character string specifying a predefined setup.
-#' @param interaction Logical; whether to include interaction-based
-#'   distances.
-#' @param prop_nn proportion of neighbours to consider when measuring interactions.
-#' @param score classification metric either "ba" (balanced accuracy) or "logloss".
-#' @param decision rule when score is set to ba.
-#' @param gower_average Logical; only used when \code{preset = "gower"}.
-#'   If \code{TRUE}, returns the standard Gower dissimilarity averaged over
-#'   variables, matching the scale of \code{cluster::daisy(metric = "gower")}.
-#'   If \code{FALSE}, returns the sum of per-variable Gower contributions,
-#'   equivalent to multiplying the averaged Gower dissimilarity by the number
-#'   of active variables.
+#' `mdist()` is the main distance-construction function in `manydist`. It can
+#' return ordinary train-train dissimilarities or rectangular test-to-training
+#' dissimilarities when `new_data` is supplied. The resulting object stores both
+#' the dissimilarity matrix and metadata about the distance specification that
+#' was used.
 #'
-#' @return A dissimilarity object.
+#' @param x A data frame or matrix containing the training observations. Columns
+#'   can be numeric, factors, or a mixture of both.
+#' @param new_data Optional data frame or matrix containing new observations.
+#'   If supplied, distances are computed from rows of `new_data` to rows of
+#'   `x`, producing a rectangular test-to-training dissimilarity matrix.
+#' @param response Optional response variable used for response-aware
+#'   categorical dissimilarities. It can be supplied as an unquoted column name
+#'   or as a character string. The response column is removed from the
+#'   predictors before computing distances.
+#' @param method_cat Character string specifying the categorical-variable
+#'   dissimilarity used when `preset = "custom"`. Common values include
+#'   `"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
+#'   available methods.
+#' @param method_num Character string specifying the numerical-variable
+#'   preprocessing used when `preset = "custom"`. Available options include
+#'   `"none"` for no preprocessing, `"std"` for standard-deviation scaling,
+#'   `"range"` for range scaling, `"robust"` for inter-quartile-range-based
+#'   scaling, and `"pc_scores"` for principal-component score scaling.
+#' @param commensurable Logical. If `TRUE`, dissimilarities are scaled so that
+#'   the average contribution of each variable to the overall distance is equal
+#'   to 1.
+#' @param ncomp Integer or `NULL`. Number of principal components to retain
+#'   when `method_num = "pc_scores"`. If `NULL`, all available components are
+#'   used unless `threshold` is supplied and supported by the underlying method.
+#' @param threshold Numeric or `NULL`. Optional cumulative variance threshold
+#'   used when `method_num = "pc_scores"`.
+#' @param preset Character string specifying a predefined distance
+#'   specification. Available values include `"custom"`, `"gower"`,
+#'   `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+#'   `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
+#'   When `preset` is not `"custom"`, arguments such as `method_cat`,
+#'   `method_num`, `commensurable`, and `interaction` are handled by the preset
+#'   and user-supplied values for those arguments are ignored.
+#' @param interaction Logical. If `TRUE`, adds an interaction-aware
+#'   continuous-categorical component based on local predictive separability.
+#' @param prop_nn Numeric. Proportion of nearest neighbours used when
+#'   `interaction = TRUE`.
+#' @param score Character string specifying the score used when
+#'   `interaction = TRUE`. Available values include `"ba"` for balanced
+#'   accuracy and `"logloss"`.
+#' @param decision Character string specifying the decision rule used when
+#'   `score = "ba"`. The default is `"prior_corrected"`.
+#' @param gower_average Logical; only used when `preset = "gower"`. If `TRUE`,
+#'   returns the standard Gower dissimilarity averaged over variables, matching
+#'   the scale of [cluster::daisy()] with `metric = "gower"`. If `FALSE`,
+#'   returns the sum of per-variable Gower contributions, equivalent to
+#'   multiplying the averaged Gower dissimilarity by the number of active
+#'   variables.
+#'
+#' @details
+#' With `preset = "custom"`, users manually choose the numerical preprocessing,
+#' categorical dissimilarity, commensurability, and optional interaction term.
+#'
+#' The `"gower"` preset follows the usual Gower construction based on range
+#' scaling for continuous variables and matching dissimilarities for categorical
+#' variables. The `gower_average` argument controls whether the result is
+#' averaged over variables or returned as a sum of variable-wise contributions.
+#'
+#' The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
+#' convenience specifications for unbiased or commensurable mixed-variable
+#' dissimilarities. The `"euclidean"` preset computes a Euclidean
+#' distance after one-hot encoding categorical variables. The `"gudmm"`,
+#' `"dkss"`, and `"mod_gower"` presets provide additional mixed-type distance
+#' constructions. Some presets currently support only train-train distances and
+#' will stop if `new_data` is supplied.
+#'
+#' Use [all_dist_method_specs()] to inspect the available distance components
+#' and method specifications.
+#'
+#' @return An object of class `"MDist"`. The object contains the computed
+#'   dissimilarity in its `$distance` field, the selected `preset`, the training
+#'   data, and a list of parameters describing the fitted distance
+#'   specification. Square train-train dissimilarities are stored as
+#'   `"dissimilarity"`/`"dist"` objects; rectangular test-to-training
+#'   dissimilarities are stored as `"dissimilarity"`/`"matrix"` objects.
+#'
+#' @seealso [step_mdist()], [all_dist_method_specs()]
+#'
+#' @examples
+#' if (requireNamespace("palmerpenguins", quietly = TRUE)) {
+#'   data("penguins", package = "palmerpenguins")
+#'
+#'   penguins_small <- palmerpenguins::penguins |>
+#'     dplyr::select(
+#'       bill_length_mm, bill_depth_mm, flipper_length_mm,
+#'       body_mass_g, species, island, sex
+#'     ) |>
+#'     tidyr::drop_na()
+#'
+#'   # Gower distance on mixed-type data
+#'   d_gower <- mdist(penguins_small, preset = "gower")
+#'   d_gower
+#'
+#'   # Custom mixed-type specification
+#'   d_custom <- mdist(
+#'     penguins_small,
+#'     preset = "custom",
+#'     method_cat = "matching",
+#'     method_num = "std",
+#'     commensurable = TRUE
+#'   )
+#'
+#'   d_custom
+#'
+#'   # Train-to-new-data distances
+#'   penguin_split <- rsample::initial_split(penguins_small, prop = 0.75)
+#'   penguin_train <- rsample::training(penguin_split)
+#'   penguin_test  <- rsample::testing(penguin_split)
+#'
+#'   d_new <- mdist(
+#'     penguin_train,
+#'     new_data = penguin_test,
+#'     preset = "gower"
+#'   )
+#'
+#'   d_new
+#' }
+#'
 #' @export
 mdist <- function(x, new_data = NULL, response = NULL,
-                  distance_cont = "manhattan", distance_cat = "tvd",
-                  commensurable = TRUE, scaling_cont = "std",
+                  method_cat = "tvd", method_num = "std",
+                  commensurable = TRUE,
                   ncomp = NULL, threshold = NULL,
                   preset = "custom", interaction = FALSE,
                   prop_nn = 0.1, score = "ba", decision = "prior_corrected",
@@ -692,10 +809,9 @@ mdist <- function(x, new_data = NULL, response = NULL,
   prep <- .prep_mdist(
     x = x,
     response = {{ response }},
-    distance_cont = distance_cont,
-    distance_cat = distance_cat,
+    method_cat = method_cat,
     commensurable = commensurable,
-    scaling_cont = scaling_cont,
+    method_num = method_num,
     ncomp = ncomp,
     threshold = threshold,
     preset = preset,
@@ -710,9 +826,8 @@ mdist <- function(x, new_data = NULL, response = NULL,
   distance_mat <- .to_dissimilarity(distance_mat)
 
   params <- list(
-    distance_cont = prep$distance_cont,
-    distance_cat  = prep$distance_cat,
-    scaling_cont  = prep$scaling_cont,
+    method_cat  = prep$method_cat,
+    method_num  = prep$method_num,
     commensurable = prep$commensurable,
     gower_average = prep$gower_average,
     ncomp         = prep$ncomp,

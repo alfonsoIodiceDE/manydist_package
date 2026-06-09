@@ -1,15 +1,6 @@
 dist_methods_tbl <- function() {
   phil_methods <- philentropy::getDistMethods()
 
-  cont_tbl <- tibble::tibble(
-    method = c("euclidean", "manhattan"),
-    argument = "distance_cont",
-    data_type = "numeric",
-    distance_basis = "numeric",
-    response_aware = FALSE,
-    engine = "manydist"
-  )
-
   cat_tbl <- tibble::tibble(
     method = c(
       # association-based custom
@@ -25,7 +16,7 @@ dist_methods_tbl <- function() {
       # indicator-scaling based
       "none", "st_dev", "HL", "cat_dis", "HLeucl", "mca"
     ),
-    argument = "distance_cat",
+    argument = "method_cat",
     data_type = "categorical",
     distance_basis = c(
       rep("association", 3 + length(phil_methods)),
@@ -45,11 +36,11 @@ dist_methods_tbl <- function() {
     )
   )
 
-  scaling_tbl <- tibble::tibble(
-    method = c("none", "std", "pc_scores", "robust","range"),
-    argument = "scaling_cont",
+  num_tbl <- tibble::tibble(
+    method = c("none", "std", "pc_scores", "robust", "range"),
+    argument = "method_num",
     data_type = "numeric",
-    distance_basis = "numeric_scaling",
+    distance_basis = "numeric_preprocessing",
     response_aware = FALSE,
     engine = "manydist"
   )
@@ -57,7 +48,7 @@ dist_methods_tbl <- function() {
   preset_tbl <- tibble::tibble(
     method = c(
       "custom", "gower", "gudmm", "dkss", "mod_gower",
-      "euclidean_onehot", "hl", "u_dep", "u_indep", "u_mix"
+      "euclidean", "hl", "u_dep", "u_indep", "u_mix"
     ),
     argument = "preset",
     data_type = "mixed",
@@ -71,7 +62,7 @@ dist_methods_tbl <- function() {
       FALSE,  # gudmm
       FALSE,  # dkss
       FALSE,  # mod_gower
-      FALSE,  # euclidean_onehot
+      FALSE,  # euclidean
       FALSE,  # hl
       TRUE,   # u_dep
       FALSE,  # u_indep
@@ -83,7 +74,7 @@ dist_methods_tbl <- function() {
       "external_port", # gudmm
       "kdml",          # dkss
       "external_port", # mod_gower
-      "manydist",      # euclidean_onehot
+      "manydist",      # euclidean
       "manydist",      # hl
       "manydist",      # u_dep
       "manydist",      # u_indep
@@ -91,25 +82,24 @@ dist_methods_tbl <- function() {
     )
   )
 
-  dplyr::bind_rows(cont_tbl, cat_tbl, scaling_tbl, preset_tbl) |>
-    dplyr::distinct(method, argument, .keep_all = TRUE) |>
+  dplyr::bind_rows(cat_tbl, num_tbl, preset_tbl) |>
+    dplyr::distinct(.data$method, .data$argument, .keep_all = TRUE) |>
     dplyr::arrange(
-      factor(argument, levels = c("distance_cont", "distance_cat", "scaling_cont", "preset")),
-      factor(data_type, levels = c("numeric", "categorical", "mixed")),
+      factor(.data$argument, levels = c("method_cat", "method_num", "preset")),
+      factor(.data$data_type, levels = c("numeric", "categorical", "mixed")),
       factor(
-        distance_basis,
+        .data$distance_basis,
         levels = c(
-          "numeric",
           "association",
           "independence",
           "indicator_scaling",
-          "numeric_scaling",
+          "numeric_preprocessing",
           "mixed_block",
           "user_defined"
         )
       ),
-      factor(engine, levels = c("manydist", "philentropy", "kdml", "external_port")),
-      method
+      factor(.data$engine, levels = c("manydist", "philentropy", "kdml", "external_port")),
+      .data$method
     )
 }
 

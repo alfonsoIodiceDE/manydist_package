@@ -1,10 +1,7 @@
-#' Tuning parameters for nearest_neighbor_dist
-#'
-#' This defines which arguments of `nearest_neighbor_dist()` are tunable
-#' and which dials parameter to use for each one.
+#' @rdname nearest_neighbor_dist
+#' @keywords internal
 #'
 #' @param x A `nearest_neighbor_dist` model specification.
-#' @param ... Not used (included for method consistency).
 #'
 #' @export
 #' @method tunable nearest_neighbor_dist

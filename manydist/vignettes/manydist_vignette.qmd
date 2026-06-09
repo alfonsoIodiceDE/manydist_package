@@ -1,1200 +1,657 @@
 ---
-author: Alfonso Iodice D'Enza
-title: manydist an R package for distance-based learning
+title: "manydist: distance-based learning with mixed-type data"
+author: "Alfonso Iodice D'Enza"
 format:
   html:
-    toc: false
+    toc: true
     toc-depth: 3
     code-fold: false
     number-sections: true
     embed-resources: true
-    title-block-banner: false
 execute:
   echo: true
   warning: false
   message: false
 ---
 
-<div style="text-align: right; margin-top: -1em; margin-bottom: 1em;">
-  <img src="manydist_logo.png" alt="manydist logo" width="160"/>
-</div>
+## Overview
 
-```{r setup}
-#| include: true
-#| message: false
+`manydist` provides tools for constructing dissimilarities for numerical, categorical, and mixed-type data.
 
+The main function is `mdist()`. It computes a dissimilarity object that can be used in distance-based learning workflows, including clustering, nearest-neighbour prediction, and diagnostic analyses.
 
-set.seed(123)
-rm(list = ls())
-devtools::load_all("../")
-# library(manydist)
-library(tidyverse)
-library(tidymodels)
-library(palmerpenguins)
-```
+The package supports both preset specifications and custom specifications. In the current interface:
 
-# Introduction
+- `method_cat` controls the categorical dissimilarity;
+- `method_num` controls the preprocessing of numerical variables;
+- `commensurable` controls whether variable-wise contributions are placed on a comparable scale;
+- `preset` selects a predefined distance specification.
 
-The manydist package provides a flexible framework for distance-based
-learning with continuous, categorical, and mixed-type predictors. Its
-core function `mdist()` computes mixed-variable dissimilarities under a
-range of presets and custom specifications, while the `MDist` class
-stores both the resulting distance matrix and the associated metadata.
+The numerical metric is no longer a user-facing argument. For most presets, numerical variables are compared through Manhattan-type contributions. The exceptions are presets such as `"hl"` and `"euclidean"`, where the Euclidean structure is part of the definition.
 
-Distances can be computed either in a purely unsupervised way or, for
-response-aware categorical distances, by incorporating an outcome
-variable through the `response` argument. This allows the same framework
-to support both unsupervised distance construction and supervised
-distance-based learning pipelines.
+The `"euclidean"` preset replaces the former `"euclidean_onehot"` name. It computes Euclidean distances after one-hot encoding categorical variables.
 
-The package also integrates with the tidymodels ecosystem through a
-recipe step, `step_mdist()`, a custom distance-based nearest-neighbour
-model, `nearest_neighbor_dist()`, a distance-based partitioning around
-medoids implementation, `pam_dist()`, and a distance-based spectral
-clustering implementation, `spectral_dist()`.
-
-This vignette illustrates the main functionalities of the package:
-
-This vignette illustrates the main functionalities of the package:
-
-1. computing mixed-type distances with `mdist()`;
-2. using response-aware distance computation when a target variable is available;
-3. assessing variable influence with `lovo_mdist()`;
-4. comparing diagnostics across methods with `compare_lovo_mdist()`;
-5. creating distance-based representations with `step_mdist()`;
-6. fitting and tuning a KNN model with `nearest_neighbor_dist()`;
-7. fitting a distance-based PAM clustering model with `pam_dist()`;
-8. fitting a distance-based spectral clustering model with `spectral_dist()`.
-
-
-The focus is on classification of penguin species, but the same ideas
-apply to other supervised or unsupervised tasks that rely on pairwise
-distances.
-
-# Data
-
-We start from the `penguins` data and remove rows with missing values.
-
-```{r penguins}
-penguins_clean <- palmerpenguins::penguins |>
-  drop_na()
-```
-
-# Computing mixed-type distances with `mdist()`
-
-The main entry point of the package is `mdist()`, which computes a
-mixed-variable dissimilarity according to a chosen preset or custom
-specification.
-
-```{r mdist-core}
-d_obj_all <- mdist(
-  x = penguins_clean |> select(-species),
-  preset = "u_dep"
-)
-
-summary(d_obj_all)
-```
-
-The resulting object stores the distance matrix together with the
-distance specification.
-
-## Response-aware distance computation
-
-When a response variable is available, some categorical distances can use
-it to construct supervised, response-aware dissimilarities. This is
-particularly relevant for association-based categorical distances such as
-`"tvd"`.
-
-The same function `mdist()` can therefore be used in two ways:
-
-- without a response, yielding a purely unsupervised distance;
-- with a response, yielding a supervised version whenever the selected
-  categorical distance supports it.
-  
-```{r mdist-response-unsup}
-d_unsup <- mdist(
-  x = penguins_clean,
-  response = NULL,
-  distance_cat = "tvd",
-  distance_cont = "manhattan",
-  commensurable = TRUE
-)
-
-summary(d_unsup)
-```
-
-```{r mdist-response-sup}
-d_sup <- mdist(
-  x = penguins_clean,
-  response = species,
-  distance_cat = "tvd",
-  distance_cont = "manhattan",
-  commensurable = TRUE
-)
-
-summary(d_sup)
-```
-
-
-```{r mdist-response-compare}
-D_unsup <- as.matrix(d_unsup$distance)
-D_sup   <- as.matrix(d_sup$distance)
-
-all.equal(D_unsup,D_sup)
-```
-
-A non-zero difference confirms that including the response changes the
-resulting distance matrix. 
-
-
-# Variable diagnostics with `lovo_mdist()`
-
-The function `lovo_mdist()` provides a leave-one-variable-out diagnostic.
-For each predictor, the function recomputes the distance after removing
-that variable and compares the resulting structure with the full-distance
-solution.
-
-```{r lovo}
-#| cache: false
-lovo_res <- lovo_mdist(
-  x = penguins_clean |> select(-species),
-  preset = "u_dep"
-)
-
-summary(lovo_res)
-```
-
-A graphical summary is also available through `autoplot()`.
-
-```{r lovo-plot}
-autoplot(lovo_res, "relative_distance")
-```
-
-## LOVO with clustering-based diagnostics
-
-In addition to distance- and MDS-based diagnostics, `lovo_mdist()`
-can optionally assess how much the clustering solution changes when each
-variable is removed. This is activated by specifying the number of
-clusters through `cluster_k`.
-
-In the next example, we compute leave-one-variable-out diagnostics for
-the same distance specification as above, and compare the full-data
-partition with the leave-one-out partitions using both PAM and
-hierarchical clustering. Agreement is measured through the adjusted Rand
-index (ARI), while `pam_importance` and `hclust_importance` are defined
-as `1 - ARI`, so that larger values indicate stronger influence of the
-left-out variable.
-
-```{r lovo-cluster}
-#| cache: false
-lovo_res_clust <- lovo_mdist(
-  x = penguins_clean |> select(-species),
-  preset = "u_dep",
-  cluster_k = 3
-)
-
-summary(lovo_res_clust)
-```
-
-The clustering-based importance measures can be visualized with
-`autoplot()` in the same way as the original LOVO diagnostics.
-
-```{r lovo-cluster-plot-pam}
-autoplot(lovo_res_clust, metric = "pam_importance")
-```
-
-```{r lovo-cluster-plot-hclust}
-autoplot(lovo_res_clust, metric = "hclust_importance")
-```
-
-```{r lovo-cluster-plot-spectral}
-autoplot(lovo_res_clust, metric = "spectral_importance")
-```
-
-If needed, only one clustering method can be requested.
-
-```{r lovo-cluster-pam-only}
-lovo_res_pam <- lovo_mdist(
-  x = penguins_clean |> select(-species),
-  preset = "u_dep",
-  cluster_k = 3,
-  cluster_methods = "pam"
-)
-
-autoplot(lovo_res_pam, metric = "pam_importance")
-```
-
-## LOVO with and without response information
-
-If a response variable is supplied to `lovo_mdist()`, the diagnostic can
-be computed either:
-
-- using the response inside the distance computation (`response_used = TRUE`);
-- or excluding the response from the distance computation while still
-  starting from a data frame that contains it (`response_used = FALSE`).
-
-This makes it possible to compare supervised and unsupervised LOVO
-profiles under otherwise matched specifications.
-
-```{r lovo-response-sup}
-lovo_sup <- lovo_mdist(
-  x = penguins_clean,
-  response = species,
-  distance_cat = "tvd",
-  distance_cont = "manhattan",
-  commensurable = TRUE,
-  response_used = TRUE
-)
-
-summary(lovo_sup)
-```
-
-```{r lovo-response-unsup}
-lovo_unsup <- lovo_mdist(
-  x = penguins_clean,
-  response = species,
-  distance_cat = "tvd",
-  distance_cont = "manhattan",
-  commensurable = TRUE,
-  response_used = FALSE
-)
-
-summary(lovo_unsup)
-```
+## Setup
 
 ```{r}
-autoplot(lovo_sup, metric = "relative_distance")
-autoplot(lovo_unsup, metric = "relative_distance")
+devtools::load_all()
+# library(manydist)
+library(dplyr)
+library(tidyr)
+library(recipes)
 ```
 
-# Comparing distance specifications with `compare_lovo_mdist()`
+We use the `palmerpenguins` data for illustration.
 
+```{r}
+if (requireNamespace("palmerpenguins", quietly = TRUE)) {
+  data("penguins", package = "palmerpenguins")
 
+  penguins_small <- palmerpenguins::penguins |>
+    dplyr::select(
+      species,
+      bill_length_mm,
+      bill_depth_mm,
+      flipper_length_mm,
+      body_mass_g,
+      island,
+      sex
+    ) |>
+    tidyr::drop_na()
+}
+```
 
+The data contain numerical variables, such as bill length and body mass, and categorical variables, such as island and sex.
 
-The function `compare_lovo_mdist()` extends the LOVO diagnostic to
-multiple distance specifications. This makes it possible to compare how
-variable contributions change across alternative mixed-type distances.
+```{r}
+dplyr::glimpse(penguins_small)
+```
 
-In the example below, we compare:
+## Computing a mixed-type dissimilarity
 
-- `"gower"`, a standard mixed-type distance;
-- `"u_dep"`, an association-aware distance that enforces
-  commensurability;
-- a custom specification based on Manhattan distance for numeric
-  variables and Hennig--Liao distance for categorical variables.
+The simplest way to compute a mixed-type dissimilarity is to use a preset.
 
-```{r lovo-compare}
-#| cache: false
-lovo_cmp <- compare_lovo_mdist(
-  x = penguins_clean |> select(-species),
-  methods = list(
-    gower = list(preset = "gower"),
-    u_dep = list(preset = "u_dep"),
-    custom = list(
-      distance_cont = "manhattan",
-      distance_cat  = "HL",
-      commensurable = FALSE
-    )
-  )
+For example, the `"gower"` preset computes a Gower-type dissimilarity for mixed numerical and categorical data.
+
+```{r}
+d_gower <- mdist(
+  penguins_small |> dplyr::select(-species),
+  preset = "gower"
 )
 
-lovo_cmp
+d_gower
 ```
 
-```{r lovo-compare-summary}
-summary(lovo_cmp)
+The resulting object stores the dissimilarity matrix and metadata about the distance specification.
+
+```{r}
+class(d_gower)
 ```
 
-```{r lovo-compare-plot}
-#| cache: false
-autoplot(lovo_cmp, metric = "relative_distance")
+The distance matrix can be extracted with `to_dist()`.
+
+```{r}
+as.matrix(d_gower$to_dist())[1:5, 1:5]
 ```
 
-## Comparing supervised and unsupervised LOVO profiles
+## Response-aware dissimilarities
 
-The helper `lovo_method_spec()` makes it convenient to define method
-specifications when the response is part of the comparison design.
+Some categorical dissimilarities can use a response variable. When a response is supplied to `mdist()`, it is used for response-aware distance construction and is removed from the predictors.
 
-In the next example, we compare the same distance specification with and
-without using the response inside the categorical distance computation.
+Therefore, in the following example, `species` is used as the response and is not also treated as a predictor.
 
-```{r lovo-compare-response}
-lovo_cmp_resp_clust <- compare_lovo_mdist(
-  x = penguins_clean,
-  methods = list(
-    u_dep_unsup = lovo_method_spec(
-      response = species,
-      preset = "u_dep",
-      response_used = FALSE
-    ),
-    u_dep_sup = lovo_method_spec(
-      response = species,
-      preset = "u_dep",
-      response_used = TRUE
-    )
-  ),
-  cluster_k = 3,
-  cluster_methods = "spectral"
-)
-
-summary(lovo_cmp_resp_clust)
-autoplot(lovo_cmp_resp_clust, metric = "ari_spectral")
-autoplot(lovo_cmp_resp_clust, metric = "spectral_importance")
-autoplot(lovo_cmp_resp_clust, metric = "relative_distance")
-```
-
-
-
-# Distance-based KNN in base R
-
-We now move to a simple predictive setting and create a stratified
-train/test split.
-
-```{r split}
-set.seed(123)
-peng_split <- initial_split(penguins_clean, strata = species)
-peng_train <- training(peng_split)
-peng_test  <- testing(peng_split)
-
-dim(peng_train)
-dim(peng_test)
-```
-
-We separate predictors and outcome:
-
-```{r base-mdist}
-x_train <- peng_train |>
-  select(-species)
-x_test  <- peng_test |>
-  select(-species)
-y_train <- peng_train$species
-y_test  <- peng_test$species
-```
-
-We compute train-to-test distances with `mdist()`.
-
-```{r base-mdist-compute}
-test_d_obj <- mdist(
-  x = x_train,
-  new_data = x_test,
+```{r}
+d_response <- mdist(
+  penguins_small,
+  response = species,
   preset = "u_dep"
 )
 
-summary(test_d_obj)
+d_response
 ```
 
-```{r base-mdist-inspect}
-distance_matrix <- base::as.matrix(test_d_obj$distance)
-dim(distance_matrix)
+The same can be written by passing the response as a character string.
+
+```{r}
+d_response_chr <- mdist(
+  penguins_small,
+  response = "species",
+  preset = "u_dep"
+)
+
+d_response_chr
 ```
 
-These distances can be used directly in a minimal KNN implementation.
+## Custom distance specifications
 
-```{r base-knn}
-n_neighbours <- 5
+Presets are convenient, but users can also define custom specifications.
 
-nn_idx <- apply(distance_matrix, 1, function(d) order(d)[1:n_neighbours])
+In a custom specification, `method_cat` controls the categorical dissimilarity and `method_num` controls the preprocessing applied to numerical variables.
 
-pred_base <- apply(nn_idx, 2, function(idx) {
-  names(which.max(table(y_train[idx])))
-})
+```{r}
+d_custom <- mdist(
+  penguins_small |> dplyr::select(-species),
+  preset = "custom",
+  method_cat = "matching",
+  method_num = "std",
+  commensurable = TRUE
+)
 
-mean(pred_base == y_test)
+d_custom
 ```
 
-# Distance-based representations with `step_mdist()`
+Here, categorical variables are compared using matching dissimilarities, numerical variables are standardized, and variable-wise contributions are made commensurable.
 
-To integrate with `tidymodels`, manydist provides the recipe step
-`step_mdist()`, which computes dissimilarities relative to the training
-set.
+A response-aware custom specification can also be used.
 
-- `"distance_to_training"` (default): a rectangular test-to-training
-  distance matrix, suited to supervised learners such as KNN;
-- `"pairwise"`: a square within-sample distance matrix, suited to
-  clustering and other unsupervised methods.
+```{r}
+d_custom_response <- mdist(
+  penguins_small,
+  response = species,
+  preset = "custom",
+  method_cat = "tvd",
+  method_num = "std",
+  commensurable = TRUE
+)
 
-```{r rec-mdist}
-peng_rec <- recipe(species ~ ., data = peng_train) |>
-  step_mdist(all_predictors(), preset = "u_dep")
-
-peng_rec
+d_custom_response
 ```
 
-```{r rec-mdist-prep}
-prepped_rec <- peng_rec |>
-  prep()
+If only one categorical predictor is available, methods that require more than one categorical variable may switch to a simpler alternative internally.
+
+## Euclidean preset
+
+The `"euclidean"` preset computes Euclidean distances after converting categorical variables to one-hot dummy variables.
+
+```{r}
+d_euclidean <- mdist(
+  penguins_small |> dplyr::select(-species),
+  preset = "euclidean"
+)
+
+d_euclidean
 ```
 
-As a quick sanity check, the distance matrix obtained through the recipe
-matches the one computed directly with `mdist()`.
+This preset replaces the former `"euclidean_onehot"` name.
 
-```{r rec-mdist-bake}
-train_dist <- bake(prepped_rec, new_data = peng_train)
-prepped_test_d_obj <- bake(prepped_rec, new_data = peng_test)
+## Comparing presets
 
-sum(prepped_test_d_obj |> select(-species) - test_d_obj$distance)
+Different presets encode different assumptions about how numerical and categorical variables should contribute to the final dissimilarity.
+
+```{r}
+d_u_indep <- mdist(
+  penguins_small |> dplyr::select(-species),
+  preset = "u_indep"
+)
+
+d_u_mix <- mdist(
+  penguins_small |> dplyr::select(-species),
+  preset = "u_mix"
+)
+
+d_hl <- mdist(
+  penguins_small |> dplyr::select(-species),
+  preset = "hl"
+)
+
+d_u_indep
+d_u_mix
+d_hl
 ```
 
-# Distance-based KNN with `nearest_neighbor_dist()`
+The available presets include:
 
-The package also provides a custom parsnip model,
-`nearest_neighbor_dist()`, with a `"precomputed"` engine.
-
-```{r model-spec}
-knn_spec <- nearest_neighbor_dist(
-  mode = "classification",
-  neighbors = 5
-) |>
-  set_engine("precomputed")
-
-knn_spec
-```
-
-We can combine the recipe and the model in a workflow.
-
-```{r workflow}
-peng_wf <- workflow() |>
-  add_recipe(peng_rec) |>
-  add_model(knn_spec)
-
-peng_wf
-```
-
-```{r fit-workflow}
-peng_fit <- peng_wf |>
-  fit(data = peng_train)
-```
-
-Predictions and performance evaluation are then straightforward.
-
-```{r predict-prob-class}
-peng_pred <- predict(peng_fit, new_data = peng_test, type = "prob") |>
-  bind_cols(
-    predict(peng_fit, new_data = peng_test, type = "class"),
-    peng_test |> select(species)
-  )
-
-peng_pred |>
-  head()
-```
-
-```{r eval-acc}
-peng_pred |>
-  accuracy(truth = species, estimate = .pred_class)
-```
-
-# Tuning the number of neighbors
-
-Because `nearest_neighbor_dist()` is registered as a parsnip model, its
-hyperparameters can be tuned using `tune_grid()`.
-
-```{r tune-spec}
-knn_tune_spec <- nearest_neighbor_dist(
-  mode = "classification",
-  neighbors = tune()
-) |>
-  set_engine("precomputed")
-
-knn_tune_spec
-```
-
-```{r tune-workflow}
-peng_wf_tune <- workflow() |>
-  add_recipe(peng_rec) |>
-  add_model(knn_tune_spec)
-```
-
-```{r tune-grid}
-#| cache: false
-set.seed(123)
-peng_folds <- vfold_cv(peng_train, v = 5, strata = species)
-
-k_grid <- tibble(neighbors = seq(3, 15, by = 2))
-k_grid
-
-peng_metrics <- metric_set(accuracy)
-
-tuned_knn <- tune_grid(
-  peng_wf_tune,
-  resamples = peng_folds,
-  grid = k_grid,
-  metrics = peng_metrics
+```{r}
+c(
+  "custom",
+  "gower",
+  "euclidean",
+  "unbiased_dependent",
+  "u_dep",
+  "u_indep",
+  "u_mix",
+  "hl",
+  "gudmm",
+  "dkss",
+  "mod_gower"
 )
 ```
 
-```{r tune-results}
-collect_metrics(tuned_knn)
-show_best(tuned_knn, metric = "accuracy")
+Some presets are intended mainly for train-train dissimilarities and may not support distances from new observations to training observations.
 
-autoplot(tuned_knn)
+## Distances from new observations to training observations
+
+`mdist()` can also compute distances from new observations to the training observations through the `new_data` argument.
+
+```{r}
+set.seed(123)
+
+split_id <- sample(seq_len(nrow(penguins_small)), size = floor(0.75 * nrow(penguins_small)))
+
+penguins_train <- penguins_small[split_id, ]
+penguins_test  <- penguins_small[-split_id, ]
+
+d_new <- mdist(
+  x = penguins_train |> dplyr::select(-species),
+  new_data = penguins_test |> dplyr::select(-species),
+  preset = "gower"
+)
+
+d_new
 ```
 
-After selecting the best value of `k`, the workflow can be finalized and
-re-fitted on the training set.
+The resulting dissimilarity is rectangular: rows correspond to test observations and columns correspond to training observations.
 
-```{r finalize}
-best_k <- select_best(tuned_knn, metric = "accuracy")
-
-final_wf <- peng_wf_tune |>
-  finalize_workflow(best_k)
-
-final_fit <- final_wf |>
-  fit(data = peng_train)
-
-final_pred <- predict(final_fit, new_data = peng_test, type = "class") |>
-  bind_cols(peng_test |> select(species))
-
-final_pred |>
-  accuracy(truth = species, estimate = .pred_class)
+```{r}
+dim(as.matrix(d_new$distance))
 ```
 
-# Distance-based clustering with `pam_dist()` and `spectral_dist()`
+## Using `manydist` in recipe workflows
 
-For clustering, `step_mdist()` is used with `output = "pairwise"`, so
-that the within-training pairwise dissimilarity matrix is computed and
-passed to the clustering method.
+The function `step_mdist()` provides a recipe interface to `mdist()`. It replaces selected predictors with a distance-based representation.
 
-We first define a recipe that computes the pairwise dissimilarity matrix
-on the training set.
+In supervised workflows, the response is defined on the left-hand side of the recipe formula. Therefore, when we select `recipes::all_predictors()`, the response variable is not used as a predictor in the distance computation.
 
-```{r rec-clust}
-peng_rec_clust <- recipe(~ ., data = peng_train |> select(-species)) |>
+```{r}
+rec <- recipes::recipe(species ~ ., data = penguins_small) |>
   step_mdist(
-    all_predictors(),
-    preset = "u_dep",
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "distance_to_training"
+  )
+
+rec_prep <- recipes::prep(rec, training = penguins_small)
+
+baked <- recipes::bake(rec_prep, new_data = penguins_small)
+
+baked |>
+  dplyr::slice_head(n = 5)
+```
+
+The resulting data contain the outcome variable, `species`, together with one distance column for each training observation. These columns are named `dist_1`, `dist_2`, and so on.
+
+## Custom specifications in recipes
+
+The same interface can be used with a custom distance specification.
+
+```{r}
+rec_custom <- recipes::recipe(species ~ ., data = penguins_small) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "custom",
+    method_cat = "matching",
+    method_num = "std",
+    commensurable = TRUE,
+    output = "distance_to_training"
+  )
+
+rec_custom_prep <- recipes::prep(rec_custom, training = penguins_small)
+
+baked_custom <- recipes::bake(rec_custom_prep, new_data = penguins_small)
+
+baked_custom |>
+  dplyr::slice_head(n = 5)
+```
+
+In this example, `method_cat = "matching"` specifies the categorical dissimilarity, while `method_num = "std"` specifies standardization of numerical variables.
+
+## Pairwise dissimilarities in recipes
+
+For distance-based clustering workflows, `step_mdist()` can return the within-training pairwise dissimilarity matrix by setting `output = "pairwise"`.
+
+In this case, the recipe is intended for training-only workflows.
+
+```{r}
+penguins_predictors <- penguins_small |>
+  dplyr::select(-species)
+
+rec_pairwise <- recipes::recipe(~ ., data = penguins_predictors) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
     output = "pairwise"
   )
 
-peng_rec_clust
+rec_pairwise_prep <- recipes::prep(rec_pairwise, training = penguins_predictors)
+
+pairwise_dist <- recipes::bake(
+  rec_pairwise_prep,
+  new_data = penguins_predictors
+)
+
+pairwise_dist |>
+  dplyr::slice_head(n = 5)
 ```
 
-## Distance-based PAM clustering with `pam_dist()`
+## Euclidean distances in recipes
 
-We define a PAM clustering specification with three clusters.
+The `"euclidean"` preset can also be used inside a recipe. Categorical predictors are one-hot encoded internally before the Euclidean distance is computed.
 
-```{r pam-spec}
-pam_spec <- pam_dist(num_clusters = 3)
+```{r}
+rec_euclidean <- recipes::recipe(species ~ ., data = penguins_small) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "euclidean",
+    output = "distance_to_training"
+  )
 
-pam_spec
+rec_euclidean_prep <- recipes::prep(rec_euclidean, training = penguins_small)
+
+baked_euclidean <- recipes::bake(rec_euclidean_prep, new_data = penguins_small)
+
+baked_euclidean |>
+  dplyr::slice_head(n = 5)
 ```
 
-The model is then fitted by combining the specification with the recipe
-and the training predictors.
+## Distance-based nearest-neighbour prediction
 
-```{r pam-fit}
+The distance representation produced by `step_mdist()` can be used in downstream supervised learning workflows.
+
+Here we illustrate a nearest-neighbour classifier using the distance-to-training representation. The recipe first converts the original mixed-type predictors into distances from each observation to the training observations. The model is then tuned over the number of neighbours.
+
+```{r}
+library(tidymodels)
+
+set.seed(123)
+
+penguin_split <- rsample::initial_split(
+  penguins_small,
+  prop = 0.75,
+  strata = species
+)
+
+penguin_train <- rsample::training(penguin_split)
+penguin_test  <- rsample::testing(penguin_split)
+
+set.seed(123)
+
+penguin_folds <- rsample::vfold_cv(
+  penguin_train,
+  v = 5,
+  strata = species
+)
+```
+
+```{r}
+rec_knn <- recipes::recipe(species ~ ., data = penguin_train) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "distance_to_training"
+  )
+```
+
+```{r}
+knn_spec <- nearest_neighbor_dist(
+  neighbors = tune::tune()
+) |>
+  parsnip::set_mode("classification")
+```
+
+```{r}
+knn_wf <- workflows::workflow() |>
+  workflows::add_recipe(rec_knn) |>
+  workflows::add_model(knn_spec)
+
+knn_grid <- tibble::tibble(
+  neighbors = c(1, 3, 5, 7, 9)
+)
+
+set.seed(123)
+
+knn_res <- tune::tune_grid(
+  knn_wf,
+  resamples = penguin_folds,
+  grid = knn_grid,
+  metrics = yardstick::metric_set(accuracy)
+)
+
+knn_res |>
+  tune::collect_metrics()
+```
+
+```{r}
+best_knn <- knn_res |>
+  tune::select_best(metric = "accuracy")
+
+best_knn
+```
+
+```{r}
+final_knn_wf <- knn_wf |>
+  tune::finalize_workflow(best_knn)
+
+final_knn_fit <- final_knn_wf |>
+  parsnip::fit(data = penguin_train)
+
+knn_pred <- predict(final_knn_fit, new_data = penguin_test) |>
+  dplyr::bind_cols(penguin_test |> dplyr::select(species))
+
+yardstick::accuracy(knn_pred, truth = species, estimate = .pred_class)
+```
+
+This example uses `preset = "gower"`, but the same workflow can be used with any `mdist()` preset or with a custom specification based on `method_cat`, `method_num`, and `commensurable`.
+
+## Distance-based PAM clustering
+
+The same dissimilarities can be used for clustering. For clustering workflows, `step_mdist()` can return the within-training pairwise dissimilarity matrix by setting `output = "pairwise"`.
+
+```{r}
+penguins_predictors <- penguins_small |>
+  dplyr::select(-species)
+
+rec_pam <- recipes::recipe(~ ., data = penguins_predictors) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "pairwise"
+  )
+```
+
+```{r}
+pam_spec <- pam_dist(
+  num_clusters = 3
+)
+
 pam_fit <- generics::fit(
   pam_spec,
-  recipe = peng_rec_clust,
-  data = peng_train |> select(-species)
+  recipe = rec_pam,
+  data = penguins_predictors
 )
 
-pam_fit
+pam_pred <- predict(pam_fit)
+
+pam_pred |>
+  dplyr::slice_head(n = 10)
 ```
 
-The fitted object returns cluster memberships for the training set.
+Since the true species labels are available in this example, we can inspect the relationship between the PAM clusters and the species labels.
 
-```{r pam-predict-train}
-pam_train_pred <- predict(pam_fit)
-
-pam_train_pred |>
-  head()
+```{r}
+pam_pred |>
+  dplyr::bind_cols(penguins_small |> dplyr::select(species)) |>
+  dplyr::count(.pred_cluster, species)
 ```
 
-Since the true penguin species are known, we can compare the obtained
-partition with the observed classes using the adjusted Rand index (ARI).
+## Distance-based spectral clustering
 
-```{r pam-train-ari}
-mclust::adjustedRandIndex(
-  as.integer(pam_train_pred$.pred_cluster),
-  as.integer(peng_train$species)
-)
+Spectral clustering can be used in the same way, by combining a pairwise distance recipe with the corresponding model specification.
+
+```{r}
+rec_spectral <- recipes::recipe(~ ., data = penguins_predictors) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "pairwise"
+  )
 ```
 
-For new observations, `pam_dist()` computes distances from the test set
-to the training set, extracts the distances to the fitted medoids, and
-assigns each observation to its nearest medoid.
-
-```{r pam-predict-test}
-pam_test_pred <- predict(
-  pam_fit,
-  new_data = peng_test |> select(-species)
-)
-
-pam_test_pred |>
-  head()
-```
-
-The corresponding ARI on the test set is:
-
-```{r pam-test-ari}
-mclust::adjustedRandIndex(
-  as.integer(pam_test_pred$.pred_cluster),
-  as.integer(peng_test$species)
-)
-```
-
-If desired, the distances from each test observation to the medoids can
-also be extracted directly.
-
-```{r pam-test-dists}
-predict(
-  pam_fit,
-  new_data = peng_test |> select(-species),
-  type = "dist"
-) |>
-  head()
-```
-
-## Distance-based spectral clustering with `spectral_dist()`
-
-The usage of `spectral_dist()` parallels that of `pam_dist()`: the model
-is fitted on the pairwise training dissimilarity matrix computed by
-`step_mdist()`, and predictions for new observations are obtained by
-extending the spectral embedding to the test set.
-
-We define a spectral clustering specification with three clusters.
-
-```{r spectral-spec}
+```{r}
 spectral_spec <- spectral_dist(
   num_clusters = 3
 )
 
-spectral_spec
-```
-
-The model is fitted in the same way as `pam_dist()`.
-
-```{r spectral-fit}
 spectral_fit <- generics::fit(
   spectral_spec,
-  recipe = peng_rec_clust,
-  data = peng_train |> select(-species)
+  recipe = rec_spectral,
+  data = penguins_predictors
 )
 
-spectral_fit
+spectral_pred <- predict(spectral_fit)
+
+spectral_pred |>
+  dplyr::slice_head(n = 10)
 ```
 
-The fitted object returns cluster memberships for the training set.
+Again, because this is an illustrative labelled data set, we can compare the resulting clusters with the observed species labels.
 
-```{r spectral-predict-train}
-spectral_train_pred <- predict(spectral_fit)
-
-spectral_train_pred |>
-  head()
+```{r}
+spectral_pred |>
+  dplyr::bind_cols(penguins_small |> dplyr::select(species)) |>
+  dplyr::count(.pred_cluster, species)
 ```
 
-As for PAM, the resulting partition can be compared with the observed
-penguin species using the adjusted Rand index.
 
-```{r spectral-train-ari}
-mclust::adjustedRandIndex(
-  as.integer(spectral_train_pred$.pred_cluster),
-  as.integer(peng_train$species)
+## A small benchmark example
+
+The function `benchmark_mdist()` applies `mdist()` repeatedly over a grid of distance specifications. This is useful for comparing alternative presets and custom specifications in a systematic way.
+
+For a small example, we restrict the grid to a few specifications.
+
+```{r}
+small_specs <- dplyr::bind_rows(
+  all_dist_method_specs(mode = "presets_only") |>
+    dplyr::filter(preset %in% c("gower", "u_dep", "u_indep", "euclidean")),
+
+  all_dist_method_specs(
+    mode = "full",
+    method_cat = c("matching", "tvd"),
+    method_num = c("std", "robust"),
+    commensurable = c(TRUE, FALSE)
+  ) |>
+    dplyr::filter(spec_type == "component")
+)
+
+small_specs
+```
+
+```{r}
+bench_small <- benchmark_mdist(
+  penguins_small,
+  response = species,
+  specs = small_specs
+)
+
+bench_small |>
+  dplyr::select(
+    spec_type,
+    preset,
+    method_cat,
+    method_num,
+    commensurable,
+    ok,
+    error
+  )
+```
+
+The `ok` column reports whether the distance computation completed successfully. Failed specifications are kept in the output, with the corresponding error message stored in `error`.
+
+```{r}
+bench_small |>
+  dplyr::count(ok)
+```
+
+When all specifications are successful, the resulting `MDist` objects are stored in the `result` list-column and can be inspected or reused.
+
+```{r}
+bench_small |>
+  dplyr::filter(ok) |>
+  dplyr::select(spec_type, preset, method_cat, method_num, commensurable, result) |>
+  dplyr::slice_head(n = 3)
+```
+
+## Leave-one-variable-out diagnostics
+
+`lovo_mdist()` computes leave-one-variable-out diagnostics for distance-based variable importance.
+
+It first computes the full dissimilarity matrix. Then it removes one predictor at a time, recomputes the dissimilarity matrix, and compares the reduced matrix with the full one.
+
+```{r}
+lovo_gower <- lovo_mdist(
+  penguins_small,
+  response = species,
+  response_used = FALSE,
+  preset = "gower"
+)
+
+lovo_gower
+```
+
+The result can be summarized.
+
+```{r}
+summary(lovo_gower)
+```
+
+The relative contribution of each variable can be visualized with `autoplot()`.
+
+```{r}
+lovo_gower$autoplot(
+  metric = "relative_distance",
+  reorder = TRUE
 )
 ```
 
-Predictions for new observations are obtained through the stored
-distance preprocessor and an out-of-sample extension of the spectral
-embedding.
+When `response_used = FALSE`, the response column is removed before computing distances. When `response_used = TRUE`, the response can be used by response-aware distance specifications, but it is still not treated as a predictor in the leave-one-variable-out loop.
 
-```{r spectral-predict-test}
-spectral_test_pred <- predict(
-  spectral_fit,
-  new_data = peng_test |> select(-species)
-)
-
-spectral_test_pred |>
-  head()
-```
-
-The corresponding ARI on the test set is:
-
-```{r spectral-test-ari}
-mclust::adjustedRandIndex(
-  as.integer(spectral_test_pred$.pred_cluster),
-  as.integer(peng_test$species)
-)
-```
-
-If desired, the spectral embedding coordinates can also be extracted
-directly.
-
-```{r spectral-embed-train}
-predict(spectral_fit, type = "embed") |>
-  head()
-```
-
-```{r spectral-embed-test}
-predict(
-  spectral_fit,
-  new_data = peng_test |> select(-species),
-  type = "embed"
-) |>
-  head()
-```
-
-
-## Sanity check: direct distance matrix versus recipe-based clustering
-
-Before illustrating the two clustering interfaces, we verify that the
-recipe-based workflow is consistent with the direct use of `mdist()`.
-
-We first compute the training dissimilarity matrix directly with
-`mdist()`.
-
-```{r clust-direct-distance}
-d_train_obj <- mdist(
-  x = peng_train |> select(-species),
+```{r}
+lovo_response <- lovo_mdist(
+  penguins_small,
+  response = species,
+  response_used = TRUE,
   preset = "u_dep"
 )
 
-D_train_direct <- as.matrix(d_train_obj$distance)
-dim(D_train_direct)
+lovo_response
 ```
 
-We then fit PAM directly on this matrix.
+## Inspecting method specifications
 
-```{r clust-direct-pam}
-pam_direct <- cluster::pam(
-  x = stats::as.dist(D_train_direct),
-  k = 3,
-  diss = TRUE
+`all_dist_method_specs()` returns a table of distance specifications that can be used for benchmarking or sensitivity analysis.
+
+```{r}
+specs <- all_dist_method_specs()
+
+specs |>
+  dplyr::select(
+    spec_type,
+    preset,
+    method_cat,
+    method_num,
+    commensurable
+  ) |>
+  dplyr::slice_head(n = 10)
+```
+
+The same table can be passed to `benchmark_mdist()`.
+
+```{r}
+bench <- benchmark_mdist(
+  penguins_small,
+  response = species,
+  specs = specs
 )
 
-pam_direct_clust <- pam_direct$clustering
-head(pam_direct_clust)
+bench |>
+  dplyr::select(
+    spec_type,
+    preset,
+    method_cat,
+    method_num,
+    commensurable,
+    ok,
+    error
+  ) |>
+  dplyr::slice_head(n = 10)
 ```
 
-Now we fit the recipe-based `pam_dist()` model.
-
-```{r clust-recipe-pam}
-pam_spec <- pam_dist(num_clusters = 3)
-
-pam_fit <- generics::fit(
-  pam_spec,
-  recipe = peng_rec_clust,
-  data = peng_train |> select(-species)
-)
-
-pam_recipe_clust <- predict(pam_fit)$.pred_cluster |>
-  as.integer()
-
-head(pam_recipe_clust)
-```
-
-The two PAM partitions coincide up to label permutation. We check this
-through the adjusted Rand index.
-
-```{r clust-check-pam}
-mclust::adjustedRandIndex(
-  pam_direct_clust,
-  pam_recipe_clust
-)
-```
-
-We can do the same for spectral clustering. First, fit the model
-directly from the distance matrix.
-
-```{r clust-direct-spectral}
-spectral_direct_spec <- spectral_dist(num_clusters = 3)
-
-spectral_direct_fit <- generics::fit(
-  spectral_direct_spec,
-  x = d_train_obj
-)
-
-spectral_direct_clust <- predict(spectral_direct_fit)$.pred_cluster |>
-  as.integer()
-
-head(spectral_direct_clust)
-
-```
-
-For a stricter direct check based only on the distance matrix, we can
-also reconstruct the spectral solution from `D_train_direct`.
-
-```{r clust-direct-spectral-matrix}
-aff <- .affinity_from_dist(D_train_direct, sigma = NULL)
-A <- aff$A
-
-d <- rowSums(A)
-Dhalf_inv <- diag(ifelse(d > 0, 1 / sqrt(d), 0), nrow(A), ncol(A))
-S <- Dhalf_inv %*% A %*% Dhalf_inv
-
-ev <- eigen(S, symmetric = TRUE)
-U <- ev$vectors[, seq_len(3), drop = FALSE]
-U_norm <- .row_normalize(U)
-
-set.seed(123)
-spectral_direct_matrix <- stats::kmeans(U_norm, centers = 3, nstart = 50)$cluster
-
-head(spectral_direct_matrix)
-```
-
-Now fit the recipe-based `spectral_dist()` model.
-
-```{r clust-recipe-spectral}
-spectral_spec <- spectral_dist(num_clusters = 3)
-
-spectral_fit <- generics::fit(
-  spectral_spec,
-  recipe = peng_rec_clust,
-  data = peng_train |> select(-species)
-)
-
-spectral_recipe_clust <- predict(spectral_fit)$.pred_cluster |>
-  as.integer()
-
-head(spectral_recipe_clust)
-```
-
-Again, we compare the resulting partitions via the adjusted Rand index.
-
-```{r clust-check-spectral}
-mclust::adjustedRandIndex(
-  spectral_direct_matrix,
-  spectral_recipe_clust
-)
-
-```
-
-An ARI equal to 1 confirms that the clustering obtained through the
-recipe-based pipeline matches the one obtained by first computing the
-distance matrix with `mdist()` and then applying the clustering method
-directly.
-
-## Consistency checks on continuous data
-
-In the special case of purely continuous predictors, the downstream
-interfaces provided by **manydist** should be consistent with the
-corresponding standard methods applied directly to the original data
-matrix under Euclidean geometry. For simplicity, we illustrate these
-checks on continuous data only, since Euclidean distance provides a
-natural and unambiguous reference in that setting. We then verify this
-for distance computation, nearest neighbours, PAM clustering, and
-spectral clustering.
-We start by restricting the penguin data to continuous predictors only.
-
-```{r sanity-continuous-setup}
-#| warning: false
-
-library(class)
-library(cluster)
-library(kernlab)
-library(mclust)
-
-peng_train_cont <- peng_train |>
-  select(species, where(is.numeric))
-
-peng_test_cont <- peng_test |>
-  select(species, where(is.numeric))
-
-x_train_cont <- peng_train_cont |> select(-species)
-x_test_cont  <- peng_test_cont  |> select(-species)
-y_train_cont <- peng_train_cont$species
-y_test_cont  <- peng_test_cont$species
-
-X_train <- as.matrix(x_train_cont)
-X_test  <- as.matrix(x_test_cont)
-
-k_knn   <- 5
-k_clust <- 3
-```
-
-### Euclidean distances: direct computation versus `mdist()`
-
-We first verify that `mdist()` reproduces ordinary Euclidean distances on
-continuous data when used with Euclidean distance, no scaling, and no
-commensurability correction.
-
-```{r sanity-distance-direct}
-D_train_eucl <- as.matrix(stats::dist(X_train))
-
-.euclid_block <- function(x_new, x_ref) {
-  x_new <- as.matrix(x_new)
-  x_ref <- as.matrix(x_ref)
-
-  n_new <- nrow(x_new)
-  all_x <- rbind(x_new, x_ref)
-  D_all <- as.matrix(stats::dist(all_x))
-
-  D_all[seq_len(n_new), n_new + seq_len(nrow(x_ref)), drop = FALSE]
-}
-
-D_test_train_eucl <- .euclid_block(X_test, X_train)
-
-d_train_mdist <- mdist(
-  x = x_train_cont,
-  distance_cont = "euclidean",
-  scaling_cont = "none",
-  commensurable = FALSE
-)
-
-D_train_mdist <- as.matrix(d_train_mdist$distance)
-
-d_test_mdist <- mdist(
-  x = x_train_cont,
-  new_data = x_test_cont,
-  distance_cont = "euclidean",
-  scaling_cont = "none",
-  commensurable = FALSE
-)
-
-D_test_train_mdist <- as.matrix(d_test_mdist$distance)
-```
-
-The maximum absolute difference is negligible on the training set and
-zero on the test-to-training distance block.
-
-```{r sanity-distance-check}
-distance_check <- tibble::tibble(
-  dataset = c("train", "test"),
-  check = c(
-    "base Euclidean vs mdist() max abs diff",
-    "test-to-train Euclidean vs mdist() max abs diff"
-  ),
-  value = c(
-    max(abs(D_train_eucl - D_train_mdist)),
-    max(abs(D_test_train_eucl - D_test_train_mdist))
-  )
-)
-
-distance_check
-```
-
-### KNN: direct Euclidean KNN versus `nearest_neighbor_dist()`
-
-We now compare standard KNN on the original continuous predictors with
-the `manydist` interface based on Euclidean dissimilarities.
-
-```{r sanity-knn-direct}
-knn_direct_pred <- class::knn(
-  train = X_train,
-  test  = X_test,
-  cl    = y_train_cont,
-  k     = k_knn
-)
-```
-
-The corresponding `manydist` pipeline uses `step_mdist()` to compute the
-Euclidean test-to-training distance representation.
-
-```{r sanity-knn-manydist}
-rec_knn_cont <- recipe(species ~ ., data = peng_train_cont) |>
-  step_mdist(
-    all_predictors(),
-    distance_cont = "euclidean",
-    scaling_cont = "none",
-    commensurable = FALSE
-  )
-
-knn_spec_cont <- nearest_neighbor_dist(
-  mode = "classification",
-  neighbors = k_knn
-) |>
-  set_engine("precomputed")
-
-wf_knn_cont <- workflow() |>
-  add_recipe(rec_knn_cont) |>
-  add_model(knn_spec_cont)
-
-knn_fit_cont <- fit(wf_knn_cont, data = peng_train_cont)
-
-knn_manydist_pred <- predict(
-  knn_fit_cont,
-  new_data = peng_test_cont,
-  type = "class"
-)$.pred_class
-```
-
-We compare the direct and manydist-based predictions through exact
-agreement and report the manydist classification accuracy on the test
-set.
-
-```{r sanity-knn-check}
-knn_check <- tibble::tibble(
-  dataset = c("test", "test"),
-  check = c(
-    "direct vs manydist exact agreement",
-    "manydist accuracy"
-  ),
-  value = c(
-    mean(knn_direct_pred == knn_manydist_pred),
-    yardstick::accuracy_vec(y_test_cont, knn_manydist_pred)
-  )
-)
-
-knn_check
-```
-
-### PAM: direct Euclidean PAM versus `pam_dist()`
-
-For PAM clustering, the direct reference is `cluster::pam()` applied to
-the original continuous feature matrix with Euclidean metric.
-
-```{r sanity-pam-direct}
-pam_direct_fit <- cluster::pam(
-  x = X_train,
-  k = k_clust,
-  metric = "euclidean"
-)
-
-pam_direct_train <- pam_direct_fit$clustering
-```
-
-The corresponding `manydist` interface is based on a pairwise Euclidean
-dissimilarity matrix produced through `step_mdist(..., output = "pairwise")`.
-
-```{r sanity-pam-manydist}
-rec_clust_cont <- recipe(~ ., data = x_train_cont) |>
-  step_mdist(
-    all_predictors(),
-    distance_cont = "euclidean",
-    scaling_cont = "none",
-    commensurable = FALSE,
-    output = "pairwise"
-  )
-
-pam_spec_cont <- pam_dist(num_clusters = k_clust)
-
-pam_manydist_fit <- generics::fit(
-  pam_spec_cont,
-  recipe = rec_clust_cont,
-  data = x_train_cont
-)
-
-pam_manydist_train <- predict(pam_manydist_fit)$.pred_cluster |>
-  as.integer()
-```
-
-We compare the two training partitions via the adjusted Rand index.
-
-```{r sanity-pam-check}
-pam_check <- tibble::tibble(
-  dataset = "train",
-  check = "direct vs manydist partition ARI",
-  value = mclust::adjustedRandIndex(pam_direct_train, pam_manydist_train)
-)
-
-pam_check
-```
-
-### Spectral clustering: direct Gaussian-kernel clustering versus `spectral_dist()`
-
-For spectral clustering, we compare `spectral_dist()` with a direct
-spectral clustering benchmark on the original continuous data using
-`kernlab::specc()` and a Gaussian kernel. The Gaussian bandwidth is
-matched to the median Euclidean distance used by the manydist
-implementation.
-
-```{r sanity-spectral-direct}
-sigma_sc <- stats::median(D_train_eucl[upper.tri(D_train_eucl)])
-gamma_kernlab <- 1 / (2 * sigma_sc^2)
-
-set.seed(123)
-spectral_direct_train <- kernlab::specc(
-  x = X_train,
-  centers = k_clust,
-  kernel = "rbfdot",
-  kpar = list(sigma = gamma_kernlab)
-)
-
-spectral_direct_train <- as.integer(spectral_direct_train)
-```
-
-The corresponding `manydist` interface uses the same number of clusters
-and bandwidth, and is fitted on the pairwise Euclidean dissimilarity
-matrix produced by `step_mdist()`.
-
-```{r sanity-spectral-manydist}
-spectral_spec_cont <- spectral_dist(
-  num_clusters = k_clust,
-  sigma = sigma_sc
-)
-
-set.seed(123)
-spectral_manydist_fit <- generics::fit(
-  spectral_spec_cont,
-  recipe = rec_clust_cont,
-  data = x_train_cont
-)
-
-spectral_manydist_train <- predict(spectral_manydist_fit)$.pred_cluster |>
-  as.integer()
-```
-
-We again compare the two training partitions via the adjusted Rand
-index.
-
-```{r sanity-spectral-check}
-spectral_check <- tibble::tibble(
-  dataset = "train",
-  check = "direct vs manydist partition ARI",
-  value = mclust::adjustedRandIndex(spectral_direct_train, spectral_manydist_train)
-)
-
-spectral_check
-```
-
-### Summary of consistency checks
-
-We finally collect the results into a single summary table.
-
-```{r sanity-summary}
-sanity_summary <- tibble::tibble(
-  method = c(
-    "Distance matrix",
-    "Distance matrix",
-    "KNN",
-    "KNN",
-    "PAM",
-    "Spectral"
-  ),
-  dataset = c(
-    "train",
-    "test",
-    "test",
-    "test",
-    "train",
-    "train"
-  ),
-  check = c(
-    "base Euclidean vs mdist() max abs diff",
-    "test-to-train Euclidean vs mdist() max abs diff",
-    "direct vs manydist exact agreement",
-    "manydist accuracy",
-    "direct vs manydist partition ARI",
-    "direct vs manydist partition ARI"
-  ),
-  value = c(
-    distance_check$value[1],
-    distance_check$value[2],
-    knn_check$value[1],
-    knn_check$value[2],
-    pam_check$value,
-    spectral_check$value
-  )
-)
-
-sanity_summary
-```
-
-These results confirm that, on purely continuous data, `mdist()`
-reproduces Euclidean geometry essentially exactly, and that the
-downstream `manydist` interfaces are consistent with the corresponding
-standard methods applied directly to the original data matrix.
-
-
-# Summary
-
-In this vignette we showed how **manydist** can be used for
-distance-based learning on mixed data through:
-
-- mixed-type distance computation with `mdist()`;
-- variable diagnostics with `lovo_mdist()`;
-- method comparison with `compare_lovo_mdist()`;
-- recipe-based representations with `step_mdist()`;
-- distance-based KNN modeling and tuning with `nearest_neighbor_dist()`;
-- distance-based PAM clustering with `pam_dist()`;
-- distance-based spectral clustering with `spectral_dist()`.

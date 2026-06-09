@@ -1,34 +1,116 @@
-#' Distance-based representation via manydist
+#' Add manydist dissimilarities to a recipe
+#'
+#' `step_mdist()` is a [recipes::recipe()] step that replaces selected
+#' predictors by a distance-based representation computed with [mdist()]. It is
+#' designed for distance-based learning workflows, especially nearest-neighbour
+#' prediction and clustering models that operate on dissimilarity matrices.
+#'
+#' The step can produce either distances from new observations to the training
+#' observations, or the within-training pairwise dissimilarity matrix. The
+#' former is the usual choice for supervised prediction workflows; the latter
+#' is useful for distance-based clustering workflows fitted on the training
+#' data.
 #'
 #' @param recipe A recipe object.
 #' @param ... Selector(s) for the predictor columns to be used in [mdist()].
-#' @param role Role for the new distance columns, usually `"predictor"`.
+#'   These are passed to [recipes::recipes_eval_select()] during preparation.
+#' @param role Role for the new distance columns. The default is `"predictor"`.
 #' @param trained Logical for recipes internals. Do not set manually.
-#' @param output Type of dissimilarity output. `"distance_to_training"`
-#'   returns distances from the baked data to the training data;
-#'   `"pairwise"` returns the within-training pairwise dissimilarity matrix.
-#' @param preset Character string. Distance preset passed to [mdist()].
-#' @param distance_cont Character string. Continuous-variable distance passed
-#'   to [mdist()] when `preset = "custom"`.
-#' @param distance_cat Character string. Categorical-variable distance passed
-#'   to [mdist()] when `preset = "custom"`.
-#' @param commensurable Logical. If `TRUE`, use a commensurable mixed-distance
-#'   specification when supported by [mdist()].
-#' @param scaling_cont Character string. Scaling method for continuous
-#'   variables passed to [mdist()].
+#' @param output Character string specifying the type of distance output.
+#'   `"distance_to_training"` returns distances from the baked data to the
+#'   training observations and is the usual choice for prediction workflows.
+#'   `"pairwise"` returns the within-training pairwise dissimilarity matrix and
+#'   is intended for training-only distance-based clustering workflows.
+#' @param preset Character string specifying the distance preset passed to
+#'   [mdist()]. Available values include `"custom"`, `"gower"`,
+#'   `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+#'   `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
+#' @param method_cat Character string specifying the categorical-variable
+#'   dissimilarity passed to [mdist()] when `preset = "custom"`. Common values
+#'   include `"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
+#'   available methods.
+#' @param method_num Character string specifying the numerical-variable
+#'   preprocessing passed to [mdist()] when `preset = "custom"`. Available
+#'   options include `"none"` for no preprocessing, `"std"` for
+#'   standard-deviation scaling, `"range"` for range scaling, `"robust"` for
+#'   inter-quartile-range-based scaling, and `"pc_scores"` for
+#'   principal-component score scaling.
+#' @param commensurable Logical. If `TRUE`, dissimilarities are scaled so that
+#'   the average contribution of each variable to the overall distance is equal
+#'   to 1, when supported by the selected distance specification.
 #' @param ncomp Integer or `NULL`. Number of principal components to retain
-#'   when principal-component scaling is used.
-#' @param threshold Numeric or `NULL`. Cumulative proportion of variance to
-#'   retain when principal-component scaling is used and `ncomp` is not
-#'   supplied.
+#'   when `method_num = "pc_scores"`. If `NULL`, all available components are
+#'   used unless `threshold` is supplied and supported by the underlying method.
+#' @param threshold Numeric or `NULL`. Optional cumulative variance threshold
+#'   used when `method_num = "pc_scores"`.
 #' @param columns Names of columns selected at prep time. Used internally by
 #'   recipes.
 #' @param train_predictors Training predictors stored at prep time. Used
-#'   internally by recipes.
+#'   internally by recipes to compute distances from new observations to the
+#'   training observations.
 #' @param preprocessor Internal fitted manydist preprocessor.
 #' @param skip Logical. Standard recipes argument indicating whether the step
 #'   should be skipped when baking new data.
 #' @param id Character string. Unique step identifier.
+#'
+#' @details
+#' During [recipes::prep()], `step_mdist()` stores the selected training
+#' predictors and fits the internal manydist preprocessor. During
+#' [recipes::bake()], the selected predictors are removed and replaced by
+#' distance columns named `dist_1`, `dist_2`, and so on.
+#'
+#' With `output = "distance_to_training"`, baking the training data returns the
+#' training pairwise distances, while baking new data returns distances from
+#' each new observation to each training observation. This rectangular
+#' representation is suitable for nearest-neighbour prediction models.
+#'
+#' With `output = "pairwise"`, the step returns the within-training pairwise
+#' dissimilarity matrix. Baking genuinely new data is not supported in this
+#' mode, because the output is intended for training-only clustering workflows
+#' such as [pam_dist()] or [spectral_dist()].
+#'
+#' @return An updated recipe with a manydist step.
+#'
+#' @seealso [mdist()], [nearest_neighbor_dist()], [pam_dist()],
+#'   [spectral_dist()], [all_dist_method_specs()]
+#'
+#' @examples
+#' if (requireNamespace("palmerpenguins", quietly = TRUE)) {
+#'   data("penguins", package = "palmerpenguins")
+#'
+#'   penguins_small <- palmerpenguins::penguins |>
+#'     dplyr::select(
+#'       species, bill_length_mm, bill_depth_mm, flipper_length_mm,
+#'       body_mass_g, island, sex
+#'     ) |>
+#'     tidyr::drop_na()
+#'
+#'   # Distance-to-training representation for prediction workflows
+#'   rec <- recipes::recipe(species ~ ., data = penguins_small) |>
+#'     step_mdist(
+#'       recipes::all_predictors(),
+#'       preset = "gower",
+#'       output = "distance_to_training"
+#'     )
+#'
+#'   rec_prep <- recipes::prep(rec, training = penguins_small)
+#'   baked <- recipes::bake(rec_prep, new_data = penguins_small)
+#'
+#'   baked |> dplyr::slice_head(n=5)
+#'
+#'   # Pairwise representation for clustering workflows
+#'   rec_pairwise <- recipes::recipe(~ ., data = penguins_small) |>
+#'     step_mdist(
+#'       recipes::all_predictors(),
+#'       preset = "gower",
+#'       output = "pairwise"
+#'     )
+#'
+#'   rec_pairwise_prep <- recipes::prep(rec_pairwise, training = penguins_small)
+#'   pairwise_dist <- recipes::bake(rec_pairwise_prep, new_data = penguins_small)
+#'
+#'   pairwise_dist
+#' }
 #'
 #' @export
 step_mdist <- function(
@@ -38,10 +120,9 @@ step_mdist <- function(
     trained          = FALSE,
     output           = "distance_to_training",
     preset           = "custom",
-    distance_cont    = "manhattan",
-    distance_cat     = "tot_var_dist",
+    method_cat       = "tot_var_dist",
+    method_num       = "none",
     commensurable    = FALSE,
-    scaling_cont     = "none",
     ncomp            = NULL,
     threshold        = NULL,
     columns          = NULL,
@@ -61,10 +142,9 @@ step_mdist <- function(
       trained          = trained,
       output           = output,
       preset           = preset,
-      distance_cont    = distance_cont,
-      distance_cat     = distance_cat,
+      method_cat       = method_cat,
+      method_num       = method_num,
       commensurable    = commensurable,
-      scaling_cont     = scaling_cont,
       ncomp            = ncomp,
       threshold        = threshold,
       columns          = columns,
@@ -78,8 +158,8 @@ step_mdist <- function(
 
 step_mdist_new <- function(terms, role, trained,
                            output,
-                           preset, distance_cont, distance_cat,
-                           commensurable, scaling_cont,
+                           preset, method_cat, method_num,
+                           commensurable,
                            ncomp, threshold,
                            columns, train_predictors, preprocessor,
                            skip, id) {
@@ -90,10 +170,9 @@ step_mdist_new <- function(terms, role, trained,
     trained          = trained,
     output           = output,
     preset           = preset,
-    distance_cont    = distance_cont,
-    distance_cat     = distance_cat,
+    method_cat       = method_cat,
+    method_num       = method_num,
     commensurable    = commensurable,
-    scaling_cont     = scaling_cont,
     ncomp            = ncomp,
     threshold        = threshold,
     columns          = columns,
@@ -120,10 +199,9 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
 
   preprocessor <- .prep_mdist(
     x = train_predictors,
-    distance_cont = x$distance_cont,
-    distance_cat  = x$distance_cat,
+    method_cat    = x$method_cat,
+    method_num    = x$method_num,
     commensurable = x$commensurable,
-    scaling_cont  = x$scaling_cont,
     ncomp         = ncomp,
     threshold     = x$threshold,
     preset        = x$preset
@@ -134,11 +212,10 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
     role             = x$role,
     trained          = TRUE,
     output           = output,
-    preset           = x$preset,
-    distance_cont    = x$distance_cont,
-    distance_cat     = x$distance_cat,
-    commensurable    = x$commensurable,
-    scaling_cont     = x$scaling_cont,
+    preset = preprocessor$preset,
+    method_cat = preprocessor$method_cat,
+    method_num = preprocessor$method_num,
+    commensurable = preprocessor$commensurable,
     ncomp            = ncomp,
     threshold        = x$threshold,
     columns          = col_names,
@@ -229,10 +306,9 @@ print.step_mdist <- function(x, width = max(20, getOption("width") - 30), ...) {
   cat("  preset:      ", x$preset, "\n", sep = "")
 
   if (x$preset == "custom") {
-    cat("  distance_cont: ", x$distance_cont,  "\n", sep = "")
-    cat("  distance_cat:  ", x$distance_cat,   "\n", sep = "")
+    cat("  method_cat:    ", x$method_cat,     "\n", sep = "")
+    cat("  method_num:    ", x$method_num,     "\n", sep = "")
     cat("  commensurable: ", x$commensurable,  "\n", sep = "")
-    cat("  scaling_cont:  ", x$scaling_cont,   "\n", sep = "")
     cat("  ncomp:         ", x$ncomp,          "\n", sep = "")
     cat("  threshold:     ", x$threshold,      "\n", sep = "")
   } else {

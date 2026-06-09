@@ -2,7 +2,7 @@
 % Please edit documentation in R/lovo_mdist.R
 \name{lovo_mdist}
 \alias{lovo_mdist}
-\title{Leave-one-variable-out variable importance for distance-based analyses}
+\title{Leave-one-variable-out diagnostics for distance-based variable importance}
 \usage{
 lovo_mdist(
   x,
@@ -19,8 +19,8 @@ lovo_mdist(
 )
 }
 \arguments{
-\item{x}{A data frame or object coercible to a tibble. Rows are
-observations and columns are variables used to compute the distance.}
+\item{x}{A data frame or object coercible to a tibble. Rows are observations
+and columns are variables used to compute the dissimilarity.}
 
 \item{response}{Optional response variable. It can be supplied as an
 unquoted column name or as a character string. When supplied and
@@ -29,15 +29,15 @@ distance construction. The response column is not treated as a predictor
 in the leave-one-variable-out loop.}
 
 \item{...}{Additional arguments passed to [mdist()], such as `preset`,
-`distance_cont`, `distance_cat`, `scaling_cont`, or `commensurable`.}
+`method_cat`, `method_num`, `commensurable`, or `interaction`.}
 
 \item{dims}{Integer. Number of dimensions used by classical
 multidimensional scaling when computing congruence-based diagnostics.}
 
-\item{keep_dist}{Logical. If `TRUE`, store the full distance matrix and the
-leave-one-variable-out distance matrices in the returned object.}
+\item{keep_dist}{Logical. If `TRUE`, store the full dissimilarity matrix and
+all leave-one-variable-out dissimilarity matrices in the returned object.}
 
-\item{cluster_k}{Optional integer. Number of clusters to use when computing
+\item{cluster_k}{Optional integer. Number of clusters used when computing
 clustering-based LOVO diagnostics. If `NULL`, clustering diagnostics are
 not computed.}
 
@@ -52,45 +52,80 @@ to [stats::hclust()] when `"hclust"` is included in `cluster_methods`.}
 bandwidth used by spectral clustering. If `NULL`, the default used by
 [spectral_dist()] is applied.}
 
-\item{spectral_nstart}{Integer. Number of random starts used by the
-k-means step in spectral clustering.}
+\item{spectral_nstart}{Integer. Number of random starts used by the k-means
+step in spectral clustering.}
 
 \item{response_used}{Logical. If `TRUE`, the response variable, when
 supplied, is used in the distance construction. If `FALSE`, the response
 column is removed before computing distances.}
 }
 \value{
-An object of class `"MDistLOVO"` with methods for printing,
-  summarising, and plotting LOVO diagnostics. The main results are stored in
-  the `$results` field.
+An object of class `"MDistLOVO"`. The main results are stored in the
+  `$results` field as a tibble with one row per left-out variable. The object
+  also has print, summary, and autoplot methods.
 }
 \description{
 Computes leave-one-variable-out (LOVO) diagnostics for a distance
-specification. The function first computes the full distance matrix using
-[mdist()], then removes one predictor at a time, recomputes the distance
-matrix, and compares each leave-one-variable-out distance matrix with the
-full one.
+specification. The function first computes the full dissimilarity matrix
+using [mdist()]. It then removes one predictor at a time, recomputes the
+dissimilarity matrix, and compares each leave-one-variable-out matrix with
+the full one.
 }
 \details{
-The resulting object contains variable-importance summaries based on the
-mean absolute difference between distance matrices, the congruence between
-multidimensional scaling configurations, and the corresponding alienation
-coefficient. Optionally, it can also compare cluster partitions obtained
-from the full and leave-one-variable-out distances using PAM,
-hierarchical clustering, or spectral clustering.
+`lovo_mdist()` is useful for assessing how strongly each predictor
+contributes to a distance-based representation. A predictor is considered
+influential when removing it produces a large change in the dissimilarity
+matrix, the multidimensional scaling configuration, or an optional
+clustering partition.
+
+
+The returned object contains several LOVO diagnostics. The main distance
+contribution is measured by the mean absolute difference between the full
+dissimilarity matrix and each leave-one-variable-out matrix
+(`mad_importance`). The normalized version is stored as
+`relative_distance`.
+
+The function also compares classical multidimensional scaling
+configurations computed from the full and leave-one-variable-out
+dissimilarities. These diagnostics are stored as `mds_congruence`
+/ `cc_importance` and `ac_importance`, the latter corresponding to an
+alienation coefficient.
+
+If `cluster_k` is supplied, the function additionally computes clustering
+partitions from the full and leave-one-variable-out dissimilarities and
+compares them using the adjusted Rand index. The corresponding importance
+measures are defined as `1 - ARI` and are stored as `pam_importance`,
+`hclust_importance`, or `spectral_importance`, depending on the selected
+clustering methods.
+
+Clustering-based diagnostics require the suggested package `mclust`.
 }
 \examples{
-data(iris)
+if (requireNamespace("palmerpenguins", quietly = TRUE)) {
+  data("penguins", package = "palmerpenguins")
 
-res <- lovo_mdist(
-  iris,
-  preset = "gower",
-  response = Species,
-  response_used = FALSE
-)
+  penguins_small <- palmerpenguins::penguins |>
+    dplyr::select(
+      species, bill_length_mm, bill_depth_mm, flipper_length_mm,
+      body_mass_g, island, sex
+    ) |>
+    tidyr::drop_na()
 
-res
-summary(res)
+  # LOVO diagnostics for a Gower distance
+  res <- lovo_mdist(
+    penguins_small,
+    preset = "gower",
+    response = species,
+    response_used = FALSE
+  )
+
+  res
+  summary(res)
+
+  # Plot the relative distance contribution of each predictor
+  p <- res$autoplot(metric = "relative_distance", reorder = TRUE)
+  p
+}
 
 }
 \seealso{

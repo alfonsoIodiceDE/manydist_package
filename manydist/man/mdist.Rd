@@ -2,16 +2,15 @@
 % Please edit documentation in R/mdist.R
 \name{mdist}
 \alias{mdist}
-\title{Mixed-type distance for mixed data}
+\title{Mixed-type dissimilarities for distance-based learning}
 \usage{
 mdist(
   x,
   new_data = NULL,
   response = NULL,
-  distance_cont = "manhattan",
-  distance_cat = "tvd",
+  method_cat = "tvd",
+  method_num = "std",
   commensurable = TRUE,
-  scaling_cont = "std",
   ncomp = NULL,
   threshold = NULL,
   preset = "custom",
@@ -23,52 +22,149 @@ mdist(
 )
 }
 \arguments{
-\item{x}{A data frame or matrix of predictors.}
+\item{x}{A data frame or matrix containing the training observations. Columns
+can be numeric, factors, or a mixture of both.}
 
-\item{new_data}{Optional new data to compute distances to \code{x}.}
+\item{new_data}{Optional data frame or matrix containing new observations.
+If supplied, distances are computed from rows of `new_data` to rows of
+`x`, producing a rectangular test-to-training dissimilarity matrix.}
 
-\item{response}{Optional response variable used for supervised
-categorical distances.}
+\item{response}{Optional response variable used for response-aware
+categorical dissimilarities. It can be supplied as an unquoted column name
+or as a character string. The response column is removed from the
+predictors before computing distances.}
 
-\item{distance_cont}{Character string specifying the distance
-for continuous variables.}
+\item{method_cat}{Character string specifying the categorical-variable
+dissimilarity used when `preset = "custom"`. Common values include
+`"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
+available methods.}
 
-\item{distance_cat}{Character string specifying the distance
-for categorical variables.}
+\item{method_num}{Character string specifying the numerical-variable
+preprocessing used when `preset = "custom"`. Available options include
+`"none"` for no preprocessing, `"std"` for standard-deviation scaling,
+`"range"` for range scaling, `"robust"` for inter-quartile-range-based
+scaling, and `"pc_scores"` for principal-component score scaling.}
 
-\item{commensurable}{Logical; whether to apply commensurability
-scaling between variable types.}
+\item{commensurable}{Logical. If `TRUE`, dissimilarities are scaled so that
+the average contribution of each variable to the overall distance is equal
+to 1.}
 
-\item{scaling_cont}{Character string specifying scaling for
-continuous variables.}
+\item{ncomp}{Integer or `NULL`. Number of principal components to retain
+when `method_num = "pc_scores"`. If `NULL`, all available components are
+used unless `threshold` is supplied and supported by the underlying method.}
 
-\item{ncomp}{Optional number of components used in dimensional
-reduction. If \code{NULL}, no reduction is applied.}
+\item{threshold}{Numeric or `NULL`. Optional cumulative variance threshold
+used when `method_num = "pc_scores"`.}
 
-\item{threshold}{Optional threshold parameter.}
+\item{preset}{Character string specifying a predefined distance
+specification. Available values include `"custom"`, `"gower"`,
+`"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+`"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
+When `preset` is not `"custom"`, arguments such as `method_cat`,
+`method_num`, `commensurable`, and `interaction` are handled by the preset
+and user-supplied values for those arguments are ignored.}
 
-\item{preset}{Character string specifying a predefined setup.}
+\item{interaction}{Logical. If `TRUE`, adds an interaction-aware
+continuous-categorical component based on local predictive separability.}
 
-\item{interaction}{Logical; whether to include interaction-based
-distances.}
+\item{prop_nn}{Numeric. Proportion of nearest neighbours used when
+`interaction = TRUE`.}
 
-\item{prop_nn}{proportion of neighbours to consider when measuring interactions.}
+\item{score}{Character string specifying the score used when
+`interaction = TRUE`. Available values include `"ba"` for balanced
+accuracy and `"logloss"`.}
 
-\item{score}{classification metric either "ba" (balanced accuracy) or "logloss".}
+\item{decision}{Character string specifying the decision rule used when
+`score = "ba"`. The default is `"prior_corrected"`.}
 
-\item{decision}{rule when score is set to ba.}
-
-\item{gower_average}{Logical; only used when \code{preset = "gower"}.
-If \code{TRUE}, returns the standard Gower dissimilarity averaged over
-variables, matching the scale of \code{cluster::daisy(metric = "gower")}.
-If \code{FALSE}, returns the sum of per-variable Gower contributions,
-equivalent to multiplying the averaged Gower dissimilarity by the number
-of active variables.}
+\item{gower_average}{Logical; only used when `preset = "gower"`. If `TRUE`,
+returns the standard Gower dissimilarity averaged over variables, matching
+the scale of [cluster::daisy()] with `metric = "gower"`. If `FALSE`,
+returns the sum of per-variable Gower contributions, equivalent to
+multiplying the averaged Gower dissimilarity by the number of active
+variables.}
 }
 \value{
-A dissimilarity object.
+An object of class `"MDist"`. The object contains the computed
+  dissimilarity in its `$distance` field, the selected `preset`, the training
+  data, and a list of parameters describing the fitted distance
+  specification. Square train-train dissimilarities are stored as
+  `"dissimilarity"`/`"dist"` objects; rectangular test-to-training
+  dissimilarities are stored as `"dissimilarity"`/`"matrix"` objects.
 }
 \description{
-Computes a distance or dissimilarity object for mixed-type data,
-combining continuous and categorical variables.
+Computes a dissimilarity object for numerical, categorical, or mixed-type
+data. The function combines continuous and categorical components according
+to either a predefined `preset` or a user-defined custom specification.
+}
+\details{
+`mdist()` is the main distance-construction function in `manydist`. It can
+return ordinary train-train dissimilarities or rectangular test-to-training
+dissimilarities when `new_data` is supplied. The resulting object stores both
+the dissimilarity matrix and metadata about the distance specification that
+was used.
+
+
+With `preset = "custom"`, users manually choose the numerical preprocessing,
+categorical dissimilarity, commensurability, and optional interaction term.
+
+The `"gower"` preset follows the usual Gower construction based on range
+scaling for continuous variables and matching dissimilarities for categorical
+variables. The `gower_average` argument controls whether the result is
+averaged over variables or returned as a sum of variable-wise contributions.
+
+The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
+convenience specifications for unbiased or commensurable mixed-variable
+dissimilarities. The `"euclidean"` preset computes a Euclidean
+distance after one-hot encoding categorical variables. The `"gudmm"`,
+`"dkss"`, and `"mod_gower"` presets provide additional mixed-type distance
+constructions. Some presets currently support only train-train distances and
+will stop if `new_data` is supplied.
+
+Use [all_dist_method_specs()] to inspect the available distance components
+and method specifications.
+}
+\examples{
+if (requireNamespace("palmerpenguins", quietly = TRUE)) {
+  data("penguins", package = "palmerpenguins")
+
+  penguins_small <- palmerpenguins::penguins |>
+    dplyr::select(
+      bill_length_mm, bill_depth_mm, flipper_length_mm,
+      body_mass_g, species, island, sex
+    ) |>
+    tidyr::drop_na()
+
+  # Gower distance on mixed-type data
+  d_gower <- mdist(penguins_small, preset = "gower")
+  d_gower
+
+  # Custom mixed-type specification
+  d_custom <- mdist(
+    penguins_small,
+    preset = "custom",
+    method_cat = "matching",
+    method_num = "std",
+    commensurable = TRUE
+  )
+
+  d_custom
+
+  # Train-to-new-data distances
+  penguin_split <- rsample::initial_split(penguins_small, prop = 0.75)
+  penguin_train <- rsample::training(penguin_split)
+  penguin_test  <- rsample::testing(penguin_split)
+
+  d_new <- mdist(
+    penguin_train,
+    new_data = penguin_test,
+    preset = "gower"
+  )
+
+  d_new
+}
+
+}
+\seealso{
+[step_mdist()], [all_dist_method_specs()]
 }

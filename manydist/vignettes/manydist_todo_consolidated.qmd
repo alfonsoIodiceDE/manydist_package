@@ -1136,3 +1136,17 @@ autoplot(lovo_cmp)|autoplot(lovo_cmp2)
 
 
 :::
+
+
+## TO DO
+
+- `euclidean_one_hot` becomes just `euclidean`
+
+- `distance_cont` should go (I need to think carefully of )
+
+- `distance_cat` becomes `method_cat`
+
+- `scaling_cont` becomes `method_num`
+
+- something wrong with gifi2 distance_cat version (it should give 1 in the lovo_midst an in the other functions...)
+
