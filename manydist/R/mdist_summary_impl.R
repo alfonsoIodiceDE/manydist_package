@@ -116,16 +116,30 @@ mdist_summary_impl <- function(object, ...) {
       ":", inf_cnt, "\n\n", sep = "")
 
   msg <- if (has_cont && has_cat) {
-    paste0(if (isTRUE(p$commensurable)) "Commensurable" else "Non-commensurable",
-           " mixed-type distance combining ",
-           p$distance_cont %||% "<unspecified>", " (continuous) and ",
-           p$distance_cat  %||% "<unspecified>", " (categorical) components.")
+    paste0(
+      if (isTRUE(p$commensurable)) "Commensurable" else "Non-commensurable",
+      " mixed-type distance using ",
+      p$method_num %||% "<unspecified>",
+      " numerical preprocessing and ",
+      p$method_cat %||% "<unspecified>",
+      " categorical component."
+    )
   } else if (has_cont) {
-    paste("Purely continuous distance using", p$distance_cont %||% "<unspecified>", "metric.")
+    paste(
+      "Purely numerical distance using",
+      p$method_num %||% "<unspecified>",
+      "preprocessing."
+    )
   } else if (has_cat) {
-    paste("Purely categorical distance using", p$distance_cat %||% "<unspecified>", "metric.")
-  } else "Empty or untyped distance object."
-  cat(msg, "\n")
+    paste(
+      "Purely categorical distance using",
+      p$method_cat %||% "<unspecified>",
+      "method."
+    )
+  } else {
+    "Empty or untyped distance object."
+  }
 
+  cat(msg, "\n")
   invisible(object)
 }

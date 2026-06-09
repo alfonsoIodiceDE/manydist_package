@@ -383,8 +383,9 @@ MDistLOVOCompare <- R6::R6Class(
 #'   gower = list(preset = "gower"),
 #'   u_dep = list(preset = "unbiased_dependent"),
 #'   custom = list(
-#'     distance_cont = "manhattan",
-#'     distance_cat  = "matching",
+#'     preset = "custom",
+#'     method_cat = "matching",
+#'     method_num = "std",
 #'     commensurable = TRUE
 #'   )
 #' )

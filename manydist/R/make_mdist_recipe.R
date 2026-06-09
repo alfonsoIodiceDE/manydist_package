@@ -36,7 +36,7 @@ make_mdist_recipe <- function(df, mdist_type, mdist_preset, param_set, outcome) 
 
     rec <- rec |>
       step_mdist(
-        all_of(pred_names),
+        tidyselect::all_of(pred_names),
         preset = mdist_preset
       )
 
@@ -47,13 +47,13 @@ make_mdist_recipe <- function(df, mdist_type, mdist_preset, param_set, outcome) 
     }
 
     # param_set must be a *named list* with entries like:
-    # list(preset="custom", distance_cont="euclidean", ...)
+    # list(preset = "custom", method_cat = "matching", method_num = "std", ...)
     args <- c(
       list(               # first two arguments to step_mdist()
         recipe = rec,
-        all_of(pred_names)
+        tidyselect::all_of(pred_names)
       ),
-      param_set           # named args: preset, distance_cont, ...
+      param_set           # named args: preset, method_cat, method_num, commensurable, ...
     )
 
     rec <- do.call(step_mdist, args)

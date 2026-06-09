@@ -17,12 +17,18 @@
 #' methods <- list(
 #'   tvd_sup = lovo_method_spec(
 #'     response = species,
-#'     distance_cat = "tvd",
+#'     preset = "custom",
+#'     method_cat = "tvd",
+#'     method_num = "std",
+#'     commensurable = TRUE,
 #'     response_used = TRUE
 #'   ),
 #'   tvd_unsup = lovo_method_spec(
 #'     response = species,
-#'     distance_cat = "tvd",
+#'     preset = "custom",
+#'     method_cat = "tvd",
+#'     method_num = "std",
+#'     commensurable = TRUE,
 #'     response_used = FALSE
 #'   )
 #' )
