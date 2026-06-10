@@ -1,7 +1,7 @@
 Package: manydist
 Type: Package
 Title: Distance-Based Learning for Mixed-Type Data
-Version: 0.5.0
+Version: 0.5.1
 Authors@R: c(
     person(given = "Alfonso",
            family = "Iodice D'Enza",

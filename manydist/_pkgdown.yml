@@ -1,0 +1,9 @@
+url: https://alfonsoiodicedenza.github.io/manydist/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  logo: man/figures/manydist_logo.png
+
+# build:
+#   articles: false

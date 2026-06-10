@@ -1,17 +1,21 @@
 citHeader("To cite manydist in publications, please use:")
 
-bibentry(bibtype = "Article",
-         title        = "(Un)biased Distances for Mixed-Type Data",
-         author       = c(person(given = "Michel",
-                                 family = "van de Velden"),
-                          person(given = "Alfonso",
-                                 family = "Iodice D'Enza"),
-                          person(given = "Angelos",
-                                 family = "Markos"),
-                          person(given = "Carlo",
-                                 family = "Cavicchia")),
-         year         = "2024",
-         journal      = "arXiv preprint",
-         note         = "Retrieved from https://arxiv.org/abs/2411.00429",
-         url          = "https://arxiv.org/abs/2411.00429"
+bibentry(
+  bibtype = "Article",
+  title = "Unbiased mixed-variable distance",
+  author = c(
+    person("Michel", "van de Velden"),
+    person("Alfonso", "Iodice D'Enza"),
+    person("Angelos", "Markos"),
+    person("Carlo", "Cavicchia")
+  ),
+  journal = "Journal of Computational and Graphical Statistics",
+  year = "2026",
+  doi = "10.1080/10618600.2026.2680181",
+  textVersion = paste(
+    "van de Velden, M., Iodice D'Enza, A., Markos, A., and Cavicchia, C.",
+    "(2026). Unbiased mixed-variable distance.",
+    "Journal of Computational and Graphical Statistics.",
+    "doi:10.1080/10618600.2026.2680181"
+  )
 )

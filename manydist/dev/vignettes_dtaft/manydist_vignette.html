@@ -2226,7 +2226,6 @@ vertical-align: -.125em;
   <li><a href="#a-small-benchmark-example" id="toc-a-small-benchmark-example" class="nav-link" data-scroll-target="#a-small-benchmark-example"><span class="header-section-number">16</span> A small benchmark example</a></li>
   <li><a href="#leave-one-variable-out-diagnostics" id="toc-leave-one-variable-out-diagnostics" class="nav-link" data-scroll-target="#leave-one-variable-out-diagnostics"><span class="header-section-number">17</span> Leave-one-variable-out diagnostics</a></li>
   <li><a href="#inspecting-method-specifications" id="toc-inspecting-method-specifications" class="nav-link" data-scroll-target="#inspecting-method-specifications"><span class="header-section-number">18</span> Inspecting method specifications</a></li>
-  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">19</span> Summary</a></li>
   </ul>
 </nav>
 </div>
@@ -2274,11 +2273,10 @@ vertical-align: -.125em;
 <section id="setup" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="setup"><span class="header-section-number">2</span> Setup</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>()</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># library(manydist)</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(recipes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(manydist)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(recipes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We use the <code>palmerpenguins</code> data for illustration.</p>
 <div class="cell">
@@ -3240,18 +3238,6 @@ Top by relative distance:
 10 preset    custom    &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt; </code></pre>
 </div>
 </div>
-</section>
-<section id="summary" class="level2" data-number="19">
-<h2 data-number="19" class="anchored" data-anchor-id="summary"><span class="header-section-number">19</span> Summary</h2>
-<p>The current <code>manydist</code> interface separates the main modelling choices as follows:</p>
-<ul>
-<li><code>preset</code> selects a predefined distance specification;</li>
-<li><code>method_cat</code> controls categorical dissimilarities for custom specifications;</li>
-<li><code>method_num</code> controls numerical preprocessing for custom specifications;</li>
-<li><code>commensurable</code> controls whether variable-wise contributions are placed on a comparable scale;</li>
-<li><code>response</code> can be used for response-aware distance construction and is removed from the predictor set.</li>
-</ul>
-<p>The <code>&quot;euclidean&quot;</code> preset computes Euclidean distances after one-hot encoding categorical variables and replaces the former <code>&quot;euclidean_onehot&quot;</code> name.</p>
 </section>
 
 </main>

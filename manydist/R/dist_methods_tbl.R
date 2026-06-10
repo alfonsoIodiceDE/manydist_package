@@ -1,3 +1,30 @@
+#' List available `manydist` methods
+#'
+#' Returns a tibble describing the categorical methods, numerical preprocessing
+#' options, and preset specifications currently available in `manydist`.
+#'
+#' The table is used by helpers such as [all_dist_method_specs()] and
+#' [benchmark_mdist()] to construct valid `mdist()` specifications.
+#'
+#' @return A tibble with one row per available method. The columns are:
+#' \describe{
+#'   \item{method}{Name of the method or preset.}
+#'   \item{argument}{The `mdist()` argument to which the method belongs:
+#'   `"method_cat"`, `"method_num"`, or `"preset"`.}
+#'   \item{data_type}{Type of variables targeted by the method.}
+#'   \item{distance_basis}{Broad methodological family.}
+#'   \item{response_aware}{Logical; whether the method can use a response
+#'   variable.}
+#'   \item{engine}{Implementation source.}
+#' }
+#'
+#' @examples
+#' dist_methods_tbl()
+#'
+#' dist_methods_tbl() |>
+#'   dplyr::count(argument)
+#'
+#' @export
 dist_methods_tbl <- function() {
   phil_methods <- philentropy::getDistMethods()
 
@@ -103,11 +130,44 @@ dist_methods_tbl <- function() {
     )
 }
 
+
+#' List available categorical dissimilarities
+#'
+#' Convenience wrapper around [dist_methods_tbl()] returning only methods that
+#' can be used as categorical dissimilarities through `method_cat`.
+#'
+#' @return A tibble containing the rows of [dist_methods_tbl()] with
+#'   `argument == "method_cat"`.
+#'
+#' @examples
+#' dist_methods_tbl_cat()
+#'
+#' @export
 dist_methods_tbl_cat <- function() {
   dist_methods_tbl() |>
-    dplyr::filter(.data$data_type == "categorical")
+    dplyr::filter(.data$argument == "method_cat")
 }
 
+
+#' List response-aware methods
+#'
+#' Returns the methods in [dist_methods_tbl()] that can use a response variable.
+#' The output can optionally be restricted by data type or by `mdist()`
+#' argument.
+#'
+#' @param data_type Optional character vector used to restrict the returned
+#'   methods by data type, for example `"categorical"` or `"mixed"`.
+#' @param argument Optional character vector used to restrict the returned
+#'   methods by argument, for example `"method_cat"` or `"preset"`.
+#'
+#' @return A character vector of response-aware method names.
+#'
+#' @examples
+#' response_aware_methods()
+#' response_aware_methods(argument = "method_cat")
+#' response_aware_methods(argument = "preset")
+#'
+#' @export
 response_aware_methods <- function(data_type = NULL, argument = NULL) {
   out <- dist_methods_tbl()
 
