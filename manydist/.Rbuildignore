@@ -24,3 +24,9 @@
 ^vignettes/manydist_tidymodels_vignette_updated\.qmd$
 ^vignettes$
 ^cran-comments\.md$
+^_pkgdown\.yml$
+^docs$
+^docs/
+^pkgdown$
+^pkgdown/
+^_pkgdown\.yml$

@@ -26,7 +26,7 @@ compare_lovo_mdist(
 
   A \*\*named list\*\* describing the distance specifications to
   compare. Each element must be a list of arguments passed to
-  [`lovo_mdist`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_mdist.md).
+  [`lovo_mdist`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md).
 
   For example:
 
@@ -60,7 +60,7 @@ compare_lovo_mdist(
 - ...:
 
   Additional arguments passed to
-  [`lovo_mdist`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_mdist.md)
+  [`lovo_mdist`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
   unless overridden in the method-specific argument list.
 
   These may include optional clustering diagnostics, for example
@@ -91,7 +91,7 @@ An object of class `MDistLOVOCompare` containing:
 For each distance specification, the function:
 
 1.  Computes the full mixed-type distance using
-    [`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md).
+    [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
 
 2.  Recomputes the distance repeatedly leaving out one variable at a
     time.
@@ -108,8 +108,8 @@ The results are combined across methods and returned as an
 
 ## See also
 
-[`lovo_mdist`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_mdist.md),
-[`mdist`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md)
+[`lovo_mdist`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md),
+[`mdist`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
 
 ## Examples
 

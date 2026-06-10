@@ -18,7 +18,7 @@ CRAN release: 2026-06-09
 ### Distance construction
 
 - Added a revised
-  [`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md)
+  [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
   interface and documentation for mixed-type distance construction.
 - Added support for additional mixed-type distance specifications and
   presets.
@@ -34,20 +34,20 @@ CRAN release: 2026-06-09
 ### Distance-based learning workflows
 
 - Added
-  [`step_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/step_mdist.md)
+  [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
   for integrating `manydist` distances into `recipes` and tidymodels
   workflows.
 - Added
-  [`nearest_neighbor_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/nearest_neighbor_dist.md)
+  [`nearest_neighbor_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/nearest_neighbor_dist.md)
   and related prediction functions for nearest-neighbour models based on
   precomputed or manydist-generated distances.
 - Added
-  [`pam_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/pam_dist.md)
+  [`pam_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/pam_dist.md)
   for partitioning around medoids using manydist dissimilarities.
 - Added
-  [`spectral_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/spectral_dist.md)
+  [`spectral_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_dist.md)
   and
-  [`spectral_from_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/spectral_from_dist.md)
+  [`spectral_from_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_from_dist.md)
   for spectral clustering from distance matrices.
 - Added support functions for converting distances to affinities and
   fitting distance-based clustering models.
@@ -55,12 +55,12 @@ CRAN release: 2026-06-09
 ### Variable importance and diagnostics
 
 - Added
-  [`lovo_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_mdist.md)
+  [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
   for leave-one-variable-out diagnostics of distance matrices.
 - Added
-  [`compare_lovo_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/compare_lovo_mdist.md)
+  [`compare_lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/compare_lovo_mdist.md)
   and
-  [`lovo_method_spec()`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_method_spec.md)
+  [`lovo_method_spec()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_method_spec.md)
   for comparing LOVO diagnostics across multiple distance
   specifications.
 - Added congruence- and alienation-based diagnostics for comparing
@@ -71,16 +71,16 @@ CRAN release: 2026-06-09
 ### Data generation and benchmarking
 
 - Added
-  [`gen_mixed()`](https://alfonsoiodicedenza.github.io/manydist/reference/gen_mixed.md)
+  [`gen_mixed()`](https://alfonsoiodicede.github.io/manydist_package/reference/gen_mixed.md)
   and
-  [`generate_dataset()`](https://alfonsoiodicedenza.github.io/manydist/reference/generate_dataset.md)
+  [`generate_dataset()`](https://alfonsoiodicede.github.io/manydist_package/reference/generate_dataset.md)
   for generating mixed-type example and simulation data.
 - Added
-  [`benchmark_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/benchmark_mdist.md)
+  [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
   for benchmarking distance specifications across datasets and method
   grids.
 - Added
-  [`all_dist_method_specs()`](https://alfonsoiodicedenza.github.io/manydist/reference/all_dist_method_specs.md)
+  [`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
   and distance-method metadata helpers.
 
 ### Documentation

@@ -6,7 +6,7 @@
 numerical, categorical, and mixed-type data.
 
 The main function is
-[`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md).
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
 It computes a dissimilarity object that can be used in distance-based
 learning workflows, including clustering, nearest-neighbour prediction,
 and diagnostic analyses.
@@ -132,7 +132,7 @@ as.matrix(d_gower$to_dist())[1:5, 1:5]
 
 Some categorical dissimilarities can use a response variable. When a
 response is supplied to
-[`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md),
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md),
 it is used for response-aware distance construction and is removed from
 the predictors.
 
@@ -371,7 +371,7 @@ not support distances from new observations to training observations.
 
 ## 8 Distances from new observations to training observations
 
-[`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md)
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
 can also compute distances from new observations to the training
 observations through the `new_data` argument.
 
@@ -415,9 +415,9 @@ dim(as.matrix(d_new$distance))
 ## 9 Using `manydist` in recipe workflows
 
 The function
-[`step_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/step_mdist.md)
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
 provides a recipe interface to
-[`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md).
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
 It replaces selected predictors with a distance-based representation.
 
 In supervised workflows, the response is defined on the left-hand side
@@ -510,7 +510,7 @@ numerical variables.
 ## 11 Pairwise dissimilarities in recipes
 
 For distance-based clustering workflows,
-[`step_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/step_mdist.md)
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
 can return the within-training pairwise dissimilarity matrix by setting
 `output = "pairwise"`.
 
@@ -597,7 +597,7 @@ baked_euclidean |>
 ## 13 Distance-based nearest-neighbour prediction
 
 The distance representation produced by
-[`step_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/step_mdist.md)
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
 can be used in downstream supervised learning workflows.
 
 Here we illustrate a nearest-neighbour classifier using the
@@ -714,7 +714,7 @@ yardstick::accuracy(knn_pred, truth = species, estimate = .pred_class)
 
 This example uses `preset = "gower"`, but the same workflow can be used
 with any
-[`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md)
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
 preset or with a custom specification based on `method_cat`,
 `method_num`, and `commensurable`.
 
@@ -722,7 +722,7 @@ preset or with a custom specification based on `method_cat`,
 
 The same dissimilarities can be used for clustering. For clustering
 workflows,
-[`step_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/step_mdist.md)
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
 can return the within-training pairwise dissimilarity matrix by setting
 `output = "pairwise"`.
 
@@ -861,9 +861,9 @@ spectral_pred |>
 ## 16 A small benchmark example
 
 The function
-[`benchmark_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/benchmark_mdist.md)
+[`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
 applies
-[`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md)
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
 repeatedly over a grid of distance specifications. This is useful for
 comparing alternative presets and custom specifications in a systematic
 way.
@@ -975,7 +975,7 @@ bench_small |>
 
 ## 17 Leave-one-variable-out diagnostics
 
-[`lovo_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_mdist.md)
+[`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
 computes leave-one-variable-out diagnostics for distance-based variable
 importance.
 
@@ -1083,7 +1083,7 @@ lovo_response
 
 ## 18 Inspecting method specifications
 
-[`all_dist_method_specs()`](https://alfonsoiodicedenza.github.io/manydist/reference/all_dist_method_specs.md)
+[`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
 returns a table of distance specifications that can be used for
 benchmarking or sensitivity analysis.
 
@@ -1117,7 +1117,7 @@ specs |>
     10 preset    custom    <NA>       <NA>       NA           
 
 The same table can be passed to
-[`benchmark_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/benchmark_mdist.md).
+[`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md).
 
 ``` r
 

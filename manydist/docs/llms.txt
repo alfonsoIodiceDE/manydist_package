@@ -1,64 +1,64 @@
-Provides tools for constructing, computing, and using distance measures
-for numerical, categorical, and mixed-type data. The package implements
-a flexible framework in which continuous and categorical components can
-be combined under additive, commensurable, and association-aware
-specifications. Supported methods include classical distances such as
-Gower, Euclidean, Manhattan, and Mahalanobis-type distances; categorical
-dissimilarities such as simple matching, occurrence-frequency, and
-association-based measures; and mixed-type presets designed to reduce
-biases due to variable type, scale, distribution, redundancy, and number
-of categories. The package also provides scaling options, supervised and
-unsupervised distance constructions, leave-one-variable-out tools for
-distance-based variable importance, and integration with distance-based
-learning workflows such as nearest-neighbour prediction, partitioning
-around medoids, and spectral clustering. Methods are motivated by van de
-Velden, Iodice D'Enza, Markos, and Cavicchia (2026)
-\<[doi:10.1080/10618600.2026.2680181](https://doi.org/10.1080/10618600.2026.2680181)\>
-and related work on categorical and mixed-type dissimilarities.
+# manydist
+
+![manydist logo](reference/figures/manydist_logo.png)
+
+**Distance-Based Learning for Mixed-Type Data**
+
+`manydist` provides tools for constructing, computing, and using
+distance measures for numerical, categorical, and mixed-type data.
+
+  
+
+## Installation
+
+``` r
+
+install.packages("manydist")
+```
 
 # Package index
 
 ## All functions
 
-- [`all_dist_method_specs()`](https://alfonsoiodicedenza.github.io/manydist/reference/all_dist_method_specs.md)
+- [`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
   : Create a grid of \`mdist()\` method specifications
-- [`benchmark_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/benchmark_mdist.md)
+- [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
   : Benchmark \`mdist()\` over multiple method specifications
-- [`compare_lovo_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/compare_lovo_mdist.md)
+- [`compare_lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/compare_lovo_mdist.md)
   : Compare LOVO diagnostics across multiple distance specifications
-- [`congruence_coeff()`](https://alfonsoiodicedenza.github.io/manydist/reference/congruence_coeff.md)
+- [`congruence_coeff()`](https://alfonsoiodicede.github.io/manydist_package/reference/congruence_coeff.md)
   : Congruence coefficient between two configurations
-- [`dist_methods_tbl()`](https://alfonsoiodicedenza.github.io/manydist/reference/dist_methods_tbl.md)
+- [`dist_methods_tbl()`](https://alfonsoiodicede.github.io/manydist_package/reference/dist_methods_tbl.md)
   : List available \`manydist\` methods
-- [`dist_methods_tbl_cat()`](https://alfonsoiodicedenza.github.io/manydist/reference/dist_methods_tbl_cat.md)
+- [`dist_methods_tbl_cat()`](https://alfonsoiodicede.github.io/manydist_package/reference/dist_methods_tbl_cat.md)
   : List available categorical dissimilarities
-- [`fifa_nl`](https://alfonsoiodicedenza.github.io/manydist/reference/fifa_nl.md)
+- [`fifa_nl`](https://alfonsoiodicede.github.io/manydist_package/reference/fifa_nl.md)
   : FIFA 21 Player Data - Dutch League
-- [`gen_mixed()`](https://alfonsoiodicedenza.github.io/manydist/reference/gen_mixed.md)
+- [`gen_mixed()`](https://alfonsoiodicede.github.io/manydist_package/reference/gen_mixed.md)
   : Generate mixed-type clustering data with signal and noise
-- [`generate_dataset()`](https://alfonsoiodicedenza.github.io/manydist/reference/generate_dataset.md)
+- [`generate_dataset()`](https://alfonsoiodicede.github.io/manydist_package/reference/generate_dataset.md)
   : generate toy mixed datasets for the supplementary material: figures
   1 to 3
-- [`lovo_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_mdist.md)
+- [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
   : Leave-one-variable-out diagnostics for distance-based variable
   importance
-- [`lovo_method_spec()`](https://alfonsoiodicedenza.github.io/manydist/reference/lovo_method_spec.md)
+- [`lovo_method_spec()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_method_spec.md)
   : Create a LOVO method specification for \`compare_lovo_mdist()\`
-- [`make_mdist_recipe()`](https://alfonsoiodicedenza.github.io/manydist/reference/make_mdist_recipe.md)
+- [`make_mdist_recipe()`](https://alfonsoiodicede.github.io/manydist_package/reference/make_mdist_recipe.md)
   : Build a recipe that computes mdist-based distance features
-- [`mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist.md)
+- [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
   : Mixed-type dissimilarities for distance-based learning
-- [`mdist_summary_impl()`](https://alfonsoiodicedenza.github.io/manydist/reference/mdist_summary_impl.md)
+- [`mdist_summary_impl()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist_summary_impl.md)
   : Internal: summary method implementation for MDist R6 objects
-- [`pam_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/pam_dist.md)
+- [`pam_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/pam_dist.md)
   : PAM clustering specification based on manydist dissimilarities
-- [`response_aware_methods()`](https://alfonsoiodicedenza.github.io/manydist/reference/response_aware_methods.md)
+- [`response_aware_methods()`](https://alfonsoiodicede.github.io/manydist_package/reference/response_aware_methods.md)
   : List response-aware methods
-- [`spectral_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/spectral_dist.md)
+- [`spectral_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_dist.md)
   : Spectral clustering specification based on manydist dissimilarities
-- [`spectral_from_dist()`](https://alfonsoiodicedenza.github.io/manydist/reference/spectral_from_dist.md)
+- [`spectral_from_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_from_dist.md)
   : Spectral clustering from a distance matrix
-- [`step_mdist()`](https://alfonsoiodicedenza.github.io/manydist/reference/step_mdist.md)
+- [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
   : Add manydist dissimilarities to a recipe
 
 # Articles
@@ -66,4 +66,4 @@ and related work on categorical and mixed-type dissimilarities.
 ### All vignettes
 
 - [manydist: distance-based learning with mixed-type
-  data](https://alfonsoiodicedenza.github.io/manydist/articles/manydist_vignette.md):
+  data](https://alfonsoiodicede.github.io/manydist_package/articles/manydist_vignette.md):

@@ -1,9 +1,17 @@
-url: https://alfonsoiodicedenza.github.io/manydist/
+url: https://alfonsoiodicede.github.io/manydist_package/
 
 template:
   bootstrap: 5
   bootswatch: flatly
-  logo: man/figures/manydist_logo.png
+  extra_css: pkgdown/extra.css
 
-# build:
-#   articles: false
+repo:
+  url:
+    home: ~
+    source: ~
+    issue: https://github.com/alfonsoIodiceDE/manydist_package/issues
+
+home:
+  links:
+  - text: Browse source code
+    href: https://github.com/alfonsoIodiceDE/manydist_package/tree/main/manydist

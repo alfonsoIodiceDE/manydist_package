@@ -1,0 +1,17 @@
+
+<img src="man/figures/manydist_logo.png" align="left" width="140" alt="manydist logo"/>
+
+# manydist
+
+**Distance-Based Learning for Mixed-Type Data**
+
+`manydist` provides tools for constructing, computing, and using
+distance measures for numerical, categorical, and mixed-type data.
+
+<br clear="left"/>
+
+## Installation
+
+``` r
+install.packages("manydist")
+```
