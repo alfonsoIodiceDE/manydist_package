@@ -47,7 +47,7 @@ The main function in `manydist` is `mdist()`. It computes dissimilarities for nu
 ```{r}
 
 penguins_small <- penguins |>
-  select(-year,-sex) |> drop_na()
+  select(-year) |> drop_na()
 
 ```
 

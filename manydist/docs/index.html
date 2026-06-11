@@ -90,7 +90,7 @@
 <p>The main function in <code>manydist</code> is <code><a href="reference/mdist.html">mdist()</a></code>. It computes dissimilarities for numerical, categorical, and mixed-type data.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="va">penguins</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">year</span>,<span class="op">-</span><span class="va">sex</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">year</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>A mixed-type dissimilarity can be computed with a preset. For example, <code>preset = "gower"</code> computes a Gower-type dissimilarity.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">D</span> <span class="op">&lt;-</span> <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
@@ -98,34 +98,30 @@
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">D</span><span class="op">$</span><span class="va">distance</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span>digits<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="do">##      1    2    3    4    5</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="do">## 1 0.00 0.05 0.10 0.09 0.08</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="do">## 2 0.05 0.00 0.08 0.11 0.10</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="do">## 3 0.10 0.08 0.00 0.08 0.11</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="do">## 4 0.09 0.11 0.08 0.00 0.07</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="do">## 5 0.08 0.10 0.11 0.07 0.00</span></span></code></pre></div>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="do">## 1 0.00 0.21 0.25 0.24 0.07</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="do">## 2 0.21 0.00 0.07 0.09 0.25</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="do">## 3 0.25 0.07 0.00 0.06 0.26</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="do">## 4 0.24 0.09 0.06 0.00 0.23</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="do">## 5 0.07 0.25 0.26 0.23 0.00</span></span></code></pre></div>
 <p>Some presets can use a response variable. When a response is supplied, it is used for response-aware distance construction and is not treated as an ordinary predictor.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">D_resp</span> <span class="op">&lt;-</span> <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/mdist.html">mdist</a></span><span class="op">(</span></span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
 <span>  preset <span class="op">=</span> <span class="st">"u_dep"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="do">## Warning: 'tvd' requires &gt;1 categorical variable. Switching to 'matching'.</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="do">## Warning: For method(s) 'matching', category dissimilarities do not depend on</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="do">## conditional profiles; `response` was therefore ignored.</span></span></code></pre></div>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">D_resp</span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="do">## MDist object</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="do">##   preset : u_dep </span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="do">##   number of observations : 342 </span></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="do">##   number of continuous variables   : 4 </span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="do">##   number of categorical variables   : 1 </span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="do">##   parameters:</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="do">##     - categorical method: matching</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="do">##     - numerical preprocessing: pc_scores</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="do">##     - commensurability adjustment: TRUE</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">D_resp</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="do">## MDist object</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="do">##   preset : u_dep </span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="do">##   number of observations : 333 </span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="do">##   number of continuous variables   : 4 </span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="do">##   number of categorical variables   : 2 </span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="do">##   parameters:</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="do">##     - categorical method: tvd</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="do">##     - numerical preprocessing: pc_scores</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="do">##     - commensurability adjustment: TRUE</span></span></code></pre></div>
 <p>Custom specifications can be defined by combining a categorical method, a numerical preprocessing method, and a commensurability rule.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">D_custom</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mdist.html">mdist</a></span><span class="op">(</span><span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
 <span>                  preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
 <span>                  method_cat <span class="op">=</span> <span class="st">"matching"</span>,</span>
@@ -134,17 +130,17 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">D_custom</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="do">## MDist object</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="do">##   preset : custom </span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="do">##   number of observations : 342 </span></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="do">##   number of continuous variables   : 4 </span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="do">##   number of categorical variables   : 1 </span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="do">##   parameters:</span></span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="do">##     - categorical method: matching</span></span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="do">##     - numerical preprocessing: std</span></span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="do">##     - commensurability adjustment: TRUE</span></span>
-<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="do">##     - number of principal components: 5</span></span>
-<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="do">##     - inertia threshold: NULL</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="do">## MDist object</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="do">##   preset : custom </span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="do">##   number of observations : 333 </span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="do">##   number of continuous variables   : 4 </span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="do">##   number of categorical variables   : 2 </span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="do">##   parameters:</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="do">##     - categorical method: matching</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="do">##     - numerical preprocessing: std</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="do">##     - commensurability adjustment: TRUE</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="do">##     - number of principal components: 6</span></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="do">##     - inertia threshold: NULL</span></span></code></pre></div>
 </div>
 </div>
 
