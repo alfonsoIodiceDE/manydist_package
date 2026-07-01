@@ -16,8 +16,7 @@ measures for numerical, categorical, and mixed-type data.
 ## Installation
 
 ```{r, eval=FALSE}
-# install.packages("palmerpenguins")
-install.packages("manydist")
+install.packages(c("manydist", "palmerpenguins"))
 ```
 
 You can also install the development version from GitHub:
@@ -27,47 +26,52 @@ You can also install the development version from GitHub:
 remotes::install_github("alfonsoIodiceDE/manydist_package", subdir = "manydist")
 ```
 
+## Setup
 
-### Initialization
-
-```{r,message=FALSE,warning=FALSE}
+```{r, message=FALSE, warning=FALSE}
 library(manydist)
 library(palmerpenguins)
 library(dplyr)
 library(tidyr)
-
 ```
-
-
 
 ## Getting started
 
 The main function in `manydist` is `mdist()`. It computes dissimilarities for numerical, categorical, and mixed-type data.
 
+We use the `penguins` data from the `palmerpenguins` package.
+
 ```{r}
-
-penguins_small <- penguins |>
-  select(-year) |> drop_na()
-
+penguins_small <- palmerpenguins::penguins |>
+  select(-year) |>
+  drop_na()
 ```
 
 A mixed-type dissimilarity can be computed with a preset. For example, `preset = "gower"` computes a Gower-type dissimilarity.
 
 ```{r}
-D <- penguins_small |> select(-species) |> 
+D <- penguins_small |>
+  select(-species) |>
   mdist(preset = "gower")
 
-as.matrix(D$distance)[1:5,1:5] |> round(digits=2)
+D
 ```
 
+The resulting dissimilarity matrix can be inspected as follows.
+
+```{r}
+as.matrix(D$distance)[1:5, 1:5] |>
+  round(digits = 2)
+```
 
 Some presets can use a response variable. When a response is supplied, it is used for response-aware distance construction and is not treated as an ordinary predictor.
 
 ```{r}
-D_resp <- penguins_small |> mdist(
-  response = species,
-  preset = "u_dep"
-)
+D_resp <- penguins_small |>
+  mdist(
+    response = species,
+    preset = "u_dep"
+  )
 
 D_resp
 ```
@@ -75,13 +79,16 @@ D_resp
 Custom specifications can be defined by combining a categorical method, a numerical preprocessing method, and a commensurability rule.
 
 ```{r}
-D_custom <- mdist(penguins_small |> select(-species),
-                  preset = "custom",
-                  method_cat = "matching",
-                  method_num = "std",
-                  commensurable = TRUE
-)
+D_custom <- penguins_small |>
+  select(-species) |>
+  mdist(
+    preset = "custom",
+    method_cat = "matching",
+    method_num = "std",
+    commensurable = TRUE
+  )
 
 D_custom
-
 ```
+
+For more details, see the package website and vignette.
