@@ -1,35 +1,20 @@
 ---
-title: "Assessing variables contribution to distance"
+title: "Assessing variable contributions to distances"
 author: "Alfonso Iodice D'Enza"
 format:
   html:
     toc: true
+    toc-location: left
     toc-depth: 3
     code-fold: false
     number-sections: true
     embed-resources: true
+    css: article-style.css
 execute:
   echo: true
   warning: false
   message: false
 ---
-
-## Overview
-
-`manydist` provides tools for constructing dissimilarities for numerical, categorical, and mixed-type data.
-
-The main function is `mdist()`. It computes a dissimilarity object that can be used in distance-based learning workflows, including clustering, nearest-neighbour prediction, and diagnostic analyses.
-
-The package supports both preset specifications and custom specifications. In the current interface:
-
-- `method_cat` controls the categorical dissimilarity;
-- `method_num` controls the preprocessing of numerical variables;
-- `commensurable` controls whether variable-wise contributions are placed on a comparable scale;
-- `preset` selects a predefined distance specification.
-
-The numerical metric is no longer a user-facing argument. For most presets, numerical variables are compared through Manhattan-type contributions. The exceptions are presets such as `"hl"` and `"euclidean"`, where the Euclidean structure is part of the definition.
-
-The `"euclidean"` preset replaces the former `"euclidean_onehot"` name. It computes Euclidean distances after one-hot encoding categorical variables.
 
 ## Setup
 
@@ -37,543 +22,24 @@ The `"euclidean"` preset replaces the former `"euclidean_onehot"` name. It compu
 library(manydist)
 library(dplyr)
 library(tidyr)
-library(recipes)
+library(kableExtra)
 ```
 
 We use the `palmerpenguins` data for illustration.
 
 ```{r}
-if (requireNamespace("palmerpenguins", quietly = TRUE)) {
-  data("penguins", package = "palmerpenguins")
-
-  penguins_small <- palmerpenguins::penguins |>
-    dplyr::select(
-      species,
-      bill_length_mm,
-      bill_depth_mm,
-      flipper_length_mm,
-      body_mass_g,
-      island,
-      sex
-    ) |>
-    tidyr::drop_na()
-}
-```
-
-The data contain numerical variables, such as bill length and body mass, and categorical variables, such as island and sex.
-
-```{r}
-dplyr::glimpse(penguins_small)
-```
-
-## Computing a mixed-type dissimilarity
-
-The simplest way to compute a mixed-type dissimilarity is to use a preset.
-
-For example, the `"gower"` preset computes a Gower-type dissimilarity for mixed numerical and categorical data.
-
-```{r}
-d_gower <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "gower"
-)
-
-d_gower
-```
-
-The resulting object stores the dissimilarity matrix and metadata about the distance specification.
-
-```{r}
-class(d_gower)
-```
-
-The distance matrix can be extracted with `to_dist()`.
-
-```{r}
-as.matrix(d_gower$to_dist())[1:5, 1:5]
-```
-
-## Response-aware dissimilarities
-
-Some categorical dissimilarities can use a response variable. When a response is supplied to `mdist()`, it is used for response-aware distance construction and is removed from the predictors.
-
-Therefore, in the following example, `species` is used as the response and is not also treated as a predictor.
-
-```{r}
-d_response <- mdist(
-  penguins_small,
-  response = species,
-  preset = "u_dep"
-)
-
-d_response
-```
-
-The same can be written by passing the response as a character string.
-
-```{r}
-d_response_chr <- mdist(
-  penguins_small,
-  response = "species",
-  preset = "u_dep"
-)
-
-d_response_chr
-```
-
-## Custom distance specifications
-
-Presets are convenient, but users can also define custom specifications.
-
-In a custom specification, `method_cat` controls the categorical dissimilarity and `method_num` controls the preprocessing applied to numerical variables.
-
-```{r}
-d_custom <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "custom",
-  method_cat = "matching",
-  method_num = "std",
-  commensurable = TRUE
-)
-
-d_custom
-```
-
-Here, categorical variables are compared using matching dissimilarities, numerical variables are standardized, and variable-wise contributions are made commensurable.
-
-A response-aware custom specification can also be used.
-
-```{r}
-d_custom_response <- mdist(
-  penguins_small,
-  response = species,
-  preset = "custom",
-  method_cat = "tvd",
-  method_num = "std",
-  commensurable = TRUE
-)
-
-d_custom_response
-```
-
-If only one categorical predictor is available, methods that require more than one categorical variable may switch to a simpler alternative internally.
-
-## Euclidean preset
-
-The `"euclidean"` preset computes Euclidean distances after converting categorical variables to one-hot dummy variables.
-
-```{r}
-d_euclidean <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "euclidean"
-)
-
-d_euclidean
-```
-
-This preset replaces the former `"euclidean_onehot"` name.
-
-## Comparing presets
-
-Different presets encode different assumptions about how numerical and categorical variables should contribute to the final dissimilarity.
-
-```{r}
-d_u_indep <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "u_indep"
-)
-
-d_u_mix <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "u_mix"
-)
-
-d_hl <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "hl"
-)
-
-d_u_indep
-d_u_mix
-d_hl
-```
-
-The available presets include:
-
-```{r}
-c(
-  "custom",
-  "gower",
-  "euclidean",
-  "unbiased_dependent",
-  "u_dep",
-  "u_indep",
-  "u_mix",
-  "hl",
-  "gudmm",
-  "dkss",
-  "mod_gower"
-)
-```
-
-Some presets are intended mainly for train-train dissimilarities and may not support distances from new observations to training observations.
-
-## Distances from new observations to training observations
-
-`mdist()` can also compute distances from new observations to the training observations through the `new_data` argument.
-
-```{r}
-set.seed(123)
-
-split_id <- sample(seq_len(nrow(penguins_small)), size = floor(0.75 * nrow(penguins_small)))
-
-penguins_train <- penguins_small[split_id, ]
-penguins_test  <- penguins_small[-split_id, ]
-
-d_new <- mdist(
-  x = penguins_train |> dplyr::select(-species),
-  new_data = penguins_test |> dplyr::select(-species),
-  preset = "gower"
-)
-
-d_new
-```
-
-The resulting dissimilarity is rectangular: rows correspond to test observations and columns correspond to training observations.
-
-```{r}
-dim(as.matrix(d_new$distance))
-```
-
-## Using `manydist` in recipe workflows
-
-The function `step_mdist()` provides a recipe interface to `mdist()`. It replaces selected predictors with a distance-based representation.
-
-In supervised workflows, the response is defined on the left-hand side of the recipe formula. Therefore, when we select `recipes::all_predictors()`, the response variable is not used as a predictor in the distance computation.
-
-```{r}
-rec <- recipes::recipe(species ~ ., data = penguins_small) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "distance_to_training"
-  )
-
-rec_prep <- recipes::prep(rec, training = penguins_small)
-
-baked <- recipes::bake(rec_prep, new_data = penguins_small)
-
-baked |>
-  dplyr::slice_head(n = 5)
-```
-
-The resulting data contain the outcome variable, `species`, together with one distance column for each training observation. These columns are named `dist_1`, `dist_2`, and so on.
-
-## Custom specifications in recipes
-
-The same interface can be used with a custom distance specification.
-
-```{r}
-rec_custom <- recipes::recipe(species ~ ., data = penguins_small) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "custom",
-    method_cat = "matching",
-    method_num = "std",
-    commensurable = TRUE,
-    output = "distance_to_training"
-  )
-
-rec_custom_prep <- recipes::prep(rec_custom, training = penguins_small)
-
-baked_custom <- recipes::bake(rec_custom_prep, new_data = penguins_small)
-
-baked_custom |>
-  dplyr::slice_head(n = 5)
-```
-
-In this example, `method_cat = "matching"` specifies the categorical dissimilarity, while `method_num = "std"` specifies standardization of numerical variables.
-
-## Pairwise dissimilarities in recipes
-
-For distance-based clustering workflows, `step_mdist()` can return the within-training pairwise dissimilarity matrix by setting `output = "pairwise"`.
-
-In this case, the recipe is intended for training-only workflows.
-
-```{r}
-penguins_predictors <- penguins_small |>
-  dplyr::select(-species)
-
-rec_pairwise <- recipes::recipe(~ ., data = penguins_predictors) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "pairwise"
-  )
-
-rec_pairwise_prep <- recipes::prep(rec_pairwise, training = penguins_predictors)
-
-pairwise_dist <- recipes::bake(
-  rec_pairwise_prep,
-  new_data = penguins_predictors
-)
-
-pairwise_dist |>
-  dplyr::slice_head(n = 5)
-```
-
-## Euclidean distances in recipes
-
-The `"euclidean"` preset can also be used inside a recipe. Categorical predictors are one-hot encoded internally before the Euclidean distance is computed.
-
-```{r}
-rec_euclidean <- recipes::recipe(species ~ ., data = penguins_small) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "euclidean",
-    output = "distance_to_training"
-  )
-
-rec_euclidean_prep <- recipes::prep(rec_euclidean, training = penguins_small)
-
-baked_euclidean <- recipes::bake(rec_euclidean_prep, new_data = penguins_small)
-
-baked_euclidean |>
-  dplyr::slice_head(n = 5)
-```
-
-## Distance-based nearest-neighbour prediction
-
-The distance representation produced by `step_mdist()` can be used in downstream supervised learning workflows.
-
-Here we illustrate a nearest-neighbour classifier using the distance-to-training representation. The recipe first converts the original mixed-type predictors into distances from each observation to the training observations. The model is then tuned over the number of neighbours.
-
-```{r}
-library(tidymodels)
-
-set.seed(123)
-
-penguin_split <- rsample::initial_split(
-  penguins_small,
-  prop = 0.75,
-  strata = species
-)
-
-penguin_train <- rsample::training(penguin_split)
-penguin_test  <- rsample::testing(penguin_split)
-
-set.seed(123)
-
-penguin_folds <- rsample::vfold_cv(
-  penguin_train,
-  v = 5,
-  strata = species
-)
-```
-
-```{r}
-rec_knn <- recipes::recipe(species ~ ., data = penguin_train) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "distance_to_training"
-  )
-```
-
-```{r}
-knn_spec <- nearest_neighbor_dist(
-  neighbors = tune::tune()
-) |>
-  parsnip::set_mode("classification")
-```
-
-```{r}
-knn_wf <- workflows::workflow() |>
-  workflows::add_recipe(rec_knn) |>
-  workflows::add_model(knn_spec)
-
-knn_grid <- tibble::tibble(
-  neighbors = c(1, 3, 5, 7, 9)
-)
-
-set.seed(123)
-
-knn_res <- tune::tune_grid(
-  knn_wf,
-  resamples = penguin_folds,
-  grid = knn_grid,
-  metrics = yardstick::metric_set(accuracy)
-)
-
-knn_res |>
-  tune::collect_metrics()
-```
-
-```{r}
-best_knn <- knn_res |>
-  tune::select_best(metric = "accuracy")
-
-best_knn
-```
-
-```{r}
-final_knn_wf <- knn_wf |>
-  tune::finalize_workflow(best_knn)
-
-final_knn_fit <- final_knn_wf |>
-  parsnip::fit(data = penguin_train)
-
-knn_pred <- predict(final_knn_fit, new_data = penguin_test) |>
-  dplyr::bind_cols(penguin_test |> dplyr::select(species))
-
-yardstick::accuracy(knn_pred, truth = species, estimate = .pred_class)
-```
-
-This example uses `preset = "gower"`, but the same workflow can be used with any `mdist()` preset or with a custom specification based on `method_cat`, `method_num`, and `commensurable`.
-
-## Distance-based PAM clustering
-
-The same dissimilarities can be used for clustering. For clustering workflows, `step_mdist()` can return the within-training pairwise dissimilarity matrix by setting `output = "pairwise"`.
-
-```{r}
-penguins_predictors <- penguins_small |>
-  dplyr::select(-species)
-
-rec_pam <- recipes::recipe(~ ., data = penguins_predictors) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "pairwise"
-  )
-```
-
-```{r}
-pam_spec <- pam_dist(
-  num_clusters = 3
-)
-
-pam_fit <- generics::fit(
-  pam_spec,
-  recipe = rec_pam,
-  data = penguins_predictors
-)
-
-pam_pred <- predict(pam_fit)
-
-pam_pred |>
-  dplyr::slice_head(n = 10)
-```
-
-Since the true species labels are available in this example, we can inspect the relationship between the PAM clusters and the species labels.
-
-```{r}
-pam_pred |>
-  dplyr::bind_cols(penguins_small |> dplyr::select(species)) |>
-  dplyr::count(.pred_cluster, species)
-```
-
-## Distance-based spectral clustering
-
-Spectral clustering can be used in the same way, by combining a pairwise distance recipe with the corresponding model specification.
-
-```{r}
-rec_spectral <- recipes::recipe(~ ., data = penguins_predictors) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "pairwise"
-  )
-```
-
-```{r}
-spectral_spec <- spectral_dist(
-  num_clusters = 3
-)
-
-spectral_fit <- generics::fit(
-  spectral_spec,
-  recipe = rec_spectral,
-  data = penguins_predictors
-)
-
-spectral_pred <- predict(spectral_fit)
-
-spectral_pred |>
-  dplyr::slice_head(n = 10)
-```
-
-Again, because this is an illustrative labelled data set, we can compare the resulting clusters with the observed species labels.
-
-```{r}
-spectral_pred |>
-  dplyr::bind_cols(penguins_small |> dplyr::select(species)) |>
-  dplyr::count(.pred_cluster, species)
-```
-
-
-## A small benchmark example
-
-The function `benchmark_mdist()` applies `mdist()` repeatedly over a grid of distance specifications. This is useful for comparing alternative presets and custom specifications in a systematic way.
-
-For a small example, we restrict the grid to a few specifications.
-
-```{r}
-small_specs <- dplyr::bind_rows(
-  all_dist_method_specs(mode = "presets_only") |>
-    dplyr::filter(preset %in% c("gower", "u_dep", "u_indep", "euclidean")),
-
-  all_dist_method_specs(
-    mode = "full",
-    method_cat = c("matching", "tvd"),
-    method_num = c("std", "robust"),
-    commensurable = c(TRUE, FALSE)
-  ) |>
-    dplyr::filter(spec_type == "component")
-)
-
-small_specs
-```
-
-```{r}
-bench_small <- benchmark_mdist(
-  penguins_small,
-  response = species,
-  specs = small_specs
-)
-
-bench_small |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable,
-    ok,
-    error
-  )
-```
-
-The `ok` column reports whether the distance computation completed successfully. Failed specifications are kept in the output, with the corresponding error message stored in `error`.
-
-```{r}
-bench_small |>
-  dplyr::count(ok)
-```
-
-When all specifications are successful, the resulting `MDist` objects are stored in the `result` list-column and can be inspected or reused.
-
-```{r}
-bench_small |>
-  dplyr::filter(ok) |>
-  dplyr::select(spec_type, preset, method_cat, method_num, commensurable, result) |>
-  dplyr::slice_head(n = 3)
+penguins_small <- palmerpenguins::penguins |>
+  dplyr::select(-year) |>
+  tidyr::drop_na()
 ```
 
 ## Leave-one-variable-out diagnostics
 
-`lovo_mdist()` computes leave-one-variable-out diagnostics for distance-based variable importance.
+`lovo_mdist()` computes leave-one-variable-out diagnostics for assessing variable contributions to a distance construction.
 
-It first computes the full dissimilarity matrix. Then it removes one predictor at a time, recomputes the dissimilarity matrix, and compares the reduced matrix with the full one.
+The function first computes the full dissimilarity matrix using all predictors. Then, one predictor at a time, it removes a variable, recomputes the dissimilarity matrix, and compares the reduced dissimilarity with the full one.
+
+Variables whose removal strongly changes the dissimilarity matrix, the induced configuration, or the resulting clustering structure can be interpreted as having a larger contribution to the distance construction.
 
 ```{r}
 lovo_gower <- lovo_mdist(
@@ -586,11 +52,60 @@ lovo_gower <- lovo_mdist(
 lovo_gower
 ```
 
-The result can be summarized.
+The result can be summarized as follows.
 
 ```{r}
 summary(lovo_gower)
 ```
+
+The main results are stored in the `$results` field.
+
+```{r}
+lovo_gower$results |>
+  kableExtra::kbl(format = "html", digits = 3) |>
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+## Interpreting the output
+
+The output of `lovo_mdist()` contains several diagnostics, each capturing a different aspect of the change induced by removing a variable.
+
+The main diagnostics can be interpreted as follows.
+
+```{r}
+#| echo: false
+metric_description <- tibble::tibble(
+  metric = c(
+    "mad_importance",
+    "relative_distance",
+    "mds_congruence",
+    "cc_importance",
+    "ac_importance"
+  ),
+  interpretation = c(
+    "Mean absolute difference between the full dissimilarity matrix and the leave-one-variable-out dissimilarity matrix.",
+    "Normalized version of `mad_importance`; it reports the relative contribution of each variable.",
+    "Congruence between the MDS configuration obtained from the full distance and the one obtained after removing the variable.",
+    "Congruence coefficient between the full and reduced configurations.",
+    "Alienation coefficient between the full and reduced configurations."
+  ),
+  contribution_direction = c(
+    "Larger values indicate a larger contribution.",
+    "Larger values indicate a larger contribution.",
+    "Smaller values indicate a larger contribution.",
+    "Smaller values indicate a larger contribution.",
+    "Larger values indicate a larger contribution."
+  )
+)
+
+metric_description |>
+  kableExtra::kbl(format = "html") |>
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+The metrics are complementary. A variable may have a large effect on the pairwise dissimilarities without substantially changing the geometric configuration. Conversely, a variable may have a modest effect on the average distances but still affect the configuration induced by the distance matrix.
+
+## Visualising variable contributions
 
 The relative contribution of each variable can be visualized with `autoplot()`.
 
@@ -600,6 +115,132 @@ lovo_gower$autoplot(
   reorder = TRUE
 )
 ```
+
+Other metrics can be visualized by changing the `metric` argument. For example, `ac_importance` displays the alienation coefficient.
+
+```{r}
+lovo_gower$autoplot(
+  metric = "ac_importance",
+  reorder = TRUE
+)
+```
+
+The congruence coefficient can also be displayed. Since this is an agreement measure, smaller values indicate that removing the variable produces a larger change in the induced configuration.
+
+```{r}
+lovo_gower$autoplot(
+  metric = "cc_importance",
+  reorder = TRUE
+)
+```
+
+## Clustering-based LOVO diagnostics
+
+`lovo_mdist()` can also assess how removing each variable affects cluster partitions derived from the distance matrix.
+
+To compute clustering-based diagnostics, the number of clusters must be supplied through `cluster_k`. The clustering methods are controlled by `cluster_methods`. Available options are `"pam"`, `"hclust"`, and `"spectral"`.
+
+In the following example, we compute clustering-based diagnostics with three clusters.
+
+```{r}
+lovo_gower_cluster <- lovo_mdist(
+  penguins_small,
+  response = species,
+  response_used = FALSE,
+  preset = "gower",
+  cluster_k = 3,
+  cluster_methods = c("pam", "hclust", "spectral")
+)
+
+lovo_gower_cluster
+```
+
+The corresponding results include ARI-based diagnostics for each clustering method.
+
+```{r}
+lovo_gower_cluster$results |>
+  dplyr::select(
+    variable,
+    variable_type,
+    ari_pam,
+    pam_importance,
+    ari_hclust,
+    hclust_importance,
+    ari_spectral,
+    spectral_importance
+  ) |>
+  kableExtra::kbl(format = "html", digits = 3) |>
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+The ARI columns compare the partition obtained from the full distance matrix with the partition obtained after removing each variable. Since ARI is an agreement measure, smaller values indicate a stronger change in the clustering structure.
+
+The corresponding importance columns are defined as `1 - ARI`. Therefore, larger values of `pam_importance`, `hclust_importance`, and `spectral_importance` indicate a larger contribution to the clustering structure induced by the distance.
+
+```{r}
+#| echo: false
+cluster_metric_description <- tibble::tibble(
+  metric = c(
+    "ari_pam",
+    "ari_hclust",
+    "ari_spectral",
+    "pam_importance",
+    "hclust_importance",
+    "spectral_importance"
+  ),
+  interpretation = c(
+    "ARI between PAM clusters from the full and reduced distances.",
+    "ARI between hierarchical clusters from the full and reduced distances.",
+    "ARI between spectral clusters from the full and reduced distances.",
+    "PAM-based importance, computed as `1 - ari_pam`.",
+    "Hierarchical-clustering importance, computed as `1 - ari_hclust`.",
+    "Spectral-clustering importance, computed as `1 - ari_spectral`."
+  ),
+  contribution_direction = c(
+    "Smaller values indicate a larger contribution.",
+    "Smaller values indicate a larger contribution.",
+    "Smaller values indicate a larger contribution.",
+    "Larger values indicate a larger contribution.",
+    "Larger values indicate a larger contribution.",
+    "Larger values indicate a larger contribution."
+  )
+)
+
+cluster_metric_description |>
+  kableExtra::kbl(format = "html") |>
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+For example, the PAM-based importance can be visualized as follows.
+
+```{r}
+lovo_gower_cluster$autoplot(
+  metric = "pam_importance",
+  reorder = TRUE
+)
+```
+
+The same diagnostic can be inspected for hierarchical clustering.
+
+```{r}
+lovo_gower_cluster$autoplot(
+  metric = "hclust_importance",
+  reorder = TRUE
+)
+```
+
+Or for spectral clustering.
+
+```{r}
+lovo_gower_cluster$autoplot(
+  metric = "spectral_importance",
+  reorder = TRUE
+)
+```
+
+The three cluster-based diagnostics need not rank variables in exactly the same way. A variable may be important for the partition induced by one clustering method and less important for another. This makes clustering-based LOVO diagnostics useful for assessing whether variable contributions are stable across clustering algorithms.
+
+## Response-aware LOVO diagnostics
 
 When `response_used = FALSE`, the response column is removed before computing distances. When `response_used = TRUE`, the response can be used by response-aware distance specifications, but it is still not treated as a predictor in the leave-one-variable-out loop.
 
@@ -614,43 +255,139 @@ lovo_response <- lovo_mdist(
 lovo_response
 ```
 
-## Inspecting method specifications
-
-`all_dist_method_specs()` returns a table of distance specifications that can be used for benchmarking or sensitivity analysis.
+The response-aware diagnostics can be inspected in the same way.
 
 ```{r}
-specs <- all_dist_method_specs()
-
-specs |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable
-  ) |>
-  dplyr::slice_head(n = 10)
+lovo_response$results |>
+  kableExtra::kbl(format = "html", digits = 3) |>
+  kableExtra::kable_styling(full_width = FALSE)
 ```
 
-The same table can be passed to `benchmark_mdist()`.
+For example, the relative-distance contribution can be visualized as follows.
 
 ```{r}
-bench <- benchmark_mdist(
+lovo_response$autoplot(
+  metric = "relative_distance",
+  reorder = TRUE
+)
+```
+
+## Comparing LOVO diagnostics across distance specifications
+
+The function `compare_lovo_mdist()` compares leave-one-variable-out diagnostics across several distance specifications.
+
+Instead of running `lovo_mdist()` separately for each specification, the user supplies a named list of methods. Each element of the list contains arguments passed to `lovo_mdist()`, such as `preset`, `method_cat`, `method_num`, and `commensurable`.
+
+For each distance specification, `compare_lovo_mdist()` computes the full distance, recomputes the leave-one-variable-out distances, extracts the diagnostics, and combines the results into a single `MDistLOVOCompare` object.
+
+```{r}
+lovo_compare <- compare_lovo_mdist(
   penguins_small,
-  response = species,
-  specs = specs
+  response = "species",
+  response_used = FALSE,
+  methods = list(
+    gower = list(preset = "gower"),
+    u_indep = list(preset = "u_indep"),
+    custom_matching = list(
+      preset = "custom",
+      method_cat = "matching",
+      method_num = "std",
+      commensurable = TRUE
+    )
+  )
 )
 
-bench |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable,
-    ok,
-    error
-  ) |>
-  dplyr::slice_head(n = 10)
+lovo_compare
 ```
 
+The combined results are stored in the `$results` field. The table contains one row for each combination of distance specification and left-out variable.
+
+```{r}
+lovo_compare$results |>
+  dplyr::select(
+    method,
+    variable,
+    variable_type,
+    relative_distance,
+    mad_importance,
+    mds_congruence,
+    ac_importance
+  ) |>
+  kableExtra::kbl(format = "html", digits = 3) |>
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+The summary reports the range and average of the main LOVO diagnostics within each distance specification.
+
+```{r}
+summary(lovo_compare)
+```
+
+The comparison object also has an `autoplot()` method. This makes it possible to compare the contribution profiles induced by different distance specifications.
+
+```{r}
+lovo_compare$autoplot(
+  metric = "relative_distance",
+  reorder = TRUE
+)
+```
+
+A comparison can also include clustering-based diagnostics by passing `cluster_k` and, optionally, `cluster_methods`.
+
+```{r}
+lovo_compare_cluster <- compare_lovo_mdist(
+  penguins_small,
+  response = "species",
+  response_used = FALSE,
+  cluster_k = 3,
+  cluster_methods = c("pam", "hclust", "spectral"),
+  methods = list(
+    gower = list(preset = "gower"),
+    u_indep = list(preset = "u_indep"),
+    custom_matching = list(
+      preset = "custom",
+      method_cat = "matching",
+      method_num = "std",
+      commensurable = TRUE
+    )
+  )
+)
+
+lovo_compare_cluster
+```
+
+The resulting object includes the ARI-based diagnostics for the selected clustering methods.
+
+```{r}
+lovo_compare_cluster$results |>
+  dplyr::select(
+    method,
+    variable,
+    variable_type,
+    pam_importance,
+    hclust_importance,
+    spectral_importance
+  ) |>
+  kableExtra::kbl(format = "html", digits = 3) |>
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+For example, the following plot compares PAM-based cluster importance across the selected distance specifications.
+
+```{r}
+lovo_compare_cluster$autoplot(
+  metric = "pam_importance",
+  reorder = TRUE
+)
+```
+
+The comparison is useful because variable contributions are not absolute properties of the data alone. They also depend on the distance specification. A variable that is highly influential under one distance may have a smaller contribution under another specification, especially when the two distances encode different assumptions about scaling, variable type, commensurability, or association.
+
+
+## Summary
+
+`lovo_mdist()` provides complementary diagnostics for assessing variable contributions to distance construction.
+
+Distance-based diagnostics measure how much the dissimilarity matrix changes when a variable is removed. Configuration-based diagnostics assess how much the induced MDS representation changes. Clustering-based diagnostics compare the partitions obtained from the full and reduced distances, using PAM, hierarchical clustering, or spectral clustering.
+
+Together, these diagnostics help identify variables that play an important role in the distance representation and in the downstream structures derived from it.
