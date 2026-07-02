@@ -1,8 +1,34 @@
-#TOC::before {
+/* Article-only styling for manydist pkgdown/Quarto articles */
+
+/* Move pkgdown article TOC to the left */
+.template-quarto > .row {
+  display: flex;
+}
+
+.template-quarto > .row > aside {
+  order: 1;
+}
+
+.template-quarto > .row > main {
+  order: 2;
+}
+
+/* Add package logo above the article TOC */
+nav#TOC::before,
+nav#toc::before {
   content: "";
   display: block;
-  background: url("../manydist_logo.png") left center / contain no-repeat;
+  background-image: url("manydist_logo.png"), url("../manydist_logo.png");
+  background-position: left center, left center;
+  background-size: contain, contain;
+  background-repeat: no-repeat, no-repeat;
   width: 140px;
   height: 140px;
-  margin: 0 0 1rem 0;
+  margin: 1rem 0 1.25rem 0;
+}
+
+/* Hide TOC heading */
+nav#toc h2,
+nav#TOC h2 {
+  display: none;
 }

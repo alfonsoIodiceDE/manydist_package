@@ -25,10 +25,14 @@ articles:
   contents:
   - articles/choosing_a_distance_specification
   - articles/understanding_presets
-  - articles/variable_contributions
 
-- title: Learning workflows
+- title: Diagnostic tools
+  contents:
+  - articles/variable_contributions
+  - articles/benchmarking_distance_choices
+
+- title: Distance-based learning workflows
   contents:
   - articles/clustering_workflows
   - articles/knn_workflows
-  - articles/benchmarking_distance_choices
+
