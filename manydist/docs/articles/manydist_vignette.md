@@ -20,14 +20,13 @@ specifications. In the current interface:
   placed on a comparable scale;
 - `preset` selects a predefined distance specification.
 
-The numerical metric is no longer a user-facing argument. For most
-presets, numerical variables are compared through Manhattan-type
-contributions. The exceptions are presets such as `"hl"` and
+Numerical variables are compared through Manhattan-type contributions to
+preserve additivity. The exceptions are presets such as `"hl"` and
 `"euclidean"`, where the Euclidean structure is part of the definition.
 
-The `"euclidean"` preset replaces the former `"euclidean_onehot"` name.
-It computes Euclidean distances after one-hot encoding categorical
-variables.
+The `"euclidean"` preset can be applied to mixed datasets to: it
+computes Euclidean distances on standardized variables after one-hot
+encoding categorical variables.
 
 ## 2 Setup
 
