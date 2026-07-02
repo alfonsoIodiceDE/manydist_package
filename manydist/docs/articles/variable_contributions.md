@@ -616,19 +616,3 @@ specification. A variable that is highly influential under one distance
 may have a smaller contribution under another specification, especially
 when the two distances encode different assumptions about scaling,
 variable type, commensurability, or association.
-
-## 8 Summary
-
-[`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
-provides complementary diagnostics for assessing variable contributions
-to distance construction.
-
-Distance-based diagnostics measure how much the dissimilarity matrix
-changes when a variable is removed. Configuration-based diagnostics
-assess how much the induced MDS representation changes. Clustering-based
-diagnostics compare the partitions obtained from the full and reduced
-distances, using PAM, hierarchical clustering, or spectral clustering.
-
-Together, these diagnostics help identify variables that play an
-important role in the distance representation and in the downstream
-structures derived from it.
