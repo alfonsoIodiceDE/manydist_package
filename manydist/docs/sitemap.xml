@@ -1,7 +1,13 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://alfonsoiodicede.github.io/manydist_package/404.html</loc></url>
+<url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/benchmarking_distance_choices.html</loc></url>
+<url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/choosing_a_distance_specification.html</loc></url>
+<url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/clustering_workflows.html</loc></url>
 <url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/index.html</loc></url>
+<url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/knn_workflows.html</loc></url>
 <url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/manydist_vignette.html</loc></url>
+<url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/understanding_presets.html</loc></url>
+<url><loc>https://alfonsoiodicede.github.io/manydist_package/articles/variable_contributions.html</loc></url>
 <url><loc>https://alfonsoiodicede.github.io/manydist_package/authors.html</loc></url>
 <url><loc>https://alfonsoiodicede.github.io/manydist_package/index.html</loc></url>
 <url><loc>https://alfonsoiodicede.github.io/manydist_package/news/index.html</loc></url>

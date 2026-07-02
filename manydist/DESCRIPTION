@@ -35,7 +35,8 @@ Description: Provides tools for constructing, computing, and using distance
     Iodice D'Enza, Markos, and Cavicchia (2026)
     <doi:10.1080/10618600.2026.2680181> and related work on categorical
     and mixed-type dissimilarities.
-URL: https://github.com/alfonsoIodiceDE/manydist_package/tree/main/manydist 
+URL: https://alfonsoiodicede.github.io/manydist_package,
+    https://github.com/alfonsoIodiceDE/manydist_package/tree/main/manydist
 BugReports: https://github.com/alfonsoIodiceDE/manydist_package/issues
 Imports: aricode, cluster, clusterGeneration, data.table, dials, distances, dplyr, entropy, fastDummies, 
           forcats, fpc, generics, ggplot2, kdml, 

@@ -1,3 +1,35 @@
 body {
   padding-top: 1.5rem;
 }
+
+
+/* Articles index: make all article headings/links regular weight */
+.template-article-index main a,
+.template-article-index main h2,
+.template-article-index main h3,
+.template-article-index main h4,
+.template-article-index main h5,
+.template-article-index main h6 {
+  font-weight: 100 !important;
+}
+
+/* Keep link colors, remove underlines across site content */
+main a,
+.contents a,
+.home a,
+.template-home a {
+  text-decoration: none;
+}
+
+main a:hover,
+main a:focus,
+.contents a:hover,
+.contents a:focus,
+.home a:hover,
+.home a:focus,
+.template-home a:hover,
+.template-home a:focus {
+  text-decoration: none;
+}
+
+

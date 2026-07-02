@@ -1,0 +1,8 @@
+#TOC::before {
+  content: "";
+  display: block;
+  background: url("../manydist_logo.png") left center / contain no-repeat;
+  width: 140px;
+  height: 140px;
+  margin: 0 0 1rem 0;
+}

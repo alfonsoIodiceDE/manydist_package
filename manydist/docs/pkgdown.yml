@@ -2,8 +2,14 @@ pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
+  articles/benchmarking_distance_choices: benchmarking_distance_choices.html
+  articles/choosing_a_distance_specification: choosing_a_distance_specification.html
+  articles/clustering_workflows: clustering_workflows.html
+  articles/knn_workflows: knn_workflows.html
   manydist_vignette: manydist_vignette.html
-last_built: 2026-07-01T09:49Z
+  articles/understanding_presets: understanding_presets.html
+  articles/variable_contributions: variable_contributions.html
+last_built: 2026-07-02T13:06Z
 urls:
   reference: https://alfonsoiodicede.github.io/manydist_package/reference
   article: https://alfonsoiodicede.github.io/manydist_package/articles

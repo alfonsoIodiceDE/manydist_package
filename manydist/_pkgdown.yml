@@ -3,7 +3,7 @@ url: https://alfonsoiodicede.github.io/manydist_package/
 template:
   bootstrap: 5
   bootswatch: flatly
-  extra_css: pkgdown/extra.css
+  extra_css: extra.css
 
 repo:
   url:
@@ -15,3 +15,20 @@ home:
   links:
   - text: Browse source code
     href: https://github.com/alfonsoIodiceDE/manydist_package/tree/main/manydist
+
+articles:
+- title: internal
+  contents:
+  - manydist_vignette
+
+- title: Distance construction
+  contents:
+  - articles/choosing_a_distance_specification
+  - articles/understanding_presets
+  - articles/variable_contributions
+
+- title: Learning workflows
+  contents:
+  - articles/clustering_workflows
+  - articles/knn_workflows
+  - articles/benchmarking_distance_choices
