@@ -23,16 +23,16 @@ articles:
 
 - title: Distance construction
   contents:
-  - articles/choosing_a_distance_specification
-  - articles/understanding_presets
+  - choosing_a_distance_specification
+  - understanding_presets
 
 - title: Diagnostic tools
   contents:
-  - articles/variable_contributions
-  - articles/benchmarking_distance_choices
+  - variable_contributions
+  - benchmarking_distance_choices
 
 - title: Distance-based learning workflows
   contents:
-  - articles/clustering_workflows
-  - articles/knn_workflows
+  - clustering_workflows
+  - knn_workflows
 
