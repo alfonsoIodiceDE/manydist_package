@@ -1,0 +1,192 @@
+# manydist
+
+![manydist logo](reference/figures/manydist_logo.png)
+
+**Distance-Based Learning for Mixed-Type Data**
+
+`manydist` provides tools for constructing, computing, and using
+distance measures for numerical, categorical, and mixed-type data.
+
+  
+
+## Installation
+
+``` r
+
+# install.packages("palmerpenguins")
+install.packages("manydist")
+```
+
+You can also install the development version from GitHub:
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("alfonsoIodiceDE/manydist_package", subdir = "manydist")
+```
+
+### Initialization
+
+``` r
+
+library(manydist)
+library(palmerpenguins)
+library(dplyr)
+library(tidyr)
+```
+
+## Getting started
+
+The main function in `manydist` is
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
+It computes dissimilarities for numerical, categorical, and mixed-type
+data.
+
+``` r
+
+penguins_small <- penguins |>
+  select(-year) |> drop_na()
+```
+
+A mixed-type dissimilarity can be computed with a preset. For example,
+`preset = "gower"` computes a Gower-type dissimilarity.
+
+``` r
+
+D <- penguins_small |> select(-species) |> 
+  mdist(preset = "gower")
+
+as.matrix(D$distance)[1:5,1:5] |> round(digits=2)
+```
+
+``` R
+##      1    2    3    4    5
+## 1 0.00 0.21 0.25 0.24 0.07
+## 2 0.21 0.00 0.07 0.09 0.25
+## 3 0.25 0.07 0.00 0.06 0.26
+## 4 0.24 0.09 0.06 0.00 0.23
+## 5 0.07 0.25 0.26 0.23 0.00
+```
+
+Some presets can use a response variable. When a response is supplied,
+it is used for response-aware distance construction and is not treated
+as an ordinary predictor.
+
+``` r
+
+D_resp <- penguins_small |> mdist(
+  response = species,
+  preset = "u_dep"
+)
+
+D_resp
+```
+
+``` R
+## MDist object
+##   preset : u_dep 
+##   number of observations : 333 
+##   number of continuous variables   : 4 
+##   number of categorical variables   : 2 
+##   parameters:
+##     - categorical method: tvd
+##     - numerical preprocessing: pc_scores
+##     - commensurability adjustment: TRUE
+```
+
+Custom specifications can be defined by combining a categorical method,
+a numerical preprocessing method, and a commensurability rule.
+
+``` r
+
+D_custom <- mdist(penguins_small |> select(-species),
+                  preset = "custom",
+                  method_cat = "matching",
+                  method_num = "std",
+                  commensurable = TRUE
+)
+
+D_custom
+```
+
+``` R
+## MDist object
+##   preset : custom 
+##   number of observations : 333 
+##   number of continuous variables   : 4 
+##   number of categorical variables   : 2 
+##   parameters:
+##     - categorical method: matching
+##     - numerical preprocessing: std
+##     - commensurability adjustment: TRUE
+##     - number of principal components: 6
+##     - inertia threshold: NULL
+```
+
+# Package index
+
+## All functions
+
+- [`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
+  : Create a grid of \`mdist()\` method specifications
+- [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
+  : Benchmark \`mdist()\` over multiple method specifications
+- [`compare_lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/compare_lovo_mdist.md)
+  : Compare LOVO diagnostics across multiple distance specifications
+- [`congruence_coeff()`](https://alfonsoiodicede.github.io/manydist_package/reference/congruence_coeff.md)
+  : Congruence coefficient between two configurations
+- [`dist_methods_tbl()`](https://alfonsoiodicede.github.io/manydist_package/reference/dist_methods_tbl.md)
+  : List available \`manydist\` methods
+- [`dist_methods_tbl_cat()`](https://alfonsoiodicede.github.io/manydist_package/reference/dist_methods_tbl_cat.md)
+  : List available categorical dissimilarities
+- [`fifa_nl`](https://alfonsoiodicede.github.io/manydist_package/reference/fifa_nl.md)
+  : FIFA 21 Player Data - Dutch League
+- [`gen_mixed()`](https://alfonsoiodicede.github.io/manydist_package/reference/gen_mixed.md)
+  : Generate mixed-type clustering data with signal and noise
+- [`generate_dataset()`](https://alfonsoiodicede.github.io/manydist_package/reference/generate_dataset.md)
+  : generate toy mixed datasets for the supplementary material: figures
+  1 to 3
+- [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
+  : Leave-one-variable-out diagnostics for distance-based variable
+  importance
+- [`lovo_method_spec()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_method_spec.md)
+  : Create a LOVO method specification for \`compare_lovo_mdist()\`
+- [`make_mdist_recipe()`](https://alfonsoiodicede.github.io/manydist_package/reference/make_mdist_recipe.md)
+  : Build a recipe that computes mdist-based distance features
+- [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
+  : Mixed-type dissimilarities for distance-based learning
+- [`mdist_summary_impl()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist_summary_impl.md)
+  : Internal: summary method implementation for MDist R6 objects
+- [`pam_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/pam_dist.md)
+  : PAM clustering specification based on manydist dissimilarities
+- [`response_aware_methods()`](https://alfonsoiodicede.github.io/manydist_package/reference/response_aware_methods.md)
+  : List response-aware methods
+- [`spectral_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_dist.md)
+  : Spectral clustering specification based on manydist dissimilarities
+- [`spectral_from_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_from_dist.md)
+  : Spectral clustering from a distance matrix
+- [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
+  : Add manydist dissimilarities to a recipe
+
+# Articles
+
+### Distance construction
+
+- [Distance
+  specifications](https://alfonsoiodicede.github.io/manydist_package/articles/choosing_a_distance_specification.md):
+- [On the use of
+  presets](https://alfonsoiodicede.github.io/manydist_package/articles/understanding_presets.md):
+
+### Diagnostic tools
+
+- [Assessing variable contributions to
+  distances](https://alfonsoiodicede.github.io/manydist_package/articles/variable_contributions.md):
+- [manydist: benchmarking distance
+  choices](https://alfonsoiodicede.github.io/manydist_package/articles/benchmarking_distance_choices.md):
+
+### Distance-based learning workflows
+
+- [distance-based clustering
+  workflows](https://alfonsoiodicede.github.io/manydist_package/articles/clustering_workflows.md):
+- [supervised learning
+  workflows](https://alfonsoiodicede.github.io/manydist_package/articles/knn_workflows.md):
