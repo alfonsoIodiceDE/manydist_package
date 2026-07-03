@@ -4,8 +4,8 @@
 
 - [Distance
   specifications](https://alfonsoiodicede.github.io/manydist_package/articles/choosing_a_distance_specification.md):
-- [manydist: distance-based learning with mixed-type
-  data](https://alfonsoiodicede.github.io/manydist_package/articles/understanding_presets.md):
+- [On the use of
+  presets](https://alfonsoiodicede.github.io/manydist_package/articles/understanding_presets.md):
 
 ### Diagnostic tools
 
