@@ -17,6 +17,7 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><script src="clustering_workflows_files/libs/quarto-html/popper.min.js"></script><script src="clustering_workflows_files/libs/quarto-html/tippy.umd.min.js"></script><link href="clustering_workflows_files/libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="clustering_workflows_files/libs/quarto-html/light-border.css" rel="stylesheet">
+<link rel="stylesheet" href="article-style.css">
 <!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
 <meta property="og:title" content="distance-based clustering workflows">
 </head>
@@ -71,22 +72,21 @@
     <section class="level2" data-number="1"><h2 data-number="1" id="overview">
 <span class="header-section-number">1</span> Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><code>manydist</code> provides tools for constructing dissimilarities for numerical, categorical, and mixed-type data.</p>
-<p>The main function is <code><a href="../reference/mdist.html">mdist()</a></code>. It computes a dissimilarity object that can be used in distance-based learning workflows, including clustering, nearest-neighbour prediction, and diagnostic analyses.</p>
-<p>The package supports both preset specifications and custom specifications. In the current interface:</p>
+<p>Distance-based clustering separates two decisions:</p>
+<ol type="1">
+<li>how observations are compared;</li>
+<li>how the resulting dissimilarities are partitioned.</li>
+</ol>
+<p>This separation is particularly useful for mixed-type data. <code>manydist</code> constructs the dissimilarity, while clustering methods such as partitioning around medoids (PAM) and spectral clustering operate on that common representation.</p>
+<p>This guide covers both direct use of an <code>MDist</code> object and the integrated recipe interface:</p>
 <ul>
 <li>
-<code>method_cat</code> controls the categorical dissimilarity;</li>
+<code>step_mdist(output = "pairwise")</code> constructs within-training dissimilarities;</li>
 <li>
-<code>method_num</code> controls the preprocessing of numerical variables;</li>
+<code><a href="../reference/pam_dist.html">pam_dist()</a></code> fits a PAM clustering;</li>
 <li>
-<code>commensurable</code> controls whether variable-wise contributions are placed on a comparable scale;</li>
-<li>
-<code>preset</code> selects a predefined distance specification.</li>
-</ul>
-<p>The numerical metric is no longer a user-facing argument. For most presets, numerical variables are compared through Manhattan-type contributions. The exceptions are presets such as <code>"hl"</code> and <code>"euclidean"</code>, where the Euclidean structure is part of the definition.</p>
-<p>The <code>"euclidean"</code> preset replaces the former <code>"euclidean_onehot"</code> name. It computes Euclidean distances after one-hot encoding categorical variables.</p>
-</section><section class="level2" data-number="2"><h2 data-number="2" id="setup">
+<code><a href="../reference/spectral_dist.html">spectral_dist()</a></code> fits a spectral clustering and exposes its embedding.</li>
+</ul></section><section class="level2" data-number="2"><h2 data-number="2" id="setup">
 <span class="header-section-number">2</span> Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h2>
 <div class="cell">
@@ -94,35 +94,32 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package">manydist</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://purrr.tidyverse.org/" class="external-link">purrr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/recipes" class="external-link">recipes</a></span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>We use the <code>palmerpenguins</code> data for illustration.</p>
+<p>We use mixed numerical and categorical predictors from <code>palmerpenguins</code>. Species is retained only for post-hoc interpretation; it is not used to form the clusters.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"palmerpenguins"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"penguins"</span>, package <span class="op">=</span> <span class="st">"palmerpenguins"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="fu">palmerpenguins</span><span class="fu">::</span><span class="va"><a href="https://allisonhorst.github.io/palmerpenguins/reference/penguins.html" class="external-link">penguins</a></span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
+<span>    <span class="va">species</span>,</span>
+<span>    <span class="va">bill_length_mm</span>,</span>
+<span>    <span class="va">bill_depth_mm</span>,</span>
+<span>    <span class="va">flipper_length_mm</span>,</span>
+<span>    <span class="va">body_mass_g</span>,</span>
+<span>    <span class="va">island</span>,</span>
+<span>    <span class="va">sex</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="fu">palmerpenguins</span><span class="fu">::</span><span class="va"><a href="https://allisonhorst.github.io/palmerpenguins/reference/penguins.html" class="external-link">penguins</a></span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>      <span class="va">species</span>,</span>
-<span>      <span class="va">bill_length_mm</span>,</span>
-<span>      <span class="va">bill_depth_mm</span>,</span>
-<span>      <span class="va">flipper_length_mm</span>,</span>
-<span>      <span class="va">body_mass_g</span>,</span>
-<span>      <span class="va">island</span>,</span>
-<span>      <span class="va">sex</span></span>
-<span>    <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-</div>
-<p>The data contain numerical variables, such as bill length and body mass, and categorical variables, such as island and sex.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">penguins_small</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">penguin_x</span> <span class="op">&lt;-</span> <span class="va">penguins_small</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">penguin_x</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 333
-Columns: 7
-$ species           &lt;fct&gt; Adelie, Adelie, Adelie, Adelie, Adelie, Adelie, Adel…
+Columns: 6
 $ bill_length_mm    &lt;dbl&gt; 39.1, 39.5, 40.3, 36.7, 39.3, 38.9, 39.2, 41.1, 38.6…
 $ bill_depth_mm     &lt;dbl&gt; 18.7, 17.4, 18.0, 19.3, 20.6, 17.8, 19.6, 17.6, 21.2…
 $ flipper_length_mm &lt;int&gt; 181, 186, 195, 193, 190, 181, 195, 182, 191, 198, 18…
@@ -131,15 +128,14 @@ $ island            &lt;fct&gt; Torgersen, Torgersen, Torgersen, Torgersen, Torg
 $ sex               &lt;fct&gt; male, female, female, female, male, female, male, fe…</code></pre>
 </div>
 </div>
-</section><section class="level2" data-number="3"><h2 data-number="3" id="computing-a-mixed-type-dissimilarity">
-<span class="header-section-number">3</span> Computing a mixed-type dissimilarity<a class="anchor" aria-label="anchor" href="#computing-a-mixed-type-dissimilarity"></a>
+</section><section class="level2" data-number="3"><h2 data-number="3" id="starting-from-an-mdist-object">
+<span class="header-section-number">3</span> Starting from an <code>MDist</code> object<a class="anchor" aria-label="anchor" href="#starting-from-an-mdist-object"></a>
 </h2>
-<p>The simplest way to compute a mixed-type dissimilarity is to use a preset.</p>
-<p>For example, the <code>"gower"</code> preset computes a Gower-type dissimilarity for mixed numerical and categorical data.</p>
+<p>The direct workflow is useful when a clustering function already accepts a <code>dist</code> object. Here, <code><a href="../reference/mdist.html">mdist()</a></code> constructs a Gower dissimilarity and <code><a href="https://rdrr.io/pkg/cluster/man/pam.html" class="external-link">cluster::pam()</a></code> performs the partitioning.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d_gower</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
+<span>  <span class="va">penguin_x</span>,</span>
 <span>  preset <span class="op">=</span> <span class="st">"gower"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -154,603 +150,147 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
     - commensurability adjustment: FALSE</code></pre>
 </div>
 </div>
-<p>The resulting object stores the dissimilarity matrix and metadata about the distance specification.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">d_gower</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "MDist" "R6"   </code></pre>
-</div>
-</div>
-<p>The distance matrix can be extracted with <code>to_dist()</code>.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">d_gower</span><span class="op">$</span><span class="fu">to_dist</span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>           1          2          3          4          5
-1 0.00000000 0.21132367 0.25052445 0.24090408 0.06896389
-2 0.21132367 0.00000000 0.06763994 0.09064582 0.24961473
-3 0.25052445 0.06763994 0.00000000 0.06252081 0.25695739
-4 0.24090408 0.09064582 0.06252081 0.00000000 0.22595173
-5 0.06896389 0.24961473 0.25695739 0.22595173 0.00000000</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="4"><h2 data-number="4" id="response-aware-dissimilarities">
-<span class="header-section-number">4</span> Response-aware dissimilarities<a class="anchor" aria-label="anchor" href="#response-aware-dissimilarities"></a>
-</h2>
-<p>Some categorical dissimilarities can use a response variable. When a response is supplied to <code><a href="../reference/mdist.html">mdist()</a></code>, it is used for response-aware distance construction and is removed from the predictors.</p>
-<p>Therefore, in the following example, <code>species</code> is used as the response and is not also treated as a predictor.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"u_dep"</span></span>
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pam_direct</span> <span class="op">&lt;-</span> <span class="fu">cluster</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/cluster/man/pam.html" class="external-link">pam</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">d_gower</span><span class="op">$</span><span class="fu">to_dist</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  k <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  diss <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">d_response</span></span></code></pre></div>
+<span><span class="va">pam_direct</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : u_dep
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: tvd
-    - numerical preprocessing: pc_scores
-    - commensurability adjustment: TRUE</code></pre>
+<pre><code>Medoids:
+     ID
+[1,] "37"  "37"
+[2,] "129" "129"
+[3,] "172" "172"
+Clustering vector:
+  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+  1   2   2   2   1   2   1   2   1   1   2   2   1   2   1   2   1   2   1   3
+ 21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40
+  2   1   2   2   1   2   1   2   1   2   1   1   2   2   1   2   1   2   1   2
+ 41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60
+  1   1   2   1   2   1   2   3   2   1   2   1   2   1   2   3   2   1   2   1
+ 61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80
+  2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1
+ 81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97  98  99 100
+  1   2   1   2   2   1   2   1   2   1   2   1   2   1   2   3   2   1   2   1
+101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120
+  2   1   2   3   2   3   2   3   2   3   2   1   2   1   2   1   2   1   2   1
+121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140
+  2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1
+141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160
+  1   2   2   1   2   1   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180
+  3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200
+  3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220
+  3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240
+  3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260
+  3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280
+  3   3   3   3   3   2   1   1   2   1   2   2   1   2   1   2   1   2   1   2
+281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 300
+  1   1   2   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   1
+301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320
+  2   2   1   2   1   1   2   1   2   2   1   2   1   1   2   2   1   2   1   2
+321 322 323 324 325 326 327 328 329 330 331 332 333
+  1   2   1   1   2   1   2   2   1   2   1   1   2
+Objective function:
+    build      swap
+0.1740031 0.1418300
+
+Available components:
+[1] "medoids"    "id.med"     "clustering" "objective"  "isolation"
+[6] "clusinfo"   "silinfo"    "diss"       "call"      </code></pre>
 </div>
 </div>
-<p>The same can be written by passing the response as a character string.</p>
+<p>Cluster numbers have no intrinsic ordering. A contingency table is therefore more informative than comparing the numeric cluster labels directly.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_response_chr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="st">"species"</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"u_dep"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_response_chr</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : u_dep
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: tvd
-    - numerical preprocessing: pc_scores
-    - commensurability adjustment: TRUE</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="5"><h2 data-number="5" id="custom-distance-specifications">
-<span class="header-section-number">5</span> Custom distance specifications<a class="anchor" aria-label="anchor" href="#custom-distance-specifications"></a>
-</h2>
-<p>Presets are convenient, but users can also define custom specifications.</p>
-<p>In a custom specification, <code>method_cat</code> controls the categorical dissimilarity and <code>method_num</code> controls the preprocessing applied to numerical variables.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_custom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
-<span>  method_cat <span class="op">=</span> <span class="st">"matching"</span>,</span>
-<span>  method_num <span class="op">=</span> <span class="st">"std"</span>,</span>
-<span>  commensurable <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_custom</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : custom
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: matching
-    - numerical preprocessing: std
-    - commensurability adjustment: TRUE
-    - number of principal components: 6
-    - inertia threshold: NULL</code></pre>
-</div>
-</div>
-<p>Here, categorical variables are compared using matching dissimilarities, numerical variables are standardized, and variable-wise contributions are made commensurable.</p>
-<p>A response-aware custom specification can also be used.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_custom_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
-<span>  method_cat <span class="op">=</span> <span class="st">"tvd"</span>,</span>
-<span>  method_num <span class="op">=</span> <span class="st">"std"</span>,</span>
-<span>  commensurable <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_custom_response</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : custom
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: tvd
-    - numerical preprocessing: std
-    - commensurability adjustment: TRUE
-    - number of principal components: 6
-    - inertia threshold: NULL</code></pre>
-</div>
-</div>
-<p>If only one categorical predictor is available, methods that require more than one categorical variable may switch to a simpler alternative internally.</p>
-</section><section class="level2" data-number="6"><h2 data-number="6" id="euclidean-preset">
-<span class="header-section-number">6</span> Euclidean preset<a class="anchor" aria-label="anchor" href="#euclidean-preset"></a>
-</h2>
-<p>The <code>"euclidean"</code> preset computes Euclidean distances after converting categorical variables to one-hot dummy variables.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_euclidean</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"euclidean"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_euclidean</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : euclidean
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - numerical preprocessing: std</code></pre>
-</div>
-</div>
-<p>This preset replaces the former <code>"euclidean_onehot"</code> name.</p>
-</section><section class="level2" data-number="7"><h2 data-number="7" id="comparing-presets">
-<span class="header-section-number">7</span> Comparing presets<a class="anchor" aria-label="anchor" href="#comparing-presets"></a>
-</h2>
-<p>Different presets encode different assumptions about how numerical and categorical variables should contribute to the final dissimilarity.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_u_indep</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"u_indep"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_u_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"u_mix"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"hl"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_u_indep</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : u_indep
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: matching
-    - numerical preprocessing: std
-    - commensurability adjustment: TRUE</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_u_mix</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : u_mix
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: tvd
-    - numerical preprocessing: std
-    - commensurability adjustment: TRUE</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d_hl</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : hl
-  number of observations : 333
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - categorical method: HLeucl
-    - numerical preprocessing: std
-    - commensurability adjustment: FALSE</code></pre>
-</div>
-</div>
-<p>The available presets include:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="st">"custom"</span>,</span>
-<span>  <span class="st">"gower"</span>,</span>
-<span>  <span class="st">"euclidean"</span>,</span>
-<span>  <span class="st">"unbiased_dependent"</span>,</span>
-<span>  <span class="st">"u_dep"</span>,</span>
-<span>  <span class="st">"u_indep"</span>,</span>
-<span>  <span class="st">"u_mix"</span>,</span>
-<span>  <span class="st">"hl"</span>,</span>
-<span>  <span class="st">"gudmm"</span>,</span>
-<span>  <span class="st">"dkss"</span>,</span>
-<span>  <span class="st">"mod_gower"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code> [1] "custom"             "gower"              "euclidean"
- [4] "unbiased_dependent" "u_dep"              "u_indep"
- [7] "u_mix"              "hl"                 "gudmm"
-[10] "dkss"               "mod_gower"         </code></pre>
-</div>
-</div>
-<p>Some presets are intended mainly for train-train dissimilarities and may not support distances from new observations to training observations.</p>
-</section><section class="level2" data-number="8"><h2 data-number="8" id="distances-from-new-observations-to-training-observations">
-<span class="header-section-number">8</span> Distances from new observations to training observations<a class="anchor" aria-label="anchor" href="#distances-from-new-observations-to-training-observations"></a>
-</h2>
-<p><code><a href="../reference/mdist.html">mdist()</a></code> can also compute distances from new observations to the training observations through the <code>new_data</code> argument.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">split_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">penguins_small</span><span class="op">)</span><span class="op">)</span>, size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fl">0.75</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">penguins_small</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">penguins_train</span> <span class="op">&lt;-</span> <span class="va">penguins_small</span><span class="op">[</span><span class="va">split_id</span>, <span class="op">]</span></span>
-<span><span class="va">penguins_test</span>  <span class="op">&lt;-</span> <span class="va">penguins_small</span><span class="op">[</span><span class="op">-</span><span class="va">split_id</span>, <span class="op">]</span></span>
-<span></span>
-<span><span class="va">d_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
-<span>  x <span class="op">=</span> <span class="va">penguins_train</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  new_data <span class="op">=</span> <span class="va">penguins_test</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"gower"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">d_new</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDist object
-  preset : gower
-  number of training observations : 249
-  number of test observations     : 84
-  number of continuous variables   : 4
-  number of categorical variables   : 2
-  parameters:
-    - commensurability adjustment: FALSE</code></pre>
-</div>
-</div>
-<p>The resulting dissimilarity is rectangular: rows correspond to test observations and columns correspond to training observations.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">d_new</span><span class="op">$</span><span class="va">distance</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1]  84 249</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="9"><h2 data-number="9" id="using-manydist-in-recipe-workflows">
-<span class="header-section-number">9</span> Using <code>manydist</code> in recipe workflows<a class="anchor" aria-label="anchor" href="#using-manydist-in-recipe-workflows"></a>
-</h2>
-<p>The function <code><a href="../reference/step_mdist.html">step_mdist()</a></code> provides a recipe interface to <code><a href="../reference/mdist.html">mdist()</a></code>. It replaces selected predictors with a distance-based representation.</p>
-<p>In supervised workflows, the response is defined on the left-hand side of the recipe formula. Therefore, when we select <code><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">recipes::all_predictors()</a></code>, the response variable is not used as a predictor in the distance computation.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rec</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="va">species</span> <span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
-<span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
-<span>    output <span class="op">=</span> <span class="st">"distance_to_training"</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="va">rec_prep</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/prep.html" class="external-link">prep</a></span><span class="op">(</span><span class="va">rec</span>, training <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">baked</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/bake.html" class="external-link">bake</a></span><span class="op">(</span><span class="va">rec_prep</span>, new_data <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">baked</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5 × 334
-  species dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
-  &lt;fct&gt;    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
-1 Adelie  0      0.211  0.251  0.241  0.0690 0.192  0.101  0.229  0.0832  0.153
-2 Adelie  0.211  0      0.0676 0.0906 0.250  0.0338 0.278  0.0527 0.262   0.331
-3 Adelie  0.251  0.0676 0      0.0625 0.257  0.0694 0.271  0.0518 0.277   0.324
-4 Adelie  0.241  0.0906 0.0625 0      0.226  0.0851 0.250  0.103  0.238   0.273
-5 Adelie  0.0690 0.250  0.257  0.226  0      0.251  0.0820 0.281  0.0259  0.0957
-# ℹ 323 more variables: dist_11 &lt;dbl&gt;, dist_12 &lt;dbl&gt;, dist_13 &lt;dbl&gt;,
-#   dist_14 &lt;dbl&gt;, dist_15 &lt;dbl&gt;, dist_16 &lt;dbl&gt;, dist_17 &lt;dbl&gt;, dist_18 &lt;dbl&gt;,
-#   dist_19 &lt;dbl&gt;, dist_20 &lt;dbl&gt;, dist_21 &lt;dbl&gt;, dist_22 &lt;dbl&gt;, dist_23 &lt;dbl&gt;,
-#   dist_24 &lt;dbl&gt;, dist_25 &lt;dbl&gt;, dist_26 &lt;dbl&gt;, dist_27 &lt;dbl&gt;, dist_28 &lt;dbl&gt;,
-#   dist_29 &lt;dbl&gt;, dist_30 &lt;dbl&gt;, dist_31 &lt;dbl&gt;, dist_32 &lt;dbl&gt;, dist_33 &lt;dbl&gt;,
-#   dist_34 &lt;dbl&gt;, dist_35 &lt;dbl&gt;, dist_36 &lt;dbl&gt;, dist_37 &lt;dbl&gt;, dist_38 &lt;dbl&gt;,
-#   dist_39 &lt;dbl&gt;, dist_40 &lt;dbl&gt;, dist_41 &lt;dbl&gt;, dist_42 &lt;dbl&gt;, …</code></pre>
-</div>
-</div>
-<p>The resulting data contain the outcome variable, <code>species</code>, together with one distance column for each training observation. These columns are named <code>dist_1</code>, <code>dist_2</code>, and so on.</p>
-</section><section class="level2" data-number="10"><h2 data-number="10" id="custom-specifications-in-recipes">
-<span class="header-section-number">10</span> Custom specifications in recipes<a class="anchor" aria-label="anchor" href="#custom-specifications-in-recipes"></a>
-</h2>
-<p>The same interface can be used with a custom distance specification.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rec_custom</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="va">species</span> <span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
-<span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
-<span>    method_cat <span class="op">=</span> <span class="st">"matching"</span>,</span>
-<span>    method_num <span class="op">=</span> <span class="st">"std"</span>,</span>
-<span>    commensurable <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    output <span class="op">=</span> <span class="st">"distance_to_training"</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="va">rec_custom_prep</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/prep.html" class="external-link">prep</a></span><span class="op">(</span><span class="va">rec_custom</span>, training <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">baked_custom</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/bake.html" class="external-link">bake</a></span><span class="op">(</span><span class="va">rec_custom_prep</span>, new_data <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">baked_custom</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5 × 334
-  species dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
-  &lt;fct&gt;    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
-1 Adelie    0      3.01   3.93   3.73   1.55  2.57    2.31   3.47  1.87     3.56
-2 Adelie    3.01   0      1.56   2.11   3.87  0.779   4.55   1.25  4.14     5.84
-3 Adelie    3.93   1.56   0      1.50   4.07  1.60    4.45   1.18  4.55     5.73
-4 Adelie    3.73   2.11   1.50   0      3.40  1.96    4.00   2.42  3.66     4.49
-5 Adelie    1.55   3.87   4.07   3.40   0     3.90    1.90   4.61  0.605    2.30
-# ℹ 323 more variables: dist_11 &lt;dbl&gt;, dist_12 &lt;dbl&gt;, dist_13 &lt;dbl&gt;,
-#   dist_14 &lt;dbl&gt;, dist_15 &lt;dbl&gt;, dist_16 &lt;dbl&gt;, dist_17 &lt;dbl&gt;, dist_18 &lt;dbl&gt;,
-#   dist_19 &lt;dbl&gt;, dist_20 &lt;dbl&gt;, dist_21 &lt;dbl&gt;, dist_22 &lt;dbl&gt;, dist_23 &lt;dbl&gt;,
-#   dist_24 &lt;dbl&gt;, dist_25 &lt;dbl&gt;, dist_26 &lt;dbl&gt;, dist_27 &lt;dbl&gt;, dist_28 &lt;dbl&gt;,
-#   dist_29 &lt;dbl&gt;, dist_30 &lt;dbl&gt;, dist_31 &lt;dbl&gt;, dist_32 &lt;dbl&gt;, dist_33 &lt;dbl&gt;,
-#   dist_34 &lt;dbl&gt;, dist_35 &lt;dbl&gt;, dist_36 &lt;dbl&gt;, dist_37 &lt;dbl&gt;, dist_38 &lt;dbl&gt;,
-#   dist_39 &lt;dbl&gt;, dist_40 &lt;dbl&gt;, dist_41 &lt;dbl&gt;, dist_42 &lt;dbl&gt;, …</code></pre>
-</div>
-</div>
-<p>In this example, <code>method_cat = "matching"</code> specifies the categorical dissimilarity, while <code>method_num = "std"</code> specifies standardization of numerical variables.</p>
-</section><section class="level2" data-number="11"><h2 data-number="11" id="pairwise-dissimilarities-in-recipes">
-<span class="header-section-number">11</span> Pairwise dissimilarities in recipes<a class="anchor" aria-label="anchor" href="#pairwise-dissimilarities-in-recipes"></a>
-</h2>
-<p>For distance-based clustering workflows, <code><a href="../reference/step_mdist.html">step_mdist()</a></code> can return the within-training pairwise dissimilarity matrix by setting <code>output = "pairwise"</code>.</p>
-<p>In this case, the recipe is intended for training-only workflows.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">penguins_predictors</span> <span class="op">&lt;-</span> <span class="va">penguins_small</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">rec_pairwise</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguins_predictors</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
-<span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
-<span>    output <span class="op">=</span> <span class="st">"pairwise"</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="va">rec_pairwise_prep</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/prep.html" class="external-link">prep</a></span><span class="op">(</span><span class="va">rec_pairwise</span>, training <span class="op">=</span> <span class="va">penguins_predictors</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pairwise_dist</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/bake.html" class="external-link">bake</a></span><span class="op">(</span></span>
-<span>  <span class="va">rec_pairwise_prep</span>,</span>
-<span>  new_data <span class="op">=</span> <span class="va">penguins_predictors</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pairwise_dist</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5 × 333
-  dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10 dist_11
-   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-1 0      0.211  0.251  0.241  0.0690 0.192  0.101  0.229  0.0832  0.153   0.213
-2 0.211  0      0.0676 0.0906 0.250  0.0338 0.278  0.0527 0.262   0.331   0.0330
-3 0.251  0.0676 0      0.0625 0.257  0.0694 0.271  0.0518 0.277   0.324   0.0755
-4 0.241  0.0906 0.0625 0      0.226  0.0851 0.250  0.103  0.238   0.273   0.0645
-5 0.0690 0.250  0.257  0.226  0      0.251  0.0820 0.281  0.0259  0.0957  0.255
-# ℹ 322 more variables: dist_12 &lt;dbl&gt;, dist_13 &lt;dbl&gt;, dist_14 &lt;dbl&gt;,
-#   dist_15 &lt;dbl&gt;, dist_16 &lt;dbl&gt;, dist_17 &lt;dbl&gt;, dist_18 &lt;dbl&gt;, dist_19 &lt;dbl&gt;,
-#   dist_20 &lt;dbl&gt;, dist_21 &lt;dbl&gt;, dist_22 &lt;dbl&gt;, dist_23 &lt;dbl&gt;, dist_24 &lt;dbl&gt;,
-#   dist_25 &lt;dbl&gt;, dist_26 &lt;dbl&gt;, dist_27 &lt;dbl&gt;, dist_28 &lt;dbl&gt;, dist_29 &lt;dbl&gt;,
-#   dist_30 &lt;dbl&gt;, dist_31 &lt;dbl&gt;, dist_32 &lt;dbl&gt;, dist_33 &lt;dbl&gt;, dist_34 &lt;dbl&gt;,
-#   dist_35 &lt;dbl&gt;, dist_36 &lt;dbl&gt;, dist_37 &lt;dbl&gt;, dist_38 &lt;dbl&gt;, dist_39 &lt;dbl&gt;,
-#   dist_40 &lt;dbl&gt;, dist_41 &lt;dbl&gt;, dist_42 &lt;dbl&gt;, dist_43 &lt;dbl&gt;, …</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="12"><h2 data-number="12" id="euclidean-distances-in-recipes">
-<span class="header-section-number">12</span> Euclidean distances in recipes<a class="anchor" aria-label="anchor" href="#euclidean-distances-in-recipes"></a>
-</h2>
-<p>The <code>"euclidean"</code> preset can also be used inside a recipe. Categorical predictors are one-hot encoded internally before the Euclidean distance is computed.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rec_euclidean</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="va">species</span> <span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
-<span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    preset <span class="op">=</span> <span class="st">"euclidean"</span>,</span>
-<span>    output <span class="op">=</span> <span class="st">"distance_to_training"</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="va">rec_euclidean_prep</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/prep.html" class="external-link">prep</a></span><span class="op">(</span><span class="va">rec_euclidean</span>, training <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">baked_euclidean</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/bake.html" class="external-link">bake</a></span><span class="op">(</span><span class="va">rec_euclidean_prep</span>, new_data <span class="op">=</span> <span class="va">penguins_small</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">baked_euclidean</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5 × 334
-  species dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
-  &lt;fct&gt;    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
-1 Adelie    0     2.92   3.09   3.02    1.17  2.87    1.59  2.98   1.46     2.07
-2 Adelie    2.92  0      0.997  1.28    3.28  0.477   3.29  0.856  3.44     3.69
-3 Adelie    3.09  0.997  0      0.975   3.18  1.14    3.44  0.963  3.36     3.69
-4 Adelie    3.02  1.28   0.975  0       2.96  1.23    3.25  1.45   3.04     3.24
-5 Adelie    1.17  3.28   3.18   2.96    0     3.23    1.42  3.32   0.386    1.41
-# ℹ 323 more variables: dist_11 &lt;dbl&gt;, dist_12 &lt;dbl&gt;, dist_13 &lt;dbl&gt;,
-#   dist_14 &lt;dbl&gt;, dist_15 &lt;dbl&gt;, dist_16 &lt;dbl&gt;, dist_17 &lt;dbl&gt;, dist_18 &lt;dbl&gt;,
-#   dist_19 &lt;dbl&gt;, dist_20 &lt;dbl&gt;, dist_21 &lt;dbl&gt;, dist_22 &lt;dbl&gt;, dist_23 &lt;dbl&gt;,
-#   dist_24 &lt;dbl&gt;, dist_25 &lt;dbl&gt;, dist_26 &lt;dbl&gt;, dist_27 &lt;dbl&gt;, dist_28 &lt;dbl&gt;,
-#   dist_29 &lt;dbl&gt;, dist_30 &lt;dbl&gt;, dist_31 &lt;dbl&gt;, dist_32 &lt;dbl&gt;, dist_33 &lt;dbl&gt;,
-#   dist_34 &lt;dbl&gt;, dist_35 &lt;dbl&gt;, dist_36 &lt;dbl&gt;, dist_37 &lt;dbl&gt;, dist_38 &lt;dbl&gt;,
-#   dist_39 &lt;dbl&gt;, dist_40 &lt;dbl&gt;, dist_41 &lt;dbl&gt;, dist_42 &lt;dbl&gt;, …</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="13"><h2 data-number="13" id="distance-based-nearest-neighbour-prediction">
-<span class="header-section-number">13</span> Distance-based nearest-neighbour prediction<a class="anchor" aria-label="anchor" href="#distance-based-nearest-neighbour-prediction"></a>
-</h2>
-<p>The distance representation produced by <code><a href="../reference/step_mdist.html">step_mdist()</a></code> can be used in downstream supervised learning workflows.</p>
-<p>Here we illustrate a nearest-neighbour classifier using the distance-to-training representation. The recipe first converts the original mixed-type predictors into distances from each observation to the training observations. The model is then tuned over the number of neighbours.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidymodels.tidymodels.org" class="external-link">tidymodels</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">penguin_split</span> <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/initial_split.html" class="external-link">initial_split</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  prop <span class="op">=</span> <span class="fl">0.75</span>,</span>
-<span>  strata <span class="op">=</span> <span class="va">species</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">penguin_train</span> <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/initial_split.html" class="external-link">training</a></span><span class="op">(</span><span class="va">penguin_split</span><span class="op">)</span></span>
-<span><span class="va">penguin_test</span>  <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/initial_split.html" class="external-link">testing</a></span><span class="op">(</span><span class="va">penguin_split</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">penguin_folds</span> <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/vfold_cv.html" class="external-link">vfold_cv</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguin_train</span>,</span>
-<span>  v <span class="op">=</span> <span class="fl">5</span>,</span>
-<span>  strata <span class="op">=</span> <span class="va">species</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb42"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rec_knn</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="va">species</span> <span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguin_train</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
-<span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
-<span>    output <span class="op">=</span> <span class="st">"distance_to_training"</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb43"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">knn_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nearest_neighbor_dist.html">nearest_neighbor_dist</a></span><span class="op">(</span></span>
-<span>  neighbors <span class="op">=</span> <span class="fu">tune</span><span class="fu">::</span><span class="fu"><a href="https://hardhat.tidymodels.org/reference/tune.html" class="external-link">tune</a></span><span class="op">(</span><span class="op">)</span></span>
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  cluster <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">pam_direct</span><span class="op">$</span><span class="va">clustering</span><span class="op">)</span>,</span>
+<span>  species <span class="op">=</span> <span class="va">penguins_small</span><span class="op">$</span><span class="va">species</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">parsnip</span><span class="fu">::</span><span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_args.html" class="external-link">set_mode</a></span><span class="op">(</span><span class="st">"classification"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb44"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">knn_wf</span> <span class="op">&lt;-</span> <span class="fu">workflows</span><span class="fu">::</span><span class="fu"><a href="https://workflows.tidymodels.org/reference/workflow.html" class="external-link">workflow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">workflows</span><span class="fu">::</span><span class="fu"><a href="https://workflows.tidymodels.org/reference/add_recipe.html" class="external-link">add_recipe</a></span><span class="op">(</span><span class="va">rec_knn</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">workflows</span><span class="fu">::</span><span class="fu"><a href="https://workflows.tidymodels.org/reference/add_model.html" class="external-link">add_model</a></span><span class="op">(</span><span class="va">knn_spec</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">knn_grid</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
-<span>  neighbors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span>, <span class="fl">9</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">knn_res</span> <span class="op">&lt;-</span> <span class="fu">tune</span><span class="fu">::</span><span class="fu"><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid</a></span><span class="op">(</span></span>
-<span>  <span class="va">knn_wf</span>,</span>
-<span>  resamples <span class="op">=</span> <span class="va">penguin_folds</span>,</span>
-<span>  grid <span class="op">=</span> <span class="va">knn_grid</span>,</span>
-<span>  metrics <span class="op">=</span> <span class="fu">yardstick</span><span class="fu">::</span><span class="fu"><a href="https://yardstick.tidymodels.org/reference/metric_set.html" class="external-link">metric_set</a></span><span class="op">(</span><span class="va">accuracy</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">knn_res</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">tune</span><span class="fu">::</span><span class="fu"><a href="https://tune.tidymodels.org/reference/collect_predictions.html" class="external-link">collect_metrics</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">cluster</span>, <span class="va">species</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5 × 7
-  neighbors .metric  .estimator  mean     n std_err .config
-      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;
-1         1 accuracy multiclass 0.996     5 0.00392 pre0_mod1_post0
-2         3 accuracy multiclass 1         5 0       pre0_mod2_post0
-3         5 accuracy multiclass 0.992     5 0.00485 pre0_mod3_post0
-4         7 accuracy multiclass 0.992     5 0.00485 pre0_mod4_post0
-5         9 accuracy multiclass 0.988     5 0.00798 pre0_mod5_post0</code></pre>
+<pre><code># A tibble: 6 × 3
+  cluster species       n
+  &lt;fct&gt;   &lt;fct&gt;     &lt;int&gt;
+1 1       Adelie       65
+2 1       Chinstrap    34
+3 2       Adelie       73
+4 2       Chinstrap    34
+5 3       Adelie        8
+6 3       Gentoo      119</code></pre>
 </div>
 </div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb46"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">best_knn</span> <span class="op">&lt;-</span> <span class="va">knn_res</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">tune</span><span class="fu">::</span><span class="fu"><a href="https://tune.tidymodels.org/reference/show_best.html" class="external-link">select_best</a></span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"accuracy"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">best_knn</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 1 × 2
-  neighbors .config
-      &lt;dbl&gt; &lt;chr&gt;
-1         3 pre0_mod2_post0</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb48"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">final_knn_wf</span> <span class="op">&lt;-</span> <span class="va">knn_wf</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">tune</span><span class="fu">::</span><span class="fu"><a href="https://tune.tidymodels.org/reference/finalize_model.html" class="external-link">finalize_workflow</a></span><span class="op">(</span><span class="va">best_knn</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">final_knn_fit</span> <span class="op">&lt;-</span> <span class="va">final_knn_wf</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">parsnip</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">penguin_train</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">knn_pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">final_knn_fit</span>, new_data <span class="op">=</span> <span class="va">penguin_test</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span><span class="va">penguin_test</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">yardstick</span><span class="fu">::</span><span class="fu"><a href="https://yardstick.tidymodels.org/reference/accuracy.html" class="external-link">accuracy</a></span><span class="op">(</span><span class="va">knn_pred</span>, truth <span class="op">=</span> <span class="va">species</span>, estimate <span class="op">=</span> <span class="va">.pred_class</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 1 × 3
-  .metric  .estimator .estimate
-  &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
-1 accuracy multiclass     0.988</code></pre>
-</div>
-</div>
-<p>This example uses <code>preset = "gower"</code>, but the same workflow can be used with any <code><a href="../reference/mdist.html">mdist()</a></code> preset or with a custom specification based on <code>method_cat</code>, <code>method_num</code>, and <code>commensurable</code>.</p>
-</section><section class="level2" data-number="14"><h2 data-number="14" id="distance-based-pam-clustering">
-<span class="header-section-number">14</span> Distance-based PAM clustering<a class="anchor" aria-label="anchor" href="#distance-based-pam-clustering"></a>
+<p>The species labels are used here only to interpret an example whose classes are known. In an ordinary unsupervised analysis, cluster validation should instead rely on stability, separation, and subject-matter interpretation.</p>
+</section><section class="level2" data-number="4"><h2 data-number="4" id="a-recipe-for-pairwise-dissimilarities">
+<span class="header-section-number">4</span> A recipe for pairwise dissimilarities<a class="anchor" aria-label="anchor" href="#a-recipe-for-pairwise-dissimilarities"></a>
 </h2>
-<p>The same dissimilarities can be used for clustering. For clustering workflows, <code><a href="../reference/step_mdist.html">step_mdist()</a></code> can return the within-training pairwise dissimilarity matrix by setting <code>output = "pairwise"</code>.</p>
+<p>The integrated workflow begins with a recipe. For clustering, <code>output = "pairwise"</code> tells <code><a href="../reference/step_mdist.html">step_mdist()</a></code> to replace the original predictors with the square within-training dissimilarity matrix.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">penguins_predictors</span> <span class="op">&lt;-</span> <span class="va">penguins_small</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">rec_pam</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguins_predictors</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gower_pairwise_recipe</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span></span>
+<span>  <span class="op">~</span> <span class="va">.</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">penguin_x</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
 <span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
 <span>    output <span class="op">=</span> <span class="st">"pairwise"</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">gower_pairwise_recipe</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Step: mdist
+  role:        predictor
+  trained:     FALSE
+
+  output:      pairwise
+  preset:      gower
+  (arguments handled internally by preset)</code></pre>
 </div>
+</div>
+<p><code>output = "pairwise"</code> is intended for training a clustering model. Baking genuinely new observations in this mode is not supported directly, because new-to-training dissimilarities are rectangular. The fitted clustering models handle that prediction step internally.</p>
+</section><section class="level2" data-number="5"><h2 data-number="5" id="pam-with-pam_dist">
+<span class="header-section-number">5</span> PAM with <code>pam_dist()</code>
+<a class="anchor" aria-label="anchor" href="#pam-with-pam_dist"></a>
+</h2>
+<p><code><a href="../reference/pam_dist.html">pam_dist()</a></code> defines the clustering specification. The model is fitted with the recipe and the original predictor data.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pam_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pam_dist.html">pam_dist</a></span><span class="op">(</span></span>
-<span>  num_clusters <span class="op">=</span> <span class="fl">3</span></span>
-<span><span class="op">)</span></span>
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pam_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pam_dist.html">pam_dist</a></span><span class="op">(</span>num_clusters <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">pam_fit</span> <span class="op">&lt;-</span> <span class="fu">generics</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span></span>
 <span>  <span class="va">pam_spec</span>,</span>
-<span>  recipe <span class="op">=</span> <span class="va">rec_pam</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">penguins_predictors</span></span>
+<span>  recipe <span class="op">=</span> <span class="va">gower_pairwise_recipe</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">penguin_x</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">pam_pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">pam_fit</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pam_pred</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">pam_fit</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 10 × 1
-   .pred_cluster
-   &lt;fct&gt;
- 1 1
- 2 2
- 3 2
- 4 2
- 5 1
- 6 2
- 7 1
- 8 2
- 9 1
-10 1            </code></pre>
+<pre><code>pam_dist fit
+  num_clusters : 3
+  n_obs        : 333
+  medoid idx   : 37, 129, 172 </code></pre>
 </div>
 </div>
-<p>Since the true species labels are available in this example, we can inspect the relationship between the PAM clusters and the species labels.</p>
+<p>Calling <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> without <code>new_data</code> returns the training assignments.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb53"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pam_pred</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span><span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pam_assignments</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">pam_fit</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span></span>
+<span>    <span class="va">penguins_small</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">pam_assignments</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.pred_cluster</span>, <span class="va">species</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 6 × 3
@@ -764,340 +304,246 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 6 3             Gentoo      119</code></pre>
 </div>
 </div>
-</section><section class="level2" data-number="15"><h2 data-number="15" id="distance-based-spectral-clustering">
-<span class="header-section-number">15</span> Distance-based spectral clustering<a class="anchor" aria-label="anchor" href="#distance-based-spectral-clustering"></a>
-</h2>
-<p>Spectral clustering can be used in the same way, by combining a pairwise distance recipe with the corresponding model specification.</p>
+<p>Distances to the fitted medoids are also available.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb55"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rec_spectral</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguins_predictors</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">pam_fit</span>, type <span class="op">=</span> <span class="st">"dist"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 3
+  medoid_1 medoid_2 medoid_3
+     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+1    0.229    0.393    0.439
+2    0.391    0.199    0.561
+3    0.374    0.219    0.568
+4    0.403    0.227    0.612
+5    0.245    0.419    0.455
+6    0.409    0.202    0.595</code></pre>
+</div>
+</div>
+<section class="level3" data-number="5.1"><h3 data-number="5.1" id="assigning-new-observations">
+<span class="header-section-number">5.1</span> Assigning new observations<a class="anchor" aria-label="anchor" href="#assigning-new-observations"></a>
+</h3>
+<p>For a genuine train/test illustration, we fit PAM on one subset and assign each held-out observation to its nearest fitted medoid.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2026</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cluster_split</span> <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/initial_split.html" class="external-link">initial_split</a></span><span class="op">(</span></span>
+<span>  <span class="va">penguins_small</span>,</span>
+<span>  prop <span class="op">=</span> <span class="fl">0.8</span>,</span>
+<span>  strata <span class="op">=</span> <span class="va">species</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cluster_train</span> <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/initial_split.html" class="external-link">training</a></span><span class="op">(</span><span class="va">cluster_split</span><span class="op">)</span></span>
+<span><span class="va">cluster_test</span> <span class="op">&lt;-</span> <span class="fu">rsample</span><span class="fu">::</span><span class="fu"><a href="https://rsample.tidymodels.org/reference/initial_split.html" class="external-link">testing</a></span><span class="op">(</span><span class="va">cluster_split</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cluster_train_x</span> <span class="op">&lt;-</span> <span class="va">cluster_train</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cluster_test_x</span> <span class="op">&lt;-</span> <span class="va">cluster_test</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">train_pairwise_recipe</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span></span>
+<span>  <span class="op">~</span> <span class="va">.</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">cluster_train_x</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
 <span>    <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
 <span>    output <span class="op">=</span> <span class="st">"pairwise"</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb56"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">spectral_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spectral_dist.html">spectral_dist</a></span><span class="op">(</span></span>
-<span>  num_clusters <span class="op">=</span> <span class="fl">3</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">pam_train_fit</span> <span class="op">&lt;-</span> <span class="fu">generics</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/pam_dist.html">pam_dist</a></span><span class="op">(</span>num_clusters <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  recipe <span class="op">=</span> <span class="va">train_pairwise_recipe</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">cluster_train_x</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">spectral_fit</span> <span class="op">&lt;-</span> <span class="fu">generics</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span></span>
-<span>  <span class="va">spectral_spec</span>,</span>
-<span>  recipe <span class="op">=</span> <span class="va">rec_spectral</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">penguins_predictors</span></span>
+<span><span class="va">pam_test_assignments</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span></span>
+<span>  <span class="va">pam_train_fit</span>,</span>
+<span>  new_data <span class="op">=</span> <span class="va">cluster_test_x</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">spectral_pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">spectral_fit</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">spectral_pred</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 10 × 1
-   .pred_cluster
-   &lt;fct&gt;
- 1 2
- 2 1
- 3 1
- 4 1
- 5 2
- 6 1
- 7 2
- 8 1
- 9 2
-10 2            </code></pre>
-</div>
-</div>
-<p>Again, because this is an illustrative labelled data set, we can compare the resulting clusters with the observed species labels.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb58"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">spectral_pred</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span><span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="va">pam_test_assignments</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span><span class="va">cluster_test</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.pred_cluster</span>, <span class="va">species</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 5 × 3
   .pred_cluster species       n
   &lt;fct&gt;         &lt;fct&gt;     &lt;int&gt;
-1 1             Adelie       73
-2 1             Chinstrap    34
-3 2             Adelie       73
-4 2             Chinstrap    34
-5 3             Gentoo      119</code></pre>
+1 1             Adelie       17
+2 1             Chinstrap     6
+3 2             Adelie       13
+4 2             Chinstrap     8
+5 3             Gentoo       24</code></pre>
 </div>
 </div>
-</section><section class="level2" data-number="16"><h2 data-number="16" id="a-small-benchmark-example">
-<span class="header-section-number">16</span> A small benchmark example<a class="anchor" aria-label="anchor" href="#a-small-benchmark-example"></a>
+<p>The fitted <code><a href="../reference/step_mdist.html">step_mdist()</a></code> preprocessor is reused, so held-out observations are compared with the training observations on the training scale.</p>
+</section></section><section class="level2" data-number="6"><h2 data-number="6" id="spectral-clustering-with-spectral_dist">
+<span class="header-section-number">6</span> Spectral clustering with <code>spectral_dist()</code>
+<a class="anchor" aria-label="anchor" href="#spectral-clustering-with-spectral_dist"></a>
 </h2>
-<p>The function <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> applies <code><a href="../reference/mdist.html">mdist()</a></code> repeatedly over a grid of distance specifications. This is useful for comparing alternative presets and custom specifications in a systematic way.</p>
-<p>For a small example, we restrict the grid to a few specifications.</p>
+<p>Spectral clustering converts dissimilarities into a Gaussian affinity, constructs a spectral embedding, and partitions that embedding with k-means. The same pairwise recipe can be reused.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb60"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">small_specs</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span>mode <span class="op">=</span> <span class="st">"presets_only"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">preset</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gower"</span>, <span class="st">"u_dep"</span>, <span class="st">"u_indep"</span>, <span class="st">"euclidean"</span><span class="op">)</span><span class="op">)</span>,</span>
+<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2026</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
-<span>    mode <span class="op">=</span> <span class="st">"full"</span>,</span>
-<span>    method_cat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"matching"</span>, <span class="st">"tvd"</span><span class="op">)</span>,</span>
-<span>    method_num <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"std"</span>, <span class="st">"robust"</span><span class="op">)</span>,</span>
-<span>    commensurable <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">spec_type</span> <span class="op">==</span> <span class="st">"component"</span><span class="op">)</span></span>
+<span><span class="va">spectral_spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spectral_dist.html">spectral_dist</a></span><span class="op">(</span></span>
+<span>  num_clusters <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nstart <span class="op">=</span> <span class="fl">50</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">small_specs</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 12 × 5
-   spec_type preset    method_cat method_num commensurable
-   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
- 1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA
- 2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA
- 3 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA
- 4 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
- 5 component custom    matching   robust     FALSE
- 6 component custom    matching   robust     TRUE
- 7 component custom    matching   std        FALSE
- 8 component custom    matching   std        TRUE
- 9 component custom    tvd        robust     FALSE
-10 component custom    tvd        robust     TRUE
-11 component custom    tvd        std        FALSE
-12 component custom    tvd        std        TRUE         </code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb62"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bench_small</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
-<span>  specs <span class="op">=</span> <span class="va">small_specs</span></span>
+<span><span class="va">spectral_fit</span> <span class="op">&lt;-</span> <span class="fu">generics</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span></span>
+<span>  <span class="va">spectral_spec</span>,</span>
+<span>  recipe <span class="op">=</span> <span class="va">gower_pairwise_recipe</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">penguin_x</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">bench_small</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">spec_type</span>,</span>
-<span>    <span class="va">preset</span>,</span>
-<span>    <span class="va">method_cat</span>,</span>
-<span>    <span class="va">method_num</span>,</span>
-<span>    <span class="va">commensurable</span>,</span>
-<span>    <span class="va">ok</span>,</span>
-<span>    <span class="va">error</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
+<span><span class="va">spectral_fit</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 12 × 7
-   spec_type preset    method_cat method_num commensurable ok    error
-   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;lgl&gt; &lt;chr&gt;
- 1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 3 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 4 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 5 component custom    matching   robust     FALSE         TRUE  &lt;NA&gt;
- 6 component custom    matching   robust     TRUE          TRUE  &lt;NA&gt;
- 7 component custom    matching   std        FALSE         TRUE  &lt;NA&gt;
- 8 component custom    matching   std        TRUE          TRUE  &lt;NA&gt;
- 9 component custom    tvd        robust     FALSE         TRUE  &lt;NA&gt;
-10 component custom    tvd        robust     TRUE          TRUE  &lt;NA&gt;
-11 component custom    tvd        std        FALSE         TRUE  &lt;NA&gt;
-12 component custom    tvd        std        TRUE          TRUE  &lt;NA&gt; </code></pre>
+<pre><code>spectral_dist fit
+  num_clusters : 3
+  n_obs        : 333
+  sigma        : 0.3651142
+  nstart       : 50 </code></pre>
 </div>
 </div>
-<p>The <code>ok</code> column reports whether the distance computation completed successfully. Failed specifications are kept in the output, with the corresponding error message stored in <code>error</code>.</p>
+<p>With <code>sigma = NULL</code>, the bandwidth is chosen from the median pairwise dissimilarity. Training assignments are returned by the default prediction type.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb64"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bench_small</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">ok</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 1 × 2
-  ok        n
-  &lt;lgl&gt; &lt;int&gt;
-1 TRUE     12</code></pre>
-</div>
-</div>
-<p>When all specifications are successful, the resulting <code>MDist</code> objects are stored in the <code>result</code> list-column and can be inspected or reused.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb66"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bench_small</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">ok</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">spec_type</span>, <span class="va">preset</span>, <span class="va">method_cat</span>, <span class="va">method_num</span>, <span class="va">commensurable</span>, <span class="va">result</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 3 × 6
-  spec_type preset    method_cat method_num commensurable result
-  &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;list&gt;
-1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA            &lt;MDist&gt;
-2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA            &lt;MDist&gt;
-3 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA            &lt;MDist&gt;</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="17"><h2 data-number="17" id="leave-one-variable-out-diagnostics">
-<span class="header-section-number">17</span> Leave-one-variable-out diagnostics<a class="anchor" aria-label="anchor" href="#leave-one-variable-out-diagnostics"></a>
-</h2>
-<p><code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> computes leave-one-variable-out diagnostics for distance-based variable importance.</p>
-<p>It first computes the full dissimilarity matrix. Then it removes one predictor at a time, recomputes the dissimilarity matrix, and compares the reduced matrix with the full one.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb68"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
-<span>  response_used <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"gower"</span></span>
-<span><span class="op">)</span></span>
+<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spectral_assignments</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">spectral_fit</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span></span>
+<span>    <span class="va">penguins_small</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="va">lovo_gower</span></span></code></pre></div>
+<span><span class="va">spectral_assignments</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">.pred_cluster</span>, <span class="va">species</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>MDistLOVO object
-  preset : gower
-  dims   : 2
-  n_obs  : 333
-  response used : FALSE
-  top vars:
-# A tibble: 5 × 4
-  variable          variable_type relative_distance mad_importance
-  &lt;chr&gt;             &lt;chr&gt;                     &lt;dbl&gt;          &lt;dbl&gt;
-1 island            categorical               0.292         0.0853
-2 sex               categorical               0.277         0.0809
-3 bill_length_mm    numeric                   0.123         0.0359
-4 bill_depth_mm     numeric                   0.107         0.0314
-5 flipper_length_mm numeric                   0.102         0.0297</code></pre>
+<pre><code># A tibble: 5 × 3
+  .pred_cluster species       n
+  &lt;fct&gt;         &lt;fct&gt;     &lt;int&gt;
+1 1             Gentoo      119
+2 2             Adelie       73
+3 2             Chinstrap    34
+4 3             Adelie       73
+5 3             Chinstrap    34</code></pre>
 </div>
 </div>
-<p>The result can be summarized.</p>
+<p>The spectral coordinates can be extracted with <code>type = "embed"</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb70"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">lovo_gower</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spectral_embedding</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span></span>
+<span>  <span class="va">spectral_fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"embed"</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span></span>
+<span>    <span class="va">spectral_assignments</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.pred_cluster</span>, <span class="va">species</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">spectral_embedding</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Summary of MDistLOVO
-  preset : gower
-  dims   : 2
-  n_obs  : 333
-  response used : FALSE
-
-Relative distance:
-  range [0.1003, 0.2916], mean 0.1667
-
-Top by relative distance:
-# A tibble: 5 × 3
-  variable          variable_type relative_distance
-  &lt;chr&gt;             &lt;chr&gt;                     &lt;dbl&gt;
-1 island            categorical               0.292
-2 sex               categorical               0.277
-3 bill_length_mm    numeric                   0.123
-4 bill_depth_mm     numeric                   0.107
-5 flipper_length_mm numeric                   0.102</code></pre>
+<pre><code># A tibble: 6 × 5
+   dim_1 dim_2  dim_3 .pred_cluster species
+   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;fct&gt;         &lt;fct&gt;
+1 -0.608 0.432 -0.666 2             Adelie
+2 -0.599 0.620  0.507 3             Adelie
+3 -0.600 0.641  0.479 3             Adelie
+4 -0.577 0.710  0.403 3             Adelie
+5 -0.570 0.413 -0.710 2             Adelie
+6 -0.566 0.666  0.486 3             Adelie </code></pre>
 </div>
 </div>
-<p>The relative contribution of each variable can be visualized with <code>autoplot()</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb72"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"relative_distance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spectral_embedding</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span></span>
+<span>    <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span></span>
+<span>      x <span class="op">=</span> <span class="va">dim_1</span>,</span>
+<span>      y <span class="op">=</span> <span class="va">dim_2</span>,</span>
+<span>      colour <span class="op">=</span> <span class="va">.pred_cluster</span>,</span>
+<span>      shape <span class="op">=</span> <span class="va">species</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.75</span>, size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>    x <span class="op">=</span> <span class="st">"Spectral dimension 1"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"Spectral dimension 2"</span>,</span>
+<span>    colour <span class="op">=</span> <span class="st">"Cluster"</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="clustering_workflows_files/figure-html/unnamed-chunk-38-1.png" width="672"></p>
+<figure><p><img src="clustering_workflows_files/figure-html/plot-spectral-embedding-1.png" alt="Scatter plot of the first two spectral coordinates, coloured by cluster and shaped by penguin species." width="672"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>When <code>response_used = FALSE</code>, the response column is removed before computing distances. When <code>response_used = TRUE</code>, the response can be used by response-aware distance specifications, but it is still not treated as a predictor in the leave-one-variable-out loop.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb73"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
-<span>  response_used <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"u_dep"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">lovo_response</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>MDistLOVO object
-  preset : u_dep
-  dims   : 2
-  n_obs  : 333
-  response used : TRUE
-  top vars:
-# A tibble: 5 × 4
-  variable          variable_type relative_distance mad_importance
-  &lt;chr&gt;             &lt;chr&gt;                     &lt;dbl&gt;          &lt;dbl&gt;
-1 sex               categorical               0.171           1.04
-2 bill_length_mm    numeric                   0.166           1.01
-3 bill_depth_mm     numeric                   0.166           1.00
-4 body_mass_g       numeric                   0.166           1.00
-5 flipper_length_mm numeric                   0.166           1.00</code></pre>
-</div>
-</div>
-</section><section class="level2" data-number="18"><h2 data-number="18" id="inspecting-method-specifications">
-<span class="header-section-number">18</span> Inspecting method specifications<a class="anchor" aria-label="anchor" href="#inspecting-method-specifications"></a>
+</section><section class="level2" data-number="7"><h2 data-number="7" id="comparing-distance-choices">
+<span class="header-section-number">7</span> Comparing distance choices<a class="anchor" aria-label="anchor" href="#comparing-distance-choices"></a>
 </h2>
-<p><code><a href="../reference/all_dist_method_specs.html">all_dist_method_specs()</a></code> returns a table of distance specifications that can be used for benchmarking or sensitivity analysis.</p>
+<p>Changing the dissimilarity can change the clustering even when the partitioning method and number of clusters remain fixed. A compact comparison can reuse the same workflow with several presets.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb75"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span><span class="op">)</span></span>
+<div class="sourceCode cell-code" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_pam_preset</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">preset</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">rec</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span><span class="op">~</span> <span class="va">.</span>, data <span class="op">=</span> <span class="va">penguin_x</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/step_mdist.html">step_mdist</a></span><span class="op">(</span></span>
+<span>      <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      preset <span class="op">=</span> <span class="va">preset</span>,</span>
+<span>      output <span class="op">=</span> <span class="st">"pairwise"</span></span>
+<span>    <span class="op">)</span></span>
 <span></span>
-<span><span class="va">specs</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">spec_type</span>,</span>
-<span>    <span class="va">preset</span>,</span>
-<span>    <span class="va">method_cat</span>,</span>
-<span>    <span class="va">method_num</span>,</span>
-<span>    <span class="va">commensurable</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 10 × 5
-   spec_type preset    method_cat method_num commensurable
-   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
- 1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA
- 2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA
- 3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA
- 4 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA
- 5 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
- 6 preset    u_mix     &lt;NA&gt;       &lt;NA&gt;       NA
- 7 preset    dkss      &lt;NA&gt;       &lt;NA&gt;       NA
- 8 preset    gudmm     &lt;NA&gt;       &lt;NA&gt;       NA
- 9 preset    mod_gower &lt;NA&gt;       &lt;NA&gt;       NA
-10 preset    custom    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
-</div>
-</div>
-<p>The same table can be passed to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb77"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
-<span>  <span class="va">penguins_small</span>,</span>
-<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
-<span>  specs <span class="op">=</span> <span class="va">specs</span></span>
-<span><span class="op">)</span></span>
+<span>  <span class="fu">generics</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="../reference/pam_dist.html">pam_dist</a></span><span class="op">(</span>num_clusters <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>    recipe <span class="op">=</span> <span class="va">rec</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">penguin_x</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">bench</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">spec_type</span>,</span>
-<span>    <span class="va">preset</span>,</span>
-<span>    <span class="va">method_cat</span>,</span>
-<span>    <span class="va">method_num</span>,</span>
-<span>    <span class="va">commensurable</span>,</span>
-<span>    <span class="va">ok</span>,</span>
-<span>    <span class="va">error</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">pam_comparison</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  preset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gower"</span>, <span class="st">"hl"</span>, <span class="st">"euclidean"</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    fit <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map</a></span><span class="op">(</span><span class="va">preset</span>, <span class="va">fit_pam_preset</span><span class="op">)</span>,</span>
+<span>    assignments <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">predict</span><span class="op">)</span>,</span>
+<span>    adjusted_rand <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dbl</a></span><span class="op">(</span></span>
+<span>      <span class="va">assignments</span>,</span>
+<span>      <span class="op">~</span> <span class="fu">aricode</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/aricode/man/ARI.html" class="external-link">ARI</a></span><span class="op">(</span></span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">penguins_small</span><span class="op">$</span><span class="va">species</span><span class="op">)</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">.x</span><span class="op">$</span><span class="va">.pred_cluster</span><span class="op">)</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">pam_comparison</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">preset</span>, <span class="va">adjusted_rand</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 10 × 7
-   spec_type preset    method_cat method_num commensurable ok    error
-   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;lgl&gt; &lt;chr&gt;
- 1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 4 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 5 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 6 preset    u_mix     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 7 preset    dkss      &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 8 preset    gudmm     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
- 9 preset    mod_gower &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
-10 preset    custom    &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt; </code></pre>
+<pre><code># A tibble: 3 × 2
+  preset    adjusted_rand
+  &lt;chr&gt;             &lt;dbl&gt;
+1 gower             0.496
+2 hl                0.545
+3 euclidean         0.530</code></pre>
 </div>
 </div>
-</section><script id="quarto-html-after-body" type="application/javascript">
+<p>The adjusted Rand index is possible here because a known external label is available. It should not be interpreted as an internal clustering criterion, and it should not be optimised against labels that are meant to remain hidden. For a broader, auditable set of distance specifications, see the <a href="benchmarking_distance_choices.html">benchmarking guide</a>.</p>
+</section><section class="level2" data-number="8"><h2 data-number="8" id="practical-guidance">
+<span class="header-section-number">8</span> Practical guidance<a class="anchor" aria-label="anchor" href="#practical-guidance"></a>
+</h2>
+<ul>
+<li>Use <code>output = "pairwise"</code> for training-only clustering representations.</li>
+<li>Keep outcomes or reference labels outside the clustering recipe unless a deliberately response-aware analysis is intended.</li>
+<li>Treat cluster labels as nominal identifiers: cluster 1 is not inherently smaller or better than cluster 2.</li>
+<li>Set the random seed when fitting spectral clustering.</li>
+<li>Compare plausible distance definitions as part of the clustering sensitivity analysis, not as an afterthought.</li>
+<li>For new observations, call <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> on the fitted <code>pam_dist</code> or <code>spectral_dist</code> object so that the training preprocessor is reused.</li>
+</ul></section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);

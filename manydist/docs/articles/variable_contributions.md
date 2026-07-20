@@ -132,7 +132,7 @@ distance matrix.
 ## 4 Visualising variable contributions
 
 The relative contribution of each variable can be visualized with
-`autoplot()`.
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
 
 ``` r
 
@@ -497,9 +497,10 @@ summary(lovo_compare)
     3 custom_matc…  1.000   1.00     1.00     0.167   0.167    0.167   0.966   0.995
     # ℹ 4 more variables: mds_mean <dbl>, ac_min <dbl>, ac_max <dbl>, ac_mean <dbl>
 
-The comparison object also has an `autoplot()` method. This makes it
-possible to compare the contribution profiles induced by different
-distance specifications.
+The comparison object also has an
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+method. This makes it possible to compare the contribution profiles
+induced by different distance specifications.
 
 ``` r
 

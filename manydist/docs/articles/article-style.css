@@ -18,10 +18,10 @@ nav#TOC::before,
 nav#toc::before {
   content: "";
   display: block;
-  background-image: url("manydist_logo.png"), url("../manydist_logo.png");
-  background-position: left center, left center;
-  background-size: contain, contain;
-  background-repeat: no-repeat, no-repeat;
+  background-image: url("manydist_logo.png");
+  background-position: left center;
+  background-size: contain;
+  background-repeat: no-repeat;
   width: 140px;
   height: 140px;
   margin: 1rem 0 1.25rem 0;

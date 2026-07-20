@@ -2,32 +2,25 @@
 
 ## 1 Overview
 
-`manydist` provides tools for constructing dissimilarities for
-numerical, categorical, and mixed-type data.
+Distance-based clustering separates two decisions:
 
-The main function is
-[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
-It computes a dissimilarity object that can be used in distance-based
-learning workflows, including clustering, nearest-neighbour prediction,
-and diagnostic analyses.
+1.  how observations are compared;
+2.  how the resulting dissimilarities are partitioned.
 
-The package supports both preset specifications and custom
-specifications. In the current interface:
+This separation is particularly useful for mixed-type data. `manydist`
+constructs the dissimilarity, while clustering methods such as
+partitioning around medoids (PAM) and spectral clustering operate on
+that common representation.
 
-- `method_cat` controls the categorical dissimilarity;
-- `method_num` controls the preprocessing of numerical variables;
-- `commensurable` controls whether variable-wise contributions are
-  placed on a comparable scale;
-- `preset` selects a predefined distance specification.
+This guide covers both direct use of an `MDist` object and the
+integrated recipe interface:
 
-The numerical metric is no longer a user-facing argument. For most
-presets, numerical variables are compared through Manhattan-type
-contributions. The exceptions are presets such as `"hl"` and
-`"euclidean"`, where the Euclidean structure is part of the definition.
-
-The `"euclidean"` preset replaces the former `"euclidean_onehot"` name.
-It computes Euclidean distances after one-hot encoding categorical
-variables.
+- `step_mdist(output = "pairwise")` constructs within-training
+  dissimilarities;
+- [`pam_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/pam_dist.md)
+  fits a PAM clustering;
+- [`spectral_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/spectral_dist.md)
+  fits a spectral clustering and exposes its embedding.
 
 ## 2 Setup
 
@@ -36,41 +29,37 @@ variables.
 library(manydist)
 library(dplyr)
 library(tidyr)
+library(purrr)
+library(ggplot2)
 library(recipes)
 ```
 
-We use the `palmerpenguins` data for illustration.
+We use mixed numerical and categorical predictors from `palmerpenguins`.
+Species is retained only for post-hoc interpretation; it is not used to
+form the clusters.
 
 ``` r
 
-if (requireNamespace("palmerpenguins", quietly = TRUE)) {
-  data("penguins", package = "palmerpenguins")
+penguins_small <- palmerpenguins::penguins |>
+  dplyr::select(
+    species,
+    bill_length_mm,
+    bill_depth_mm,
+    flipper_length_mm,
+    body_mass_g,
+    island,
+    sex
+  ) |>
+  tidyr::drop_na()
 
-  penguins_small <- palmerpenguins::penguins |>
-    dplyr::select(
-      species,
-      bill_length_mm,
-      bill_depth_mm,
-      flipper_length_mm,
-      body_mass_g,
-      island,
-      sex
-    ) |>
-    tidyr::drop_na()
-}
-```
+penguin_x <- penguins_small |>
+  dplyr::select(-species)
 
-The data contain numerical variables, such as bill length and body mass,
-and categorical variables, such as island and sex.
-
-``` r
-
-dplyr::glimpse(penguins_small)
+dplyr::glimpse(penguin_x)
 ```
 
     Rows: 333
-    Columns: 7
-    $ species           <fct> Adelie, Adelie, Adelie, Adelie, Adelie, Adelie, Adel…
+    Columns: 6
     $ bill_length_mm    <dbl> 39.1, 39.5, 40.3, 36.7, 39.3, 38.9, 39.2, 41.1, 38.6…
     $ bill_depth_mm     <dbl> 18.7, 17.4, 18.0, 19.3, 20.6, 17.8, 19.6, 17.6, 21.2…
     $ flipper_length_mm <int> 181, 186, 195, 193, 190, 181, 195, 182, 191, 198, 18…
@@ -78,18 +67,19 @@ dplyr::glimpse(penguins_small)
     $ island            <fct> Torgersen, Torgersen, Torgersen, Torgersen, Torgerse…
     $ sex               <fct> male, female, female, female, male, female, male, fe…
 
-## 3 Computing a mixed-type dissimilarity
+## 3 Starting from an `MDist` object
 
-The simplest way to compute a mixed-type dissimilarity is to use a
-preset.
-
-For example, the `"gower"` preset computes a Gower-type dissimilarity
-for mixed numerical and categorical data.
+The direct workflow is useful when a clustering function already accepts
+a `dist` object. Here,
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
+constructs a Gower dissimilarity and
+[`cluster::pam()`](https://rdrr.io/pkg/cluster/man/pam.html) performs
+the partitioning.
 
 ``` r
 
 d_gower <- mdist(
-  penguins_small |> dplyr::select(-species),
+  penguin_x,
   preset = "gower"
 )
 
@@ -104,681 +94,165 @@ d_gower
       parameters:
         - commensurability adjustment: FALSE
 
-The resulting object stores the dissimilarity matrix and metadata about
-the distance specification.
-
 ``` r
 
-class(d_gower)
-```
-
-    [1] "MDist" "R6"   
-
-The distance matrix can be extracted with `to_dist()`.
-
-``` r
-
-as.matrix(d_gower$to_dist())[1:5, 1:5]
-```
-
-               1          2          3          4          5
-    1 0.00000000 0.21132367 0.25052445 0.24090408 0.06896389
-    2 0.21132367 0.00000000 0.06763994 0.09064582 0.24961473
-    3 0.25052445 0.06763994 0.00000000 0.06252081 0.25695739
-    4 0.24090408 0.09064582 0.06252081 0.00000000 0.22595173
-    5 0.06896389 0.24961473 0.25695739 0.22595173 0.00000000
-
-## 4 Response-aware dissimilarities
-
-Some categorical dissimilarities can use a response variable. When a
-response is supplied to
-[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md),
-it is used for response-aware distance construction and is removed from
-the predictors.
-
-Therefore, in the following example, `species` is used as the response
-and is not also treated as a predictor.
-
-``` r
-
-d_response <- mdist(
-  penguins_small,
-  response = species,
-  preset = "u_dep"
+pam_direct <- cluster::pam(
+  x = d_gower$to_dist(),
+  k = 3,
+  diss = TRUE
 )
 
-d_response
+pam_direct
 ```
 
-    MDist object
-      preset : u_dep
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: tvd
-        - numerical preprocessing: pc_scores
-        - commensurability adjustment: TRUE
+    Medoids:
+         ID
+    [1,] "37"  "37"
+    [2,] "129" "129"
+    [3,] "172" "172"
+    Clustering vector:
+      1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+      1   2   2   2   1   2   1   2   1   1   2   2   1   2   1   2   1   2   1   3
+     21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40
+      2   1   2   2   1   2   1   2   1   2   1   1   2   2   1   2   1   2   1   2
+     41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60
+      1   1   2   1   2   1   2   3   2   1   2   1   2   1   2   3   2   1   2   1
+     61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80
+      2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1
+     81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97  98  99 100
+      1   2   1   2   2   1   2   1   2   1   2   1   2   1   2   3   2   1   2   1
+    101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120
+      2   1   2   3   2   3   2   3   2   3   2   1   2   1   2   1   2   1   2   1
+    121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140
+      2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1
+    141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160
+      1   2   2   1   2   1   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+    161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180
+      3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+    181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200
+      3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+    201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220
+      3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+    221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240
+      3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+    241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260
+      3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3   3
+    261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280
+      3   3   3   3   3   2   1   1   2   1   2   2   1   2   1   2   1   2   1   2
+    281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 300
+      1   1   2   2   1   2   1   2   1   2   1   2   1   2   1   2   1   2   1   1
+    301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320
+      2   2   1   2   1   1   2   1   2   2   1   2   1   1   2   2   1   2   1   2
+    321 322 323 324 325 326 327 328 329 330 331 332 333
+      1   2   1   1   2   1   2   2   1   2   1   1   2
+    Objective function:
+        build      swap
+    0.1740031 0.1418300
 
-The same can be written by passing the response as a character string.
+    Available components:
+    [1] "medoids"    "id.med"     "clustering" "objective"  "isolation"
+    [6] "clusinfo"   "silinfo"    "diss"       "call"      
+
+Cluster numbers have no intrinsic ordering. A contingency table is
+therefore more informative than comparing the numeric cluster labels
+directly.
 
 ``` r
 
-d_response_chr <- mdist(
-  penguins_small,
-  response = "species",
-  preset = "u_dep"
-)
-
-d_response_chr
-```
-
-    MDist object
-      preset : u_dep
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: tvd
-        - numerical preprocessing: pc_scores
-        - commensurability adjustment: TRUE
-
-## 5 Custom distance specifications
-
-Presets are convenient, but users can also define custom specifications.
-
-In a custom specification, `method_cat` controls the categorical
-dissimilarity and `method_num` controls the preprocessing applied to
-numerical variables.
-
-``` r
-
-d_custom <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "custom",
-  method_cat = "matching",
-  method_num = "std",
-  commensurable = TRUE
-)
-
-d_custom
-```
-
-    MDist object
-      preset : custom
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: matching
-        - numerical preprocessing: std
-        - commensurability adjustment: TRUE
-        - number of principal components: 6
-        - inertia threshold: NULL
-
-Here, categorical variables are compared using matching dissimilarities,
-numerical variables are standardized, and variable-wise contributions
-are made commensurable.
-
-A response-aware custom specification can also be used.
-
-``` r
-
-d_custom_response <- mdist(
-  penguins_small,
-  response = species,
-  preset = "custom",
-  method_cat = "tvd",
-  method_num = "std",
-  commensurable = TRUE
-)
-
-d_custom_response
-```
-
-    MDist object
-      preset : custom
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: tvd
-        - numerical preprocessing: std
-        - commensurability adjustment: TRUE
-        - number of principal components: 6
-        - inertia threshold: NULL
-
-If only one categorical predictor is available, methods that require
-more than one categorical variable may switch to a simpler alternative
-internally.
-
-## 6 Euclidean preset
-
-The `"euclidean"` preset computes Euclidean distances after converting
-categorical variables to one-hot dummy variables.
-
-``` r
-
-d_euclidean <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "euclidean"
-)
-
-d_euclidean
-```
-
-    MDist object
-      preset : euclidean
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - numerical preprocessing: std
-
-This preset replaces the former `"euclidean_onehot"` name.
-
-## 7 Comparing presets
-
-Different presets encode different assumptions about how numerical and
-categorical variables should contribute to the final dissimilarity.
-
-``` r
-
-d_u_indep <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "u_indep"
-)
-
-d_u_mix <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "u_mix"
-)
-
-d_hl <- mdist(
-  penguins_small |> dplyr::select(-species),
-  preset = "hl"
-)
-
-d_u_indep
-```
-
-    MDist object
-      preset : u_indep
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: matching
-        - numerical preprocessing: std
-        - commensurability adjustment: TRUE
-
-``` r
-
-d_u_mix
-```
-
-    MDist object
-      preset : u_mix
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: tvd
-        - numerical preprocessing: std
-        - commensurability adjustment: TRUE
-
-``` r
-
-d_hl
-```
-
-    MDist object
-      preset : hl
-      number of observations : 333
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - categorical method: HLeucl
-        - numerical preprocessing: std
-        - commensurability adjustment: FALSE
-
-The available presets include:
-
-``` r
-
-c(
-  "custom",
-  "gower",
-  "euclidean",
-  "unbiased_dependent",
-  "u_dep",
-  "u_indep",
-  "u_mix",
-  "hl",
-  "gudmm",
-  "dkss",
-  "mod_gower"
-)
-```
-
-     [1] "custom"             "gower"              "euclidean"
-     [4] "unbiased_dependent" "u_dep"              "u_indep"
-     [7] "u_mix"              "hl"                 "gudmm"
-    [10] "dkss"               "mod_gower"         
-
-Some presets are intended mainly for train-train dissimilarities and may
-not support distances from new observations to training observations.
-
-## 8 Distances from new observations to training observations
-
-[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
-can also compute distances from new observations to the training
-observations through the `new_data` argument.
-
-``` r
-
-set.seed(123)
-
-split_id <- sample(seq_len(nrow(penguins_small)), size = floor(0.75 * nrow(penguins_small)))
-
-penguins_train <- penguins_small[split_id, ]
-penguins_test  <- penguins_small[-split_id, ]
-
-d_new <- mdist(
-  x = penguins_train |> dplyr::select(-species),
-  new_data = penguins_test |> dplyr::select(-species),
-  preset = "gower"
-)
-
-d_new
-```
-
-    MDist object
-      preset : gower
-      number of training observations : 249
-      number of test observations     : 84
-      number of continuous variables   : 4
-      number of categorical variables   : 2
-      parameters:
-        - commensurability adjustment: FALSE
-
-The resulting dissimilarity is rectangular: rows correspond to test
-observations and columns correspond to training observations.
-
-``` r
-
-dim(as.matrix(d_new$distance))
-```
-
-    [1]  84 249
-
-## 9 Using `manydist` in recipe workflows
-
-The function
-[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
-provides a recipe interface to
-[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
-It replaces selected predictors with a distance-based representation.
-
-In supervised workflows, the response is defined on the left-hand side
-of the recipe formula. Therefore, when we select
-[`recipes::all_predictors()`](https://recipes.tidymodels.org/reference/has_role.html),
-the response variable is not used as a predictor in the distance
-computation.
-
-``` r
-
-rec <- recipes::recipe(species ~ ., data = penguins_small) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "distance_to_training"
-  )
-
-rec_prep <- recipes::prep(rec, training = penguins_small)
-
-baked <- recipes::bake(rec_prep, new_data = penguins_small)
-
-baked |>
-  dplyr::slice_head(n = 5)
-```
-
-    # A tibble: 5 × 334
-      species dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
-      <fct>    <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>   <dbl>
-    1 Adelie  0      0.211  0.251  0.241  0.0690 0.192  0.101  0.229  0.0832  0.153
-    2 Adelie  0.211  0      0.0676 0.0906 0.250  0.0338 0.278  0.0527 0.262   0.331
-    3 Adelie  0.251  0.0676 0      0.0625 0.257  0.0694 0.271  0.0518 0.277   0.324
-    4 Adelie  0.241  0.0906 0.0625 0      0.226  0.0851 0.250  0.103  0.238   0.273
-    5 Adelie  0.0690 0.250  0.257  0.226  0      0.251  0.0820 0.281  0.0259  0.0957
-    # ℹ 323 more variables: dist_11 <dbl>, dist_12 <dbl>, dist_13 <dbl>,
-    #   dist_14 <dbl>, dist_15 <dbl>, dist_16 <dbl>, dist_17 <dbl>, dist_18 <dbl>,
-    #   dist_19 <dbl>, dist_20 <dbl>, dist_21 <dbl>, dist_22 <dbl>, dist_23 <dbl>,
-    #   dist_24 <dbl>, dist_25 <dbl>, dist_26 <dbl>, dist_27 <dbl>, dist_28 <dbl>,
-    #   dist_29 <dbl>, dist_30 <dbl>, dist_31 <dbl>, dist_32 <dbl>, dist_33 <dbl>,
-    #   dist_34 <dbl>, dist_35 <dbl>, dist_36 <dbl>, dist_37 <dbl>, dist_38 <dbl>,
-    #   dist_39 <dbl>, dist_40 <dbl>, dist_41 <dbl>, dist_42 <dbl>, …
-
-The resulting data contain the outcome variable, `species`, together
-with one distance column for each training observation. These columns
-are named `dist_1`, `dist_2`, and so on.
-
-## 10 Custom specifications in recipes
-
-The same interface can be used with a custom distance specification.
-
-``` r
-
-rec_custom <- recipes::recipe(species ~ ., data = penguins_small) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "custom",
-    method_cat = "matching",
-    method_num = "std",
-    commensurable = TRUE,
-    output = "distance_to_training"
-  )
-
-rec_custom_prep <- recipes::prep(rec_custom, training = penguins_small)
-
-baked_custom <- recipes::bake(rec_custom_prep, new_data = penguins_small)
-
-baked_custom |>
-  dplyr::slice_head(n = 5)
-```
-
-    # A tibble: 5 × 334
-      species dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
-      <fct>    <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>   <dbl>
-    1 Adelie    0      3.01   3.93   3.73   1.55  2.57    2.31   3.47  1.87     3.56
-    2 Adelie    3.01   0      1.56   2.11   3.87  0.779   4.55   1.25  4.14     5.84
-    3 Adelie    3.93   1.56   0      1.50   4.07  1.60    4.45   1.18  4.55     5.73
-    4 Adelie    3.73   2.11   1.50   0      3.40  1.96    4.00   2.42  3.66     4.49
-    5 Adelie    1.55   3.87   4.07   3.40   0     3.90    1.90   4.61  0.605    2.30
-    # ℹ 323 more variables: dist_11 <dbl>, dist_12 <dbl>, dist_13 <dbl>,
-    #   dist_14 <dbl>, dist_15 <dbl>, dist_16 <dbl>, dist_17 <dbl>, dist_18 <dbl>,
-    #   dist_19 <dbl>, dist_20 <dbl>, dist_21 <dbl>, dist_22 <dbl>, dist_23 <dbl>,
-    #   dist_24 <dbl>, dist_25 <dbl>, dist_26 <dbl>, dist_27 <dbl>, dist_28 <dbl>,
-    #   dist_29 <dbl>, dist_30 <dbl>, dist_31 <dbl>, dist_32 <dbl>, dist_33 <dbl>,
-    #   dist_34 <dbl>, dist_35 <dbl>, dist_36 <dbl>, dist_37 <dbl>, dist_38 <dbl>,
-    #   dist_39 <dbl>, dist_40 <dbl>, dist_41 <dbl>, dist_42 <dbl>, …
-
-In this example, `method_cat = "matching"` specifies the categorical
-dissimilarity, while `method_num = "std"` specifies standardization of
-numerical variables.
-
-## 11 Pairwise dissimilarities in recipes
-
-For distance-based clustering workflows,
-[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
-can return the within-training pairwise dissimilarity matrix by setting
-`output = "pairwise"`.
-
-In this case, the recipe is intended for training-only workflows.
-
-``` r
-
-penguins_predictors <- penguins_small |>
-  dplyr::select(-species)
-
-rec_pairwise <- recipes::recipe(~ ., data = penguins_predictors) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "pairwise"
-  )
-
-rec_pairwise_prep <- recipes::prep(rec_pairwise, training = penguins_predictors)
-
-pairwise_dist <- recipes::bake(
-  rec_pairwise_prep,
-  new_data = penguins_predictors
-)
-
-pairwise_dist |>
-  dplyr::slice_head(n = 5)
-```
-
-    # A tibble: 5 × 333
-      dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10 dist_11
-       <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>   <dbl>   <dbl>
-    1 0      0.211  0.251  0.241  0.0690 0.192  0.101  0.229  0.0832  0.153   0.213
-    2 0.211  0      0.0676 0.0906 0.250  0.0338 0.278  0.0527 0.262   0.331   0.0330
-    3 0.251  0.0676 0      0.0625 0.257  0.0694 0.271  0.0518 0.277   0.324   0.0755
-    4 0.241  0.0906 0.0625 0      0.226  0.0851 0.250  0.103  0.238   0.273   0.0645
-    5 0.0690 0.250  0.257  0.226  0      0.251  0.0820 0.281  0.0259  0.0957  0.255
-    # ℹ 322 more variables: dist_12 <dbl>, dist_13 <dbl>, dist_14 <dbl>,
-    #   dist_15 <dbl>, dist_16 <dbl>, dist_17 <dbl>, dist_18 <dbl>, dist_19 <dbl>,
-    #   dist_20 <dbl>, dist_21 <dbl>, dist_22 <dbl>, dist_23 <dbl>, dist_24 <dbl>,
-    #   dist_25 <dbl>, dist_26 <dbl>, dist_27 <dbl>, dist_28 <dbl>, dist_29 <dbl>,
-    #   dist_30 <dbl>, dist_31 <dbl>, dist_32 <dbl>, dist_33 <dbl>, dist_34 <dbl>,
-    #   dist_35 <dbl>, dist_36 <dbl>, dist_37 <dbl>, dist_38 <dbl>, dist_39 <dbl>,
-    #   dist_40 <dbl>, dist_41 <dbl>, dist_42 <dbl>, dist_43 <dbl>, …
-
-## 12 Euclidean distances in recipes
-
-The `"euclidean"` preset can also be used inside a recipe. Categorical
-predictors are one-hot encoded internally before the Euclidean distance
-is computed.
-
-``` r
-
-rec_euclidean <- recipes::recipe(species ~ ., data = penguins_small) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "euclidean",
-    output = "distance_to_training"
-  )
-
-rec_euclidean_prep <- recipes::prep(rec_euclidean, training = penguins_small)
-
-baked_euclidean <- recipes::bake(rec_euclidean_prep, new_data = penguins_small)
-
-baked_euclidean |>
-  dplyr::slice_head(n = 5)
-```
-
-    # A tibble: 5 × 334
-      species dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
-      <fct>    <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>   <dbl>
-    1 Adelie    0     2.92   3.09   3.02    1.17  2.87    1.59  2.98   1.46     2.07
-    2 Adelie    2.92  0      0.997  1.28    3.28  0.477   3.29  0.856  3.44     3.69
-    3 Adelie    3.09  0.997  0      0.975   3.18  1.14    3.44  0.963  3.36     3.69
-    4 Adelie    3.02  1.28   0.975  0       2.96  1.23    3.25  1.45   3.04     3.24
-    5 Adelie    1.17  3.28   3.18   2.96    0     3.23    1.42  3.32   0.386    1.41
-    # ℹ 323 more variables: dist_11 <dbl>, dist_12 <dbl>, dist_13 <dbl>,
-    #   dist_14 <dbl>, dist_15 <dbl>, dist_16 <dbl>, dist_17 <dbl>, dist_18 <dbl>,
-    #   dist_19 <dbl>, dist_20 <dbl>, dist_21 <dbl>, dist_22 <dbl>, dist_23 <dbl>,
-    #   dist_24 <dbl>, dist_25 <dbl>, dist_26 <dbl>, dist_27 <dbl>, dist_28 <dbl>,
-    #   dist_29 <dbl>, dist_30 <dbl>, dist_31 <dbl>, dist_32 <dbl>, dist_33 <dbl>,
-    #   dist_34 <dbl>, dist_35 <dbl>, dist_36 <dbl>, dist_37 <dbl>, dist_38 <dbl>,
-    #   dist_39 <dbl>, dist_40 <dbl>, dist_41 <dbl>, dist_42 <dbl>, …
-
-## 13 Distance-based nearest-neighbour prediction
-
-The distance representation produced by
-[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
-can be used in downstream supervised learning workflows.
-
-Here we illustrate a nearest-neighbour classifier using the
-distance-to-training representation. The recipe first converts the
-original mixed-type predictors into distances from each observation to
-the training observations. The model is then tuned over the number of
-neighbours.
-
-``` r
-
-library(tidymodels)
-
-set.seed(123)
-
-penguin_split <- rsample::initial_split(
-  penguins_small,
-  prop = 0.75,
-  strata = species
-)
-
-penguin_train <- rsample::training(penguin_split)
-penguin_test  <- rsample::testing(penguin_split)
-
-set.seed(123)
-
-penguin_folds <- rsample::vfold_cv(
-  penguin_train,
-  v = 5,
-  strata = species
-)
-```
-
-``` r
-
-rec_knn <- recipes::recipe(species ~ ., data = penguin_train) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "distance_to_training"
-  )
-```
-
-``` r
-
-knn_spec <- nearest_neighbor_dist(
-  neighbors = tune::tune()
+tibble::tibble(
+  cluster = factor(pam_direct$clustering),
+  species = penguins_small$species
 ) |>
-  parsnip::set_mode("classification")
+  dplyr::count(cluster, species)
 ```
 
-``` r
+    # A tibble: 6 × 3
+      cluster species       n
+      <fct>   <fct>     <int>
+    1 1       Adelie       65
+    2 1       Chinstrap    34
+    3 2       Adelie       73
+    4 2       Chinstrap    34
+    5 3       Adelie        8
+    6 3       Gentoo      119
 
-knn_wf <- workflows::workflow() |>
-  workflows::add_recipe(rec_knn) |>
-  workflows::add_model(knn_spec)
+The species labels are used here only to interpret an example whose
+classes are known. In an ordinary unsupervised analysis, cluster
+validation should instead rely on stability, separation, and
+subject-matter interpretation.
 
-knn_grid <- tibble::tibble(
-  neighbors = c(1, 3, 5, 7, 9)
-)
+## 4 A recipe for pairwise dissimilarities
 
-set.seed(123)
-
-knn_res <- tune::tune_grid(
-  knn_wf,
-  resamples = penguin_folds,
-  grid = knn_grid,
-  metrics = yardstick::metric_set(accuracy)
-)
-
-knn_res |>
-  tune::collect_metrics()
-```
-
-    # A tibble: 5 × 7
-      neighbors .metric  .estimator  mean     n std_err .config
-          <dbl> <chr>    <chr>      <dbl> <int>   <dbl> <chr>
-    1         1 accuracy multiclass 0.996     5 0.00392 pre0_mod1_post0
-    2         3 accuracy multiclass 1         5 0       pre0_mod2_post0
-    3         5 accuracy multiclass 0.992     5 0.00485 pre0_mod3_post0
-    4         7 accuracy multiclass 0.992     5 0.00485 pre0_mod4_post0
-    5         9 accuracy multiclass 0.988     5 0.00798 pre0_mod5_post0
-
-``` r
-
-best_knn <- knn_res |>
-  tune::select_best(metric = "accuracy")
-
-best_knn
-```
-
-    # A tibble: 1 × 2
-      neighbors .config
-          <dbl> <chr>
-    1         3 pre0_mod2_post0
-
-``` r
-
-final_knn_wf <- knn_wf |>
-  tune::finalize_workflow(best_knn)
-
-final_knn_fit <- final_knn_wf |>
-  parsnip::fit(data = penguin_train)
-
-knn_pred <- predict(final_knn_fit, new_data = penguin_test) |>
-  dplyr::bind_cols(penguin_test |> dplyr::select(species))
-
-yardstick::accuracy(knn_pred, truth = species, estimate = .pred_class)
-```
-
-    # A tibble: 1 × 3
-      .metric  .estimator .estimate
-      <chr>    <chr>          <dbl>
-    1 accuracy multiclass     0.988
-
-This example uses `preset = "gower"`, but the same workflow can be used
-with any
-[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
-preset or with a custom specification based on `method_cat`,
-`method_num`, and `commensurable`.
-
-## 14 Distance-based PAM clustering
-
-The same dissimilarities can be used for clustering. For clustering
-workflows,
+The integrated workflow begins with a recipe. For clustering,
+`output = "pairwise"` tells
 [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
-can return the within-training pairwise dissimilarity matrix by setting
-`output = "pairwise"`.
+to replace the original predictors with the square within-training
+dissimilarity matrix.
 
 ``` r
 
-penguins_predictors <- penguins_small |>
-  dplyr::select(-species)
-
-rec_pam <- recipes::recipe(~ ., data = penguins_predictors) |>
+gower_pairwise_recipe <- recipes::recipe(
+  ~ .,
+  data = penguin_x
+) |>
   step_mdist(
     recipes::all_predictors(),
     preset = "gower",
     output = "pairwise"
   )
+
+gower_pairwise_recipe
 ```
+
+    Step: mdist
+      role:        predictor
+      trained:     FALSE
+
+      output:      pairwise
+      preset:      gower
+      (arguments handled internally by preset)
+
+`output = "pairwise"` is intended for training a clustering model.
+Baking genuinely new observations in this mode is not supported
+directly, because new-to-training dissimilarities are rectangular. The
+fitted clustering models handle that prediction step internally.
+
+## 5 PAM with `pam_dist()`
+
+[`pam_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/pam_dist.md)
+defines the clustering specification. The model is fitted with the
+recipe and the original predictor data.
 
 ``` r
 
-pam_spec <- pam_dist(
-  num_clusters = 3
-)
+pam_spec <- pam_dist(num_clusters = 3)
 
 pam_fit <- generics::fit(
   pam_spec,
-  recipe = rec_pam,
-  data = penguins_predictors
+  recipe = gower_pairwise_recipe,
+  data = penguin_x
 )
 
-pam_pred <- predict(pam_fit)
-
-pam_pred |>
-  dplyr::slice_head(n = 10)
+pam_fit
 ```
 
-    # A tibble: 10 × 1
-       .pred_cluster
-       <fct>
-     1 1
-     2 2
-     3 2
-     4 2
-     5 1
-     6 2
-     7 1
-     8 2
-     9 1
-    10 1            
+    pam_dist fit
+      num_clusters : 3
+      n_obs        : 333
+      medoid idx   : 37, 129, 172 
 
-Since the true species labels are available in this example, we can
-inspect the relationship between the PAM clusters and the species
-labels.
+Calling [`predict()`](https://rdrr.io/r/stats/predict.html) without
+`new_data` returns the training assignments.
 
 ``` r
 
-pam_pred |>
-  dplyr::bind_cols(penguins_small |> dplyr::select(species)) |>
+pam_assignments <- predict(pam_fit) |>
+  dplyr::bind_cols(
+    penguins_small |>
+      dplyr::select(species)
+  )
+
+pam_assignments |>
   dplyr::count(.pred_cluster, species)
 ```
 
@@ -792,364 +266,266 @@ pam_pred |>
     5 3             Adelie        8
     6 3             Gentoo      119
 
-## 15 Distance-based spectral clustering
-
-Spectral clustering can be used in the same way, by combining a pairwise
-distance recipe with the corresponding model specification.
+Distances to the fitted medoids are also available.
 
 ``` r
 
-rec_spectral <- recipes::recipe(~ ., data = penguins_predictors) |>
+predict(pam_fit, type = "dist") |>
+  dplyr::slice_head(n = 6)
+```
+
+    # A tibble: 6 × 3
+      medoid_1 medoid_2 medoid_3
+         <dbl>    <dbl>    <dbl>
+    1    0.229    0.393    0.439
+    2    0.391    0.199    0.561
+    3    0.374    0.219    0.568
+    4    0.403    0.227    0.612
+    5    0.245    0.419    0.455
+    6    0.409    0.202    0.595
+
+### 5.1 Assigning new observations
+
+For a genuine train/test illustration, we fit PAM on one subset and
+assign each held-out observation to its nearest fitted medoid.
+
+``` r
+
+set.seed(2026)
+
+cluster_split <- rsample::initial_split(
+  penguins_small,
+  prop = 0.8,
+  strata = species
+)
+
+cluster_train <- rsample::training(cluster_split)
+cluster_test <- rsample::testing(cluster_split)
+
+cluster_train_x <- cluster_train |>
+  dplyr::select(-species)
+
+cluster_test_x <- cluster_test |>
+  dplyr::select(-species)
+```
+
+``` r
+
+train_pairwise_recipe <- recipes::recipe(
+  ~ .,
+  data = cluster_train_x
+) |>
   step_mdist(
     recipes::all_predictors(),
     preset = "gower",
     output = "pairwise"
   )
-```
 
-``` r
-
-spectral_spec <- spectral_dist(
-  num_clusters = 3
+pam_train_fit <- generics::fit(
+  pam_dist(num_clusters = 3),
+  recipe = train_pairwise_recipe,
+  data = cluster_train_x
 )
 
-spectral_fit <- generics::fit(
-  spectral_spec,
-  recipe = rec_spectral,
-  data = penguins_predictors
+pam_test_assignments <- predict(
+  pam_train_fit,
+  new_data = cluster_test_x
 )
 
-spectral_pred <- predict(spectral_fit)
-
-spectral_pred |>
-  dplyr::slice_head(n = 10)
-```
-
-    # A tibble: 10 × 1
-       .pred_cluster
-       <fct>
-     1 2
-     2 1
-     3 1
-     4 1
-     5 2
-     6 1
-     7 2
-     8 1
-     9 2
-    10 2            
-
-Again, because this is an illustrative labelled data set, we can compare
-the resulting clusters with the observed species labels.
-
-``` r
-
-spectral_pred |>
-  dplyr::bind_cols(penguins_small |> dplyr::select(species)) |>
+pam_test_assignments |>
+  dplyr::bind_cols(cluster_test |> dplyr::select(species)) |>
   dplyr::count(.pred_cluster, species)
 ```
 
     # A tibble: 5 × 3
       .pred_cluster species       n
       <fct>         <fct>     <int>
-    1 1             Adelie       73
-    2 1             Chinstrap    34
-    3 2             Adelie       73
-    4 2             Chinstrap    34
-    5 3             Gentoo      119
+    1 1             Adelie       17
+    2 1             Chinstrap     6
+    3 2             Adelie       13
+    4 2             Chinstrap     8
+    5 3             Gentoo       24
 
-## 16 A small benchmark example
+The fitted
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
+preprocessor is reused, so held-out observations are compared with the
+training observations on the training scale.
 
-The function
-[`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
-applies
-[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
-repeatedly over a grid of distance specifications. This is useful for
-comparing alternative presets and custom specifications in a systematic
-way.
+## 6 Spectral clustering with `spectral_dist()`
 
-For a small example, we restrict the grid to a few specifications.
+Spectral clustering converts dissimilarities into a Gaussian affinity,
+constructs a spectral embedding, and partitions that embedding with
+k-means. The same pairwise recipe can be reused.
 
 ``` r
 
-small_specs <- dplyr::bind_rows(
-  all_dist_method_specs(mode = "presets_only") |>
-    dplyr::filter(preset %in% c("gower", "u_dep", "u_indep", "euclidean")),
+set.seed(2026)
 
-  all_dist_method_specs(
-    mode = "full",
-    method_cat = c("matching", "tvd"),
-    method_num = c("std", "robust"),
-    commensurable = c(TRUE, FALSE)
-  ) |>
-    dplyr::filter(spec_type == "component")
+spectral_spec <- spectral_dist(
+  num_clusters = 3,
+  sigma = NULL,
+  nstart = 50
 )
 
-small_specs
+spectral_fit <- generics::fit(
+  spectral_spec,
+  recipe = gower_pairwise_recipe,
+  data = penguin_x
+)
+
+spectral_fit
 ```
 
-    # A tibble: 12 × 5
-       spec_type preset    method_cat method_num commensurable
-       <chr>     <chr>     <chr>      <chr>      <lgl>
-     1 preset    euclidean <NA>       <NA>       NA
-     2 preset    gower     <NA>       <NA>       NA
-     3 preset    u_dep     <NA>       <NA>       NA
-     4 preset    u_indep   <NA>       <NA>       NA
-     5 component custom    matching   robust     FALSE
-     6 component custom    matching   robust     TRUE
-     7 component custom    matching   std        FALSE
-     8 component custom    matching   std        TRUE
-     9 component custom    tvd        robust     FALSE
-    10 component custom    tvd        robust     TRUE
-    11 component custom    tvd        std        FALSE
-    12 component custom    tvd        std        TRUE         
+    spectral_dist fit
+      num_clusters : 3
+      n_obs        : 333
+      sigma        : 0.3651142
+      nstart       : 50 
+
+With `sigma = NULL`, the bandwidth is chosen from the median pairwise
+dissimilarity. Training assignments are returned by the default
+prediction type.
 
 ``` r
 
-bench_small <- benchmark_mdist(
-  penguins_small,
-  response = species,
-  specs = small_specs
-)
-
-bench_small |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable,
-    ok,
-    error
+spectral_assignments <- predict(spectral_fit) |>
+  dplyr::bind_cols(
+    penguins_small |>
+      dplyr::select(species)
   )
+
+spectral_assignments |>
+  dplyr::count(.pred_cluster, species)
 ```
 
-    # A tibble: 12 × 7
-       spec_type preset    method_cat method_num commensurable ok    error
-       <chr>     <chr>     <chr>      <chr>      <lgl>         <lgl> <chr>
-     1 preset    euclidean <NA>       <NA>       NA            TRUE  <NA>
-     2 preset    gower     <NA>       <NA>       NA            TRUE  <NA>
-     3 preset    u_dep     <NA>       <NA>       NA            TRUE  <NA>
-     4 preset    u_indep   <NA>       <NA>       NA            TRUE  <NA>
-     5 component custom    matching   robust     FALSE         TRUE  <NA>
-     6 component custom    matching   robust     TRUE          TRUE  <NA>
-     7 component custom    matching   std        FALSE         TRUE  <NA>
-     8 component custom    matching   std        TRUE          TRUE  <NA>
-     9 component custom    tvd        robust     FALSE         TRUE  <NA>
-    10 component custom    tvd        robust     TRUE          TRUE  <NA>
-    11 component custom    tvd        std        FALSE         TRUE  <NA>
-    12 component custom    tvd        std        TRUE          TRUE  <NA> 
-
-The `ok` column reports whether the distance computation completed
-successfully. Failed specifications are kept in the output, with the
-corresponding error message stored in `error`.
-
-``` r
-
-bench_small |>
-  dplyr::count(ok)
-```
-
-    # A tibble: 1 × 2
-      ok        n
-      <lgl> <int>
-    1 TRUE     12
-
-When all specifications are successful, the resulting `MDist` objects
-are stored in the `result` list-column and can be inspected or reused.
-
-``` r
-
-bench_small |>
-  dplyr::filter(ok) |>
-  dplyr::select(spec_type, preset, method_cat, method_num, commensurable, result) |>
-  dplyr::slice_head(n = 3)
-```
-
-    # A tibble: 3 × 6
-      spec_type preset    method_cat method_num commensurable result
-      <chr>     <chr>     <chr>      <chr>      <lgl>         <list>
-    1 preset    euclidean <NA>       <NA>       NA            <MDist>
-    2 preset    gower     <NA>       <NA>       NA            <MDist>
-    3 preset    u_dep     <NA>       <NA>       NA            <MDist>
-
-## 17 Leave-one-variable-out diagnostics
-
-[`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
-computes leave-one-variable-out diagnostics for distance-based variable
-importance.
-
-It first computes the full dissimilarity matrix. Then it removes one
-predictor at a time, recomputes the dissimilarity matrix, and compares
-the reduced matrix with the full one.
-
-``` r
-
-lovo_gower <- lovo_mdist(
-  penguins_small,
-  response = species,
-  response_used = FALSE,
-  preset = "gower"
-)
-
-lovo_gower
-```
-
-    MDistLOVO object
-      preset : gower
-      dims   : 2
-      n_obs  : 333
-      response used : FALSE
-      top vars:
-    # A tibble: 5 × 4
-      variable          variable_type relative_distance mad_importance
-      <chr>             <chr>                     <dbl>          <dbl>
-    1 island            categorical               0.292         0.0853
-    2 sex               categorical               0.277         0.0809
-    3 bill_length_mm    numeric                   0.123         0.0359
-    4 bill_depth_mm     numeric                   0.107         0.0314
-    5 flipper_length_mm numeric                   0.102         0.0297
-
-The result can be summarized.
-
-``` r
-
-summary(lovo_gower)
-```
-
-    Summary of MDistLOVO
-      preset : gower
-      dims   : 2
-      n_obs  : 333
-      response used : FALSE
-
-    Relative distance:
-      range [0.1003, 0.2916], mean 0.1667
-
-    Top by relative distance:
     # A tibble: 5 × 3
-      variable          variable_type relative_distance
-      <chr>             <chr>                     <dbl>
-    1 island            categorical               0.292
-    2 sex               categorical               0.277
-    3 bill_length_mm    numeric                   0.123
-    4 bill_depth_mm     numeric                   0.107
-    5 flipper_length_mm numeric                   0.102
+      .pred_cluster species       n
+      <fct>         <fct>     <int>
+    1 1             Gentoo      119
+    2 2             Adelie       73
+    3 2             Chinstrap    34
+    4 3             Adelie       73
+    5 3             Chinstrap    34
 
-The relative contribution of each variable can be visualized with
-`autoplot()`.
-
-``` r
-
-lovo_gower$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
-```
-
-![](clustering_workflows_files/figure-html/unnamed-chunk-38-1.png)
-
-When `response_used = FALSE`, the response column is removed before
-computing distances. When `response_used = TRUE`, the response can be
-used by response-aware distance specifications, but it is still not
-treated as a predictor in the leave-one-variable-out loop.
+The spectral coordinates can be extracted with `type = "embed"`.
 
 ``` r
 
-lovo_response <- lovo_mdist(
-  penguins_small,
-  response = species,
-  response_used = TRUE,
-  preset = "u_dep"
-)
+spectral_embedding <- predict(
+  spectral_fit,
+  type = "embed"
+) |>
+  dplyr::bind_cols(
+    spectral_assignments |>
+      dplyr::select(.pred_cluster, species)
+  )
 
-lovo_response
+spectral_embedding |>
+  dplyr::slice_head(n = 6)
 ```
 
-    MDistLOVO object
-      preset : u_dep
-      dims   : 2
-      n_obs  : 333
-      response used : TRUE
-      top vars:
-    # A tibble: 5 × 4
-      variable          variable_type relative_distance mad_importance
-      <chr>             <chr>                     <dbl>          <dbl>
-    1 sex               categorical               0.171           1.04
-    2 bill_length_mm    numeric                   0.166           1.01
-    3 bill_depth_mm     numeric                   0.166           1.00
-    4 body_mass_g       numeric                   0.166           1.00
-    5 flipper_length_mm numeric                   0.166           1.00
-
-## 18 Inspecting method specifications
-
-[`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
-returns a table of distance specifications that can be used for
-benchmarking or sensitivity analysis.
+    # A tibble: 6 × 5
+       dim_1 dim_2  dim_3 .pred_cluster species
+       <dbl> <dbl>  <dbl> <fct>         <fct>
+    1 -0.608 0.432 -0.666 2             Adelie
+    2 -0.599 0.620  0.507 3             Adelie
+    3 -0.600 0.641  0.479 3             Adelie
+    4 -0.577 0.710  0.403 3             Adelie
+    5 -0.570 0.413 -0.710 2             Adelie
+    6 -0.566 0.666  0.486 3             Adelie 
 
 ``` r
 
-specs <- all_dist_method_specs()
-
-specs |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable
-  ) |>
-  dplyr::slice_head(n = 10)
+spectral_embedding |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = dim_1,
+      y = dim_2,
+      colour = .pred_cluster,
+      shape = species
+    )
+  ) +
+  ggplot2::geom_point(alpha = 0.75, size = 2) +
+  ggplot2::labs(
+    x = "Spectral dimension 1",
+    y = "Spectral dimension 2",
+    colour = "Cluster"
+  ) +
+  ggplot2::theme_minimal()
 ```
 
-    # A tibble: 10 × 5
-       spec_type preset    method_cat method_num commensurable
-       <chr>     <chr>     <chr>      <chr>      <lgl>
-     1 preset    euclidean <NA>       <NA>       NA
-     2 preset    gower     <NA>       <NA>       NA
-     3 preset    hl        <NA>       <NA>       NA
-     4 preset    u_dep     <NA>       <NA>       NA
-     5 preset    u_indep   <NA>       <NA>       NA
-     6 preset    u_mix     <NA>       <NA>       NA
-     7 preset    dkss      <NA>       <NA>       NA
-     8 preset    gudmm     <NA>       <NA>       NA
-     9 preset    mod_gower <NA>       <NA>       NA
-    10 preset    custom    <NA>       <NA>       NA           
+![Scatter plot of the first two spectral coordinates, coloured by
+cluster and shaped by penguin
+species.](clustering_workflows_files/figure-html/plot-spectral-embedding-1.png)
 
-The same table can be passed to
-[`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md).
+## 7 Comparing distance choices
+
+Changing the dissimilarity can change the clustering even when the
+partitioning method and number of clusters remain fixed. A compact
+comparison can reuse the same workflow with several presets.
 
 ``` r
 
-bench <- benchmark_mdist(
-  penguins_small,
-  response = species,
-  specs = specs
-)
+fit_pam_preset <- function(preset) {
+  rec <- recipes::recipe(~ ., data = penguin_x) |>
+    step_mdist(
+      recipes::all_predictors(),
+      preset = preset,
+      output = "pairwise"
+    )
 
-bench |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable,
-    ok,
-    error
-  ) |>
-  dplyr::slice_head(n = 10)
+  generics::fit(
+    pam_dist(num_clusters = 3),
+    recipe = rec,
+    data = penguin_x
+  )
+}
+
+pam_comparison <- tibble::tibble(
+  preset = c("gower", "hl", "euclidean")
+) |>
+  dplyr::mutate(
+    fit = purrr::map(preset, fit_pam_preset),
+    assignments = purrr::map(fit, predict),
+    adjusted_rand = purrr::map_dbl(
+      assignments,
+      ~ aricode::ARI(
+        as.integer(penguins_small$species),
+        as.integer(.x$.pred_cluster)
+      )
+    )
+  )
+
+pam_comparison |>
+  dplyr::select(preset, adjusted_rand)
 ```
 
-    # A tibble: 10 × 7
-       spec_type preset    method_cat method_num commensurable ok    error
-       <chr>     <chr>     <chr>      <chr>      <lgl>         <lgl> <chr>
-     1 preset    euclidean <NA>       <NA>       NA            TRUE  <NA>
-     2 preset    gower     <NA>       <NA>       NA            TRUE  <NA>
-     3 preset    hl        <NA>       <NA>       NA            TRUE  <NA>
-     4 preset    u_dep     <NA>       <NA>       NA            TRUE  <NA>
-     5 preset    u_indep   <NA>       <NA>       NA            TRUE  <NA>
-     6 preset    u_mix     <NA>       <NA>       NA            TRUE  <NA>
-     7 preset    dkss      <NA>       <NA>       NA            TRUE  <NA>
-     8 preset    gudmm     <NA>       <NA>       NA            TRUE  <NA>
-     9 preset    mod_gower <NA>       <NA>       NA            TRUE  <NA>
-    10 preset    custom    <NA>       <NA>       NA            TRUE  <NA> 
+    # A tibble: 3 × 2
+      preset    adjusted_rand
+      <chr>             <dbl>
+    1 gower             0.496
+    2 hl                0.545
+    3 euclidean         0.530
+
+The adjusted Rand index is possible here because a known external label
+is available. It should not be interpreted as an internal clustering
+criterion, and it should not be optimised against labels that are meant
+to remain hidden. For a broader, auditable set of distance
+specifications, see the [benchmarking
+guide](https://alfonsoiodicede.github.io/manydist_package/articles/benchmarking_distance_choices.md).
+
+## 8 Practical guidance
+
+- Use `output = "pairwise"` for training-only clustering
+  representations.
+- Keep outcomes or reference labels outside the clustering recipe unless
+  a deliberately response-aware analysis is intended.
+- Treat cluster labels as nominal identifiers: cluster 1 is not
+  inherently smaller or better than cluster 2.
+- Set the random seed when fitting spectral clustering.
+- Compare plausible distance definitions as part of the clustering
+  sensitivity analysis, not as an afterthought.
+- For new observations, call
+  [`predict()`](https://rdrr.io/r/stats/predict.html) on the fitted
+  `pam_dist` or `spectral_dist` object so that the training preprocessor
+  is reused.

@@ -1036,7 +1036,7 @@ summary(lovo_gower)
     5 flipper_length_mm numeric                   0.102
 
 The relative contribution of each variable can be visualized with
-`autoplot()`.
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
 
 ``` r
 
