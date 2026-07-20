@@ -146,7 +146,33 @@ all.equal(
 )
 ```
 
-In this numerical-only case, the `"euclidean"` preset agrees with `dist()`
-applied after standardization. When categorical variables are included, the
-preset first adds their one-hot encoded representation before computing the
-Euclidean distances.
+The default remains `method_num = "std"`, so the numerical-only Euclidean
+preset agrees with `dist()` applied after standardization. When all predictors
+are numeric, however, `method_num` can be overridden. For example,
+`method_num = "none"` skips numerical preprocessing and reproduces ordinary
+Euclidean distance on the original variables.
+
+```{r}
+d_euc_unscaled <- mdist(
+  x_penguins_num,
+  preset = "euclidean",
+  method_num = "none"
+)
+
+d_euc_dist_unscaled <- dist(
+  x_penguins_num,
+  method = "euclidean"
+)
+
+all.equal(
+  as.matrix(d_euc_unscaled$distance),
+  as.matrix(d_euc_dist_unscaled)
+)
+
+```
+
+For numerical-only inputs, the supported choices are `"none"`, `"std"`,
+`"range"`, `"robust"`, and `"pc_scores"`. This override is restricted to
+numerical-only data. When categorical variables are present, the `"euclidean"`
+preset retains its standard preprocessing strategy: categorical variables are
+one-hot encoded and `method_num = "std"` is used.

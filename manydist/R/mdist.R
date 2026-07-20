@@ -36,7 +36,8 @@
     method_cat,
     commensurable,
     method_num,
-    interaction
+    interaction,
+    all_continuous = FALSE
 ) {
 
   preset_defs <- list(
@@ -112,6 +113,11 @@
     return(user_args)
   }
 
+  allow_method_num_override <-
+    identical(preset, "euclidean") &&
+    isTRUE(all_continuous)
+
+
   non_default_args <- names(user_args)[
     !vapply(
       names(user_args),
@@ -119,6 +125,10 @@
       logical(1)
     )
   ]
+
+  if (allow_method_num_override) {
+    non_default_args <- setdiff(non_default_args, "method_num")
+  }
 
   if (length(non_default_args) > 0) {
     warning(
@@ -134,7 +144,11 @@
   list(
     method_cat    = defs$method_cat    %||% method_cat,
     commensurable = defs$commensurable %||% commensurable,
-    method_num    = defs$method_num    %||% method_num,
+    method_num = if (allow_method_num_override) {
+      method_num
+    } else {
+      defs$method_num %||% method_num
+    },
     interaction   = defs$interaction   %||% interaction
   )
 }
@@ -285,14 +299,24 @@
 
   x <- tibble::as_tibble(x)
 
-  if (is.null(ncomp)) ncomp <- ncol(x)
+
+  all_continuous <-
+    ncol(x) > 0L &&
+    all(purrr::map_lgl(x, is.numeric))
+
+  if (is.null(ncomp)) {
+    ncomp <- ncol(x)
+  }
+
+
 
   args <- .resolve_preset(
     preset = preset,
     method_cat = method_cat,
     commensurable = commensurable,
     method_num = method_num,
-    interaction = interaction
+    interaction = interaction,
+    all_continuous = all_continuous
   )
 
   method_cat    <- args$method_cat
@@ -692,11 +716,15 @@
 #'   dissimilarity used when `preset = "custom"`. Common values include
 #'   `"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
 #'   available methods.
-#' @param method_num Character string specifying the numerical-variable
-#'   preprocessing used when `preset = "custom"`. Available options include
-#'   `"none"` for no preprocessing, `"std"` for standard-deviation scaling,
-#'   `"range"` for range scaling, `"robust"` for inter-quartile-range-based
-#'   scaling, and `"pc_scores"` for principal-component score scaling.
+#' @param method_num Character string specifying numerical-variable
+#'   preprocessing. Supported values are `"none"` for no preprocessing,
+#'   `"std"` for standard-deviation scaling, `"range"` for range scaling,
+#'   `"robust"` for inter-quartile-range-based scaling, and `"pc_scores"` for
+#'   principal-component score scaling. This argument is used directly when
+#'   `preset = "custom"`. When `preset = "euclidean"` and all predictors are
+#'   numeric, it can also override the default `"std"` preprocessing; in
+#'   particular, `"none"` gives ordinary Euclidean distance on the original
+#'   variables.
 #' @param commensurable Logical. If `TRUE`, dissimilarities are scaled so that
 #'   the average contribution of each variable to the overall distance is equal
 #'   to 1.
@@ -710,8 +738,9 @@
 #'   `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 #'   `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
 #'   When `preset` is not `"custom"`, arguments such as `method_cat`,
-#'   `method_num`, `commensurable`, and `interaction` are handled by the preset
-#'   and user-supplied values for those arguments are ignored.
+#'   `method_num`, `commensurable`, and `interaction` are normally handled by
+#'   the preset and user-supplied values are ignored. The exception is
+#'   `method_num` for `preset = "euclidean"` when all predictors are numeric.
 #' @param interaction Logical. If `TRUE`, adds an interaction-aware
 #'   continuous-categorical component based on local predictive separability.
 #' @param prop_nn Numeric. Proportion of nearest neighbours used when
@@ -737,13 +766,17 @@
 #' variables. The `gower_average` argument controls whether the result is
 #' averaged over variables or returned as a sum of variable-wise contributions.
 #'
-#' The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
+#'#' The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
 #' convenience specifications for unbiased or commensurable mixed-variable
-#' dissimilarities. The `"euclidean"` preset computes a Euclidean
-#' distance after one-hot encoding categorical variables. The `"gudmm"`,
-#' `"dkss"`, and `"mod_gower"` presets provide additional mixed-type distance
-#' constructions. Some presets currently support only train-train distances and
-#' will stop if `new_data` is supplied.
+#' dissimilarities. The `"euclidean"` preset computes Euclidean distance after
+#' standardizing numerical variables and one-hot encoding and standardizing
+#' categorical variables. For numerical-only inputs, `"std"` remains the
+#' default, but `method_num` can be overridden. Setting `method_num = "none"`
+#' produces the same numerical distances as [stats::dist()] applied directly
+#' to the original variables. The `"gudmm"`, `"dkss"`, and `"mod_gower"`
+#' presets provide additional mixed-type distance constructions. Some presets
+#' currently support only train-train distances and will stop if `new_data` is
+#' supplied.
 #'
 #' Use [all_dist_method_specs()] to inspect the available distance components
 #' and method specifications.

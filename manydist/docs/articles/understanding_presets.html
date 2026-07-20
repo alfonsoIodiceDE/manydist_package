@@ -242,7 +242,29 @@
 <pre><code>[1] TRUE</code></pre>
 </div>
 </div>
-<p>In this numerical-only case, the <code>"euclidean"</code> preset agrees with <code><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist()</a></code> applied after standardization. When categorical variables are included, the preset first adds their one-hot encoded representation before computing the Euclidean distances.</p>
+<p>The default remains <code>method_num = "std"</code>, so the numerical-only Euclidean preset agrees with <code><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist()</a></code> applied after standardization. When all predictors are numeric, however, <code>method_num</code> can be overridden. For example, <code>method_num = "none"</code> skips numerical preprocessing and reproduces ordinary Euclidean distance on the original variables.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_euc_unscaled</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mdist.html">mdist</a></span><span class="op">(</span></span>
+<span>  <span class="va">x_penguins_num</span>,</span>
+<span>  preset <span class="op">=</span> <span class="st">"euclidean"</span>,</span>
+<span>  method_num <span class="op">=</span> <span class="st">"none"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_euc_dist_unscaled</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span></span>
+<span>  <span class="va">x_penguins_num</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"euclidean"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">d_euc_unscaled</span><span class="op">$</span><span class="va">distance</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">d_euc_dist_unscaled</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Mean relative difference: 357.1302"</code></pre>
+</div>
+</div>
+<p>For numerical-only inputs, the supported choices are <code>"none"</code>, <code>"std"</code>, <code>"range"</code>, <code>"robust"</code>, and <code>"pc_scores"</code>. This override is restricted to numerical-only data. When categorical variables are present, the <code>"euclidean"</code> preset retains its standard preprocessing strategy: categorical variables are one-hot encoded and <code>method_num = "std"</code> is used.</p>
 </section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);

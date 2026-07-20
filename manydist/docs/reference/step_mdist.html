@@ -56,7 +56,7 @@ prediction and clustering models that operate on dissimilarity matrices.</p>
 <span>  output <span class="op">=</span> <span class="st">"distance_to_training"</span>,</span>
 <span>  preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
 <span>  method_cat <span class="op">=</span> <span class="st">"tot_var_dist"</span>,</span>
-<span>  method_num <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  method_num <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  commensurable <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ncomp <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -101,7 +101,10 @@ is intended for training-only distance-based clustering workflows.</p></dd>
 <dd><p>Character string specifying the distance preset passed to
 [mdist()]. Available values include `"custom"`, `"gower"`,
 `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
-`"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.</p></dd>
+`"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`. Preset parameters
+are normally fixed by the selected preset. The exception is `method_num`
+for `preset = "euclidean"` when all predictors selected by the step are
+numeric.</p></dd>
 
 
 <dt id="arg-method-cat">method_cat<a class="anchor" aria-label="anchor" href="#arg-method-cat"></a></dt>
@@ -112,12 +115,14 @@ available methods.</p></dd>
 
 
 <dt id="arg-method-num">method_num<a class="anchor" aria-label="anchor" href="#arg-method-num"></a></dt>
-<dd><p>Character string specifying the numerical-variable
-preprocessing passed to [mdist()] when `preset = "custom"`. Available
-options include `"none"` for no preprocessing, `"std"` for
-standard-deviation scaling, `"range"` for range scaling, `"robust"` for
-inter-quartile-range-based scaling, and `"pc_scores"` for
-principal-component score scaling.</p></dd>
+<dd><p>Character string or `NULL` specifying numerical-variable
+preprocessing. Supported values are `"none"` for no preprocessing,
+`"std"` for standard-deviation scaling, `"range"` for range scaling,
+`"robust"` for inter-quartile-range-based scaling, and `"pc_scores"` for
+principal-component score scaling. With `preset = "custom"`, `NULL`
+defaults to `"none"`. With `preset = "euclidean"`, the default is `"std"`;
+when all predictors selected by the step are numeric, an explicitly
+supplied value can override that default.</p></dd>
 
 
 <dt id="arg-commensurable">commensurable<a class="anchor" aria-label="anchor" href="#arg-commensurable"></a></dt>

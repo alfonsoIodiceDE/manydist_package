@@ -17,7 +17,7 @@ step_mdist(
   output = "distance_to_training",
   preset = "custom",
   method_cat = "tot_var_dist",
-  method_num = "none",
+  method_num = NULL,
   commensurable = FALSE,
   ncomp = NULL,
   threshold = NULL,
@@ -63,7 +63,9 @@ step_mdist(
   Available values include \`"custom"\`, \`"gower"\`,
   \`"unbiased_dependent"\`, \`"u_dep"\`, \`"u_indep"\`, \`"u_mix"\`,
   \`"hl"\`, \`"gudmm"\`, \`"dkss"\`, \`"mod_gower"\`, and
-  \`"euclidean"\`.
+  \`"euclidean"\`. Preset parameters are normally fixed by the selected
+  preset. The exception is \`method_num\` for \`preset = "euclidean"\`
+  when all predictors selected by the step are numeric.
 
 - method_cat:
 
@@ -74,12 +76,15 @@ step_mdist(
 
 - method_num:
 
-  Character string specifying the numerical-variable preprocessing
-  passed to \[mdist()\] when \`preset = "custom"\`. Available options
-  include \`"none"\` for no preprocessing, \`"std"\` for
-  standard-deviation scaling, \`"range"\` for range scaling,
-  \`"robust"\` for inter-quartile-range-based scaling, and
-  \`"pc_scores"\` for principal-component score scaling.
+  Character string or \`NULL\` specifying numerical-variable
+  preprocessing. Supported values are \`"none"\` for no preprocessing,
+  \`"std"\` for standard-deviation scaling, \`"range"\` for range
+  scaling, \`"robust"\` for inter-quartile-range-based scaling, and
+  \`"pc_scores"\` for principal-component score scaling. With \`preset =
+  "custom"\`, \`NULL\` defaults to \`"none"\`. With \`preset =
+  "euclidean"\`, the default is \`"std"\`; when all predictors selected
+  by the step are numeric, an explicitly supplied value can override
+  that default.
 
 - commensurable:
 
