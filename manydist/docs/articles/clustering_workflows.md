@@ -1,4 +1,4 @@
-# distance-based clustering workflows
+# Distance-based clustering workflows
 
 ## 1 Overview
 

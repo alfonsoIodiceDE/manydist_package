@@ -1,4 +1,4 @@
-# supervised learning workflows
+# Nearest-neighbor learning workflows
 
 ## 1 Overview
 

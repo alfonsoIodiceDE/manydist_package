@@ -1,4 +1,4 @@
-# manydist: benchmarking distance choices
+# Benchmarking distance choices
 
 ## 1 Overview
 

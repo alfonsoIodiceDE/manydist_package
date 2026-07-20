@@ -1,5 +1,5 @@
 ---
-title: "distance-based clustering workflows"
+title: "Distance-based clustering workflows"
 author: "Alfonso Iodice D'Enza"
 format:
   html:

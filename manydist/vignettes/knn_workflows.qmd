@@ -1,5 +1,5 @@
 ---
-title: "supervised learning workflows"
+title: "Nearest-neighbor learning workflows"
 author: "Alfonso Iodice D'Enza"
 format:
   html:

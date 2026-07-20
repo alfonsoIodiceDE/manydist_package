@@ -11,12 +11,12 @@
 
 - [Assessing variable contributions to
   distances](https://alfonsoiodicede.github.io/manydist_package/articles/variable_contributions.md):
-- [manydist: benchmarking distance
+- [Benchmarking distance
   choices](https://alfonsoiodicede.github.io/manydist_package/articles/benchmarking_distance_choices.md):
 
 ### Distance-based learning workflows
 
-- [distance-based clustering
+- [Distance-based clustering
   workflows](https://alfonsoiodicede.github.io/manydist_package/articles/clustering_workflows.md):
-- [supervised learning
+- [Nearest-neighbor learning
   workflows](https://alfonsoiodicede.github.io/manydist_package/articles/knn_workflows.md):
