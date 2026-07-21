@@ -1,0 +1,14 @@
+path,bytes,md5
+generated/figures/fig-mds-unbiased-dependent.pdf,24741,7bee3ba6d7cae483365f53621dc73018
+generated/figures/README.md,100,743d019fdff678357f48434992ff07be
+generated/results/core-distances.rds,4096300,1d92204f643150a89095b98f301a31d0
+generated/results/distance-specifications.rds,212,f86f0921d2f164861a507a400e83af4b
+generated/results/penguins.rds,3088,8a77fba3a3c56a713b0a553940f0cfd5
+generated/results/README.md,100,acce5420f9687a19a561d9d317770816
+generated/results/session-info.txt,3409,2b5e99935d529fa1d746eb00d568834f
+generated/tables/categorical-methods.csv,1443,0aa9f5147f8e84d5c080e5d025c4e7f7
+generated/tables/core-distance-summary.csv,570,7d516d03e3d293934fe60a3ec5359ff8
+generated/tables/distance-specifications.csv,167,4c68286c873ea27cff43f6cb81cfaa9c
+generated/tables/method-registry.csv,4803,a0d0d46c99c7f2d6a0bff330f2c13dac
+generated/tables/penguins-summary.csv,367,91ba465f897167e587efb6f0d5fb98cc
+generated/tables/README.md,99,9c2917c274997c69a345cf1b97f6676b

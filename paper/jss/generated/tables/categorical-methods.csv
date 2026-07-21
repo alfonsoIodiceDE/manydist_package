@@ -1,0 +1,11 @@
+method,display_name,formula_tex,family,citation_key,data_type,distance_basis,response_aware,engine
+matching,Matching,$\Delta_k^m = \mathbf{1}\mathbf{1}^{\top} - I$,independence,,categorical,independence,FALSE,manydist
+eskin,Eskin,$\Delta_k^e = (2/q_k^2)\Delta_k^m$,independence,,categorical,independence,FALSE,manydist
+of,Occurrence frequency,$\log(p_k)\log(p_k)^{\top} \odot \Delta_k^m$,independence,,categorical,independence,FALSE,manydist
+iof,Inverse occurrence frequency,$\log(np_k)\log(np_k)^{\top} \odot \Delta_k^m$,independence,,categorical,independence,FALSE,manydist
+none,Indicator without scaling,$\Delta_k^d = 2\Delta_k^m$,indicator_scaling,,categorical,indicator_scaling,FALSE,manydist
+HL,Hennig--Liao indicator scaling,$\Delta_k^{HL} = 2\eta_k\Delta_k^m$,indicator_scaling,Hennig2013,categorical,indicator_scaling,FALSE,manydist
+st_dev,Indicator standard-deviation scaling,$\delta_{abk}^s = q_k^{-1/2}(s_a^{-1/2}+s_b^{-1/2})$,indicator_scaling,,categorical,indicator_scaling,FALSE,manydist
+cat_dis,Category-dissimilarity scaling,$\Delta_k^{cds}=q_k^{-1}S_{kd}^{-1/2}\Delta_k^mS_{kd}^{-1/2}$,indicator_scaling,,categorical,indicator_scaling,FALSE,manydist
+tvd,Total variation,$\delta_{ab}=\frac{1}{2}\lVert r_a-r_b\rVert_1$,association,ahmad2007k,categorical,association,TRUE,manydist
+kullback-leibler,Kullback--Leibler,"$\delta_{ab}=KL(r_a,r_b)+KL(r_b,r_a)$",association,le2005association,categorical,association,TRUE,philentropy

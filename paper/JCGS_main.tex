@@ -1,0 +1,555 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage{inputenc}
+\usepackage{inputenx}
+\usepackage{amsthm}
+\usepackage{graphicx} 
+\usepackage{microtype}
+\usepackage[english]{babel}
+\usepackage{curve2e}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=authoryear, citestyle=authoryear, maxnames=8]{biblatex}
+\usepackage{mathptmx}
+\usepackage{helvet}
+\usepackage{xcolor}
+\usepackage{courier}
+\usepackage{type1cm}
+\usepackage{makeidx}
+\usepackage{graphics}
+\usepackage{multicol} 
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage[bottom]{footmisc}
+\usepackage{amssymb}
+\usepackage{lineno}
+\usepackage{multirow}
+\usepackage{wasysym}
+\usepackage{tikz}
+\usepackage{caption}
+\usepackage{subfigure}
+\usepackage{amsfonts}
+\usepackage{url}
+\usepackage{fancyhdr}
+\usepackage{mathtools}
+\usepackage{units}
+\usepackage[T1]{fontenc} 
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{footnote}
+\usepackage{enumerate}
+\usepackage{ragged2e}
+\usepackage{array}
+\usepackage{bm}
+\usepackage{calrsfs}
+\usepackage{rotating}
+\usepackage{tabulary}
+\usepackage{blkarray}
+\usepackage{bigstrut}
+\usepackage{gauss}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[title]{appendix}
+\usepackage{dirtytalk}
+\usepackage{xurl}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=red]{hyperref}
+
+\newcommand{\ma}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand{\tr}{\text{tr}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\newcommand{\pkg}[1]{{\normalfont\fontseries{b}\selectfont #1}}
+\let\proglang=\textsf
+\let\code=\texttt
+
+% NOTE: To produce blinded version, replace "0" with "1" below.
+\newcommand{\blind}{0}
+
+% DON'T change margins - should be 1 inch all around.
+\addtolength{\oddsidemargin}{-.5in}%
+\addtolength{\evensidemargin}{-1in}%
+\addtolength{\textwidth}{1in}%
+\addtolength{\textheight}{1.7in}%
+\addtolength{\topmargin}{-1in}%
+
+\addbibresource{references.bib}
+
+\pdfminorversion=4
+
+\begin{document}
+
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+\date{ }
+
+\if0\blind
+{
+  \title{\bf Unbiased mixed-variable distance}
+  \author{Michel van de Velden\\
+    Econometric Institute, Erasmus University Rotterdam\\
+    and \\
+    Alfonso Iodice D'Enza \\
+    Department of Political Sciences, University of Naples Federico II\\
+    and \\
+    Angelos Markos \\
+    Department of Primary Education, Democritus University of Thrace\\
+   and \\
+    Carlo Cavicchia \\
+   Econometric Institute, Erasmus University Rotterdam}
+  \maketitle
+} \fi
+
+\if1\blind
+{
+  \bigskip
+  \bigskip
+  \bigskip
+  \begin{center}
+    {\LARGE\bf Unbiased mixed-variable distance}
+\end{center}
+  \medskip
+} \fi
+
+\bigskip
+\begin{abstract}
+Defining distances between observations with mixed-type variables poses a fundamental challenge due to differences in variable types and measurement scales. While several mixed-variable distance measures have been proposed, they often suffer from biases that cause certain variables to dominate the overall distance depending on their distribution, scaling method, or number of categories. In this paper, we formalize this notion of bias and introduce the concept of unbiased mixed-variable distances. In particular, we develop a general additive formulation that makes it possible to quantify bias. Furthermore, we propose a weighting scheme that can be used to avoid such biases; ensuring a balanced contribution of individual variables. Gower’s distance arises as a special case of our formulation. The practical benefits of the unbiased distances are illustrated through a simulation study and a real data application.
+\end{abstract}
+
+\noindent%
+{\it Keywords:} Mixed-type data, distance-based methods, multi-dimensional scaling, unbiasedness
+\vfill
+
+\newpage
+\spacingset{1.75} 
+\section{Introduction}
+In many fields of study, it is necessary to measure the distance or similarity between observations or data points. These measurements are crucial for various tasks, including data visualization, clustering and classification. In settings involving multiple variables, a distance needs to be defined that accounts for differences in measurement scales and types. In particular, the individual contribution of variables to the overall distance should not be related to variable types or scales.
+
+In a purely numerical context, distance can be based on the sizes of the observed differences. For categorical variables, the situation is more complex as one only observes whether categories are equivalent or not. For mixed-variable settings, the situation is even more complex, as this requires a method of calculating distance that can effectively handle the diversity in variable types. 
+
+One of the most recognized and widely used methods for calculating mixed-variable distances is based on Gower’s general coefficient of similarity \parencite{Gower:1971}. This measure, which we refer to as Gower's distance, provides an additive, elegant and simple way to measure the distance between observations based on numerical and categorical variables. Although Gower's proposal remains a popular choice, several alternative distances for mixed-variable data have been proposed in more recent literature, e.g., \textcite{MS:2023,GT:2024,BojGrane:2024}. Most of these mixed distance proposals focus on variable weighting schemes \parencite{AD:2007,HennigLiao2013,MS:2023,GT:2024} or on harmonizing the treatment of numerical and categorical variables \parencite{Huang1998,foss2016semiparametric, de2021towards}. An even more general setting concerns distances involving not only both numerical and categorical variables, but also observations that do not share the same sets of variables. In this context, \textcite{halle2025distance} proposed a generalized \say{meta distance} that accommodates observations measured on different subsets of variables. Their framework addresses how to aggregate distances when variable sets vary across observations, a problem that is orthogonal to the one we address here, namely ensuring unbiased variable contributions when all observations share the same set of variables. In principle, the two approaches are complementary.
+
+A persistent problem of the existing mixed-variable distances is that they may suffer from \say{importance biases}. That is, the overall distances are unequally affected by different variables due to differences in measurement type, scale or distributions. For example, Gower's distance is known to be biased toward the contribution of categorical variables \parencite{HennigLiao2013,foss2016semiparametric}. In this paper, we explicitly tackle this problem of biased distances. We formulate desirable properties for multivariate mixed-variable distances and propose a general multivariate mixed-variable distance that can be used to construct unbiased mixed-variable distances. Note that, rather than proposing a new mixed-variable distance, our goal is to offer a flexible, theoretically grounded approach that enables researchers to define unbiased distances adaptable to a range of tasks.
+ 
+This paper is organized as follows. Section \ref{notation} provides notation and terminology used throughout the paper. Next, in Section \ref{framework}, we define the desirable properties for mixed-variable distances, and we introduce a general formulation that can be used to construct multivariate mixed-variable distance satisfying these properties. In Sections \ref{sect:numdist} and \ref{sect:catdist}, we introduce new and existing numerical and categorical distance variants that can be incorporated in our formulation. Moreover, we show, theoretically, how several common distance and scaling options -- for numerical and categorical variables -- lead to biased mixed-variable distances. Next, using a simulation study and an empirical application, we illustrate our findings in Sections \ref{sect:simulation} and \ref{sect:illustration}, and end the article with our conclusions. 
+
+\section{Notation} \label{notation}
+For the convenience of the reader, some notation and terminology common to all sections is listed here.
+
+\renewcommand{\arraystretch}{0.8}
+\begin{tabular}[H]{p{1.5cm}p{13cm}}
+$n, p, p_n, p_c$ & number of observations, variables, numerical variables, and categorical variables, respectively, where $p=p_n+p_c$;\\
+$i,l,s$ & generic observation indices;\\
+$j, h, k$ & variable indices for the generic, numerical and categorical variables, respectively;\\
+$q_k$ & number of categories for the $k$-th categorical variable;\\
+$a,b$ & generic category indices of a categorical variable;\\
+$X_h$, $X_k$ & univariate numerical and categorical random variables, respectively;\\
+$\bm{X}$ & a $p-$dimensional random variable;\\
+$\mathbf{x}, \mathbf{x}^n, \mathbf{x}^c$ & $p-$, $p_n-$, and $p_c-$dimensional vectors, corresponding to, respectively, multivariate mixed, numerical and categorical observations;\\
+$\mathbf{X}$ & an $n \times p$ centered data matrix;\\
+$\bm{\Delta}_k$ & category dissimilarity matrix for the $k$-th categorical variable;\\ 
+$\mathbf{Z}_k$ & indicator matrix with one-hot rows representing category membership.
+\end{tabular}
+
+\section{Unbiased mixed-variable distance}\label{framework}
+We consider a distance to be unbiased if contributions of individual variables to the overall distance are not affected by their measurement types or scales. To achieve this, we introduce two properties: multivariate additivity and commensurability.
+
+\subsection{Properties of a multivariate mixed-variable distance} \label{properties}
+A mixed-variable distance requires (i) quantifying dissimilarities for each variable and (ii) aggregating these into an overall distance. We focus on additive distances, for which each variable has a well-defined contribution.
+
+\begin{definition}[Multivariate additivity] \label{DefMA}
+Let $\mathbf{x}_i = (x_{i1}, \dots,x_{ip})$ and $\mathbf{x}_l = (x_{l1}, \dots,x_{lp})$ be $p$-dimensional observations.  
+A function $d : \mathcal{X}^p \times \mathcal{X}^p \to [0,\infty)$ is \emph{multivariate additive} if
+\begin{equation*}
+    d(\mathbf{x}_i,\mathbf{x}_l)
+    = \sum_{j=1}^p d_j(\mathbf{x}_i,\mathbf{x}_l),
+\end{equation*}
+where $d_j(\mathbf{x}_i,\mathbf{x}_l)$ denotes the contribution attributed to variable $j$.
+\end{definition}
+
+Note that each component $d_j$ can depend on all elements of $\mathbf{x}_i$ and $\mathbf{x}_l$, thus its index $j$ reflects the contribution associated with variable $j$, which need not be restricted to the value of the $j$-th variable alone. This allows for additive functions (e.g., distances) that incorporate dependencies between variables.
+
+\begin{proposition}\label{prop:sum_metric}
+Let $d$ be a multivariate additive function in the sense of Definition \ref{DefMA}, with component functions $d_1,\dots,d_p$. If each $d_j$ is a metric on $\mathcal{X}^p$, that is, each $d_j$ is nonnegative, symmetric, satisfies the triangle inequality, and equals zero if and only if its arguments coincide, then
+\begin{equation*}
+d(\mathbf{x}_i,\mathbf{x}_l)=\sum_{j=1}^p d_j(\mathbf{x}_i,\mathbf{x}_l)
+\end{equation*}
+is also a metric on $\mathcal{X}^p$.
+\end{proposition}
+
+\begin{proof}
+Nonnegativity and symmetry follow immediately from the corresponding properties of each $d_j$. For the triangle inequality,
+\begin{equation*}
+d(\mathbf{x}_i,\mathbf{x}_s)
+= \sum_{j=1}^p d_j(\mathbf{x}_i,\mathbf{x}_s)
+\le \sum_{j=1}^p \bigl(d_j(\mathbf{x}_i,\mathbf{x}_l)+d_j(\mathbf{x}_l,\mathbf{x}_s)\bigr)
+= d(\mathbf{x}_i,\mathbf{x}_l)+d(\mathbf{x}_l,\mathbf{x}_s).
+\end{equation*}
+If $d(\mathbf{x}_i,\mathbf{x}_l)=0$, then $d_j(\mathbf{x}_i,\mathbf{x}_l)=0$ for all $j$, implying $\mathbf{x}_i=\mathbf{x}_l$.
+\end{proof}
+
+\begin{example}[Additive distance incorporating associations] For $p=2$, consider observations $\mathbf{x}_i=(x_{i1},x_{i2})$ and $\mathbf{x}_l=(x_{l1},x_{l2})$.  
+Let $f(\mathbf{x})$ be a transformation with components $f_1(\mathbf{x})$ and $f_2(\mathbf{x})$, each defining a linear combination of both variables.  
+Define
+\begin{equation*}
+d_1(\mathbf{x}_i,\mathbf{x}_l)=w_1|f_1(\mathbf{x}_i)-f_1(\mathbf{x}_l)|,\qquad
+d_2(\mathbf{x}_i,\mathbf{x}_l)=w_2|f_2(\mathbf{x}_i)-f_2(\mathbf{x}_l)|.
+\end{equation*}
+Both $d_1$ and $d_2$ depend on all original variables through the transformation $f(\mathbf{x})$.  
+The additive distance
+\begin{equation*}
+d(\mathbf{x}_i,\mathbf{x}_l)=d_1(\mathbf{x}_i,\mathbf{x}_l)+d_2(\mathbf{x}_i,\mathbf{x}_l)
+\end{equation*}
+therefore incorporates associations between variables.
+\end{example}
+
+By defining the overall multivariate distance $d(\mathbf{x}_i,\mathbf{x}_l)$ as the sum of variable-specific distances, each variable-specific distance $d_j(\mathbf{x}_i,\mathbf{x}_l)$ is treated equivalently. This requires these distances to be on similar or equivalent scales. To achieve this, we introduce an additional property: commensurability. In particular, we define distances as commensurable if the mean variable-specific distance between observations is constant across variables. That is,
+
+\begin{definition}[Commensurability]  \label{DefCom}
+Let $\bm{X}_i =(X_{i1}, \dots, X_{ip})$ denote a $p-$dimensional random variable corresponding to observation $i$. Furthermore, let $d_{j}$ denote the distance function corresponding to the $j-$th variable. We have commensurability if,
+for all $j$, and $i \neq l$, 
+\begin{equation*}
+    E[d_{j}(\bm{X}_i, \bm{X}_l)] = c,
+\end{equation*}
+where $c$ is some constant of which the actual value is of no importance. 
+\end{definition}
+
+In Definitions \ref{DefMA} and \ref{DefCom},  we allow for variable-type-specific distance measures. In a mixed-variable type setting, such flexibility is essential as the numerical and categorical variables require different distance functions. 
+
+\subsection{A general multivariate mixed-variable distance} \label{proposal}
+To construct a mixed distance that satisfies multivariate additivity and commensurability, as defined in Definitions \ref{DefMA} and \ref{DefCom}, we introduce a general multivariate mixed-variable distance formulation.
+
+Let $\mathbf{x}_i = (x_{i1}, \dots, x_{ip})$ be a $p-$dimensional vector representing the observed values of the random variable $\bm{X}_i$. The distance between observations $i$ and $l$ is defined as
+\begin{equation}\label{genmixeddist}
+d(\mathbf{x}_i, \mathbf{x}_l) = \sum_{j=1}^{p} d_j(\mathbf{x}_i, \mathbf{x}_l) = \sum_{j=1}^{p} w_j \delta_j(\mathbf{x}_i, \mathbf{x}_l),
+\end{equation}
+where $\delta_j$ measures the dissimilarity between observations $i$ and $l$ for variable $j$, and $w_j$ is the corresponding weight. To account for variable types, we distinguish between numerical and categorical variables. For a numerical variable $h$, the distance is given by
+\begin{equation}\label{NumDist}
+d_{h}(\mathbf{x}_i, \mathbf{x}_l) = w_{h} \delta_{h}^n(\mathbf{x}^n_{i}, \mathbf{x}^n_{l}),
+\end{equation}
+where $\mathbf{x}^n_{i}$ denotes the vector of $p_n$ numerical elements of $\mathbf{x}_{i}$, $\delta^n_{h}$ is a function quantifying the dissimilarity between observations on the $h$-th numerical variable, and $w_{h}$ is its weight. 
+
+For a categorical variable $k$, the distance is
+\begin{equation}\label{CatDist}
+d_{k}(\mathbf{x}_i, \mathbf{x}_l) = w_{k} \delta_{k}^c(\mathbf{x}^c_{i}, \mathbf{x}^c_{l}),
+\end{equation}
+where $\mathbf{x}^c_{i}$ denotes the vector of $p_c$ categorical elements of $\mathbf{x}_{i}$, $\delta^c_{k}$ quantifies the dissimilarities, and $w_{k}$ is the associated weight. This decomposition avoids using the full mixed vector of observations as input for distance calculations. As a result, the distances for the numerical and categorical variables depend only on the values of the variables of the same type. Although a more general formulation that also allows for interactions between variables of different types is theoretically appealing, defining and quantifying such interactions is challenging, and we do not pursue this direction in the present paper.
+
+Combining \eqref{genmixeddist}, \eqref{NumDist} and \eqref{CatDist} leads to the following formulation for mixed distance between observations $i$ and $l$:
+\begin{equation}\label{genmixeddist_formula}
+    d(\mathbf{x}_i,\mathbf{x}_l)=\sum_{j=1}^{p} d_j(\mathbf{x}_i, \mathbf{x}_l) 
+    =\sum_{h=1}^{p_n} w_{h} \delta^n_{h}(\mathbf{x}^n_i,\mathbf{x}^n_l)+ \sum_{k=1}^{p_c} w_{k}\delta^c_{k}(\mathbf{x}^c_i,\mathbf{x}^c_l).
+\end{equation}
+
+This formulation enables a highly flexible implementation of mixed distances, with Gower’s distance being a special case. While this general formulation satisfies the multivariate additivity property by definition, commensurability is not inherently guaranteed but can be achieved by assigning variable-specific weights. Specifically, if in \eqref{genmixeddist_formula} we set
+\begin{equation}\label{commensurableweights}
+w_{h} = 1/E[\delta^{n}_{h}(\bm{X}^{n}_i, \bm{X}^{n}_l)]\quad \text{ and} \quad w_{k} = 1/E[\delta^{c}_{k}(\bm{X}^{c}_i, \bm{X}^{c}_l)],
+\end{equation}
+for all numerical and categorical variables $h$ and $k$, the resulting distance satisfies both multivariate additivity and commensurability. This yields an unbiased mixed distance where differences in measurement type or scale do not influence the overall distance.
+
+The expected values in \eqref{commensurableweights} depend on the dissimilarity functions and the distributions of the variables. They can be estimated from the data as
+\begin{equation*}
+m_{h} = \frac{1}{n(n-1)} \sum_{i \ne l} \delta^{n}_{h}(\mathbf{x}^{n}_{i}, \mathbf{x}^{n}_{l}) \quad \text{and} \quad m_{k} = \frac{1}{n(n-1)} \sum_{i \ne l} \delta^{c}_{k}(\mathbf{x}^{c}_{i}, \mathbf{x}^{c}_{l}).
+\end{equation*}
+Then, setting the weights as
+\begin{equation}\label{weights}
+w_{h} = 1/m_{h} \quad \text{and} \quad w_{k} = 1/m_{k},
+\end{equation}
+ensures empirical commensurability. Therefore, inserting the weights in \eqref{weights} into the general mixed-variable distance \eqref{genmixeddist_formula} results in a family of unbiased distances.
+
+It is important to note that this weighting scheme is defined at the per-variable level, allowing each variable to contribute individually to the overall distance based on its empirical scale and distribution. This design ensures that no variable type or measurement unit inherently dominates the multivariate distance due to differences in scale, variability, or category structure. Furthermore, this approach is consistent with a scenario in which all variables are assumed to be equally relevant. However, the formulation is flexible and researchers can impose constraints -- such as shared weights within numerical or categorical groups -- if commensurability is only required within, rather than across, variable types. Such constraints may reflect domain-specific knowledge or modeling priorities and are fully compatible with the general formulation.
+
+When empirical mean univariate distances $m_j$ approach zero, indicating little dispersion for a specific variable, the corresponding weights become large. This could lead to overemphasizing the influence of such variables. To remedy this, one could either discard such variables (as they do not meaningfully contribute to the overall distance) or apply a small positive lower bound $\varepsilon$ to the denominator. That is, setting $w_j = 1 / \max(m_j, \varepsilon)$, with $\varepsilon$ chosen based on the scale of the data. This ensures numerical stability while preserving the principle of balancing variable contributions.
+
+\section{Distance bias for numerical variable distances}\label{sect:numdist}
+In this section, we consider distance bias for numerical variables. We first briefly review some common scaling options, after which we show that such options do not automatically result in unbiased distances.
+In the general formulation (\ref{genmixeddist_formula}), the contribution of the numerical variables to the multivariate mixed-variable distance is
+\begin{equation}\label{gendistnumerical}
+d_{num}(\mathbf{x}_{i},\mathbf{x}_{l}) = \sum_{h=1}^{p} w_{h} \delta_{h}(\mathbf{x}_{i}, \mathbf{x}_{l})= \sum_{h=1}^{p} w_h \lvert f_h(\mathbf{x}_i)-f_h(\mathbf{x}_l) \rvert,
+\end{equation}
+where $f_h(\cdot)$ denotes a transformation of the $h$-th numerical variable.
+
+To obtain unbiased distances, the weights $w_h$ are defined as the inverse of the mean univariate distances. This ensures that linear rescalings of a variable (e.g., $f_h(x_h)=a_hx_h+b_h$) do not affect its contribution, making any prior scaling unnecessary. The functions $f_h(\cdot)$ may be univariate or multivariate. They can be used to change scale (e.g., logarithmic transformations) or to incorporate dependence between variables. In the latter case, we propose an association-based scaling approach that accounts for relationships among numerical variables while preserving multivariate additivity.
+
+\begin{itemize}
+\item \emph{Principal component scaling}. 
+When variables are (linearly) related, one may argue that distances orthogonal to the direction of the relationship should receive larger weights than distances along that direction. To achieve this, we first rotate the original data to their principal coordinates and then scale them using the sample standard deviations.
+
+Let $\mathbf{X}$ denote an $n \times p$ centered data matrix of rank $p$, and let $\mathbf{S}$ be the corresponding sample covariance matrix. Consider the eigen-decomposition
+\begin{equation*}
+    \mathbf{S} = \mathbf{V} \bm{\Lambda}\mathbf{V}^{\top},
+\end{equation*}
+where $\mathbf{V}$ is orthonormal and $\bm{\Lambda}$ is a $p \times p$ diagonal matrix of eigenvalues. Then
+\begin{equation*}
+    \mathbf{X}^{*} = \mathbf{X}\mathbf{V}\bm{\Lambda}^{-1/2}
+\end{equation*}
+yields the data in principal coordinates \parencite{Gower:1966}. The columns of $\mathbf{V}\bm{\Lambda}^{-1/2}$ define $p$-dimensional functions $f_h(\mathbf{x}_i)$ that can be incorporated into our distance formulation (\ref{gendistnumerical}).
+
+If the eigenvalues are ordered in non-increasing order, the first rotated variable (the first column of $\mathbf{X}^{*}$) corresponds to the linear combination of the original variables capturing the largest amount of variation. The second column accounts for most of the remaining variance, and so on. This procedure does not perform dimensionality reduction but rather rotates and rescales the data. In the principal coordinate system, the dimensions are uncorrelated. However, because principal component scaling changes the orientation of the original variables, the resulting multivariate distance is additive with respect to the rotated variables rather than the original ones.
+\end{itemize}
+
+\subsection{Bias for common scaling options for numerical variables}\label{sect:comnumdist}
+Defining weights $w_h$ as in \eqref{weights} guarantees commensurability by construction. In contrast, scaling the variables is not a neutral choice: even when the same scaling method is applied to all numerical variables, the resulting distances generally remain non-commensurable. The reason is that the expected univariate distances depend on the underlying distributions of the variables.
+Before demonstrating this, we briefly recall three widely used scaling transformations:
+\begin{itemize}
+    \item[-] \text{SD scaling:} $(x - \bar{x})/{s_x}$, where $\bar{x}$ and $s_x$ denote the sample mean and standard deviation of $x$,
+    \item[-] \text{Range scaling:} $(x - x_{\min})/(x_{\max} - x_{\min})$, where $x_{\min}$ and $x_{\max}$ denote the sample minimum and maximum of $x$,
+    \item[-] \text{Robust range scaling:} $(x - x_{\text{Med}})/(x_{\text{Q}3} - x_{\text{Q}1})$, where $x_{\text{Med}}$, $x_{\text{Q}1}$, $x_{\text{Q}3}$ denote the sample median and first and third quartiles of $x$.
+\end{itemize}
+These transformations rescale each variable, but the resulting values still depend on the variable’s shape, tail behavior, and extreme observations. To see why this matters, recall that commensurability for numerical variables requires
+
+\begin{equation}\label{EV=1}
+    E[d_{h}(\bm{X}^n_i,\bm{X}^n_l)]= w_h E[\lvert f_h(\bm{X}^n_i)-f_h(\bm{X}^n_l) \rvert]=c,
+\end{equation}
+for all $i \neq l$ and $h \in \{1, \dots, p_n\}$, and where $c$ is some constant. Applying a transformation $f_h(\cdot)$ -- such as SD scaling, range scaling, or robust range scaling -- modifies each marginal distribution in a way that depends on its underlying shape. Consequently, the expected distances in \eqref{EV=1} will differ across variables unless the variables follow the same distribution.
+
+To illustrate the effect of different distributions and scaling options, we present simulation results for mean distances for various combinations of scaling and distributions in Table \ref{table:scaling_impact}. Moreover, in the Supplementary material (Sections 1 and 2), we provide exact results concerning the mean values for scaling options when the variables have a Uniform or Normal distribution, respectively. 
+
+\begin{table}[!ht]
+\caption{Impact of distributions and scaling on mean distance $E[d_{h}(\bm{X}_i, \bm{X}_l)]$. Skewed refers to a $\chi^2_{1/2}$ distribution. For bimodal we considered $n/2$ draws from $\chi^2_{1/2}$  (censored at $10$), and $n/2$ draws from $10-\chi^2_{1/2}$ (censored at $0$).}
+\label{table:scaling_impact}
+\centering
+\begin{tabular}{ccccc}
+\toprule
+Distribution & Sample size & SD scaling & Range scaling & Rob. range scaling \\
+\midrule
+\multirow{2}{*}{Normal} & 50    & 1.16     & 0.25  & 0.76         \\ 
+& 500    & 1.13     & 0.19  & 0.84         \\ \midrule
+\multirow{2}{*}{Uniform} & 50   & 1.16     & 0.35  & 0.69         \\ 
+ & 500      & 1.15     & 0.33  & 0.67         \\ \midrule
+\multirow{2}{*}{Skewed} & 50   & 0.82     & 0.17  & 1.57     \\ 
+ & 500   &  0.77    & 0.09  & 1.49     \\ 
+\midrule
+\multirow{2}{*}{Bimodal} & 50   & 1.07     & 0.50  & 0.51     \\ 
+ & 500   & 1.06     & 0.49  & 0.50     \\ 
+\bottomrule
+\end{tabular}
+\end{table}  
+Table \ref{table:scaling_impact} shows that the mean distances after scaling differ systematically across distributions. Range and robust range scaling are particularly sensitive to skewness and heavy tails, while SD scaling mitigates -- but does not remove -- these differences. These findings confirm that scaling does not equalize variable contributions. Depending on the underlying distribution, it can either amplify or attenuate differences between variables. As a result, distances computed after scaling are not necessarily commensurable. In contrast, the weighting scheme in \eqref{weights} enforces commensurability by equalizing mean distances across variables, regardless of scale or distribution.
+
+\section{Distance bias for categorical variable distances} \label{sect:catdist}
+In this section, we consider distance bias for categorical variables. Quantifying dissimilarity for categorical data is inherently complex, and the choice of distance measure can substantially affect clustering results \parencite{Amiri:2018}. As a consequence of this complexity, many proposals exist to quantify distance for categorical variables; see, e.g., \textcite{BCK:2008,SR:2019,vandeveldenetal2024}. In \textcite{vandeveldenetal2024}, a general framework is introduced that unifies many of these definitions and ensures multivariate additivity. Within this framework, mean distances can be derived in closed form, which is crucial for constructing unbiased versions. We first summarize the framework and the associated expected-value expression. Next, we introduce new distance variants based on indicator-matrix representations and we review existing association-based methods. In Section \ref{sect:comcatdist}, we illustrate how commonly used categorical distance measures can induce bias.
+
+\subsection{Category dissimilarity} \label{sect:catdissim}
+The central object in the framework is the \emph{category dissimilarity matrix} $\bm{\Delta}_k$, which encodes pairwise dissimilarities between the $q_k$ categories of variable $k$. 
+Combined with the indicator matrix $\mathbf{Z}_k$ -- a binary matrix indicating category membership -- distances for variable $k$ are computed as
+\begin{equation}\label{ZDeltaZ'}
+    \mathbf{D}_k = \mathbf{Z}_k \bm{\Delta}_k \mathbf{Z}_k^{\top}.
+\end{equation}
+
+Let $X_{ik}$ denote the random variable corresponding to the $i-$th observation of categorical variable $X_{k}$. Let $q_k$ denote the number of categories for this $k-$th variable, and let $\bm{p}_k$ denote the $q_k \times 1$ vector of category probabilities. Using (\ref{ZDeltaZ'}) as distance function, the mean absolute distances can be expressed as follows
+\begin{equation}\label{EVCat}
+    E[d_k ({X}_{ik}, X_{lk})]= \sum_{a,b \in \{1, \dots,  q_k\}} {p_a p_b \delta_{ab}} = \bm{p}^{\top}_k\bm{\Delta}_k \bm{p}_k.
+\end{equation}
+Hence, mean distances depend on the number of categories, their distribution, and the choice of $\bm{\Delta}_k$. Since these are precisely the factors that can distort the contribution of a categorical variable in a multivariate distance, the closed-form expression in \eqref{EVCat} provides a natural basis for constructing unbiased weights: by setting $w_k = 1/E[d_k(X_{ik}, X_{lk})]$, the influence of these factors on the overall distance is neutralized. In practice, we can use empirical category frequencies to approximate $\bm{p}_k$, which is broadly applicable and avoids imposing parametric assumptions. A detailed analysis of sampling variability in these estimates is an interesting direction for future work.
+
+Different categorical distances correspond to different choices of $\bm{\Delta}_k$.  In what follows, we present indicator-based dissimilarities -- common in practice due to the use of binary coding -- and association-based dissimilarities, which incorporate relationships between variables.
+
+\subsubsection{Indicator-based category dissimilarities} \label{sect.independencategory}
+Indicator-based dissimilarities treat binary-coded data as numerical. In practice, this type of coding (combined with Euclidean distance) is frequently used \parencite[e.g.,][]{BG:2020, HennigLiao2013}.  Because Euclidean distance is not multivariate additive, we replace it here by Manhattan distance. Different scalings of the indicator matrix correspond to different choices of $\bm{\Delta}_k$ in \eqref{ZDeltaZ'}, leading to the following variants:
+
+\begin{itemize}
+    \item \emph{No scaling:} Manhattan distance on the unscaled indicator matrix yields dissimilarities $0$ or $2$, so $\bm{\Delta}_k = 2 \bm{\Delta}_{m_k}$.
+    \item \emph{Hennig--Liao scaling:} \textcite{HennigLiao2013} scale the indicator matrix so that the expected squared Manhattan distance equals $2\phi$:
+    \begin{equation}\label{HLscaling}
+        \sum_{a=1}^{q_k} E[(Z^*_{ia} - Z^*_{la})^2] = 2\phi,
+    \end{equation}
+    where $Z^{*}_{ia}$ denotes the scaled indicator variable for the $i-$th observation on the $a-$th category, and $\phi$ needs to be supplied by the researcher. \textcite{HennigLiao2013} suggest to use $\phi=1/2$ for categorical variables and $\phi=(q_k-1)/q_k$ for ordinal ones. Consequently, for the ordinal case, the expected value in \eqref{HLscaling} converges to $2$, similar to the situation for numerical variables.  This results in a scaling factor $\eta_k$ such that $\mathbf{Z}^*_k = \eta_k \mathbf{Z}_k$. The factor is implemented in the \proglang{R} package \pkg{fpc} \parencite{fpc_pkg}. Derivations and limiting results are provided in the Supplementary Material (Section 3).
+    \item \emph{Standard deviation scaling:} Each column of $\mathbf{Z}_k$ is scaled by its standard deviation:
+    \begin{equation*}
+        \mathbf{Z}_k^* = \frac{1}{\sqrt{q_k}}\, \mathbf{Z}_k \mathbf{S}_{k_d}^{-1/2},
+    \end{equation*}
+    giving
+    \begin{equation*}
+        \delta_{ab_k} = \frac{1}{\sqrt{q_k}} (s_a^{-1/2} + s_b^{-1/2}).
+    \end{equation*}
+    \item \emph{Category dissimilarity scaling:} Scaling is applied directly to $\bm{\Delta}_k$:
+    \begin{equation*}
+        \bm{\Delta}_{cds_k} = \frac{1}{q_k}\, 
+        \mathbf{S}_{k_d}^{-1/2}\, \bm{\Delta}_{m_k}\, \mathbf{S}_{k_d}^{-1/2},
+    \end{equation*}
+    yielding $\delta_{ab_k} = q_k^{-1}(s_a s_b)^{-1/2}$.
+\end{itemize}
+Table \ref{table:deltas} summarizes these variants along with additional classical dissimilarities such as Eskin and occurrence-frequency based formulas.
+
+\begin{table}[!ht]
+\caption{Distances and corresponding category dissimilarity matrices or category dissimilarites $\delta_{ab}$, where $\odot$ indicates the Hadamard (i.e., elementwise) matrix product and $\log(\cdot)$ takes the logarithm of the parenthesized object and collects them in an object of the same size.}
+\label{table:deltas}
+\centering
+\begin{tabular}{ll}
+\toprule
+Distance & Category disimilarity matrix $\bm{\Delta}_k$ (or \\ & its typical element $\delta_{ab}$, for $a \neq b$)  \\ \midrule
+Matching  & $\bm{\Delta}_{m_k} = \mathbf{1} \mathbf{1}^{\top} - \mathbf{I}$  \\ 
+Eskin & $\bm{\Delta}_{e_{k}} = 2/q_k^2\bm{\Delta}_{m_k}$ \\ 
+Occurence frequency (OF) & $\bm{\Delta}_{OF_{k}} = \log(\mathbf{p}_k)\log(\mathbf{p}_k)^{\top} \odot \bm{\Delta}_{m_k}$  \\ 
+Inverse OF & $\bm{\Delta}_{IOF_{k}} = \log(n\mathbf{p}_k)\log(n\mathbf{p}_k)^{\top} \odot \bm{\Delta}_{m_k}$ \\
+\midrule
+Indicator: No scaling & $\bm{\Delta}_{d_{k}}=2\bm{\Delta}_{m_k}$  \\
+Indicator: Hennig-Liao scaling & $\bm{\Delta}_{HL_{k}} = 2\eta_{k}\bm{\Delta}_{m_k}$ \\
+Indicator: Standard deviation scaling & $\delta^{s}_{ab_{k}}=\sqrt{\frac{1}{q_k}} (s^{-1/2}_a + s^{-1/2}_b )$ \\
+Indicator: Cat. dissimilarity scaling & $\bm{\Delta}_{cds_{k}}=\frac{1}{q_k}\mathbf{S}^{-1/2}_{k_d}\bm{\Delta}_{m_k} \mathbf{S}^{-1/2}_{k_d} $\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Association-based category dissimilarities} \label{sect:catdist_ab}
+Association-based methods incorporate relationships between categorical variables by comparing conditional distributions \parencite[e.g.,][]{LH:2005,AD:2007,JCL:2014,ROBNLH:2015}. Let
+\begin{equation*}
+    \mathbf{R}^{k|k'} = (\mathbf{Z}_k^\top \mathbf{Z}_k)^{-1} \mathbf{Z}_k^\top \mathbf{Z}_{k'}
+\end{equation*}
+denote the conditional distribution of variable $k$ given variable $k'$.  
+Dissimilarities between categories of $k$ are then defined by comparing the rows of $\mathbf{R}^{k|k'}$.  
+
+Two commonly used examples are:
+\begin{itemize}
+\item \emph{Kullback--Leibler (KL) dissimilarity} \parencite{LH:2005}:
+\begin{equation*}
+\delta_{ab} = \mathrm{KL}(\mathbf{r}_a,\mathbf{r}_b) + \mathrm{KL}(\mathbf{r}_b,\mathbf{r}_a) = \sum_{l=1}^{q_k} r_{al}\log_2\!(\frac{r_{al}}{r_{bl}}) + r_{bl}\log_2\!(\frac{r_{bl}}{r_{al}}),
+\end{equation*}
+where $r_{al}$ and $r_{bl}$ indicate the $l$th element of $\mathbf{r}_a$ and $\mathbf{r}_b$ respectively. $\text{KL}$ denotes the Kullback-Leibler divergence between two discrete distributions and $\log_2$ denotes the base $2$ logarithm.
+\item \emph{Total variance distance} \parencite{AD:2007}:
+\begin{equation*}
+\delta_{ab} = \tfrac{1}{2}\|\mathbf{r}_a - \mathbf{r}_b\|_1,
+\end{equation*}
+where $\|\cdot\|_1$ denotes the $L_1$ norm.
+\end{itemize}
+
+These dissimilarities equal zero under independence and increase as the dependence between variables strengthens. KL values under perfect dependence require smoothing to handle zeros, e.g., as implemented in the \proglang{R} package \pkg{philentropy} \parencite{Drost2018}. Additional association-based variants are reviewed in \textcite{vandeveldenetal2024}.
+
+\subsection{Bias for different categorical variable distances}\label{sect:comcatdist}
+Using \eqref{EVCat}, we can compare mean distances across distance definitions. Table \ref{table:expectedvalues} shows that, under uniform category probabilities, most dissimilarities produce expected distances that depend on the number of categories $q$. Except for category dissimilarity scaling, variables with more categories tend to dominate, leading to biased multivariate distances unless corrections are applied.
+
+For non-uniform distributions, analytic expressions can still be obtained from \eqref{EVCat}.  In the Supplementary Material (Section 4), we examine the role of skewed category frequencies and show how different choices of $\bm{\Delta}_k$ respond to such imbalances.
+
+\begin{table}[!ht]
+\caption{Distances and corresponding category dissimilarity matrices when category probabilities are equal. That is, $p_s=1/q$ for $s=1 \dots q$. For Hennig-Liao we used $\phi=1/2$ and the limiting result ($n \to \infty$) for $\eta$. For Inverse OF we used $n=160$. For Kullback-Leibler, $\kappa=5\log_2(10) \approx 16.610$.}
+\label{table:expectedvalues}
+\centering
+\begin{tabular}{llccc}
+\toprule
+Distance & Cat. dissimilarity $\bm{\Delta}_k$ & $E[d(X_{i}, X_{l})] $&  $ q=2$  & $ q=5  $\\ \midrule
+Matching  & $\bm{\Delta}_m = \mathbf{1} \mathbf{1}^{\top} - \mathbf{I}$  & $\frac{q-1}{q}$ & $0.5$ & $0.8$\\ 
+Eskin & $\bm{\Delta}_e = 2/q^2\bm{\Delta}_m$ & $\frac{2(q-1)}{q^3}$ & $0.250$ & $0.064$ \\ 
+Occurence frequency (OF) & $\bm{\Delta}_{OF} = \log^2(q)\bm{\Delta}_m$ & $\log^2(q)\frac{q-1}{q}$ & $0.240$ &  $2.072$\\ 
+Inverse OF & $\bm{\Delta}_{IOF} = \log^2(n/q) \bm{\Delta}_m$ & $\log^2(n/q)\frac{q-1}{q}$ & $9.601$ & $9.610$ \\ \midrule
+Indicator (no scaling) & $\bm{\Delta}_{d}=2\bm{\Delta}_m$ & $\frac{2(q-1)}{q}$ &$1$ & $1.6$\\
+Indicator (Hennig-Liao scaling) & $\bm{\Delta}_{HL} = \sqrt{\frac{2q}{q-1}}\bm{\Delta}_m$ & $\sqrt{\frac{2(q-1)}{q}}$ &$1$ & $1.265$\\
+Indicator (St. dev. scaling) & $\bm{\Delta}_{s}=2\sqrt{\frac{q}{q-1}}\bm{\Delta}_m$ &  $2\sqrt{\frac{(q-1)}{q}}$ & $1.414$ & $1.789$\\
+Indicator (Cat. dissim. scaling) & $\bm{\Delta}_{cds}=\frac{q}{q-1}\bm{\Delta}_m $ & $1$ &$1$&$1$\\ \midrule
+Total Variance  & $\bm{\Delta}_{tvd} = \bm{\Delta}_m$  & $\frac{q-1}{q}$ & $0.5$ & $0.8$\\ 
+Kullback-Leibler (Le \& Ho) & $\bm{\Delta}_{KL} = \kappa\bm{\Delta}_m$ & $\kappa\frac{q-1}{q}$ & $8.305$ & $13.288$ \\ 
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Simulation study}\label{sect:simulation}
+As discussed in Sections~\ref{sect:numdist} and~\ref{sect:catdist}, the contribution of individual variables to mixed-variable distances can be strongly affected by distributional properties, scaling choices, and the specific metric definition. To examine these effects, we conduct three simulation experiments comparing several mixed-variable distance measures. Across all experiments, we evaluate the same set of ten distances.
+
+We consider six additive distances: 1) \emph{gower}: Gower’s distance; 2) \emph{mod\_gower}: a weighted modification of Gower’s distance \parencite{LYNCLP:2024}; 3) \emph{hl\_add}: Manhattan distance with Hennig--Liao scaling; 4) \emph{u\_ind}: a commensurable Manhattan distance using simple matching for categorical variables; 5) \emph{u\_dep}: a commensurable distance combining PCA-scaled numerical variables with total variance distance for categorical variables; and 6) \emph{u\_mix}: a commensurable distance combining Manhattan distance for numerical variables with total-variance distance for categorical variables. In addition, we include four non-additive proposals from the literature: 7) \emph{naive}: Euclidean distance applied to standardized data after dummy coding categorical variables; 8) \emph{hl}: Euclidean distance on standardized numerical variables combined with Hennig--Liao scaling for categorical variables \parencite{HennigLiao2013}; 9) \emph{gudmm}: the generalized unified distance metric for mixed-type data \parencite{MS:2023}; and 10) \emph{dkss}: the kernel product similarity distance \parencite{GT:2024}.
+
+A theoretical comparison of these newer proposals is beyond the scope of this paper; our focus is on their empirical behavior. Among the considered measures, only variants (4), (5), and (6) are unbiased by construction. All distances were computed using the \pkg{manydist} \proglang{R} package \parencite{manydist2026}. Note that the \emph{gudmm} implementation is based on the authors' \proglang{Python} implementation,\footnote{\url{https://github.com/Elmsvi-Git/GUDMM-S}}; furthermore, the main \pkg{manydist} function \texttt{mdist} acts as a wrapper for both \emph{mod\_gower} authors' original \proglang{R} implementation\footnote{\url{https://github.com/Pinyan-Liu/DAFI-Gower-Distance}} and \emph{dkss},  obtained via the \texttt{kdml::dkss} function \parencite{ThompsonGhashti2025}.
+
+To ensure a fair and reproducible comparison, we adhere to established simulation best practices as outlined by \textcite{van2023white}. The aim of the simulation study is not to identify a single superior method, but to demonstrate how biases induced by measurement scales and variable types affect mixed-variable distances and, consequently, subsequent distance-based analyses.
+
+\subsection{Variable-specific effects}\label{sect:varspecific}
+In our first study, we consider the contributions of individual variables to the overall distances, as well as their effect on the recovery of the true structure. For each simulation instance, we first generate a $2$-dimensional configuration by creating a random $n \times 2$ matrix by sampling from a uniform distribution on $[-2,2]$ and constructing an orthogonal basis,  $\mathbf{Y}$, by taking its eigenvectors. Next, we post-multiply $\mathbf{Y}$ by a random $2 \times p$ matrix, $\mathbf{N}$, with elements drawn from a uniform distribution on $[-2, 2]$. The resulting $n \times p$ matrix, $\mathbf{X}_o = \mathbf{YN}$, gives a numerical, $p-$dimensional \say{observed} matrix corresponding to the $2$-dimensional configuration $\mathbf{Y}$. We add random noise to these observations using a normal distribution with $\sigma = 0.03$ (approximately half the standard deviation of the generated values). Finally, we discretize $p_{cat}$ columns of the resulting matrix by splitting their ranges into the desired number of intervals. This setting allows us to appraise the effect of the type of variable \emph{within} a chosen mixed-distance variant, and with respect to retrieval of the underlying configuration. In particular, for each variant we consider:
+\begin{enumerate}
+\item \emph{Variable‐level influence}, via the mean of the differences (in absolute values) between the leave-one-variable-out distance and the distance using all variables, to detect over/under‐representation.
+\item \emph{Configuration recovery}, via the alienation coefficient (see below), by comparing 2D classical MDS solutions to the true latent structure.
+\end{enumerate}
+
+We generate $100$ instances, each with $n=500$ observations on $p=6$ variables. For the mixed datasets, two variables remain numerical, the other $4$ variables are converted into $2, 3, 5$ and $9$ categories, respectively. 
+
+The results are summarized in Figure \ref{fig:varimportances_mad}. The top-left panel shows that, for the additive variants, the observed values align with the theoretical ones shown in Tables \ref{table:scaling_impact} and \ref{table:expectedvalues}. For example, for the numerical variables, the mean values of the non-commensurable additive variants (\emph{hl\_add} and \emph{gower}\footnote{Gower distance is implemented both in the \pkg{gower} \proglang{R} package \parencite{gower_pkg} and in the \code{daisy} function available through the \pkg{cluster} \proglang{R} package \parencite{cluster_pkg}; the latter adds an additional scaling factor by dividing Gower distance by the number of variables. Here we did not apply this scaling.}) fall between the corresponding values in Table \ref{table:scaling_impact} for the normal and uniform distributions (the generated data are a mixture of uniform and normal). For the categorical variables, we observe a similar correspondence to the values in Table \ref{table:expectedvalues}. For the non-additive variants, none of the distances are commensurable: \emph{naive} and \emph{dkss} are biased towards the categorical variables, while the reverse holds for \emph{gudmm} and \emph{hl}. For the three unbiased variants, the mean distances per variable are, by construction, $1$. However, for the association-based distances \emph{u\_dep} and \emph{u\_mix}, empirically assessing this by leaving one of these variables out, also affects the distances of the remaining categorical variables. Hence, for these two variants the differences compared to the full distance are close to, but not exactly, $1$.
+
+To assess the contributions of variables of different types to the overall distance, we consider the relative variable contributions depicted in the lower panels of Figure \ref{fig:varimportances_mad}. The desirable outcome is a horizontal line; we see that for the unbiased variants, the relative effect is either exactly $1/6$ or close to this value. For the other variants, distances are affected by type (i.e., numerical or categorical) as well as by the number of categories. For \emph{naive}, and, to a lesser extent, \emph{gower}, \emph{mod\_gower} and \emph{dkss}, categorical variables contribute more to the overall distance, whereas \emph{hl} reduces the influence of categorical variables, increasing the relative contribution of numerical variables. 
+
+\begin{figure}[!ht]
+\center
+\includegraphics[scale=.80]{current_pics/fig1.pdf}
+\caption{Effect of leaving variables out on distance. The first four variables (blue background) are categorical, with the indicated numbers of categories, respectively. The last two are numerical. For the absolute contributions, bars corresponding to one standard deviation are added.}
+\label{fig:varimportances_mad}
+\end{figure}
+
+To see how these differences impact subsequent analyses, we consider the effect of individual variables on a $2$-dimensional classical MDS solution. That is, for all distance variants, we compare the MDS solutions when leaving one variable out with the solution using all variables. Let $\mathbf{F}$ and $\mathbf{L}$ denote Euclidean distance matrices corresponding to MDS solutions with all variables, and with one variable left out, respectively. The congruence coefficient $c$ is defined as
+\begin{equation*}
+c = \frac{\tr(\mathbf{F}^\top \mathbf{L})}{\sqrt{\tr(\mathbf{F}^\top\mathbf{F})\tr(\mathbf{L}^\top\mathbf{L})}},
+\end{equation*}
+where $\tr(\cdot)$ denotes the trace operator. To allow for better discrimination, \textcite{BL:1985} introduce the alienation coefficient as $a=\sqrt{1-c^2}$. This coefficient, which lies between zero and one, can be seen as a measure of unexplained variance or structural distortion introduced by removing a variable; higher values indicate greater influence of a variable on the solution. It provides a useful diagnostic for evaluating the contributions of individual variables to the MDS solution. The results are visualized in Figure \ref{fig:alienations}. Note that the effects on mean distances do not carry over one-to-one to the effects on the low-dimensional configurations. In particular, the categorical variables impact the MDS solution more than the numerical ones for \emph{gower} and \emph{naive}; furthermore, the lower the number of categories, the greater the impact. This aligns with the intuition that such variables provide limited granularity, which can strongly constrain the structure of the projection. In general, low-category variables allow for little differentiation between observations, and projecting to a low-dimensional space suffers from this for all distances.
+\begin{figure}[!ht]
+\center
+\includegraphics[scale=.80]{current_pics/fig2.pdf}
+\caption{Effect of leaving variables out on the MDS solution. The first four variables (blue background) are categorical with indicated numbers of categories respectively. The last two are numerical.}
+\label{fig:alienations}
+\end{figure}
+
+\subsection{Retrieval of the true configuration}
+To assess the effect of the different mixed distances on retrieving the underlying configuration, we generate $100$ instances, each with $n=500$ observations on $p=6$ variables. Three variables remain numerical, and three are discretized into the same number of categories, i.e., either $2, 3, 5$, or $9$. For each dataset, we create a distance matrix using the same mixed distances as before. Next, we apply classical MDS and calculate the alienation coefficient of this solution with the true $2$-dimensional configuration. As a baseline, we also consider results based on Euclidean distances for the original (non-discretized) numerical data. The results are presented in Figure \ref{fig:alienation_boxplots}. Note that discretization results in a loss of information; in ordered settings, this problem would be even more pronounced as shown by \textcite{SAW2025}.
+
+Although differences across distance variants are generally modest, \emph{dkss} and \emph{mod\_gower} tend to exhibit a wider range of alienation values as the number of categories increases, with more pronounced outliers. This appears to be driven in part by a reduction in variability (i.e., a smaller inter-quartile range) rather than a systematic shift toward worse performance. As the number of categories increases, variability across simulation instances also increases, as reflected by wider boxplots and a larger number of outliers in Figure \ref{fig:alienation_boxplots}. For the unbiased variants, performance remains stable across different numbers of categories. In particular, \emph{u\_dep} shows consistently low alienation values when $5$ or more categories are used, suggesting that its association-based construction is well suited to settings with multi-level categorical variables. Since the data are generated by expanding a low-dimensional latent configuration, meaningful associations between variables are present, and \emph{u\_dep} is designed to exploit such dependencies. We emphasize that these observations are descriptive and intended to illustrate expected patterns. Moreover, in this setting it is not possible to assess which variables (numerical or categorical) are more important for correct retrieval. In the next section, we describe an experiment that addresses these limitations.
+
+\begin{figure}[!ht]
+\center
+\includegraphics[scale=.80]{current_pics/fig3.pdf}
+\caption{Distribution of alienation coefficients (with respect to the true configuration) of $2$-dimensional classical MDS solutions using different mixed distances, where three out of six numerical variables have been discretized into the indicated number of categories.}
+\label{fig:alienation_boxplots}
+\end{figure}
+
+\subsection{Unsupervised classification}
+To better assess the empirical behavior of the mixed-distance variants, in particular, how biases affect subsequent analyses, we consider an unsupervised classification setting aimed at recovering an underlying cluster structure. For data generation, we use the function \code{genRandomClust} from the \pkg{clusterGeneration} \proglang{R} package \parencite{QiuJoe2023}, based on the random cluster generation framework of \textcite{QiuJoe2006a}. Clustering is performed using the Partitioning Around Medoids algorithm \parencite[PAM,][]{KaufmanRousseeuw1990}, as implemented in the \pkg{cluster} \proglang{R} package \parencite{cluster_pkg}, with the number of clusters fixed to the true value. Agreement between the estimated partitions and the true cluster labels is measured using the Adjusted Rand Index \parencite[ARI,][]{HA:1985}.
+
+Using the function \code{genRandomClust}, we generate numerical datasets consisting of $n=200$ observations partitioned into $4$ equal-sized clusters. To obtain the categorical variables, we discretize numerical variables into $9$ categories. Furthermore, since discretization results in loss of information concerning the underlying cluster structure, we calibrate the data generation process so that when datasets consist exclusively of numerical or categorical variables, distance variants achieve similar clustering performance, with an average ARI of approximately $0.8$. Details of the specific settings for the cluster generation process can be found in the Supplementary Material (Section 5).
+
+We consider eight scenarios that vary the balance between $8$ numerical and $8$ categorical, noise and signal variables. The noise variables are generated by drawing from independent standard normal distributions. The categorical noise variables are created by discretizing these into $9$ categories. For each of the $8$ scenarios, $100$ datasets are generated.
+
+Figure \ref{fig:parallelARI} presents a parallel plot summarizing the results. The plot reveals a clear structure across scenarios that aligns with the theoretical expectations and earlier simulation results. The first four scenarios (from left to right) correspond to settings in which all variables of one type are unrelated to the clusters (i.e., are noise), whereas the last four represent mixed signal–noise configurations. In the first two scenarios, where all numerical variables are noise, \emph{hl} achieves noticeably worse results due to its bias towards these noisy numerical variables. Similarly, in the third and fourth scenarios, where all categorical variables are pure noise, \emph{hl} achieves better performance than the other methods due to this bias. Conversely, the performance of \emph{gower} shows, as expected, the opposite pattern: this variant does better when the noisy variables are numerical and worse when they are categorical.
+
+For the more balanced, mixed scenarios (the last four), the differences across methods become more pronounced. Here, \emph{u\_mix} shows consistently strong and stable performance, with relatively small variability. At the same time, \emph{hl}, \emph{u\_dep}, and \emph{u\_ind} achieve comparable performance in these scenarios. This robustness contrasts with the behavior of several other distances, whose performance fluctuates more markedly depending on how signal and noise are distributed across variable types. Overall, Figure \ref{fig:parallelARI} clearly illustrates the patterns anticipated by the theoretical results in Sections \ref{sect:numdist} and \ref{sect:catdist}: the unbiased measures are less affected by type- and scale-induced biases, whereas other distances respond unevenly, and predictably, to imbalances in signal and noise. For completeness, the full distributions of ARI values for all ten distances across the eight scenarios are reported in the Supplementary Material (Section 5).
+
+\begin{figure}[!ht]
+\center
+\includegraphics[scale=.80]{current_pics/fig4.pdf}
+\caption{Mean ARI (with $\pm 1$ SD bars) across 8 scenarios for each distance measure. In the scenario labels, n and c denote numerical and categorical variables, respectively; for each type, the first number indicates the number of signal variables and the second the number of noise variables.}
+\label{fig:parallelARI}
+\end{figure}
+
+\section{Illustration: FIFA player data}\label{sect:illustration}
+The simulation studies in the previous section confirmed, in a controlled setting, the theoretical findings of Sections \ref{sect:numdist} and \ref{sect:catdist}. To demonstrate these effects on real data, we apply our distance variants to a sample of $408$ players from the Dutch league in the FIFA 2021 dataset (available at \url{https://www.kaggle.com/datasets/stefanoleone992/fifa-21-complete-player-dataset}). We selected seven numerical variables -- several of which exhibit skewed distributions (e.g., wage, transfer value) -- and seven categorical variables with between $2$ (\say{preferred foot}) and $25$ (\say{position}) categories. A full overview of variable distributions is provided in Section 6 of the Supplementary Material.
+
+Based on the results in Table \ref{table:expectedvalues} and the results of our simulation experiment in Section \ref{sect:simulation}, we anticipate that most non-commensurable metrics will disproportionately weight categorical variables as the number of categories increases. In particular, the \emph{naive} variant as well as \emph{gower} are biased towards categorical variables, which the Hennig–Liao scaling seeks to mitigate.
+
+\begin{figure}[!ht]
+\center
+\includegraphics[scale=.80]{current_pics/fig5.pdf}
+\caption{Variable importance with respect to the full distance matrix. Top panels, absolute values; Bottom panels, relative values.}
+\label{fig:fifa_mad}
+\end{figure}
+
+\begin{figure}[!ht]
+\center
+\includegraphics[scale=.80]{current_pics/fig6.pdf}
+\caption{Variable importance for the alienation coefficient with respect to the full distance matrix.}
+\label{fig:fifa_ac}
+\end{figure}
+
+Similar to our analysis of variable-specific effects in Section \ref{sect:varspecific}, we consider variable importance with respect to the distances as well as to the $2$-dimensional MDS solutions. Note, however, that in this empirical setting there is no external \say{ground truth} for variable importance. Hence, we can only consider the effect of individual variables with respect to the MDS solution using all variables. In this setting, the alienation coefficient merely serves as a diagnostic to reveal how different distance measures affect the influence of individual variables on the MDS solutions. The results for variable importance and alienation coefficients are presented in Figures \ref{fig:fifa_mad} and \ref{fig:fifa_ac}. 
+
+In Figure \ref{fig:fifa_mad} we see that, in line with our theoretical findings in Sections \ref{sect:numdist} and \ref{sect:catdist}, for \emph{naive} and \emph{gower}, distances from categorical variables are much larger than from numerical ones. Furthermore, the influence of the number of categories is clear for these distances, as well as for the \emph{hl\_add} variant, and are in line with the values reported in Table \ref{table:expectedvalues}. In contrast, \emph{hl} appears to over-correct, making numerical variables overly dominant. The recently proposed mixed distances \emph{gudmm} and \emph{dkss} appear to be biased towards the categorical variables, whereas \emph{mod\_gower} exhibits more varied behavior, but with a noticeable peak to the variable with many categories. Again, these results are in line with those of the simulation study in Section \ref{sect:simulation}. 
+
+Importantly, although for the unbiased variants the mean distances per variable are equivalent, when it comes to impact on the MDS solutions, there is variability, as clearly visualized in Figure \ref{fig:fifa_ac}. That is, commensurability does not mean that the variables play the same role in determining an underlying configuration; or, more generally, that this is the case for any subsequent analysis. 
+
+\section{Conclusion} 
+In this paper, we addressed the issue of biased mixed-variable distances – where variable contributions are distorted by type, distribution, or scale – by introducing a general formulation for constructing multivariate distances that are both additive and commensurable. Rather than proposing yet another mixed-variable distance variant, our contribution lies in highlighting the theoretical properties – specifically, multivariate additivity and commensurability – that we believe should guide the construction of distances in mixed-type settings. This general approach aims to address bias systematically rather than in a case- or application-specific manner.
+
+Note that within our formulation, there is flexibility in the construction of variable-specific distances. In particular, for categorical variables there exist many different definitions that, even when made commensurable, do not lead to the same distances, as they rely on data-driven definitions of category dissimilarities. We emphasize that the formulation serves as a principled default in unsupervised settings where individual variable relevance is unknown or difficult to specify. If there is reason to believe that for a certain analysis, certain variables are more (or less) important than others, this can and should be taken into account. Importantly, the formulation provides a practical default that mitigates distortions in exploratory analyses, while leaving room for analyst-driven adaptations. Although our focus here is on formulation and empirical validation, future work may extend to convergence properties and the treatment of missing data.
+
+\section*{Source code}
+The simulation study and the illustration example presented in this article can be reproduced following the instructions at \url{https://alfonsoiodicede.github.io/blogposts_archive/Unbiased_mixed_variables_suppl_R2.html}. 
+
+
+
+\printbibliography
+
+\end{document}

@@ -1,0 +1,17 @@
+.quarto/
+_freeze/
+_targets/
+article_files/
+article.tex
+article.log
+article.aux
+article.out
+
+dist/*
+!dist/overleaf/
+dist/overleaf/*
+!dist/overleaf/README.md
+
+
+/.quarto/
+**/*.quarto_ipynb

@@ -1,0 +1,1022 @@
+---
+title: "Distance-based Learning for Mixed Data: The manydist Package"
+author:
+  - name: Alfonso Iodice D'Enza
+    affiliation: University of Naples Federico II
+  - name: Michel van de Velden
+    affiliation: Erasmus University Rotterdam
+  - name: Angelos Markos
+    affiliation: Democritus University of Thrace
+  - name: Carlo Cavicchia
+    affiliation: Erasmus University Rotterdam
+abstract: |
+  Computing distances between observations described by mixed-type variables
+  -- both numerical and categorical -- is a fundamental task in clustering,
+  ordination, and nearest-neighbour methods. Existing distance measures can
+  suffer from importance biases: the contribution of a variable may depend on
+  its measurement type, distribution, scaling, or number of categories. We
+  present the R package manydist, which implements a general framework for
+  constructing unbiased mixed-variable distances through multivariate
+  additivity and commensurability. We describe the distance construction,
+  variable diagnostics, and integration with clustering and the tidymodels
+  predictive-modeling ecosystem. The Palmer penguins data illustrate how the
+  framework avoids distortions present in standard alternatives.
+keywords:
+  - distance
+  - mixed data
+  - commensurability
+  - R
+header-includes:
+  - \usepackage{bm}
+---
+
+# Introduction
+
+Measuring the distance or dissimilarity between observations is a fundamental
+step in clustering, classification, ordination, and nearest-neighbour methods.
+For numerical variables, standard metrics such as Euclidean and Manhattan
+distance are widely used. For categorical variables, simple matching and
+frequency-based dissimilarities are common. Real data, however, frequently
+combine numerical and categorical variables, and defining a distance that
+accounts for their different scales and measurement properties is not
+straightforward.
+
+A persistent difficulty is *importance bias*: the overall distance can be
+unequally affected by variables because of their type, scale, distribution, or
+number of categories. Gower's distance [@Gower1971], the most widely used
+mixed-variable construction, can favor categorical variables
+[@Hennig2013; @foss2016]. Categorical variables with more levels may dominate,
+while skewness and scaling choices can unpredictably amplify or attenuate
+numerical contributions.
+
+@van2024unbiased formalize unbiased mixed-variable distances through two
+properties: *multivariate additivity* and *commensurability*. The R package
+manydist [@manydist2026] implements this framework. Its main function,
+mdist(), provides a unified entry point that:
+
+- computes variable-wise dissimilarities using a selected numerical
+  preprocessing and categorical dissimilarity;
+- estimates variable-wise weights that enforce commensurability; and
+- aggregates the contributions into an additive distance matrix.
+
+We organize these capabilities as a progression of increasing *awareness* in
+distance construction. Scale- and type-aware distances make heterogeneous
+variable contributions comparable. Association-aware distances additionally
+account for dependence within the numerical and categorical blocks.
+Interaction-aware distances incorporate relationships between those blocks,
+while response-aware distances use outcome information to construct
+task-specific neighbourhoods. The methodological development below focuses
+first on scale/type awareness and association awareness; the interaction- and
+response-aware extensions enter later through the package interface and
+learning workflows.
+
+Beyond distance construction, manydist provides leave-one-variable-out (LOVO)
+diagnostics, integration with tidymodels for predictive workflows, and
+distance-based interfaces to partitioning around medoids (PAM) and spectral
+clustering.
+
+Several R packages provide distances for homogeneous numerical, categorical,
+or binary data. @tbl-related-homogeneous summarizes commonly used tools that
+serve as building blocks for clustering, ordination, and nearest-neighbour
+methods.
+
+```{=latex}
+\begingroup
+\makeatletter
+\let\paperLongtableCaption\LT@caption
+\def\LT@caption{\hline\paperLongtableCaption}
+\makeatother
+```
+
+```{r}
+#| label: tbl-related-homogeneous
+#| tbl-cap: "R packages providing distances or dissimilarities for homogeneous numerical, categorical, or binary data."
+#| tbl-colwidths: [35, 65]
+#| echo: false
+
+related_software <- readr::read_csv(
+  file.path("data", "related-software.csv"),
+  show_col_types = FALSE
+)
+
+format_related_software <- function(group) {
+  output <- related_software |>
+    dplyr::filter(.data$group == .env$group) |>
+    dplyr::transmute(
+      Software = paste0(
+        .data$package,
+        "::",
+        .data[["function"]],
+        "()"
+      ),
+      Description = .data$description,
+      .citation_key = .data$citation_key
+    )
+
+  if (knitr::is_latex_output()) {
+    middle_cell <- function(value, proportion) {
+      width <- paste0(
+        "(\\linewidth - 2\\tabcolsep) * ",
+        "\\real{", proportion, "}"
+      )
+      paste0(
+        "\\multicolumn{1}{>{\\raggedright\\arraybackslash}m{",
+        width,
+        "}}{",
+        value,
+        "}"
+      )
+    }
+
+    software_labels <- dplyr::if_else(
+      stringr::str_detect(output$Software, "_"),
+      paste0("\\detokenize{", output$Software, "}"),
+      output$Software
+    )
+
+    software_entries <- paste0(
+      "\\shortstack[l]{",
+      software_labels,
+      "\\\\[-2pt]{\\footnotesize \\citep{",
+      output$.citation_key,
+      "}}}"
+    )
+
+    output <- output |>
+      dplyr::mutate(
+        Software = middle_cell(software_entries, "0.3500"),
+        Description = middle_cell(.data$Description, "0.6500"),
+        Software = dplyr::if_else(
+          dplyr::row_number() == 1L,
+          .data$Software,
+          paste0("\\hline ", .data$Software)
+        )
+      )
+  } else {
+    output <- output |>
+      dplyr::mutate(
+        Software = paste0(
+          .data$Software,
+          " [@",
+          .data$.citation_key,
+          "]"
+        )
+      )
+  }
+
+  output |>
+    dplyr::select(-.data$.citation_key)
+}
+
+knitr::kable(
+  format_related_software("homogeneous")
+)
+```
+
+```{=latex}
+\endgroup
+```
+
+For numerical matrices, stats::dist() supplies the standard metrics, while
+proxy::dist() offers an extensible catalogue and user-defined measures.
+parallelDist::parDist() and Rfast::Dist() target larger numerical problems with
+parallel or compiled implementations. For categorical and binary data,
+klaR::kmodes() uses matching dissimilarities, arules::dissimilarity() supports
+sparse transaction data, and nomclust::nomclust() provides frequency-weighted
+similarities.
+
+Mixed-data tools are summarized in @tbl-related-mixed. Gower's construction is
+implemented in cluster::daisy(), FD::gowdis(), StatMatch::gower.dist(), and
+gower::gower_dist(). clustMixType::kproto() balances numerical and categorical
+components through the k-prototypes construction [@Huang1998kprototypes].
+kmed::distmix() and kdml::dkss() provide additional mixed-data alternatives.
+
+```{=latex}
+\begingroup
+\makeatletter
+\let\paperLongtableCaption\LT@caption
+\def\LT@caption{\hline\paperLongtableCaption}
+\makeatother
+```
+
+```{r}
+#| label: tbl-related-mixed
+#| tbl-cap: "R packages implementing distances or dissimilarities for mixed numerical and categorical data."
+#| tbl-colwidths: [35, 65]
+#| echo: false
+
+knitr::kable(
+  format_related_software("mixed")
+)
+```
+
+```{=latex}
+\endgroup
+```
+
+These tools are useful, but their variable contributions can depend on scale,
+prevalence, imbalance, and measurement type. manydist complements them with
+additive, commensurable, and association-aware constructions, together with
+diagnostic and modeling interfaces.
+
+# A unified mixed-variable distance framework
+
+We follow the notation of @van2024unbiased. Let $n$ be the number of
+observations and let $p=p_n+p_c$ be the number of variables, partitioned into
+$p_n$ numerical and $p_c$ categorical variables. Observation indices are
+$i,l,s$; $j$, $h$, and $k$ index generic, numerical, and categorical
+variables, respectively. Observed mixed, numerical, and categorical vectors
+are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
+counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for a data
+matrix.
+
+## General mixed-distance setup
+
+For observed vectors $\mathbf{x}_i$ and $\mathbf{x}_l$, manydist constructs an
+overall distance by combining contributions from the numerical and categorical
+blocks. Using variable-wise dissimilarities $\delta_j$ and weights $w_j$, the
+general setup is
+
+$$
+\begin{aligned}
+d(\mathbf{x}_i,\mathbf{x}_l)
+&=\sum_{j=1}^{p}d_j(\mathbf{x}_i,\mathbf{x}_l)\\
+&=\sum_{h=1}^{p_n}w_h\,\delta_h^n(\mathbf{x}_i^n,\mathbf{x}_l^n)
+ +\sum_{k=1}^{p_c}w_k\,\delta_k^c(\mathbf{x}_i^c,\mathbf{x}_l^c).
+\end{aligned}
+$$ {#eq-mixed-distance}
+
+The numerical contribution indexed by $h$ can depend on the complete
+numerical block, and the categorical contribution indexed by $k$ can depend
+on the complete categorical block. The present formulation does not use
+cross-type associations inside these component dissimilarities.
+
+## Scale- and type-aware distances
+
+We call a mixed-variable distance *unbiased* when the contribution associated
+with each variable does not depend on its measurement type or scale. Two
+properties impose this requirement on the general setup.
+
+### Multivariate additivity
+
+For $p$-dimensional observations
+$\mathbf{x}_i=(x_{i1},\ldots,x_{ip})$ and
+$\mathbf{x}_l=(x_{l1},\ldots,x_{lp})$, a
+function $d:\mathcal{X}^p\times\mathcal{X}^p\rightarrow[0,\infty)$ is
+multivariate additive if
+
+$$
+d(\mathbf{x}_i,\mathbf{x}_l)
+=\sum_{j=1}^{p}d_j(\mathbf{x}_i,\mathbf{x}_l),
+$$ {#eq-additivity}
+
+where $d_j(\mathbf{x}_i,\mathbf{x}_l)$ is the contribution associated with
+variable $j$.
+Each component may depend on all elements of the two observations; the index
+identifies the associated contribution rather than restricting it to a single
+coordinate. This permits additive constructions that incorporate dependencies
+between variables. If every $d_j$ is a metric on $\mathcal{X}^p$, their sum is
+also a metric.
+
+### Commensurability
+
+Let $\bm{X}_i=(X_{i1},\ldots,X_{ip})$ denote the random vector
+corresponding to observation $i$. The variable contributions are commensurable
+when, for every $j$ and $i\ne l$,
+
+$$
+\mathbb{E}\!\left[d_j(\bm{X}_i,\bm{X}_l)\right]=c,
+$$ {#eq-commensurability}
+
+where the particular value of the constant $c$ is unimportant. Additivity
+provides an interpretable decomposition; commensurability places those
+contributions on equivalent expected scales.
+
+For @eq-mixed-distance, commensurability follows from the population weights
+
+$$
+w_h=
+\frac{1}{
+  \mathbb{E}[\delta_h^n(\bm{X}_i^n,\bm{X}_l^n)]
+},
+\qquad
+w_k=
+\frac{1}{
+  \mathbb{E}[\delta_k^c(\bm{X}_i^c,\bm{X}_l^c)]
+}.
+$$ {#eq-population-weights}
+
+In practice, manydist estimates these expectations from the observed pairs:
+
+$$
+\begin{aligned}
+m_h&=\frac{1}{n(n-1)}\sum_{i\ne l}
+\delta_h^n(\mathbf{x}_i^n,\mathbf{x}_l^n),
+&\quad w_h&=\frac{1}{m_h},\\
+m_k&=\frac{1}{n(n-1)}\sum_{i\ne l}
+\delta_k^c(\mathbf{x}_i^c,\mathbf{x}_l^c),
+&\quad w_k&=\frac{1}{m_k}.
+\end{aligned}
+$$ {#eq-empirical-weights}
+
+Thus, each variable-wise distance is divided by its empirical mean before the
+contributions are combined. A stabilized form,
+$w_j=1/\max(m_j,\varepsilon)$, can be used when dispersion is extremely small.
+The formulation also permits constrained weights, such as common weights
+within numerical or categorical groups, when only within-type
+commensurability is required.
+
+## Association-aware distances: beyond commensurability
+
+Commensurability corrects differences in the expected size of the variable
+contributions, but it does not by itself remove redundant information. An
+independence-based construction defines the contribution of variable $j$ from
+that variable alone,
+
+$$
+d_j^{\mathrm{ind}}(\mathbf{x}_i,\mathbf{x}_l)
+=w_j\,\delta_j(x_{ij},x_{lj}).
+$$ {#eq-independence-distance}
+
+Consequently, when several variables encode the same underlying contrast,
+that contrast can contribute repeatedly to the overall distance even after
+the variables have been standardized or made commensurable. An
+association-based construction instead allows a contribution to depend on the
+complete block of variables of the same type,
+
+$$
+\begin{aligned}
+d_h^{\mathrm{assoc}}(\mathbf{x}_i,\mathbf{x}_l)
+  &=w_h\,\delta_h^n(\mathbf{x}_i^n,\mathbf{x}_l^n),\\
+d_k^{\mathrm{assoc}}(\mathbf{x}_i,\mathbf{x}_l)
+  &=w_k\,\delta_k^c(\mathbf{x}_i^c,\mathbf{x}_l^c).
+\end{aligned}
+$$ {#eq-association-distance}
+
+Thus, the contribution indexed by $h$ or $k$ need not be a function of that
+variable alone, as permitted by multivariate additivity. For numerical
+variables, the joint structure can be represented by a covariance or
+correlation matrix; for categorical variables, it can be represented by
+conditional distributions. The manydist formulation does not use cross-type
+associations in these component dissimilarities.
+
+The distinction is illustrated with the Palmer penguins data. The same
+six-predictor data set is used throughout the remaining examples.
+
+```{r}
+#| label: prepare-penguins
+
+penguins <- palmerpenguins::penguins |>
+  dplyr::select(
+    species,
+    bill_length_mm,
+    bill_depth_mm,
+    flipper_length_mm,
+    body_mass_g,
+    island,
+    sex
+  ) |>
+  tidyr::drop_na()
+
+penguins_x <- penguins |>
+  dplyr::select(-species)
+penguins_y <- penguins |>
+  dplyr::pull(species)
+```
+
+```{r}
+#| label: fig-independence-association
+#| fig-cap: "Scale and association affect distance geometry. In the original units, Euclidean distance is dominated by body mass. Marginal standardization removes the units but retains the correlation and uses both coordinate differences. After whitening, Euclidean distance is equivalent to Mahalanobis distance in the standardized space and accounts for their covariance."
+#| fig-subcap:
+#|   - "Euclidean distance in the original units ($r = 0.87$)."
+#|   - "Standardized Euclidean distance."
+#|   - "Mahalanobis distance after whitening."
+#| layout: [[1], [1, 1]]
+#| fig-width: 4.5
+#| fig-height: 2.6
+#| fig-pos: "H"
+#| echo: false
+#| warning: false
+
+dependence_data <- penguins |>
+  dplyr::transmute(
+    penguin_id = dplyr::row_number(),
+    flipper_length_mm,
+    body_mass_g,
+    flipper_z = as.numeric(scale(.data$flipper_length_mm)),
+    body_mass_z = as.numeric(scale(.data$body_mass_g))
+  )
+
+standardized_data <- dependence_data |>
+  dplyr::select(.data$flipper_z, .data$body_mass_z) |>
+  as.matrix()
+
+pca_fit <- stats::prcomp(
+  standardized_data,
+  center = FALSE,
+  scale. = FALSE
+)
+
+whitened_scores <- sweep(
+  pca_fit$x[, 1:2, drop = FALSE],
+  MARGIN = 2,
+  STATS = pca_fit$sdev[1:2],
+  FUN = "/"
+)
+
+dependence_data <- dependence_data |>
+  dplyr::mutate(
+    pc1 = pca_fit$x[, 1],
+    pc2 = pca_fit$x[, 2],
+    whitened_pc1 = whitened_scores[, 1],
+    whitened_pc2 = whitened_scores[, 2]
+  )
+
+pc1_targets <- stats::quantile(
+  dependence_data$pc1,
+  probs = c(0.2, 0.8)
+)
+
+selected_ids <- purrr::map_int(pc1_targets, function(target) {
+  dependence_data |>
+    dplyr::mutate(target_distance = abs(.data$pc1 - target)) |>
+    dplyr::slice_min(
+      order_by = .data$target_distance,
+      n = 20,
+      with_ties = FALSE
+    ) |>
+    dplyr::slice_min(
+      order_by = abs(.data$pc2),
+      n = 1,
+      with_ties = FALSE
+    ) |>
+    dplyr::pull(.data$penguin_id)
+})
+
+selected_points <- dependence_data |>
+  dplyr::filter(.data$penguin_id %in% selected_ids) |>
+  dplyr::arrange(.data$flipper_z) |>
+  dplyr::mutate(point = c("A", "B"))
+
+raw_segment <- selected_points |>
+  dplyr::summarise(
+    x = dplyr::first(.data$flipper_length_mm),
+    y = dplyr::first(.data$body_mass_g),
+    xend = dplyr::last(.data$flipper_length_mm),
+    yend = dplyr::last(.data$body_mass_g),
+    distance = sqrt((.data$xend - .data$x)^2 + (.data$yend - .data$y)^2),
+    xmid = (.data$x + .data$xend) / 2,
+    ymid = (.data$y + .data$yend) / 2
+  )
+
+standardized_segment <- selected_points |>
+  dplyr::summarise(
+    x = dplyr::first(.data$flipper_z),
+    y = dplyr::first(.data$body_mass_z),
+    xend = dplyr::last(.data$flipper_z),
+    yend = dplyr::last(.data$body_mass_z),
+    distance = sqrt((.data$xend - .data$x)^2 + (.data$yend - .data$y)^2),
+    xmid = (.data$x + .data$xend) / 2,
+    ymid = (.data$y + .data$yend) / 2
+  )
+
+component_segments <- tibble::tibble(
+  x = c(standardized_segment$x, standardized_segment$xend),
+  y = c(standardized_segment$y, standardized_segment$y),
+  xend = c(standardized_segment$xend, standardized_segment$xend),
+  yend = c(standardized_segment$y, standardized_segment$yend)
+)
+
+mahalanobis_segment <- selected_points |>
+  dplyr::summarise(
+    x = dplyr::first(.data$whitened_pc1),
+    y = dplyr::first(.data$whitened_pc2),
+    xend = dplyr::last(.data$whitened_pc1),
+    yend = dplyr::last(.data$whitened_pc2),
+    distance = sqrt((.data$xend - .data$x)^2 + (.data$yend - .data$y)^2),
+    xmid = (.data$x + .data$xend) / 2,
+    ymid = (.data$y + .data$yend) / 2
+  )
+
+common_score_limits <- c(-3.5, 3.5)
+common_score_breaks <- seq(-3, 3, by = 1)
+
+distance_plot_theme <- ggplot2::theme_minimal(base_size = 8) +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    axis.title = ggplot2::element_text(size = 8),
+    axis.text = ggplot2::element_text(size = 7),
+    plot.margin = ggplot2::margin(3, 4, 3, 3)
+  )
+
+raw_plot <- ggplot2::ggplot(
+  dependence_data,
+  ggplot2::aes(x = .data$flipper_length_mm, y = .data$body_mass_g)
+) +
+  ggplot2::geom_point(size = 1.1, color = "grey35", alpha = 0.55) +
+  ggplot2::stat_ellipse(
+    type = "norm",
+    level = 0.68,
+    linewidth = 0.5,
+    color = "#A33F3F"
+  ) +
+  ggplot2::geom_segment(
+    data = raw_segment,
+    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
+    inherit.aes = FALSE,
+    linewidth = 0.65,
+    arrow = grid::arrow(length = grid::unit(0.07, "inches"))
+  ) +
+  ggplot2::geom_point(
+    data = selected_points,
+    size = 2.1,
+    color = "#A33F3F"
+  ) +
+  ggplot2::geom_text(
+    data = selected_points,
+    ggplot2::aes(label = .data$point),
+    nudge_y = 170,
+    size = 2.7,
+    fontface = "bold"
+  ) +
+  ggplot2::geom_label(
+    data = raw_segment,
+    ggplot2::aes(
+      x = .data$xmid,
+      y = .data$ymid,
+      label = paste0("d[E]^{raw} == ", round(.data$distance, 0))
+    ),
+    parse = TRUE,
+    inherit.aes = FALSE,
+    size = 2.3,
+    linewidth = 0,
+    fill = "white"
+  ) +
+  ggplot2::labs(
+    x = "Flipper length (mm)",
+    y = "Body mass (g)"
+  ) +
+  distance_plot_theme
+
+independence_plot <- ggplot2::ggplot(
+  dependence_data,
+  ggplot2::aes(x = .data$flipper_z, y = .data$body_mass_z)
+) +
+  ggplot2::geom_point(size = 0.65, color = "grey70") +
+  ggplot2::stat_ellipse(
+    type = "norm",
+    level = 0.68,
+    linewidth = 0.5,
+    color = "#A33F3F"
+  ) +
+  ggplot2::geom_segment(
+    data = component_segments,
+    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
+    inherit.aes = FALSE,
+    linewidth = 0.55,
+    linetype = "dashed",
+    color = "#A33F3F"
+  ) +
+  ggplot2::geom_segment(
+    data = standardized_segment,
+    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
+    inherit.aes = FALSE,
+    linewidth = 0.65,
+    arrow = grid::arrow(length = grid::unit(0.07, "inches"))
+  ) +
+  ggplot2::geom_point(
+    data = selected_points,
+    size = 1.7,
+    color = "#A33F3F"
+  ) +
+  ggplot2::geom_text(
+    data = selected_points,
+    ggplot2::aes(label = .data$point),
+    nudge_y = 0.2,
+    size = 2.7,
+    fontface = "bold"
+  ) +
+  ggplot2::geom_label(
+    data = standardized_segment,
+    ggplot2::aes(
+      x = .data$xmid,
+      y = .data$ymid,
+      label = paste0("d[E]^{z} == ", round(.data$distance, 2))
+    ),
+    parse = TRUE,
+    inherit.aes = FALSE,
+    size = 2.3,
+    linewidth = 0,
+    fill = "white"
+  ) +
+  ggplot2::scale_x_continuous(
+    limits = common_score_limits,
+    breaks = common_score_breaks,
+    expand = ggplot2::expansion(mult = 0)
+  ) +
+  ggplot2::scale_y_continuous(
+    limits = common_score_limits,
+    breaks = common_score_breaks,
+    expand = ggplot2::expansion(mult = 0)
+  ) +
+  ggplot2::coord_equal() +
+  ggplot2::labs(
+    x = "Flipper length (z-score)",
+    y = "Body mass (z-score)"
+  ) +
+  distance_plot_theme
+
+association_plot <- ggplot2::ggplot(
+  dependence_data,
+  ggplot2::aes(x = .data$whitened_pc1, y = .data$whitened_pc2)
+) +
+  ggplot2::geom_point(size = 0.65, color = "grey70") +
+  ggplot2::stat_ellipse(
+    type = "norm",
+    level = 0.68,
+    linewidth = 0.5,
+    color = "#2A7F62"
+  ) +
+  ggplot2::geom_segment(
+    data = mahalanobis_segment,
+    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
+    inherit.aes = FALSE,
+    linewidth = 0.65,
+    arrow = grid::arrow(length = grid::unit(0.07, "inches"))
+  ) +
+  ggplot2::geom_point(
+    data = selected_points,
+    size = 1.7,
+    color = "#2A7F62"
+  ) +
+  ggplot2::geom_text(
+    data = selected_points,
+    ggplot2::aes(label = .data$point),
+    nudge_y = 0.2,
+    size = 2.7,
+    fontface = "bold"
+  ) +
+  ggplot2::geom_label(
+    data = mahalanobis_segment,
+    ggplot2::aes(
+      x = .data$xmid,
+      y = .data$ymid,
+      label = paste0("d[M] == ", round(.data$distance, 2))
+    ),
+    parse = TRUE,
+    inherit.aes = FALSE,
+    size = 2.3,
+    linewidth = 0,
+    fill = "white"
+  ) +
+  ggplot2::scale_x_continuous(
+    limits = common_score_limits,
+    breaks = common_score_breaks,
+    expand = ggplot2::expansion(mult = 0)
+  ) +
+  ggplot2::scale_y_continuous(
+    limits = common_score_limits,
+    breaks = common_score_breaks,
+    expand = ggplot2::expansion(mult = 0)
+  ) +
+  ggplot2::coord_equal() +
+  ggplot2::labs(
+    x = "Whitened PC 1",
+    y = "Whitened PC 2"
+  ) +
+  distance_plot_theme
+
+raw_plot
+independence_plot
+association_plot
+```
+
+## Numerical variables
+
+In the numerical example, whitening uses the covariance structure to remove
+linear redundancy: Euclidean distance in the whitened coordinates is the
+Mahalanobis distance in the original standardized coordinates. manydist uses
+the same decorrelation principle through principal-component preprocessing,
+followed by component-wise commensurability to retain an additive
+decomposition.
+
+For the numerical block, the additive construction uses weighted Manhattan
+contributions on possibly transformed coordinates:
+
+$$
+d_{\mathrm{num}}(\mathbf{x}_i,\mathbf{x}_l)
+=\sum_{h=1}^{p_n}w_h
+\left|f_h(\mathbf{x}_i)-f_h(\mathbf{x}_l)\right|,
+$$ {#eq-numerical-distance}
+
+where $f_h$ may be a univariate or multivariate transformation. Linear
+rescaling is absorbed by the weights, but the transformation can still alter
+the marginal distribution and therefore the empirical mean distance.
+
+Common transformations include:
+
+- **standard-deviation scaling:** $(x-\bar{x})/s_x$;
+- **range scaling:** $(x-x_{\min})/(x_{\max}-x_{\min})$, as in Gower's
+  distance;
+- **robust scaling:** $(x-x_{\mathrm{Med}})/(x_{Q_3}-x_{Q_1})$.
+
+When numerical variables are linearly related, principal-component scaling
+can rotate and rescale the numerical block. If the centered data matrix has
+covariance decomposition
+$\mathbf{S}=\mathbf{V}\bm{\Lambda}\mathbf{V}^\top$, then
+$\mathbf{X}^\ast=\mathbf{X}\mathbf{V}\bm{\Lambda}^{-1/2}$ gives standardized
+principal coordinates. This
+operation does not require dimensionality reduction; additivity then applies
+to the rotated axes.
+
+## Categorical variables
+
+For categorical variables, association enters through conditional
+distributions rather than a covariance matrix. The category dissimilarity
+matrix provides a common representation for both independence-based and
+association-based constructions.
+
+For categorical variable $k$, let $\bm{\Delta}_k$ be the
+$q_k\times q_k$ dissimilarity matrix between its categories, and let
+$\mathbf{Z}_k$ be
+the corresponding $n\times q_k$ indicator matrix. Its observation-wise
+distance matrix and expected contribution are
+
+$$
+\mathbf{D}_k=\mathbf{Z}_k\bm{\Delta}_k\mathbf{Z}_k^\top,
+\qquad
+\mathbb{E}[d_k(X_{ik},X_{lk})]
+=\bm{p}_k^\top\bm{\Delta}_k\bm{p}_k,
+$$ {#eq-categorical-distance}
+
+where $\bm{p}_k$ is the vector of category probabilities. The mean
+distance depends on the number and prevalence of categories and on
+$\bm{\Delta}_k$; the weights in @eq-empirical-weights restore
+commensurability.
+
+Indicator-based dissimilarities treat a binary indicator representation as
+numerical. Without scaling, Manhattan distance gives values zero or two.
+Hennig--Liao scaling [@Hennig2013], standard-deviation scaling, and direct
+category-dissimilarity scaling provide alternative calibrations.
+
+Association-based dissimilarities incorporate relationships among categorical
+variables. Let
+$\mathbf{R}^{k\mid k'}=(\mathbf{Z}_k^\top \mathbf{Z}_k)^{-1}
+\mathbf{Z}_k^\top \mathbf{Z}_{k'}$ be the conditional
+distribution of variable $k'$ given the categories of variable $k$.
+Dissimilarities can compare rows $\mathbf{r}_a$ and $\mathbf{r}_b$ using total variation
+[@ahmad2007k] or a symmetric Kullback--Leibler construction
+[@le2005association]. These contributions vanish under independence and grow
+with the strength of the association.
+
+# Package structure
+
+The manydist interface follows the three stages of a distance-based analysis:
+building a distance, diagnosing the resulting representation, and using it in
+a learning workflow. All examples continue with the six-predictor Palmer
+penguins data prepared above.
+
+```{r}
+#| label: attach-manydist
+
+library(manydist)
+```
+
+## Distance building
+
+The central function `mdist()` constructs distances for numerical,
+categorical, or mixed-type data. A preset identifies a complete distance
+specification. For example, `"u_dep"` combines principal-component scaling of
+the numerical block, association-based categorical dissimilarities, and
+commensurability weights.
+
+```{r}
+#| label: build-u-dep-distance
+
+d_u_dep <- mdist(
+  penguins_x,
+  preset = "u_dep"
+)
+
+d_u_dep
+```
+
+The result is an `MDist` object that stores the dissimilarity together with the
+fitted preprocessing information and the distance specification. The standard
+`dist` representation is available through `to_dist()`.
+
+```{r}
+#| label: inspect-u-dep-distance
+
+as.matrix(d_u_dep$to_dist())[1:4, 1:4] |>
+  round(digits = 2)
+```
+
+Presets provide reproducible shortcuts, while a custom specification exposes
+the categorical dissimilarity, numerical preprocessing, and commensurability
+choice directly.
+
+```{r}
+#| label: build-custom-distance
+
+d_custom <- mdist(
+  penguins_x,
+  preset = "custom",
+  method_cat = "matching",
+  method_num = "pc_scores",
+  commensurable = TRUE
+)
+```
+
+The same interface supports extensions to the basic predictor-only
+construction. The `response` argument supplies an outcome to response-aware
+components without treating it as an ordinary predictor.
+
+```{r}
+#| label: build-response-aware-distance
+
+d_response <- mdist(
+  penguins,
+  response = species,
+  preset = "u_dep"
+)
+```
+
+The `new_data` argument produces rectangular new-to-training dissimilarities.
+This distinction between square training distances and rectangular prediction
+distances is handled automatically by the workflow interface below.
+
+## Distance diagnostics
+
+A distance is an intermediate data representation, so its sensitivity should
+be examined before it is supplied to a learning algorithm. `lovo_mdist()`
+implements leave-one-variable-out (LOVO) diagnostics: it computes the full
+distance, removes one predictor at a time, recomputes the distance, and
+quantifies the resulting change.
+
+```{r}
+#| label: diagnose-gower-distance
+
+lovo_gower <- lovo_mdist(
+  penguins,
+  response = species,
+  response_used = FALSE,
+  preset = "gower"
+)
+```
+
+The diagnostics distinguish changes in pairwise dissimilarities from changes
+in the geometry they induce. `relative_distance` measures the relative change
+in pairwise dissimilarities, whereas `ac_importance` is the alienation between
+the full and reduced configurations. Larger values indicate a larger
+contribution for both quantities.
+
+```{r}
+#| label: inspect-gower-diagnostics
+
+lovo_gower$results |>
+  dplyr::select(
+    variable,
+    relative_distance,
+    ac_importance
+  ) |>
+  dplyr::arrange(dplyr::desc(relative_distance))
+```
+
+```{r}
+#| label: fig-gower-lovo
+#| fig-cap: "Relative leave-one-variable-out contributions under Gower distance. Larger values indicate a larger change in the pairwise dissimilarities when the variable is removed."
+#| fig-width: 6
+#| fig-height: 3.2
+
+lovo_gower$autoplot(
+  metric = "relative_distance",
+  reorder = TRUE
+) +
+  ggplot2::guides(colour = "none")
+```
+
+Optional clustering diagnostics compare partitions from the full and reduced
+distances using the adjusted Rand index. `compare_lovo_mdist()` applies the
+same diagnostics to several distance specifications, making the choice of
+distance part of the sensitivity analysis rather than a fixed preprocessing
+decision.
+
+## Building distance-based workflows
+
+`step_mdist()` integrates distance construction into a recipe. The fitted step
+stores the training data and preprocessing parameters, so the distance is
+re-estimated inside each resample and reused when genuinely new observations
+are processed. Its `output` argument selects the representation required by
+the downstream task.
+
+### Clustering from pairwise distances
+
+For clustering, `output = "pairwise"` produces the square within-training
+dissimilarity matrix. It can be consumed by `pam_dist()` or
+`spectral_dist()`. The following workflow combines a Gower distance with a
+three-cluster partitioning around medoids.
+
+```{r}
+#| label: build-pam-workflow
+
+gower_pairwise_recipe <- recipes::recipe(
+  ~ .,
+  data = penguins_x
+) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "pairwise"
+  )
+
+pam_fit <- generics::fit(
+  pam_dist(num_clusters = 3),
+  recipe = gower_pairwise_recipe,
+  data = penguins_x
+)
+```
+
+The species labels were not used to construct the partition. They are added
+below only to interpret this illustrative example.
+
+```{r}
+#| label: inspect-pam-workflow
+
+pam_assignments <- predict(pam_fit) |>
+  dplyr::bind_cols(
+    penguins |>
+      dplyr::select(species)
+  )
+
+pam_assignments |>
+  dplyr::count(.pred_cluster, species)
+```
+
+The same pairwise recipe can be supplied to `spectral_dist()`, which also
+provides access to the fitted spectral embedding.
+
+### Prediction from distances to the training set
+
+For prediction, `output = "distance_to_training"` represents each observation
+by its distances to the training observations. `nearest_neighbor_dist()` uses
+these columns in a parsnip model specification. Keeping the transformation in
+the recipe ensures that assessment and test observations are compared only
+with the corresponding training set.
+
+```{r}
+#| label: build-knn-workflow
+
+gower_training_recipe <- recipes::recipe(
+  species ~ .,
+  data = penguins
+) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "distance_to_training"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = 5
+) |>
+  parsnip::set_engine("manydist")
+
+knn_workflow <- workflows::workflow() |>
+  workflows::add_recipe(gower_training_recipe) |>
+  workflows::add_model(knn_spec)
+
+knn_workflow
+```
+
+The resulting object can be fitted, resampled, and tuned with the standard
+tidymodels interface. Model assessment should tune the number of neighbours
+and, when it is not fixed in advance, the distance specification under a
+common resampling design before the final test set is used.
+
+# Illustration: distance bias in the Palmer penguins dataset
+
+```{r}
+#| label: fig-mds-unbiased-dependent
+#| fig-cap: "Two-dimensional MDS configuration under the unbiased dependent distance."
+#| fig-pos: "H"
+#| echo: false
+
+mds_figure <- file.path(
+  "generated",
+  "figures",
+  "fig-mds-unbiased-dependent.pdf"
+)
+
+if (file.exists(mds_figure)) {
+  knitr::include_graphics(mds_figure)
+} else {
+  cat("Run Rscript replicate.R to generate this figure.")
+}
+```
+
+# Conclusion
+
+The conclusion will be migrated after the executable sections establish the
+current supported API and feature set.

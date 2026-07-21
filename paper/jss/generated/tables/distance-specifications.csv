@@ -1,0 +1,6 @@
+name,preset,method_cat,method_num,commensurable
+gower,gower,,,
+gower_commensurable,custom,matching,range,TRUE
+u_dep,u_dep,,,
+u_indep,u_indep,,,
+euclidean,euclidean,,,

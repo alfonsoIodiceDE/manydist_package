@@ -1,0 +1,8 @@
+variable,type,n,levels,mean,sd
+species,categorical,333,3,,
+bill_length_mm,numeric,333,,43.9927927927928,5.468668342647561
+bill_depth_mm,numeric,333,,17.164864864864864,1.9692354633198994
+flipper_length_mm,numeric,333,,200.96696696696696,14.01576528828788
+body_mass_g,numeric,333,,4207.057057057057,805.2158019428966
+island,categorical,333,3,,
+sex,categorical,333,2,,

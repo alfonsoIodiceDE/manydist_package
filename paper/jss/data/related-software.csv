@@ -1,0 +1,16 @@
+group,package,function,description,citation_key
+homogeneous,stats,dist,Standard distances for numerical matrices including Euclidean Manhattan and Minkowski.,R-base
+homogeneous,proxy,dist,Extensible proximity framework with built-in and registered measures.,proxy
+homogeneous,parallelDist,parDist,Parallel distance computation for large numerical data sets.,parallelDist
+homogeneous,Rfast,Dist,High-performance numerical distance computation using compiled routines.,Rfast
+homogeneous,klaR,kmodes,K-modes clustering using matching dissimilarities for categorical data.,klaR
+homogeneous,arules,dissimilarity,Dissimilarities for binary incidence and transaction data.,arules
+homogeneous,nomclust,nomclust,Frequency-weighted similarities and clustering for nominal data.,nomclust
+mixed,cluster,daisy,Gower dissimilarity for numerical nominal ordinal and binary variables.,Maechler2025cluster
+mixed,FD,gowdis,Gower variants used in ecology and functional diversity analysis.,FD
+mixed,StatMatch,gower.dist,Gower distance for statistical matching and data fusion.,StatMatch
+mixed,gower,gower_dist,High-performance Gower computation and nearest matching.,vanderLoo2025gower
+mixed,clustMixType,kproto,K-prototypes clustering with numerical and categorical components.,Szepannek2018clustMixType
+mixed,kmed,distmix,Multiple mixed-data distances including Wishart Podani Huang and Ahmad-Dey.,kmed
+mixed,kdml,dkss,Kernel-based mixed-data distance using distributional comparisons.,kdml
+
