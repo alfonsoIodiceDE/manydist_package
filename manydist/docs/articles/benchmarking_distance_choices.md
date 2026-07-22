@@ -372,6 +372,15 @@ their construction must occur inside each resample. Constructing them
 once from the full outcome vector would leak assessment information into
 training.
 
+The recipe interface handles this separation directly. When a
+response-aware specification is used in
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md),
+the step discovers the single recipe outcome and fits the response-aware
+profiles using only the current analysis set. The fitted profiles are
+then applied to assessment observations without using their outcomes.
+Set `response_used = FALSE` when the comparison should use the
+predictor-only form of a response-aware specification.
+
 ## 7 Scaling up a comparison
 
 The same workflow can be expanded by filtering the full specification

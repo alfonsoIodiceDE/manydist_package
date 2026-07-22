@@ -144,7 +144,6 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
   predict(fit, new_data = penguin_test) |>
     dplyr::slice_head(n = 5)
 }
-#> Warning: When `preset` is not 'custom', distance-related arguments are ignored: `commensurable`, `method_num`. Set `preset = 'custom'` to specify them manually.
 #> # A tibble: 5 × 1
 #>   .pred_class
 #>   <fct>      

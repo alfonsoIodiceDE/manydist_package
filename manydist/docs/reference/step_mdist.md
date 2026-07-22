@@ -15,6 +15,7 @@ step_mdist(
   role = "predictor",
   trained = FALSE,
   output = "distance_to_training",
+  response_used = TRUE,
   preset = "custom",
   method_cat = "tot_var_dist",
   method_num = NULL,
@@ -22,6 +23,7 @@ step_mdist(
   ncomp = NULL,
   threshold = NULL,
   columns = NULL,
+  response_col = NULL,
   train_predictors = NULL,
   preprocessor = NULL,
   skip = FALSE,
@@ -56,6 +58,14 @@ step_mdist(
   workflows. \`"pairwise"\` returns the within-training pairwise
   dissimilarity matrix and is intended for training-only distance-based
   clustering workflows.
+
+- response_used:
+
+  Logical. If \`TRUE\` (the default) and the recipe has exactly one
+  outcome, response-aware distance specifications use that outcome when
+  the step is prepared. Set to \`FALSE\` to construct the distance from
+  predictors only. Specifications that are not response-aware never use
+  the outcome.
 
 - preset:
 
@@ -108,6 +118,11 @@ step_mdist(
 
   Names of columns selected at prep time. Used internally by recipes.
 
+- response_col:
+
+  Name of the outcome selected at prep time when it is used by the
+  distance specification. Used internally by recipes.
+
 - train_predictors:
 
   Training predictors stored at prep time. Used internally by recipes to
@@ -142,6 +157,13 @@ During \[recipes::prep()\], \`step_mdist()\` stores the selected
 training predictors and fits the internal manydist preprocessor. During
 \[recipes::bake()\], the selected predictors are removed and replaced by
 distance columns named \`dist_1\`, \`dist_2\`, and so on.
+
+When \`response_used = TRUE\`, the step discovers the outcome from the
+recipe variable roles. For response-aware presets and custom categorical
+methods, the outcome from the current analysis set is supplied to
+\[mdist()\] during preparation. The fitted response-aware profiles are
+then reused when new data are baked; assessment and test outcomes are
+never required or used.
 
 With \`output = "distance_to_training"\`, baking the training data
 returns the training pairwise distances, while baking new data returns
@@ -198,8 +220,6 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
 
   pairwise_dist
 }
-#> Warning: When `preset` is not 'custom', distance-related arguments are ignored: `commensurable`, `method_num`. Set `preset = 'custom'` to specify them manually.
-#> Warning: When `preset` is not 'custom', distance-related arguments are ignored: `commensurable`, `method_num`. Set `preset = 'custom'` to specify them manually.
 #> # A tibble: 333 × 333
 #>    dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10
 #>     <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>   <dbl>

@@ -331,8 +331,12 @@
   if (ncol(cat_data) == 0) cat_data <- NULL
   if (ncol(cont_data) == 0) cont_data <- NULL
 
-  if (!is.null(cat_data) && identical(method_cat, "tvd") && ncol(cat_data) == 1) {
-    warning("'tvd' requires >1 categorical variable. Switching to 'matching'.", call. = FALSE)
+  if (!is.null(cat_data) && identical(method_cat, "tvd") &&
+      ncol(cat_data) == 1 && is.null(y)) {
+    warning(
+      "Without a response, 'tvd' requires >1 categorical variable. Switching to 'matching'.",
+      call. = FALSE
+    )
     method_cat <- "matching"
   }
 

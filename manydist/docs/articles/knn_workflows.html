@@ -167,7 +167,8 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </section><section class="level2" data-number="4"><h2 data-number="4" id="a-distance-to-training-recipe">
 <span class="header-section-number">4</span> A distance-to-training recipe<a class="anchor" aria-label="anchor" href="#a-distance-to-training-recipe"></a>
 </h2>
-<p>The recipe outcome is <code>species</code>. Selecting <code><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors()</a></code> therefore keeps the outcome outside the distance calculation.</p>
+<p>The recipe outcome is <code>species</code>. Selecting <code><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors()</a></code> keeps it out of the predictor set. Because Gower distance is not response-aware, <code>species</code> is not used in the distance calculation below.</p>
+<p>For response-aware specifications such as <code>u_dep</code> and <code>u_mix</code>, however, <code><a href="../reference/step_mdist.html">step_mdist()</a></code> automatically discovers the single recipe outcome and uses the outcomes from the current analysis set when the step is prepared. The fitted profiles are reused for assessment and test observations; their outcomes are never required or used. Set <code>response_used = FALSE</code> to construct a predictor-only version of a response-aware distance.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gower_recipe</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span></span>
@@ -578,6 +579,7 @@ Computational engine: manydist </code></pre>
 <ul>
 <li>Split off the final test set before selecting the distance or the number of neighbours.</li>
 <li>Keep <code><a href="../reference/step_mdist.html">step_mdist()</a></code> inside the recipe so its preprocessor is re-estimated within each resample.</li>
+<li>Response-aware specifications automatically use the analysis-fold outcome; use <code>response_used = FALSE</code> when an outcome-independent distance is wanted.</li>
 <li>Use <code>output = "distance_to_training"</code> for prediction; <code>output = "pairwise"</code> is intended for clustering.</li>
 <li>Remember that each fitted analysis set produces a different number of distance columns. The workflow handles this automatically.</li>
 <li>Tune the distance definition and the number of neighbours under the same resampling design when both are uncertain.</li>

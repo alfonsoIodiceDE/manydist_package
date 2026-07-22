@@ -4,6 +4,7 @@
 ^\.claude$
 ^data-raw$
 ^figures$
+^_extensions$
 ^simulation_structure\.RData$
 ^test_1\.dat$
 ^test_1\.log$

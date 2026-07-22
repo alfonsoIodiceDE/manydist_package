@@ -399,6 +399,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </div>
 </div>
 <p>If response-aware distances are compared by predictive performance, their construction must occur inside each resample. Constructing them once from the full outcome vector would leak assessment information into training.</p>
+<p>The recipe interface handles this separation directly. When a response-aware specification is used in <code><a href="../reference/step_mdist.html">step_mdist()</a></code>, the step discovers the single recipe outcome and fits the response-aware profiles using only the current analysis set. The fitted profiles are then applied to assessment observations without using their outcomes. Set <code>response_used = FALSE</code> when the comparison should use the predictor-only form of a response-aware specification.</p>
 </section><section class="level2" data-number="7"><h2 data-number="7" id="scaling-up-a-comparison">
 <span class="header-section-number">7</span> Scaling up a comparison<a class="anchor" aria-label="anchor" href="#scaling-up-a-comparison"></a>
 </h2>

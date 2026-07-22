@@ -10,6 +10,7 @@ step_mdist(
   role = "predictor",
   trained = FALSE,
   output = "distance_to_training",
+  response_used = TRUE,
   preset = "custom",
   method_cat = "tot_var_dist",
   method_num = NULL,
@@ -17,6 +18,7 @@ step_mdist(
   ncomp = NULL,
   threshold = NULL,
   columns = NULL,
+  response_col = NULL,
   train_predictors = NULL,
   preprocessor = NULL,
   skip = FALSE,
@@ -38,6 +40,12 @@ These are passed to [recipes::recipes_eval_select()] during preparation.}
 training observations and is the usual choice for prediction workflows.
 `"pairwise"` returns the within-training pairwise dissimilarity matrix and
 is intended for training-only distance-based clustering workflows.}
+
+\item{response_used}{Logical. If `TRUE` (the default) and the recipe has
+exactly one outcome, response-aware distance specifications use that
+outcome when the step is prepared. Set to `FALSE` to construct the
+distance from predictors only. Specifications that are not response-aware
+never use the outcome.}
 
 \item{preset}{Character string specifying the distance preset passed to
 [mdist()]. Available values include `"custom"`, `"gower"`,
@@ -75,6 +83,9 @@ used when `method_num = "pc_scores"`.}
 \item{columns}{Names of columns selected at prep time. Used internally by
 recipes.}
 
+\item{response_col}{Name of the outcome selected at prep time when it is
+used by the distance specification. Used internally by recipes.}
+
 \item{train_predictors}{Training predictors stored at prep time. Used
 internally by recipes to compute distances from new observations to the
 training observations.}
@@ -107,6 +118,12 @@ During [recipes::prep()], `step_mdist()` stores the selected training
 predictors and fits the internal manydist preprocessor. During
 [recipes::bake()], the selected predictors are removed and replaced by
 distance columns named `dist_1`, `dist_2`, and so on.
+
+When `response_used = TRUE`, the step discovers the outcome from the recipe
+variable roles. For response-aware presets and custom categorical methods,
+the outcome from the current analysis set is supplied to [mdist()] during
+preparation. The fitted response-aware profiles are then reused when new
+data are baked; assessment and test outcomes are never required or used.
 
 With `output = "distance_to_training"`, baking the training data returns the
 training pairwise distances, while baking new data returns distances from

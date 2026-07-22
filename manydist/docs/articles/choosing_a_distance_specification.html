@@ -420,6 +420,7 @@
 </div>
 </div>
 <p>In both calls, <code>species</code> is used as the response variable and is not included among the predictors.</p>
+<p>The recipe interface provides the same behavior without repeating the outcome name in <code><a href="../reference/step_mdist.html">step_mdist()</a></code>. When a recipe contains exactly one outcome, response-aware specifications automatically use the analysis-set outcomes during <code><a href="https://recipes.tidymodels.org/reference/prep.html" class="external-link">prep()</a></code>. The fitted response-aware profiles are then reused when assessment or test observations are baked, without using their outcomes. Set <code>response_used = FALSE</code> in <code><a href="../reference/step_mdist.html">step_mdist()</a></code> to request a predictor-only distance.</p>
 <p>Response-aware construction can also be used in custom specifications. In this case, <code>preset = "custom"</code> is combined with a response-aware categorical method.</p>
 <p>The following table lists the response-aware categorical methods implemented directly in <code>manydist</code>.</p>
 <div class="cell">

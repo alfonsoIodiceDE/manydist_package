@@ -44,9 +44,10 @@ Imports: aricode, cluster, clusterGeneration, data.table, dials, distances, dply
           readr, recipes, Rfast, rlang, rsample, stats, 
           tibble, tidyr, tidyselect, tune
 Depends: R (>= 4.5.0)
-Suggests: arules, clustMixType, FD, klaR, mclust, palmerpenguins, parallelDist, StatMatch, workflows
+Suggests: arules, clustMixType, FD, klaR, mclust, palmerpenguins, parallelDist, StatMatch, testthat (>= 3.0.0), workflows, workflowsets
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 NeedsCompilation: no
 Config/roxygen2/version: 8.0.0
+Config/testthat/edition: 3

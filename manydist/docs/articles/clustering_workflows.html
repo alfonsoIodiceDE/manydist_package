@@ -538,7 +538,7 @@ Available components:
 </h2>
 <ul>
 <li>Use <code>output = "pairwise"</code> for training-only clustering representations.</li>
-<li>Keep outcomes or reference labels outside the clustering recipe unless a deliberately response-aware analysis is intended.</li>
+<li>Keep outcomes or reference labels outside the clustering recipe unless a deliberately response-aware analysis is intended. If a recipe formula does contain an outcome, response-aware specifications use it by default; set <code>response_used = FALSE</code> to retain an outcome-independent clustering distance.</li>
 <li>Treat cluster labels as nominal identifiers: cluster 1 is not inherently smaller or better than cluster 2.</li>
 <li>Set the random seed when fitting spectral clustering.</li>
 <li>Compare plausible distance definitions as part of the clustering sensitivity analysis, not as an afterthought.</li>

@@ -420,10 +420,20 @@ provides a recipe interface to
 It replaces selected predictors with a distance-based representation.
 
 In supervised workflows, the response is defined on the left-hand side
-of the recipe formula. Therefore, when we select
-[`recipes::all_predictors()`](https://recipes.tidymodels.org/reference/has_role.html),
-the response variable is not used as a predictor in the distance
-computation.
+of the recipe formula. Selecting
+[`recipes::all_predictors()`](https://recipes.tidymodels.org/reference/has_role.html)
+therefore keeps the response out of the predictor set. For
+non-response-aware specifications such as Gower distance, the response
+is not used in the distance computation.
+
+For response-aware presets such as `u_dep` and `u_mix`, and for
+response-aware custom categorical methods,
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
+automatically obtains the single outcome from the recipe. During
+resampling, only outcomes from the current analysis set are used to fit
+the distance preprocessor. Assessment and test outcomes are never
+required or used. Set `response_used = FALSE` to construct the
+corresponding predictor-only distance.
 
 ``` r
 

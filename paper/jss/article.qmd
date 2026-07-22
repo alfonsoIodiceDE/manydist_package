@@ -21,6 +21,9 @@ abstract: |
   variable diagnostics, and integration with clustering and the tidymodels
   predictive-modeling ecosystem. The Palmer penguins data illustrate how the
   framework avoids distortions present in standard alternatives.
+  A World Development Indicators snapshot then illustrates how distance
+  choice enters unsupervised clustering and supervised classification
+  workflows.
 keywords:
   - distance
   - mixed data
@@ -33,6 +36,7 @@ keywords-formatted:
   - R
 header-includes:
   - \usepackage{bm}
+  - \usepackage{needspace}
 ---
 
 ## Introduction
@@ -226,14 +230,14 @@ diagnostic and modeling interfaces.
 
 ## A unified mixed-variable distance framework
 
-We follow the notation of @van2024unbiased. Let $n$ be the number of
-observations and let $p=p_n+p_c$ be the number of variables, partitioned into
-$p_n$ numerical and $p_c$ categorical variables. Observation indices are
-$i,l,s$; $j$, $h$, and $k$ index generic, numerical, and categorical
+We follow the notation of @van2024unbiased. Let $I$ be the number of
+observations and let $Q=Q_{n}+Q_{c}$ be the number of variables, partitioned
+into $Q_{n}$ numerical and $Q_{c}$ categorical variables. Observation indices
+are $i,l,s$; $j$, $h$, and $k$ index generic, numerical, and categorical
 variables, respectively. Observed mixed, numerical, and categorical vectors
 are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
-counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for a data
-matrix.
+counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for an
+$I\times Q$ data matrix.
 
 ### General mixed-distance setup
 
@@ -245,9 +249,9 @@ general setup is
 $$
 \begin{aligned}
 d(\mathbf{x}_i,\mathbf{x}_l)
-&=\sum_{j=1}^{p}d_j(\mathbf{x}_i,\mathbf{x}_l)\\
-&=\sum_{h=1}^{p_n}w_h\,\delta_h^n(\mathbf{x}_i^n,\mathbf{x}_l^n)
- +\sum_{k=1}^{p_c}w_k\,\delta_k^c(\mathbf{x}_i^c,\mathbf{x}_l^c).
+&=\sum_{j=1}^{Q}d_j(\mathbf{x}_i,\mathbf{x}_l)\\
+&=\sum_{h=1}^{Q_{n}}w_h\,\delta_h^n(\mathbf{x}_i^n,\mathbf{x}_l^n)
+ +\sum_{k=1}^{Q_{c}}w_k\,\delta_k^c(\mathbf{x}_i^c,\mathbf{x}_l^c).
 \end{aligned}
 $$ {#eq-mixed-distance}
 
@@ -264,15 +268,15 @@ properties impose this requirement on the general setup.
 
 #### Multivariate additivity
 
-For $p$-dimensional observations
-$\mathbf{x}_i=(x_{i1},\ldots,x_{ip})$ and
-$\mathbf{x}_l=(x_{l1},\ldots,x_{lp})$, a
-function $d:\mathcal{X}^p\times\mathcal{X}^p\rightarrow[0,\infty)$ is
+For $Q$-dimensional observations
+$\mathbf{x}_i=(x_{i1},\ldots,x_{iQ})$ and
+$\mathbf{x}_l=(x_{l1},\ldots,x_{lQ})$, a
+function $d:\mathcal{X}^Q\times\mathcal{X}^Q\rightarrow[0,\infty)$ is
 multivariate additive if
 
 $$
 d(\mathbf{x}_i,\mathbf{x}_l)
-=\sum_{j=1}^{p}d_j(\mathbf{x}_i,\mathbf{x}_l),
+=\sum_{j=1}^{Q}d_j(\mathbf{x}_i,\mathbf{x}_l),
 $$ {#eq-additivity}
 
 where $d_j(\mathbf{x}_i,\mathbf{x}_l)$ is the contribution associated with
@@ -280,12 +284,12 @@ variable $j$.
 Each component may depend on all elements of the two observations; the index
 identifies the associated contribution rather than restricting it to a single
 coordinate. This permits additive constructions that incorporate dependencies
-between variables. If every $d_j$ is a metric on $\mathcal{X}^p$, their sum is
+between variables. If every $d_j$ is a metric on $\mathcal{X}^Q$, their sum is
 also a metric.
 
 #### Commensurability
 
-Let $\bm{X}_i=(X_{i1},\ldots,X_{ip})$ denote the random vector
+Let $\bm{X}_i=(X_{i1},\ldots,X_{iQ})$ denote the random vector
 corresponding to observation $i$. The variable contributions are commensurable
 when, for every $j$ and $i\ne l$,
 
@@ -315,10 +319,10 @@ In practice, manydist estimates these expectations from the observed pairs:
 
 $$
 \begin{aligned}
-m_h&=\frac{1}{n(n-1)}\sum_{i\ne l}
+m_h&=\frac{1}{I(I-1)}\sum_{i\ne l}
 \delta_h^n(\mathbf{x}_i^n,\mathbf{x}_l^n),
 &\quad w_h&=\frac{1}{m_h},\\
-m_k&=\frac{1}{n(n-1)}\sum_{i\ne l}
+m_k&=\frac{1}{I(I-1)}\sum_{i\ne l}
 \delta_k^c(\mathbf{x}_i^c,\mathbf{x}_l^c),
 &\quad w_k&=\frac{1}{m_k}.
 \end{aligned}
@@ -710,7 +714,7 @@ contributions on possibly transformed coordinates:
 
 $$
 d_{\mathrm{num}}(\mathbf{x}_i,\mathbf{x}_l)
-=\sum_{h=1}^{p_n}w_h
+=\sum_{h=1}^{Q_{n}}w_h
 \left|f_h(\mathbf{x}_i)-f_h(\mathbf{x}_l)\right|,
 $$ {#eq-numerical-distance}
 
@@ -744,7 +748,7 @@ association-based constructions.
 For categorical variable $k$, let $\bm{\Delta}_k$ be the
 $q_k\times q_k$ dissimilarity matrix between its categories, and let
 $\mathbf{Z}_k$ be
-the corresponding $n\times q_k$ indicator matrix. Its observation-wise
+the corresponding $I\times q_k$ indicator matrix. Its observation-wise
 distance matrix and expected contribution are
 
 $$
@@ -902,10 +906,88 @@ lovo_gower$autoplot(
 ```
 
 Optional clustering diagnostics compare partitions from the full and reduced
-distances using the adjusted Rand index. `compare_lovo_mdist()` applies the
-same diagnostics to several distance specifications, making the choice of
+distances using the adjusted Rand index (ARI). `compare_lovo_mdist()` applies
+the same diagnostics to several distance specifications, making the choice of
 distance part of the sensitivity analysis rather than a fixed preprocessing
-decision.
+decision. Here, the three-cluster PAM solution is recomputed after each
+predictor is removed.
+
+```{r}
+#| label: compare-lovo-pam
+
+lovo_comparison <- compare_lovo_mdist(
+  x = penguins_x,
+  methods = list(
+    Gower = list(preset = "gower"),
+    Euclidean = list(preset = "euclidean"),
+    `Unbiased independent` = list(preset = "u_indep"),
+    `Unbiased dependent` = list(preset = "u_dep")
+  ),
+  cluster_k = 3,
+  cluster_methods = "pam"
+)
+```
+
+The `ari_pam` diagnostic compares, within each distance specification, the
+partition obtained from all predictors with the partition obtained after
+leaving out the named predictor. An ARI of one indicates an unchanged
+partition; lower values indicate greater sensitivity. This is an internal
+stability diagnostic: the species labels are not used. The corresponding
+larger-is-more-important measure, `pam_importance`, equals `1 - ari_pam`.
+For `u_dep`, leaving out either of the two categorical predictors leaves only
+one categorical variable; the reduced fit therefore uses matching because an
+association-based categorical dissimilarity requires at least two variables.
+
+```{r}
+#| label: fig-compare-lovo-pam
+#| fig-cap: "Stability of three-cluster PAM solutions under four distance specifications. Each value is the adjusted Rand index between the full-data partition and its leave-one-variable-out counterpart; lower values indicate greater sensitivity to the omitted variable."
+#| fig-width: 6.3
+#| fig-height: 3.6
+
+lovo_comparison$autoplot(
+  metric = "ari_pam",
+  reorder = TRUE
+) +
+  ggplot2::labs(
+    x = NULL,
+    title = NULL,
+    color = "Distance"
+  ) +
+  ggplot2::theme(
+    legend.position = "top"
+  )
+```
+
+For a broader comparison, `benchmark_mdist()` evaluates an explicit table of
+distance specifications. `all_dist_method_specs()` constructs valid preset or
+custom candidates, and the benchmark records the resulting `MDist` object as
+well as whether each computation succeeded.
+
+```{r}
+#| label: benchmark-candidate-distances
+
+candidate_specs <- all_dist_method_specs(
+  mode = "presets_only",
+  preset = c("gower", "u_indep", "u_dep")
+)
+
+distance_benchmark <- benchmark_mdist(
+  x = penguins_x,
+  specs = candidate_specs
+)
+
+distance_benchmark |>
+  dplyr::transmute(
+    distance = preset,
+    completed = ok,
+    error
+  )
+```
+
+An error in one specification is captured without stopping the remaining
+computations. The benchmark is therefore a reproducible screening interface,
+not a model-selection rule: the successful distances can subsequently be
+compared through diagnostics or evaluated in a common resampling workflow.
 
 ### Building distance-based workflows
 
@@ -913,113 +995,588 @@ decision.
 stores the training data and preprocessing parameters, so the distance is
 re-estimated inside each resample and reused when genuinely new observations
 are processed. Its `output` argument selects the representation required by
-the downstream task.
+the downstream task: `"pairwise"` for clustering and
+`"distance_to_training"` for prediction. The resulting recipes can be paired
+with `pam_dist()` or `spectral_dist()` for clustering and with
+`nearest_neighbor_dist()` for nearest-neighbour learning.
 
-#### Clustering from pairwise distances
+In a supervised recipe, response-aware specifications automatically obtain the
+single outcome from the formula. The outcome from each analysis set is used
+when the step is prepared, while assessment and test outcomes are never used.
+Setting `response_used = FALSE` recovers the predictor-only construction. The
+complete task-oriented workflows are illustrated next.
 
-For clustering, `output = "pairwise"` produces the square within-training
-dissimilarity matrix. It can be consumed by `pam_dist()` or
-`spectral_dist()`. The following workflow combines a Gower distance with a
-three-cluster partitioning around medoids.
+## Illustration: distance-based learning with World Development Indicators
+
+The packaged `wdi_2022` data provide a fixed snapshot of five numerical World
+Development Indicators and three World Bank classifications for 181 countries.
+This example treats the distance as part of the learning workflow rather than
+as a fixed preliminary choice. The first task compares unsupervised country
+partitions; the second predicts income group using a supervised
+nearest-neighbour classifier.
 
 ```{r}
-#| label: build-pam-workflow
+#| label: prepare-wdi-data
 
-gower_pairwise_recipe <- recipes::recipe(
-  ~ .,
-  data = penguins_x
-) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "pairwise"
-  )
+data("wdi_2022", package = "manydist")
 
-pam_fit <- generics::fit(
-  pam_dist(num_clusters = 3),
-  recipe = gower_pairwise_recipe,
-  data = penguins_x
+wdi_clustering <- wdi_2022 |>
+  dplyr::select(-country)
+
+distance_presets <- c(
+  gower = "gower",
+  euclidean = "euclidean",
+  u_indep = "u_indep",
+  u_dep = "u_dep",
+  u_mix = "u_mix"
+)
+
+distance_labels <- c(
+  gower = "Gower",
+  euclidean = "Euclidean",
+  u_indep = "Unbiased independent",
+  u_dep = "Unbiased dependent",
+  u_mix = "Unbiased mixed"
 )
 ```
 
-The species labels were not used to construct the partition. They are added
-below only to interpret this illustrative example.
+### Unsupervised country clustering
+
+The clustering recipes contain no outcome, so every candidate distance is
+constructed only from the predictors. To isolate the effects of the distance
+and clustering engine, the number of clusters is fixed at four throughout.
+This value is illustrative rather than an estimated optimum.
 
 ```{r}
-#| label: inspect-pam-workflow
+#| label: build-wdi-clustering-recipes
 
-pam_assignments <- predict(pam_fit) |>
-  dplyr::bind_cols(
-    penguins |>
-      dplyr::select(species)
-  )
-
-pam_assignments |>
-  dplyr::count(.pred_cluster, species)
+clustering_recipes <- purrr::map(
+  distance_presets,
+  function(preset) {
+    recipes::recipe(~ ., data = wdi_clustering) |>
+      step_mdist(
+        recipes::all_predictors(),
+        preset = preset,
+        output = "pairwise"
+      )
+  }
+)
 ```
 
-The same pairwise recipe can be supplied to `spectral_dist()`, which also
-provides access to the fitted spectral embedding.
-
-#### Prediction from distances to the training set
-
-For prediction, `output = "distance_to_training"` represents each observation
-by its distances to the training observations. `nearest_neighbor_dist()` uses
-these columns in a parsnip model specification. Keeping the transformation in
-the recipe ensures that assessment and test observations are compared only
-with the corresponding training set.
+Each distance is crossed with partitioning around medoids and spectral
+clustering. Both model specifications consume the same pairwise representation
+produced by their recipe.
 
 ```{r}
-#| label: build-knn-workflow
+#| label: fit-wdi-clustering-grid
 
-gower_training_recipe <- recipes::recipe(
-  species ~ .,
-  data = penguins
-) |>
-  step_mdist(
-    recipes::all_predictors(),
-    preset = "gower",
-    output = "distance_to_training"
+fit_clustering_pipeline <- function(distance, method) {
+  set.seed(2026)
+
+  model <- if (method == "PAM") {
+    pam_dist(num_clusters = 4)
+  } else {
+    spectral_dist(num_clusters = 4, nstart = 50)
+  }
+
+  fitted <- generics::fit(
+    model,
+    recipe = clustering_recipes[[distance]],
+    data = wdi_clustering
   )
 
-knn_spec <- nearest_neighbor_dist(
-  mode = "classification",
-  neighbors = 5
+  assignment <- predict(fitted)$.pred_cluster |>
+    as.integer()
+
+  silhouette <- cluster::silhouette(
+    assignment,
+    stats::as.dist(fitted$train_matrix)
+  )
+
+  tibble::tibble(
+    distance = distance,
+    method = method,
+    fit = list(fitted),
+    cluster = list(assignment),
+    average_silhouette = mean(silhouette[, "sil_width"])
+  )
+}
+
+clustering_results <- tidyr::expand_grid(
+  distance = names(distance_presets),
+  method = c("PAM", "Spectral")
 ) |>
-  parsnip::set_engine("manydist")
-
-knn_workflow <- workflows::workflow() |>
-  workflows::add_recipe(gower_training_recipe) |>
-  workflows::add_model(knn_spec)
-
-knn_workflow
+  purrr::pmap_dfr(fit_clustering_pipeline) |>
+  dplyr::mutate(
+    distance_label = unname(distance_labels[distance]),
+    solution = paste(distance_label, method, sep = " / ")
+  )
 ```
 
-The resulting object can be fitted, resampled, and tuned with the standard
-tidymodels interface. Model assessment should tune the number of neighbours
-and, when it is not fixed in advance, the distance specification under a
-common resampling design before the final test set is used.
+Average silhouette width describes separation within each fitted pipeline.
+The ARI in @tbl-wdi-clustering-summary compares PAM and spectral assignments
+under the same distance. These quantities diagnose different aspects of the
+solutions: silhouette concerns within-solution separation, whereas ARI
+concerns agreement between partitions.
 
-## Illustration: distance bias in the Palmer penguins dataset
+```{=latex}
+\Needspace{11\baselineskip}
+```
 
 ```{r}
-#| label: fig-mds-unbiased-dependent
-#| fig-cap: "Two-dimensional MDS configuration under the unbiased dependent distance."
+#| label: tbl-wdi-clustering-summary
+#| tbl-cap: "Four-cluster WDI solutions under five distances and two clustering methods."
+#| echo: false
+
+clustering_summary <- clustering_results |>
+  dplyr::select(
+    distance,
+    distance_label,
+    method,
+    average_silhouette,
+    cluster
+  ) |>
+  tidyr::pivot_wider(
+    names_from = method,
+    values_from = c(average_silhouette, cluster),
+    names_sep = "_"
+  ) |>
+  dplyr::mutate(
+    method_ari = purrr::map2_dbl(
+      cluster_PAM,
+      cluster_Spectral,
+      aricode::ARI
+    )
+  ) |>
+  dplyr::arrange(match(distance, names(distance_presets)))
+
+knitr::kable(
+  clustering_summary |>
+    dplyr::transmute(
+      Distance = distance_label,
+      `PAM silhouette` = average_silhouette_PAM,
+      `Spectral silhouette` = average_silhouette_Spectral,
+      `PAM--spectral ARI` = method_ari
+    ),
+  digits = 3
+)
+```
+
+Pairwise ARIs compare all ten partitions. They measure sensitivity to the
+distance and clustering method, not the absolute quality of a partition. A
+high value indicates that two pipelines produce similar country groupings.
+
+```{r}
+#| label: compute-wdi-clustering-ari
+
+cluster_assignments <- stats::setNames(
+  clustering_results$cluster,
+  clustering_results$solution
+)
+
+solution_order <- names(cluster_assignments)
+
+clustering_ari <- tidyr::crossing(
+  solution_1 = solution_order,
+  solution_2 = solution_order
+) |>
+  dplyr::mutate(
+    ari = purrr::map2_dbl(
+      solution_1,
+      solution_2,
+      ~ aricode::ARI(
+        cluster_assignments[[.x]],
+        cluster_assignments[[.y]]
+      )
+    ),
+    row = match(solution_1, solution_order),
+    column = match(solution_2, solution_order)
+  ) |>
+  dplyr::filter(row >= column)
+```
+
+```{r}
+#| label: fig-wdi-clustering-ari
+#| fig-cap: "Pairwise adjusted Rand indices for four-cluster WDI partitions. Each pipeline combines one distance with PAM or spectral clustering; only one triangle is shown."
+#| fig-width: 6.5
+#| fig-height: 5.8
 #| fig-pos: "H"
 #| echo: false
 
-mds_figure <- file.path(
-  "generated",
-  "figures",
-  "fig-mds-unbiased-dependent.pdf"
+clustering_ari |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = factor(solution_1, levels = solution_order),
+      y = factor(solution_2, levels = rev(solution_order)),
+      fill = ari
+    )
+  ) +
+  ggplot2::geom_tile(color = "white") +
+  ggplot2::geom_text(
+    ggplot2::aes(label = sprintf("%.2f", ari)),
+    size = 2.3
+  ) +
+  ggplot2::scale_fill_viridis_c(
+    limits = c(0, 1),
+    name = "ARI"
+  ) +
+  ggplot2::labs(x = NULL, y = NULL) +
+  ggplot2::coord_equal() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(
+      angle = 45,
+      hjust = 1
+    ),
+    panel.grid = ggplot2::element_blank()
+  )
+```
+
+The comparison shows whether a substantive interpretation is stable across
+plausible analysis choices. It does not designate a universally best
+clustering; that decision still requires separation diagnostics, stability,
+and subject-matter interpretation.
+
+### Supervised income classification
+
+The supervised task predicts the four classified World Bank income groups.
+Country is an identifier and lending category is excluded because it is
+administratively related to income group. The two-country North America level
+is pooled with Latin America and the Caribbean to avoid a categorical level
+that can be absent from an analysis fold.
+
+```{r}
+#| label: prepare-wdi-classification
+
+wdi_classification <- wdi_2022 |>
+  dplyr::filter(income != "Not classified") |>
+  dplyr::mutate(
+    income = forcats::fct_drop(income),
+    region = forcats::fct_collapse(
+      region,
+      Americas = c(
+        "North America",
+        "Latin America & Caribbean"
+      )
+    )
+  ) |>
+  dplyr::select(-country, -lending)
+
+wdi_classification |>
+  dplyr::count(income)
+```
+
+A stratified split reserves 25% of the countries for a final assessment. The
+training partition supplies a common set of five stratified folds for every
+distance and neighbourhood size.
+
+```{r}
+#| label: split-wdi-classification
+
+set.seed(2026)
+
+wdi_split <- rsample::initial_split(
+  wdi_classification,
+  prop = 0.75,
+  strata = income
 )
 
-if (file.exists(mds_figure)) {
-  knitr::include_graphics(mds_figure)
-} else {
-  cat("Run Rscript replicate.R to generate this figure.")
-}
+wdi_train <- rsample::training(wdi_split)
+
+set.seed(2026)
+
+wdi_folds <- rsample::vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = income
+)
 ```
+
+One recipe is defined for each distance. Because the recipes contain an
+outcome, `u_dep` and `u_mix` automatically use the income labels from the
+current analysis fold; the other three presets remain response-independent.
+All recipes are crossed with the same tunable nearest-neighbour specification
+in a `workflow_set()`.
+
+```{r}
+#| label: build-wdi-classification-workflows
+
+classification_recipes <- purrr::map(
+  distance_presets,
+  function(preset) {
+    recipes::recipe(income ~ ., data = wdi_train) |>
+      step_mdist(
+        recipes::all_predictors(),
+        preset = preset,
+        output = "distance_to_training"
+      )
+  }
+)
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune::tune()
+) |>
+  parsnip::set_engine("manydist")
+
+classification_workflows <- workflowsets::workflow_set(
+  preproc = classification_recipes,
+  models = list(knn = knn_spec)
+)
+```
+
+The distance acts as a workflow-level tuning choice, while the number of
+neighbours is tuned within each workflow. Balanced accuracy is the primary
+metric because the income groups have different sizes.
+
+```{r}
+#| label: tune-wdi-classification-workflows
+
+neighbor_grid <- tibble::tibble(
+  neighbors = c(1L, 3L, 5L, 7L, 9L, 15L)
+)
+
+set.seed(2026)
+
+classification_results <- workflowsets::workflow_map(
+  classification_workflows,
+  fn = "tune_grid",
+  seed = 2026,
+  resamples = wdi_folds,
+  grid = neighbor_grid,
+  metrics = yardstick::metric_set(
+    yardstick::bal_accuracy,
+    yardstick::accuracy
+  ),
+  control = tune::control_grid(save_pred = TRUE),
+  verbose = FALSE
+)
+```
+
+```{r}
+#| label: summarize-wdi-classification-workflows
+#| echo: false
+
+classification_metrics <- purrr::map_dfr(
+  classification_results$wflow_id,
+  function(wflow_id) {
+    workflowsets::extract_workflow_set_result(
+      classification_results,
+      wflow_id
+    ) |>
+      tune::collect_metrics() |>
+      dplyr::mutate(wflow_id = wflow_id)
+  }
+)
+
+classification_ranking <- workflowsets::rank_results(
+  classification_results,
+  rank_metric = "bal_accuracy",
+  select_best = TRUE
+) |>
+  dplyr::filter(.metric == "bal_accuracy")
+
+classification_summary <- classification_ranking |>
+  dplyr::select(
+    wflow_id,
+    .config,
+    mean,
+    std_err,
+    rank
+  ) |>
+  dplyr::left_join(
+    classification_metrics |>
+      dplyr::filter(.metric == "bal_accuracy") |>
+      dplyr::select(
+        wflow_id,
+        .config,
+        neighbors
+      ),
+    by = c("wflow_id", ".config")
+  ) |>
+  dplyr::mutate(
+    distance = sub("_knn$", "", wflow_id),
+    distance_label = unname(distance_labels[distance])
+  ) |>
+  dplyr::arrange(rank)
+```
+
+```{r}
+#| label: tbl-wdi-classification-ranking
+#| tbl-cap: "Best nearest-neighbour configuration for each WDI distance, ranked by five-fold cross-validated balanced accuracy."
+#| echo: false
+
+knitr::kable(
+  classification_summary |>
+    dplyr::transmute(
+      Distance = distance_label,
+      Neighbours = neighbors,
+      `Balanced accuracy` = mean,
+      `Standard error` = std_err,
+      Rank = rank
+    ),
+  digits = 3
+)
+```
+
+@fig-wdi-knn-tuning displays the complete tuning profiles rather than only the
+winning configuration from each distance.
+
+```{r}
+#| label: fig-wdi-knn-tuning
+#| fig-cap: "Five-fold cross-validated balanced accuracy for WDI income classification. Each curve tunes the number of neighbours under a different distance specification."
+#| fig-width: 6.4
+#| fig-height: 3.7
+#| fig-pos: "H"
+#| echo: false
+
+classification_metrics |>
+  dplyr::filter(.metric == "bal_accuracy") |>
+  dplyr::mutate(
+    distance = sub("_knn$", "", wflow_id),
+    distance_label = unname(distance_labels[distance])
+  ) |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = neighbors,
+      y = mean,
+      color = distance_label
+    )
+  ) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point(size = 1.8) +
+  ggplot2::scale_x_continuous(
+    breaks = neighbor_grid$neighbors
+  ) +
+  ggplot2::scale_color_brewer(
+    palette = "Dark2",
+    name = "Distance"
+  ) +
+  ggplot2::labs(
+    x = "Number of neighbours",
+    y = "Cross-validated balanced accuracy"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::guides(
+    color = ggplot2::guide_legend(
+      nrow = 2,
+      byrow = TRUE
+    )
+  ) +
+  ggplot2::theme(legend.position = "top")
+```
+
+Only after the distance and number of neighbours have been selected is the
+test partition used. `last_fit()` refits the selected recipe and model on the
+complete training partition.
+
+```{r}
+#| label: finalize-wdi-classification-workflow
+
+selected_workflow_id <- classification_summary |>
+  dplyr::slice_min(rank, n = 1, with_ties = FALSE) |>
+  dplyr::pull(wflow_id)
+
+selected_distance_label <- classification_summary |>
+  dplyr::filter(wflow_id == selected_workflow_id) |>
+  dplyr::pull(distance_label)
+
+selected_results <- workflowsets::extract_workflow_set_result(
+  classification_results,
+  selected_workflow_id
+)
+
+best_neighbors <- tune::select_best(
+  selected_results,
+  metric = "bal_accuracy"
+)
+
+final_wdi_workflow <- workflowsets::extract_workflow(
+  classification_results,
+  selected_workflow_id
+) |>
+  tune::finalize_workflow(best_neighbors)
+
+final_wdi_results <- tune::last_fit(
+  final_wdi_workflow,
+  split = wdi_split,
+  metrics = yardstick::metric_set(
+    yardstick::bal_accuracy,
+    yardstick::accuracy
+  )
+)
+
+final_wdi_metrics <- tune::collect_metrics(final_wdi_results)
+
+heldout_balanced_accuracy <- final_wdi_metrics |>
+  dplyr::filter(.metric == "bal_accuracy") |>
+  dplyr::pull(.estimate)
+
+heldout_accuracy <- final_wdi_metrics |>
+  dplyr::filter(.metric == "accuracy") |>
+  dplyr::pull(.estimate)
+```
+
+Cross-validation selected the `r selected_distance_label` distance with
+`r best_neighbors$neighbors` neighbours. On the held-out countries, the
+selected workflow attained balanced accuracy
+`r sprintf("%.3f", heldout_balanced_accuracy)` and ordinary accuracy
+`r sprintf("%.3f", heldout_accuracy)`. Given the modest test-set class counts,
+these values complete the workflow demonstration rather than establish a
+general performance ranking.
+
+```{r}
+#| label: inspect-wdi-classification-predictions
+
+wdi_test_predictions <- tune::collect_predictions(
+  final_wdi_results
+)
+
+wdi_confusion <- yardstick::conf_mat(
+  wdi_test_predictions,
+  truth = income,
+  estimate = .pred_class
+)
+```
+
+```{r}
+#| label: tbl-wdi-confusion
+#| tbl-cap: "Held-out WDI income-group confusion matrix. Rows are predicted classes and columns are observed classes."
+#| echo: false
+
+income_abbreviations <- c(
+  "High income" = "High",
+  "Low income" = "Low",
+  "Lower middle income" = "Lower middle",
+  "Upper middle income" = "Upper middle"
+)
+
+confusion_table <- wdi_confusion$table |>
+  as.data.frame() |>
+  tibble::as_tibble() |>
+  dplyr::mutate(
+    Prediction = dplyr::recode(
+      as.character(Prediction),
+      !!!income_abbreviations
+    ),
+    Truth = dplyr::recode(
+      as.character(Truth),
+      !!!income_abbreviations
+    )
+  ) |>
+  tidyr::pivot_wider(
+    names_from = Truth,
+    values_from = Freq
+  )
+
+knitr::kable(confusion_table)
+```
+
+Together, the two tasks show how the same package interface supports different
+analysis goals. In clustering, distance and algorithm choices are examined
+through agreement and separation diagnostics. In classification, distance
+choice and model tuning are evaluated jointly under a common resampling
+design, with response-aware preprocessing confined to the analysis folds.
 
 ## Conclusion
 

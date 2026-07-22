@@ -167,6 +167,8 @@ D_custom
   : Spectral clustering from a distance matrix
 - [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
   : Add manydist dissimilarities to a recipe
+- [`wdi_2022`](https://alfonsoiodicede.github.io/manydist_package/reference/wdi_2022.md)
+  : Selected World Development Indicators for 2022
 
 # Articles
 

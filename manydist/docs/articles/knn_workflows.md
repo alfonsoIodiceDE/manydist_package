@@ -110,7 +110,16 @@ neighbours have been selected.
 
 The recipe outcome is `species`. Selecting
 [`all_predictors()`](https://recipes.tidymodels.org/reference/has_role.html)
-therefore keeps the outcome outside the distance calculation.
+keeps it out of the predictor set. Because Gower distance is not
+response-aware, `species` is not used in the distance calculation below.
+
+For response-aware specifications such as `u_dep` and `u_mix`, however,
+[`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
+automatically discovers the single recipe outcome and uses the outcomes
+from the current analysis set when the step is prepared. The fitted
+profiles are reused for assessment and test observations; their outcomes
+are never required or used. Set `response_used = FALSE` to construct a
+predictor-only version of a response-aware distance.
 
 ``` r
 
@@ -559,6 +568,9 @@ definitions.
   [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
   inside the recipe so its preprocessor is re-estimated within each
   resample.
+- Response-aware specifications automatically use the analysis-fold
+  outcome; use `response_used = FALSE` when an outcome-independent
+  distance is wanted.
 - Use `output = "distance_to_training"` for prediction;
   `output = "pairwise"` is intended for clustering.
 - Remember that each fitted analysis set produces a different number of

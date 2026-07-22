@@ -21,6 +21,11 @@
 #'   training observations and is the usual choice for prediction workflows.
 #'   `"pairwise"` returns the within-training pairwise dissimilarity matrix and
 #'   is intended for training-only distance-based clustering workflows.
+#' @param response_used Logical. If `TRUE` (the default) and the recipe has
+#'   exactly one outcome, response-aware distance specifications use that
+#'   outcome when the step is prepared. Set to `FALSE` to construct the
+#'   distance from predictors only. Specifications that are not response-aware
+#'   never use the outcome.
 #' @param preset Character string specifying the distance preset passed to
 #'   [mdist()]. Available values include `"custom"`, `"gower"`,
 #'   `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
@@ -50,6 +55,8 @@
 #'   used when `method_num = "pc_scores"`.
 #' @param columns Names of columns selected at prep time. Used internally by
 #'   recipes.
+#' @param response_col Name of the outcome selected at prep time when it is
+#'   used by the distance specification. Used internally by recipes.
 #' @param train_predictors Training predictors stored at prep time. Used
 #'   internally by recipes to compute distances from new observations to the
 #'   training observations.
@@ -63,6 +70,12 @@
 #' predictors and fits the internal manydist preprocessor. During
 #' [recipes::bake()], the selected predictors are removed and replaced by
 #' distance columns named `dist_1`, `dist_2`, and so on.
+#'
+#' When `response_used = TRUE`, the step discovers the outcome from the recipe
+#' variable roles. For response-aware presets and custom categorical methods,
+#' the outcome from the current analysis set is supplied to [mdist()] during
+#' preparation. The fitted response-aware profiles are then reused when new
+#' data are baked; assessment and test outcomes are never required or used.
 #'
 #' With `output = "distance_to_training"`, baking the training data returns the
 #' training pairwise distances, while baking new data returns distances from
@@ -124,6 +137,7 @@ step_mdist <- function(
     role             = "predictor",
     trained          = FALSE,
     output           = "distance_to_training",
+    response_used    = TRUE,
     preset           = "custom",
     method_cat       = "tot_var_dist",
     method_num       = NULL,
@@ -131,22 +145,31 @@ step_mdist <- function(
     ncomp            = NULL,
     threshold        = NULL,
     columns          = NULL,
+    response_col     = NULL,
     train_predictors = NULL,
     preprocessor     = NULL,
     skip             = FALSE,
     id               = recipes::rand_id("mdist")
 ) {
 
+  commensurable_missing <- missing(commensurable)
   output <- rlang::arg_match0(output, c("distance_to_training", "pairwise"))
 
+  if (!is.logical(response_used) || length(response_used) != 1L ||
+      is.na(response_used)) {
+    rlang::abort("`response_used` must be a single `TRUE` or `FALSE` value.")
+  }
+
   if (is.null(method_num)) {
-    method_num <- if (
-      preset %in% c("euclidean", "euclidean_onehot", "euclidean_one_hot")
-    ) {
-      "std"
-    } else {
+    method_num <- if (identical(preset, "custom")) {
       "none"
+    } else {
+      "std"
     }
+  }
+
+  if (commensurable_missing && !identical(preset, "custom")) {
+    commensurable <- TRUE
   }
 
   recipes::add_step(
@@ -156,6 +179,7 @@ step_mdist <- function(
       role             = role,
       trained          = trained,
       output           = output,
+      response_used    = response_used,
       preset           = preset,
       method_cat       = method_cat,
       method_num       = method_num,
@@ -163,6 +187,7 @@ step_mdist <- function(
       ncomp            = ncomp,
       threshold        = threshold,
       columns          = columns,
+      response_col     = response_col,
       train_predictors = train_predictors,
       preprocessor     = preprocessor,
       skip             = skip,
@@ -172,11 +197,12 @@ step_mdist <- function(
 }
 
 step_mdist_new <- function(terms, role, trained,
-                           output,
+                           output, response_used,
                            preset, method_cat, method_num,
                            commensurable,
                            ncomp, threshold,
-                           columns, train_predictors, preprocessor,
+                           columns, response_col,
+                           train_predictors, preprocessor,
                            skip, id) {
   recipes::step(
     subclass         = "mdist",
@@ -184,6 +210,7 @@ step_mdist_new <- function(terms, role, trained,
     role             = role,
     trained          = trained,
     output           = output,
+    response_used    = response_used,
     preset           = preset,
     method_cat       = method_cat,
     method_num       = method_num,
@@ -191,11 +218,33 @@ step_mdist_new <- function(terms, role, trained,
     ncomp            = ncomp,
     threshold        = threshold,
     columns          = columns,
+    response_col     = response_col,
     train_predictors = train_predictors,
     preprocessor     = preprocessor,
     skip             = skip,
     id               = id
   )
+}
+
+
+.step_mdist_is_response_aware <- function(preset, method_cat) {
+  preset <- .normalize_preset(preset)
+
+  if (preset %in% c("unbiased_dependent", "u_dep", "u_mix")) {
+    return(TRUE)
+  }
+
+  if (!identical(preset, "custom")) {
+    return(FALSE)
+  }
+
+  method_cat <- ifelse(
+    method_cat %in% c("tot_var_dist", "tvd"),
+    "tvd",
+    method_cat
+  )
+
+  any(method_cat %in% response_aware_methods(argument = "method_cat"))
 }
 
 
@@ -212,21 +261,61 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
   ncomp <- x$ncomp %||% ncol(train_predictors)
   output <- rlang::arg_match0(x$output, c("distance_to_training", "pairwise"))
 
-  preprocessor <- .prep_mdist(
-    x = train_predictors,
-    method_cat    = x$method_cat,
-    method_num    = x$method_num,
+  response_col <- NULL
+  use_recipe_response <- isTRUE(x$response_used) &&
+    .step_mdist_is_response_aware(x$preset, x$method_cat)
+
+  if (use_recipe_response && !is.null(info)) {
+    outcome_names <- unique(info$variable[info$role == "outcome"])
+    outcome_names <- intersect(outcome_names, colnames(training))
+
+    if (length(outcome_names) > 1L) {
+      rlang::abort(
+        paste0(
+          "Response-aware `step_mdist()` specifications require exactly one ",
+          "recipe outcome; found ", length(outcome_names), "."
+        )
+      )
+    }
+
+    if (length(outcome_names) == 1L) {
+      response_col <- outcome_names
+    }
+  }
+
+  if (!is.null(response_col) && response_col %in% col_names) {
+    rlang::abort(
+      "The recipe outcome selected by `step_mdist()` cannot also be a predictor."
+    )
+  }
+
+  preprocessor_training <- train_predictors
+  if (!is.null(response_col)) {
+    preprocessor_training[[response_col]] <- training[[response_col]]
+  }
+
+  prep_args <- list(
+    x = preprocessor_training,
+    method_cat = x$method_cat,
+    method_num = x$method_num,
     commensurable = x$commensurable,
-    ncomp         = ncomp,
-    threshold     = x$threshold,
-    preset        = x$preset
+    ncomp = ncomp,
+    threshold = x$threshold,
+    preset = x$preset
   )
+
+  if (!is.null(response_col)) {
+    prep_args$response <- response_col
+  }
+
+  preprocessor <- rlang::exec(.prep_mdist, !!!prep_args)
 
   step_mdist_new(
     terms            = x$terms,
     role             = x$role,
     trained          = TRUE,
     output           = output,
+    response_used    = x$response_used,
     preset = preprocessor$preset,
     method_cat = preprocessor$method_cat,
     method_num = preprocessor$method_num,
@@ -234,6 +323,7 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
     ncomp            = ncomp,
     threshold        = x$threshold,
     columns          = col_names,
+    response_col     = response_col,
     train_predictors = train_predictors,
     preprocessor     = preprocessor,
     skip             = x$skip,
@@ -319,6 +409,19 @@ print.step_mdist <- function(x, width = max(20, getOption("width") - 30), ...) {
 
   cat("  output:      ", x$output, "\n", sep = "")
   cat("  preset:      ", x$preset, "\n", sep = "")
+
+  response_status <- if (!isTRUE(x$response_used)) {
+    "<disabled>"
+  } else if (!is.null(x$response_col)) {
+    x$response_col
+  } else if (!isTRUE(x$trained) &&
+             .step_mdist_is_response_aware(x$preset, x$method_cat)) {
+    "<recipe outcome at prep>"
+  } else {
+    "<not used>"
+  }
+
+  cat("  response:    ", response_status, "\n", sep = "")
 
   if (x$preset == "custom") {
     cat("  method_cat:    ", x$method_cat,     "\n", sep = "")

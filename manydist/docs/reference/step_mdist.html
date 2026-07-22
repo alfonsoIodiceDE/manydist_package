@@ -54,6 +54,7 @@ prediction and clustering models that operate on dissimilarity matrices.</p>
 <span>  role <span class="op">=</span> <span class="st">"predictor"</span>,</span>
 <span>  trained <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  output <span class="op">=</span> <span class="st">"distance_to_training"</span>,</span>
+<span>  response_used <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
 <span>  method_cat <span class="op">=</span> <span class="st">"tot_var_dist"</span>,</span>
 <span>  method_num <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -61,6 +62,7 @@ prediction and clustering models that operate on dissimilarity matrices.</p>
 <span>  ncomp <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  columns <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  response_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  train_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  preprocessor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  skip <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -95,6 +97,14 @@ These are passed to [recipes::recipes_eval_select()] during preparation.</p></dd
 training observations and is the usual choice for prediction workflows.
 `"pairwise"` returns the within-training pairwise dissimilarity matrix and
 is intended for training-only distance-based clustering workflows.</p></dd>
+
+
+<dt id="arg-response-used">response_used<a class="anchor" aria-label="anchor" href="#arg-response-used"></a></dt>
+<dd><p>Logical. If `TRUE` (the default) and the recipe has
+exactly one outcome, response-aware distance specifications use that
+outcome when the step is prepared. Set to `FALSE` to construct the
+distance from predictors only. Specifications that are not response-aware
+never use the outcome.</p></dd>
 
 
 <dt id="arg-preset">preset<a class="anchor" aria-label="anchor" href="#arg-preset"></a></dt>
@@ -147,6 +157,11 @@ used when `method_num = "pc_scores"`.</p></dd>
 recipes.</p></dd>
 
 
+<dt id="arg-response-col">response_col<a class="anchor" aria-label="anchor" href="#arg-response-col"></a></dt>
+<dd><p>Name of the outcome selected at prep time when it is
+used by the distance specification. Used internally by recipes.</p></dd>
+
+
 <dt id="arg-train-predictors">train_predictors<a class="anchor" aria-label="anchor" href="#arg-train-predictors"></a></dt>
 <dd><p>Training predictors stored at prep time. Used
 internally by recipes to compute distances from new observations to the
@@ -182,6 +197,11 @@ data.</p>
 predictors and fits the internal manydist preprocessor. During
 [recipes::bake()], the selected predictors are removed and replaced by
 distance columns named `dist_1`, `dist_2`, and so on.</p>
+<p>When `response_used = TRUE`, the step discovers the outcome from the recipe
+variable roles. For response-aware presets and custom categorical methods,
+the outcome from the current analysis set is supplied to [mdist()] during
+preparation. The fitted response-aware profiles are then reused when new
+data are baked; assessment and test outcomes are never required or used.</p>
 <p>With `output = "distance_to_training"`, baking the training data returns the
 training pairwise distances, while baking new data returns distances from
 each new observation to each training observation. This rectangular
@@ -235,8 +255,6 @@ such as [pam_dist()] or [spectral_dist()].</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">pairwise_dist</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>When `preset` is not 'custom', distance-related arguments are ignored: `commensurable`, `method_num`. Set `preset = 'custom'` to specify them manually.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>When `preset` is not 'custom', distance-related arguments are ignored: `commensurable`, `method_num`. Set `preset = 'custom'` to specify them manually.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 333 × 333</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    dist_1 dist_2 dist_3 dist_4 dist_5 dist_6 dist_7 dist_8 dist_9 dist_10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>

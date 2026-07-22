@@ -519,7 +519,10 @@ guide](https://alfonsoiodicede.github.io/manydist_package/articles/benchmarking_
 - Use `output = "pairwise"` for training-only clustering
   representations.
 - Keep outcomes or reference labels outside the clustering recipe unless
-  a deliberately response-aware analysis is intended.
+  a deliberately response-aware analysis is intended. If a recipe
+  formula does contain an outcome, response-aware specifications use it
+  by default; set `response_used = FALSE` to retain an
+  outcome-independent clustering distance.
 - Treat cluster labels as nominal identifiers: cluster 1 is not
   inherently smaller or better than cluster 2.
 - Set the random seed when fitting spectral clustering.
