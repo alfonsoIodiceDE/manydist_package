@@ -1,3 +1,10 @@
+# manydist 0.5.1
+
+## Data
+
+- Added `wdi_2022`, a documented snapshot of selected 2022 World Development
+  Indicators for reproducible mixed-type distance examples.
+
 # manydist 0.5.0
 
 ## Major changes

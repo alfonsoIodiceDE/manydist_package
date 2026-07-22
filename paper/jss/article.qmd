@@ -26,11 +26,16 @@ keywords:
   - mixed data
   - commensurability
   - R
+keywords-formatted:
+  - distance
+  - mixed data
+  - commensurability
+  - R
 header-includes:
   - \usepackage{bm}
 ---
 
-# Introduction
+## Introduction
 
 Measuring the distance or dissimilarity between observations is a fundamental
 step in clustering, classification, ordination, and nearest-neighbour methods.
@@ -219,7 +224,7 @@ prevalence, imbalance, and measurement type. manydist complements them with
 additive, commensurable, and association-aware constructions, together with
 diagnostic and modeling interfaces.
 
-# A unified mixed-variable distance framework
+## A unified mixed-variable distance framework
 
 We follow the notation of @van2024unbiased. Let $n$ be the number of
 observations and let $p=p_n+p_c$ be the number of variables, partitioned into
@@ -230,7 +235,7 @@ are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
 counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for a data
 matrix.
 
-## General mixed-distance setup
+### General mixed-distance setup
 
 For observed vectors $\mathbf{x}_i$ and $\mathbf{x}_l$, manydist constructs an
 overall distance by combining contributions from the numerical and categorical
@@ -251,13 +256,13 @@ numerical block, and the categorical contribution indexed by $k$ can depend
 on the complete categorical block. The present formulation does not use
 cross-type associations inside these component dissimilarities.
 
-## Scale- and type-aware distances
+### Scale- and type-aware distances
 
 We call a mixed-variable distance *unbiased* when the contribution associated
 with each variable does not depend on its measurement type or scale. Two
 properties impose this requirement on the general setup.
 
-### Multivariate additivity
+#### Multivariate additivity
 
 For $p$-dimensional observations
 $\mathbf{x}_i=(x_{i1},\ldots,x_{ip})$ and
@@ -278,7 +283,7 @@ coordinate. This permits additive constructions that incorporate dependencies
 between variables. If every $d_j$ is a metric on $\mathcal{X}^p$, their sum is
 also a metric.
 
-### Commensurability
+#### Commensurability
 
 Let $\bm{X}_i=(X_{i1},\ldots,X_{ip})$ denote the random vector
 corresponding to observation $i$. The variable contributions are commensurable
@@ -326,7 +331,7 @@ The formulation also permits constrained weights, such as common weights
 within numerical or categorical groups, when only within-type
 commensurability is required.
 
-## Association-aware distances: beyond commensurability
+### Association-aware distances: beyond commensurability
 
 Commensurability corrects differences in the expected size of the variable
 contributions, but it does not by itself remove redundant information. An
@@ -691,7 +696,7 @@ independence_plot
 association_plot
 ```
 
-## Numerical variables
+### Numerical variables
 
 In the numerical example, whitening uses the covariance structure to remove
 linear redundancy: Euclidean distance in the whitened coordinates is the
@@ -729,7 +734,7 @@ principal coordinates. This
 operation does not require dimensionality reduction; additivity then applies
 to the rotated axes.
 
-## Categorical variables
+### Categorical variables
 
 For categorical variables, association enters through conditional
 distributions rather than a covariance matrix. The category dissimilarity
@@ -769,7 +774,7 @@ Dissimilarities can compare rows $\mathbf{r}_a$ and $\mathbf{r}_b$ using total v
 [@le2005association]. These contributions vanish under independence and grow
 with the strength of the association.
 
-# Package structure
+## Package structure
 
 The manydist interface follows the three stages of a distance-based analysis:
 building a distance, diagnosing the resulting representation, and using it in
@@ -782,7 +787,7 @@ penguins data prepared above.
 library(manydist)
 ```
 
-## Distance building
+### Distance building
 
 The central function `mdist()` constructs distances for numerical,
 categorical, or mixed-type data. A preset identifies a complete distance
@@ -846,7 +851,7 @@ The `new_data` argument produces rectangular new-to-training dissimilarities.
 This distinction between square training distances and rectangular prediction
 distances is handled automatically by the workflow interface below.
 
-## Distance diagnostics
+### Distance diagnostics
 
 A distance is an intermediate data representation, so its sensitivity should
 be examined before it is supplied to a learning algorithm. `lovo_mdist()`
@@ -902,7 +907,7 @@ same diagnostics to several distance specifications, making the choice of
 distance part of the sensitivity analysis rather than a fixed preprocessing
 decision.
 
-## Building distance-based workflows
+### Building distance-based workflows
 
 `step_mdist()` integrates distance construction into a recipe. The fitted step
 stores the training data and preprocessing parameters, so the distance is
@@ -910,7 +915,7 @@ re-estimated inside each resample and reused when genuinely new observations
 are processed. Its `output` argument selects the representation required by
 the downstream task.
 
-### Clustering from pairwise distances
+#### Clustering from pairwise distances
 
 For clustering, `output = "pairwise"` produces the square within-training
 dissimilarity matrix. It can be consumed by `pam_dist()` or
@@ -956,7 +961,7 @@ pam_assignments |>
 The same pairwise recipe can be supplied to `spectral_dist()`, which also
 provides access to the fitted spectral embedding.
 
-### Prediction from distances to the training set
+#### Prediction from distances to the training set
 
 For prediction, `output = "distance_to_training"` represents each observation
 by its distances to the training observations. `nearest_neighbor_dist()` uses
@@ -995,7 +1000,7 @@ tidymodels interface. Model assessment should tune the number of neighbours
 and, when it is not fixed in advance, the distance specification under a
 common resampling design before the final test set is used.
 
-# Illustration: distance bias in the Palmer penguins dataset
+## Illustration: distance bias in the Palmer penguins dataset
 
 ```{r}
 #| label: fig-mds-unbiased-dependent
@@ -1016,7 +1021,7 @@ if (file.exists(mds_figure)) {
 }
 ```
 
-# Conclusion
+## Conclusion
 
 The conclusion will be migrated after the executable sections establish the
 current supported API and feature set.

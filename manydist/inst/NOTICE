@@ -1,0 +1,20 @@
+World Development Indicators data
+=================================
+
+The manydist package includes wdi_2022, a transformed subset of the World
+Bank's World Development Indicators for reference year 2022. The snapshot was
+retrieved on 2026-05-05 using the World Bank Indicators API.
+
+Attribution: The World Bank: World Development Indicators.
+
+The World Development Indicators dataset is licensed under the Creative
+Commons Attribution 4.0 International license, subject to the World Bank
+Dataset Terms and any conditions identified in the indicator metadata:
+
+https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators
+https://www.worldbank.org/ext/en/legal/terms-conditions/datasets
+
+The transformations applied by the manydist authors are documented in the
+wdi_2022 help topic and in data-raw/wdi_2022.R in the package source
+repository. Inclusion of these data does not imply endorsement by the World
+Bank.
