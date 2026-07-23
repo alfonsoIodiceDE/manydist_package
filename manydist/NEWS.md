@@ -1,9 +1,43 @@
 # manydist 0.5.1
 
+## Benchmarking and diagnostics
+
+- Extended `benchmark_mdist()` to compare every pair of successful distance
+  specifications using mean absolute distance differences, symmetric relative
+  distance, multidimensional-scaling congruence, and alienation.
+- Added optional clustering comparisons to `benchmark_mdist()`. Supplying
+  `cluster_k` computes pairwise adjusted Rand indices for PAM, hierarchical,
+  and/or spectral clustering; clustering is skipped when `cluster_k = NULL`.
+- Added `benchmark_comparisons()` to extract the pairwise diagnostics stored in
+  an `MDistBenchmark` result without recomputing the distances.
+- Added an `autoplot()` method for `MDistBenchmark` objects, with annotated
+  heatmaps for distance, geometry, and clustering-agreement diagnostics.
+
+## Distance construction and recipe workflows
+
+- Updated `step_mdist()` so response-aware specifications can obtain a single
+  outcome directly from the recipe formula during preparation. The fitted
+  response-aware profiles are reused when new data are baked, so assessment
+  and test outcomes are neither required nor used.
+- Added the `response_used` argument to `step_mdist()`, allowing response use to
+  be disabled explicitly.
+- Allowed `method_num` to override the default standardization of the
+  `"euclidean"` preset for numerical-only data. In particular,
+  `method_num = "none"` computes ordinary Euclidean distances on the original
+  variables.
+
 ## Data
 
 - Added `wdi_2022`, a documented snapshot of selected 2022 World Development
   Indicators for reproducible mixed-type distance examples.
+
+## Documentation and testing
+
+- Added focused tests for response-aware `step_mdist()` workflows and the
+  pairwise benchmarking interface.
+- Expanded the package website with task-oriented articles on distance
+  construction, diagnostics and benchmarking, clustering, and
+  nearest-neighbour workflows.
 
 # manydist 0.5.0
 

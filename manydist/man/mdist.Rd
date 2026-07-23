@@ -118,7 +118,7 @@ scaling for continuous variables and matching dissimilarities for categorical
 variables. The `gower_average` argument controls whether the result is
 averaged over variables or returned as a sum of variable-wise contributions.
 
-#' The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
+The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
 convenience specifications for unbiased or commensurable mixed-variable
 dissimilarities. The `"euclidean"` preset computes Euclidean distance after
 standardizing numerical variables and one-hot encoding and standardizing
