@@ -142,6 +142,7 @@ gower_recipe
 
       output:      distance_to_training
       preset:      gower
+      response:    <not used>
       (arguments handled internally by preset)
 
 During [`prep()`](https://recipes.tidymodels.org/reference/prep.html),

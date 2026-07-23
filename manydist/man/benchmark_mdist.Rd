@@ -2,9 +2,19 @@
 % Please edit documentation in R/benchmark_mdist.R
 \name{benchmark_mdist}
 \alias{benchmark_mdist}
-\title{Benchmark `mdist()` over multiple method specifications}
+\title{Benchmark and compare multiple `mdist()` specifications}
 \usage{
-benchmark_mdist(x, response = NULL, specs = all_dist_method_specs())
+benchmark_mdist(
+  x,
+  response = NULL,
+  specs = all_dist_method_specs(),
+  dims = 2,
+  cluster_k = NULL,
+  cluster_methods = c("pam", "hclust", "spectral"),
+  hclust_method = "average",
+  spectral_sigma = NULL,
+  spectral_nstart = 50
+)
 }
 \arguments{
 \item{x}{A data frame or tibble of predictors, optionally including the
@@ -15,10 +25,32 @@ unquoted or as a character string.}
 
 \item{specs}{A tibble of method specifications. By default, this is generated
 with [all_dist_method_specs()]. It must contain the columns `spec_type`,
-`preset`, `method_cat`, `method_num`, and `commensurable`.}
+`preset`, `method_cat`, `method_num`, and `commensurable`. An optional
+`label` column supplies display labels for comparisons and plots.}
+
+\item{dims}{Integer. Number of dimensions used by classical multidimensional
+scaling when computing congruence and alienation coefficients.}
+
+\item{cluster_k}{Optional integer. Number of clusters used for pairwise
+adjusted Rand indices. If `NULL`, no clustering is performed.}
+
+\item{cluster_methods}{Character vector specifying the clustering methods
+used when `cluster_k` is supplied. Possible values are `"pam"`,
+`"hclust"`, and `"spectral"`.}
+
+\item{hclust_method}{Character string specifying the linkage method passed
+to [stats::hclust()] when `"hclust"` is requested.}
+
+\item{spectral_sigma}{Optional numeric value for the Gaussian affinity
+bandwidth used by spectral clustering. If `NULL`, the default used by
+[spectral_dist()] is applied.}
+
+\item{spectral_nstart}{Integer. Number of random starts used by the k-means
+step in spectral clustering.}
 }
 \value{
-A tibble containing the supplied specifications together with:
+An object of class `"MDistBenchmark"`, which is also a tibble. It
+  contains the supplied specifications together with:
 \describe{
   \item{result}{The corresponding output of [mdist()], or an error object if
   the specification failed.}
@@ -26,10 +58,15 @@ A tibble containing the supplied specifications together with:
   `FALSE` otherwise.}
   \item{error}{Error message for failed runs, `NA` otherwise.}
 }
+
+Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
+[ggplot2::autoplot()] to draw an annotated triangular heatmap.
 }
 \description{
 Applies [mdist()] repeatedly over a tibble of distance-method
-specifications, typically generated with [all_dist_method_specs()].
+specifications, typically generated with [all_dist_method_specs()]. It then
+compares every pair of successful distance specifications using distance,
+configuration, and optional clustering diagnostics.
 }
 \details{
 Each row of `specs` is interpreted as one valid `mdist()` configuration.
@@ -43,8 +80,22 @@ Preset specifications use the `preset` column and ignore `method_cat`,
 `preset = "custom"` and use `method_cat`, `method_num`, and
 `commensurable`.
 
-This function is intended for benchmarking, validation, and sensitivity
-analyses across multiple distance specifications.
+Pairwise mean absolute difference (`mad`) is computed from the lower
+triangle of each dissimilarity matrix. The symmetric relative distance is
+defined as
+\deqn{
+  \frac{2\,\mathrm{mean}(|d_a-d_b|)}
+       {\mathrm{mean}(|d_a|)+\mathrm{mean}(|d_b|)}.
+}
+Classical multidimensional scaling configurations are compared using
+[congruence_coeff()]. The corresponding alienation coefficient is
+\eqn{\sqrt{1-c^2}}.
+
+When `cluster_k` is supplied, each requested clustering method is applied
+once to every successful distance specification. Partitions produced by the
+same clustering method are then compared pairwise using the adjusted Rand
+index. When `cluster_k = NULL`, no clustering is performed and no ARI
+columns are included in the comparisons.
 }
 \examples{
 if (requireNamespace("palmerpenguins", quietly = TRUE)) {
@@ -57,7 +108,10 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     ) |>
     tidyr::drop_na()
 
-  specs <- all_dist_method_specs(mode = "presets_only")
+  specs <- all_dist_method_specs(
+    mode = "presets_only",
+    preset = c("gower", "u_indep", "u_dep")
+  )
 
   res <- benchmark_mdist(
     penguins_small,
@@ -67,6 +121,9 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
 
   res |>
     dplyr::select(spec_type, preset, ok, error)
+
+  benchmark_comparisons(res)
+  ggplot2::autoplot(res, metric = "relative_distance")
 }
 
 }

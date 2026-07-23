@@ -187,7 +187,7 @@ all.equal(
 )
 ```
 
-    [1] "Mean relative difference: 357.1302"
+    [1] TRUE
 
 For numerical-only inputs, the supported choices are `"none"`, `"std"`,
 `"range"`, `"robust"`, and `"pc_scores"`. This override is restricted to

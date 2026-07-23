@@ -337,11 +337,11 @@ lovo_response
     # A tibble: 5 × 4
       variable          variable_type relative_distance mad_importance
       <chr>             <chr>                     <dbl>          <dbl>
-    1 sex               categorical               0.171           1.04
-    2 bill_length_mm    numeric                   0.166           1.01
-    3 bill_depth_mm     numeric                   0.166           1.00
-    4 body_mass_g       numeric                   0.166           1.00
-    5 flipper_length_mm numeric                   0.166           1.00
+    1 bill_length_mm    numeric                   0.167           1.01
+    2 bill_depth_mm     numeric                   0.167           1.00
+    3 body_mass_g       numeric                   0.167           1.00
+    4 flipper_length_mm numeric                   0.167           1.00
+    5 island            categorical               0.166           1.00
 
 The response-aware diagnostics can be inspected in the same way.
 
@@ -354,12 +354,12 @@ lovo_response$results |>
 
 | variable | variable_type | mad_importance | cc_importance | mds_congruence | ac_importance | mad_normalized | relative_distance |
 |:---|:---|---:|---:|---:|---:|---:|---:|
-| island | categorical | 1.000 | 0.979 | 0.979 | 0.205 | 0.165 | 0.165 |
-| bill_length_mm | numeric | 1.005 | 0.995 | 0.995 | 0.100 | 0.166 | 0.166 |
-| bill_depth_mm | numeric | 1.003 | 0.979 | 0.979 | 0.203 | 0.166 | 0.166 |
-| flipper_length_mm | numeric | 1.001 | 0.998 | 0.998 | 0.058 | 0.166 | 0.166 |
-| body_mass_g | numeric | 1.003 | 0.991 | 0.991 | 0.136 | 0.166 | 0.166 |
-| sex | categorical | 1.036 | 0.913 | 0.913 | 0.407 | 0.171 | 0.171 |
+| island | categorical | 1.000 | 0.979 | 0.979 | 0.205 | 0.166 | 0.166 |
+| bill_length_mm | numeric | 1.005 | 0.995 | 0.995 | 0.100 | 0.167 | 0.167 |
+| bill_depth_mm | numeric | 1.003 | 0.979 | 0.979 | 0.203 | 0.167 | 0.167 |
+| flipper_length_mm | numeric | 1.001 | 0.998 | 0.998 | 0.058 | 0.167 | 0.167 |
+| body_mass_g | numeric | 1.003 | 0.991 | 0.991 | 0.136 | 0.167 | 0.167 |
+| sex | categorical | 1.000 | 0.924 | 0.924 | 0.383 | 0.166 | 0.166 |
 
 For example, the relative-distance contribution can be visualized as
 follows.

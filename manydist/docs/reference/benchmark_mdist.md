@@ -1,12 +1,24 @@
-# Benchmark \`mdist()\` over multiple method specifications
+# Benchmark and compare multiple \`mdist()\` specifications
 
 Applies \[mdist()\] repeatedly over a tibble of distance-method
-specifications, typically generated with \[all_dist_method_specs()\].
+specifications, typically generated with \[all_dist_method_specs()\]. It
+then compares every pair of successful distance specifications using
+distance, configuration, and optional clustering diagnostics.
 
 ## Usage
 
 ``` r
-benchmark_mdist(x, response = NULL, specs = all_dist_method_specs())
+benchmark_mdist(
+  x,
+  response = NULL,
+  specs = all_dist_method_specs(),
+  dims = 2,
+  cluster_k = NULL,
+  cluster_methods = c("pam", "hclust", "spectral"),
+  hclust_method = "average",
+  spectral_sigma = NULL,
+  spectral_nstart = 50
+)
 ```
 
 ## Arguments
@@ -26,11 +38,45 @@ benchmark_mdist(x, response = NULL, specs = all_dist_method_specs())
   A tibble of method specifications. By default, this is generated with
   \[all_dist_method_specs()\]. It must contain the columns
   \`spec_type\`, \`preset\`, \`method_cat\`, \`method_num\`, and
-  \`commensurable\`.
+  \`commensurable\`. An optional \`label\` column supplies display
+  labels for comparisons and plots.
+
+- dims:
+
+  Integer. Number of dimensions used by classical multidimensional
+  scaling when computing congruence and alienation coefficients.
+
+- cluster_k:
+
+  Optional integer. Number of clusters used for pairwise adjusted Rand
+  indices. If \`NULL\`, no clustering is performed.
+
+- cluster_methods:
+
+  Character vector specifying the clustering methods used when
+  \`cluster_k\` is supplied. Possible values are \`"pam"\`,
+  \`"hclust"\`, and \`"spectral"\`.
+
+- hclust_method:
+
+  Character string specifying the linkage method passed to
+  \[stats::hclust()\] when \`"hclust"\` is requested.
+
+- spectral_sigma:
+
+  Optional numeric value for the Gaussian affinity bandwidth used by
+  spectral clustering. If \`NULL\`, the default used by
+  \[spectral_dist()\] is applied.
+
+- spectral_nstart:
+
+  Integer. Number of random starts used by the k-means step in spectral
+  clustering.
 
 ## Value
 
-A tibble containing the supplied specifications together with:
+An object of class \`"MDistBenchmark"\`, which is also a tibble. It
+contains the supplied specifications together with:
 
 - result:
 
@@ -46,6 +92,9 @@ A tibble containing the supplied specifications together with:
 
   Error message for failed runs, \`NA\` otherwise.
 
+Use \[benchmark_comparisons()\] to obtain the pairwise diagnostics and
+\[ggplot2::autoplot()\] to draw an annotated triangular heatmap.
+
 ## Details
 
 Each row of \`specs\` is interpreted as one valid \`mdist()\`
@@ -58,8 +107,19 @@ Preset specifications use the \`preset\` column and ignore
 specifications are evaluated as \`preset = "custom"\` and use
 \`method_cat\`, \`method_num\`, and \`commensurable\`.
 
-This function is intended for benchmarking, validation, and sensitivity
-analyses across multiple distance specifications.
+Pairwise mean absolute difference (\`mad\`) is computed from the lower
+triangle of each dissimilarity matrix. The symmetric relative distance
+is defined as \$\$ \frac{2\\\mathrm{mean}(\|d_a-d_b\|)}
+{\mathrm{mean}(\|d_a\|)+\mathrm{mean}(\|d_b\|)}. \$\$ Classical
+multidimensional scaling configurations are compared using
+\[congruence_coeff()\]. The corresponding alienation coefficient is
+\\\sqrt{1-c^2}\\.
+
+When \`cluster_k\` is supplied, each requested clustering method is
+applied once to every successful distance specification. Partitions
+produced by the same clustering method are then compared pairwise using
+the adjusted Rand index. When \`cluster_k = NULL\`, no clustering is
+performed and no ARI columns are included in the comparisons.
 
 ## Examples
 
@@ -74,7 +134,10 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     ) |>
     tidyr::drop_na()
 
-  specs <- all_dist_method_specs(mode = "presets_only")
+  specs <- all_dist_method_specs(
+    mode = "presets_only",
+    preset = c("gower", "u_indep", "u_dep")
+  )
 
   res <- benchmark_mdist(
     penguins_small,
@@ -84,20 +147,10 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
 
   res |>
     dplyr::select(spec_type, preset, ok, error)
+
+  benchmark_comparisons(res)
+  ggplot2::autoplot(res, metric = "relative_distance")
 }
-#> Warning: For method(s) 'HLeucl', category dissimilarities do not depend on conditional profiles; `response` was therefore ignored.
 #> Warning: For method(s) 'matching', category dissimilarities do not depend on conditional profiles; `response` was therefore ignored.
-#> # A tibble: 10 × 4
-#>    spec_type preset    ok    error
-#>    <chr>     <chr>     <lgl> <chr>
-#>  1 preset    euclidean TRUE  NA   
-#>  2 preset    gower     TRUE  NA   
-#>  3 preset    hl        TRUE  NA   
-#>  4 preset    u_dep     TRUE  NA   
-#>  5 preset    u_indep   TRUE  NA   
-#>  6 preset    u_mix     TRUE  NA   
-#>  7 preset    dkss      TRUE  NA   
-#>  8 preset    gudmm     TRUE  NA   
-#>  9 preset    mod_gower TRUE  NA   
-#> 10 preset    custom    TRUE  NA   
+
 ```

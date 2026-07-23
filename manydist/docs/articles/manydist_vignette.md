@@ -873,9 +873,9 @@ The function
 [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
 applies
 [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
-repeatedly over a grid of distance specifications. This is useful for
-comparing alternative presets and custom specifications in a systematic
-way.
+repeatedly over a grid of distance specifications and compares every
+pair of successful results. This is useful for comparing alternative
+presets and custom specifications systematically.
 
 For a small example, we restrict the grid to a few specifications.
 
@@ -982,6 +982,39 @@ bench_small |>
     2 preset    gower     <NA>       <NA>       NA            <MDist>
     3 preset    u_dep     <NA>       <NA>       NA            <MDist>
 
+Pairwise MAD, relative distance, MDS congruence, and alienation are
+available through
+[`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md).
+Because `cluster_k` was left at its default of `NULL`, no clustering was
+performed.
+
+``` r
+
+benchmark_comparisons(bench_small) |>
+  dplyr::select(
+    method_1,
+    method_2,
+    mad,
+    relative_distance,
+    alienation
+  ) |>
+  dplyr::slice_head(n = 10)
+```
+
+    # A tibble: 10 × 5
+       method_1  method_2                           mad relative_distance alienation
+       <chr>     <chr>                            <dbl>             <dbl>      <dbl>
+     1 euclidean gower                            3.64              1.67      0.0981
+     2 euclidean u_dep                            2.08              0.415     0.231
+     3 euclidean u_indep                          2.07              0.414     0.0807
+     4 euclidean matching + robust (not commensu… 0.585             0.147     0.115
+     5 euclidean matching + robust (commensurabl… 2.07              0.414     0.0807
+     6 euclidean matching + std (not commensurab… 1.85              0.384     0.179
+     7 euclidean matching + std (commensurable)   2.07              0.414     0.0807
+     8 euclidean tvd + robust (not commensurable) 0.780             0.202     0.279
+     9 euclidean tvd + robust (commensurable)     2.09              0.418     0.0765
+    10 euclidean tvd + std (not commensurable)    1.76              0.374     0.280 
+
 ## 17 Leave-one-variable-out diagnostics
 
 [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
@@ -1056,7 +1089,7 @@ lovo_gower$autoplot(
 )
 ```
 
-![](manydist_vignette_files/figure-html/unnamed-chunk-38-1.png)
+![](manydist_vignette_files/figure-html/unnamed-chunk-39-1.png)
 
 When `response_used = FALSE`, the response column is removed before
 computing distances. When `response_used = TRUE`, the response can be
@@ -1084,11 +1117,11 @@ lovo_response
     # A tibble: 5 × 4
       variable          variable_type relative_distance mad_importance
       <chr>             <chr>                     <dbl>          <dbl>
-    1 sex               categorical               0.171           1.04
-    2 bill_length_mm    numeric                   0.166           1.01
-    3 bill_depth_mm     numeric                   0.166           1.00
-    4 body_mass_g       numeric                   0.166           1.00
-    5 flipper_length_mm numeric                   0.166           1.00
+    1 bill_length_mm    numeric                   0.167           1.01
+    2 bill_depth_mm     numeric                   0.167           1.00
+    3 body_mass_g       numeric                   0.167           1.00
+    4 flipper_length_mm numeric                   0.167           1.00
+    5 island            categorical               0.166           1.00
 
 ## 18 Inspecting method specifications
 
@@ -1100,15 +1133,17 @@ benchmarking or sensitivity analysis.
 
 specs <- all_dist_method_specs()
 
-specs |>
+specs_preview <- specs |>
+  dplyr::slice_head(n = 10)
+
+specs_preview |>
   dplyr::select(
     spec_type,
     preset,
     method_cat,
     method_num,
     commensurable
-  ) |>
-  dplyr::slice_head(n = 10)
+  )
 ```
 
     # A tibble: 10 × 5
@@ -1125,15 +1160,17 @@ specs |>
      9 preset    mod_gower <NA>       <NA>       NA
     10 preset    custom    <NA>       <NA>       NA           
 
-The same table can be passed to
+The same table—or a deliberately chosen subset—can be passed to
 [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md).
+Restricting this illustration also keeps the $`M(M-1)/2`$ pairwise
+comparison table manageable.
 
 ``` r
 
 bench <- benchmark_mdist(
   penguins_small,
   response = species,
-  specs = specs
+  specs = specs_preview
 )
 
 bench |>
@@ -1145,8 +1182,7 @@ bench |>
     commensurable,
     ok,
     error
-  ) |>
-  dplyr::slice_head(n = 10)
+  )
 ```
 
     # A tibble: 10 × 7
@@ -1162,3 +1198,29 @@ bench |>
      8 preset    gudmm     <NA>       <NA>       NA            TRUE  <NA>
      9 preset    mod_gower <NA>       <NA>       NA            TRUE  <NA>
     10 preset    custom    <NA>       <NA>       NA            TRUE  <NA> 
+
+``` r
+
+benchmark_comparisons(bench) |>
+  dplyr::select(
+    method_1,
+    method_2,
+    relative_distance,
+    alienation
+  ) |>
+  dplyr::slice_head(n = 10)
+```
+
+    # A tibble: 10 × 4
+       method_1  method_2  relative_distance alienation
+       <chr>     <chr>                 <dbl>      <dbl>
+     1 euclidean gower                 1.67      0.0981
+     2 euclidean hl                    0.304     0.199
+     3 euclidean u_dep                 0.415     0.231
+     4 euclidean u_indep               0.414     0.0807
+     5 euclidean u_mix                 0.418     0.0765
+     6 euclidean dkss                  1.43      0.240
+     7 euclidean gudmm                 0.879     0.226
+     8 euclidean mod_gower             1.51      0.283
+     9 euclidean custom                0.418     0.0765
+    10 gower     hl                    1.57      0.278 

@@ -210,6 +210,7 @@ gower_pairwise_recipe
 
       output:      pairwise
       preset:      gower
+      response:    <not used>
       (arguments handled internally by preset)
 
 `output = "pairwise"` is intended for training a clustering model.

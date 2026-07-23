@@ -523,7 +523,10 @@ spectral_pred |>
 
 ## A small benchmark example
 
-The function `benchmark_mdist()` applies `mdist()` repeatedly over a grid of distance specifications. This is useful for comparing alternative presets and custom specifications in a systematic way.
+The function `benchmark_mdist()` applies `mdist()` repeatedly over a grid of
+distance specifications and compares every pair of successful results. This is
+useful for comparing alternative presets and custom specifications
+systematically.
 
 For a small example, we restrict the grid to a few specifications.
 
@@ -563,7 +566,9 @@ bench_small |>
   )
 ```
 
-The `ok` column reports whether the distance computation completed successfully. Failed specifications are kept in the output, with the corresponding error message stored in `error`.
+The `ok` column reports whether the distance computation completed
+successfully. Failed specifications are kept in the output, with the
+corresponding error message stored in `error`.
 
 ```{r}
 bench_small |>
@@ -577,6 +582,22 @@ bench_small |>
   dplyr::filter(ok) |>
   dplyr::select(spec_type, preset, method_cat, method_num, commensurable, result) |>
   dplyr::slice_head(n = 3)
+```
+
+Pairwise MAD, relative distance, MDS congruence, and alienation are available
+through `benchmark_comparisons()`. Because `cluster_k` was left at its default
+of `NULL`, no clustering was performed.
+
+```{r}
+benchmark_comparisons(bench_small) |>
+  dplyr::select(
+    method_1,
+    method_2,
+    mad,
+    relative_distance,
+    alienation
+  ) |>
+  dplyr::slice_head(n = 10)
 ```
 
 ## Leave-one-variable-out diagnostics
@@ -626,29 +647,34 @@ lovo_response
 
 ## Inspecting method specifications
 
-`all_dist_method_specs()` returns a table of distance specifications that can be used for benchmarking or sensitivity analysis.
+`all_dist_method_specs()` returns a table of distance specifications that can
+be used for benchmarking or sensitivity analysis.
 
 ```{r}
 specs <- all_dist_method_specs()
 
-specs |>
+specs_preview <- specs |>
+  dplyr::slice_head(n = 10)
+
+specs_preview |>
   dplyr::select(
     spec_type,
     preset,
     method_cat,
     method_num,
     commensurable
-  ) |>
-  dplyr::slice_head(n = 10)
+  )
 ```
 
-The same table can be passed to `benchmark_mdist()`.
+The same table—or a deliberately chosen subset—can be passed to
+`benchmark_mdist()`. Restricting this illustration also keeps the
+$M(M-1)/2$ pairwise comparison table manageable.
 
 ```{r}
 bench <- benchmark_mdist(
   penguins_small,
   response = species,
-  specs = specs
+  specs = specs_preview
 )
 
 bench |>
@@ -660,6 +686,14 @@ bench |>
     commensurable,
     ok,
     error
+  )
+
+benchmark_comparisons(bench) |>
+  dplyr::select(
+    method_1,
+    method_2,
+    relative_distance,
+    alienation
   ) |>
   dplyr::slice_head(n = 10)
 ```

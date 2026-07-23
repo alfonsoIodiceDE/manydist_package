@@ -17,15 +17,18 @@ Mixed-type data do not determine a unique dissimilarity. Different choices
 about scaling, categorical comparisons, commensurability, and associations can
 produce different geometries and, consequently, different learning results.
 
-`manydist` provides two helpers for studying these choices systematically:
+`manydist` provides three helpers for studying these choices systematically:
 
 - `all_dist_method_specs()` constructs tables of valid specifications;
-- `benchmark_mdist()` evaluates `mdist()` once for every row of such a table.
+- `benchmark_mdist()` evaluates `mdist()` once for every row and compares all
+  successful distances;
+- `benchmark_comparisons()` extracts the pairwise diagnostics.
 
 This guide shows how to define a manageable candidate set, run it safely,
-inspect failures, and compare the resulting dissimilarities. The benchmark
-constructs distances; the final choice should still be based on the intended
-downstream task and an appropriate validation design.
+inspect failures, compare the resulting dissimilarities, and optionally assess
+their clustering solutions. The benchmark is a sensitivity-analysis tool; the
+final choice should still be based on the intended downstream task and an
+appropriate validation design.
 
 ## Setup
 
@@ -35,7 +38,6 @@ downstream task and an appropriate validation design.
 library(manydist)
 library(dplyr)
 library(tidyr)
-library(purrr)
 library(ggplot2)
 ```
 
@@ -102,7 +104,17 @@ candidate_specs <- dplyr::bind_rows(
     method_num = "std",
     commensurable = c(FALSE, TRUE)
   )
-)
+) |>
+  dplyr::mutate(
+    label = dplyr::case_when(
+      preset == "gower" ~ "Gower",
+      preset == "u_indep" ~ "Unbiased independent",
+      preset == "euclidean" ~ "Euclidean",
+      preset == "hl" ~ "Hennig--Liao",
+      commensurable ~ "Matching + z scores (weighted)",
+      TRUE ~ "Matching + z scores"
+    )
+  )
 
 candidate_specs
 ```
@@ -112,8 +124,9 @@ distance definitions entered the comparison.
 
 ## Running the benchmark
 
-`benchmark_mdist()` applies `mdist()` to each specification. An error in one
-row does not stop the remaining computations.
+`benchmark_mdist()` applies `mdist()` to each specification and compares every
+pair of successful results. An error in one row does not stop the remaining
+computations. By default, `cluster_k = NULL`, so no clustering is performed.
 
 ```{r}
 #| label: run-benchmark
@@ -135,7 +148,7 @@ distance_benchmark |>
   )
 ```
 
-The returned tibble adds three columns:
+The returned `MDistBenchmark` object remains a tibble and adds three columns:
 
 - `result` contains the `MDist` object, or the captured error;
 - `ok` indicates whether computation succeeded;
@@ -167,92 +180,137 @@ distance_benchmark |>
 This behavior is especially helpful for larger sensitivity analyses, where
 some methods may be incompatible with the variables in a particular data set.
 
-## Summarising the resulting geometries
+## Comparing successful distances
 
-The successful `MDist` objects can be extracted from the `result` list-column
-and analysed like any other computed object.
+`benchmark_comparisons()` returns one row for each unique pair of successful
+specifications. Four diagnostics are always available:
 
-```{r}
-#| label: prepare-distance-summaries
+- `mad` is the mean absolute difference between the corresponding pairwise
+  dissimilarities;
+- `relative_distance` divides MAD by the average magnitude of the two
+  distances;
+- `mds_congruence` compares their classical MDS configurations;
+- `alienation` is $\sqrt{1-c^2}$, where $c$ is MDS congruence.
 
-distance_values <- function(x) {
-  distance_matrix <- as.matrix(x$distance)
-  distance_matrix[lower.tri(distance_matrix)]
-}
+The symmetric relative distance is
 
-successful_distances <- distance_benchmark |>
-  dplyr::filter(ok) |>
-  dplyr::mutate(
-    method = dplyr::if_else(
-      spec_type == "preset",
-      preset,
-      paste(
-        method_cat,
-        method_num,
-        dplyr::if_else(
-          commensurable,
-          "commensurable",
-          "not commensurable"
-        ),
-        sep = " / "
-      )
-    ),
-    values = purrr::map(result, distance_values),
-    mean_distance = purrr::map_dbl(values, mean),
-    sd_distance = purrr::map_dbl(values, stats::sd)
-  )
+$$
+\frac{2\operatorname{mean}(|d_a-d_b|)}
+{\operatorname{mean}(|d_a|)+\operatorname{mean}(|d_b|)}.
+$$
 
-successful_distances |>
-  dplyr::select(method, mean_distance, sd_distance)
-```
-
-The absolute scale can differ across specifications. Geometry can therefore
-also be compared through the association between corresponding pairwise
-dissimilarities. The following example uses Gower dissimilarity as a reference.
+It is zero for identical distances and does not depend on how many
+specifications are included in the benchmark.
 
 ```{r}
-#| label: compare-with-gower
+#| label: inspect-pairwise-diagnostics
 
-gower_values <- successful_distances |>
-  dplyr::filter(preset == "gower") |>
-  dplyr::pull(values) |>
-  purrr::pluck(1)
+pairwise_diagnostics <- benchmark_comparisons(distance_benchmark)
 
-geometry_agreement <- successful_distances |>
-  dplyr::transmute(
-    method,
-    correlation_with_gower = purrr::map_dbl(
-      values,
-      ~ stats::cor(.x, gower_values)
-    )
-  )
-
-geometry_agreement
+pairwise_diagnostics |>
+  dplyr::select(
+    method_1,
+    method_2,
+    mad,
+    relative_distance,
+    mds_congruence,
+    alienation
+  ) |>
+  dplyr::arrange(dplyr::desc(relative_distance)) |>
+  dplyr::slice_head(n = 10)
 ```
+
+Raw MAD retains differences in absolute scale. Relative distance makes those
+differences comparable, while congruence and alienation describe changes in
+the induced geometry. The measures are complementary rather than competing
+rankings.
+
+`autoplot()` displays any diagnostic as an annotated triangular heatmap. The
+optional `label` column in `candidate_specs` supplies the axis labels.
+
+::: {.panel-tabset}
+
+### Relative distance
 
 ```{r}
-#| label: plot-geometry-agreement
-#| fig-alt: "Bar chart of the correlation between each candidate dissimilarity and Gower dissimilarity."
+#| label: plot-relative-distance
+#| fig-alt: "Triangular heatmap of pairwise relative distances among six distance specifications."
+#| fig-width: 9
+#| fig-height: 6.5
 
-geometry_agreement |>
-  ggplot2::ggplot(
-    ggplot2::aes(
-      x = stats::reorder(method, correlation_with_gower),
-      y = correlation_with_gower
-    )
-  ) +
-  ggplot2::geom_col(fill = "#2C7FB8") +
-  ggplot2::coord_flip() +
-  ggplot2::labs(
-    x = NULL,
-    y = "Correlation with Gower pairwise dissimilarities"
-  ) +
-  ggplot2::theme_minimal()
+ggplot2::autoplot(
+  distance_benchmark,
+  metric = "relative_distance",
+  digits = 2
+)
 ```
 
-A high correlation indicates similar pairwise ordering, not necessarily
-equivalent downstream performance. Scale summaries and geometry agreement are
-diagnostics, not selection criteria on their own.
+### Alienation
+
+```{r}
+#| label: plot-alienation
+#| fig-alt: "Triangular heatmap of pairwise alienation coefficients among six distance specifications."
+#| fig-width: 9
+#| fig-height: 6.5
+
+ggplot2::autoplot(
+  distance_benchmark,
+  metric = "alienation",
+  digits = 2
+)
+```
+
+:::
+
+## Optional clustering comparisons
+
+Supplying `cluster_k` asks the benchmark to cluster every successful distance.
+The same value of $K$ and the same clustering method are used within each
+pairwise comparison. Available methods are `"pam"`, `"hclust"`, and
+`"spectral"`. If `cluster_k` is omitted or `NULL`, this potentially expensive
+step is skipped.
+
+```{r}
+#| label: benchmark-clustering-solutions
+
+set.seed(2026)
+
+clustering_benchmark <- benchmark_mdist(
+  x = penguin_x,
+  specs = candidate_specs,
+  cluster_k = 3,
+  cluster_methods = c("pam", "spectral"),
+  spectral_nstart = 50
+)
+
+benchmark_comparisons(clustering_benchmark) |>
+  dplyr::select(
+    method_1,
+    method_2,
+    ari_pam,
+    ari_spectral
+  ) |>
+  dplyr::arrange(ari_pam) |>
+  dplyr::slice_head(n = 10)
+```
+
+The adjusted Rand indices compare two unsupervised partitions; the penguin
+species labels are not used. An ARI of one indicates identical assignments,
+whereas smaller values indicate greater sensitivity to the distance
+specification.
+
+```{r}
+#| label: plot-clustering-agreement
+#| fig-alt: "Faceted triangular heatmaps of pairwise adjusted Rand indices for PAM and spectral clustering."
+#| fig-width: 10
+#| fig-height: 6
+
+ggplot2::autoplot(
+  clustering_benchmark,
+  metric = "ari",
+  digits = 2
+)
+```
 
 ## Response-aware candidates
 
@@ -287,6 +345,8 @@ response_benchmark <- benchmark_mdist(
 
 response_benchmark |>
   dplyr::select(preset, ok, error)
+
+benchmark_comparisons(response_benchmark)
 ```
 
 If response-aware distances are compared by predictive performance, their
@@ -302,8 +362,10 @@ use the predictor-only form of a response-aware specification.
 
 ## Scaling up a comparison
 
-The same workflow can be expanded by filtering the full specification table.
-For example:
+The same workflow can be expanded by filtering the full specification table,
+as in the unevaluated example below. Keep in mind that $M$ successful
+specifications produce $M(M-1)/2$ pairwise rows, and clustering adds one fitted
+partition for every distance and clustering-method combination.
 
 ```{r}
 #| label: larger-grid

@@ -73,14 +73,16 @@
 <span class="header-section-number">1</span> Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>Mixed-type data do not determine a unique dissimilarity. Different choices about scaling, categorical comparisons, commensurability, and associations can produce different geometries and, consequently, different learning results.</p>
-<p><code>manydist</code> provides two helpers for studying these choices systematically:</p>
+<p><code>manydist</code> provides three helpers for studying these choices systematically:</p>
 <ul>
 <li>
 <code><a href="../reference/all_dist_method_specs.html">all_dist_method_specs()</a></code> constructs tables of valid specifications;</li>
 <li>
-<code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> evaluates <code><a href="../reference/mdist.html">mdist()</a></code> once for every row of such a table.</li>
+<code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> evaluates <code><a href="../reference/mdist.html">mdist()</a></code> once for every row and compares all successful distances;</li>
+<li>
+<code><a href="../reference/benchmark_comparisons.html">benchmark_comparisons()</a></code> extracts the pairwise diagnostics.</li>
 </ul>
-<p>This guide shows how to define a manageable candidate set, run it safely, inspect failures, and compare the resulting dissimilarities. The benchmark constructs distances; the final choice should still be based on the intended downstream task and an appropriate validation design.</p>
+<p>This guide shows how to define a manageable candidate set, run it safely, inspect failures, compare the resulting dissimilarities, and optionally assess their clustering solutions. The benchmark is a sensitivity-analysis tool; the final choice should still be based on the intended downstream task and an appropriate validation design.</p>
 </section><section class="level2" data-number="2"><h2 data-number="2" id="setup">
 <span class="header-section-number">2</span> Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h2>
@@ -89,7 +91,6 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package">manydist</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://purrr.tidyverse.org/" class="external-link">purrr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <p>We use complete cases from <code>palmerpenguins</code>. The species label is retained for later use, but the first benchmark is deliberately unsupervised and uses only the predictors.</p>
@@ -167,26 +168,36 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span>    method_num <span class="op">=</span> <span class="st">"std"</span>,</span>
 <span>    commensurable <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    label <span class="op">=</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
+<span>      <span class="va">preset</span> <span class="op">==</span> <span class="st">"gower"</span> <span class="op">~</span> <span class="st">"Gower"</span>,</span>
+<span>      <span class="va">preset</span> <span class="op">==</span> <span class="st">"u_indep"</span> <span class="op">~</span> <span class="st">"Unbiased independent"</span>,</span>
+<span>      <span class="va">preset</span> <span class="op">==</span> <span class="st">"euclidean"</span> <span class="op">~</span> <span class="st">"Euclidean"</span>,</span>
+<span>      <span class="va">preset</span> <span class="op">==</span> <span class="st">"hl"</span> <span class="op">~</span> <span class="st">"Hennig--Liao"</span>,</span>
+<span>      <span class="va">commensurable</span> <span class="op">~</span> <span class="st">"Matching + z scores (weighted)"</span>,</span>
+<span>      <span class="cn">TRUE</span> <span class="op">~</span> <span class="st">"Matching + z scores"</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">candidate_specs</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 5
-  spec_type preset    method_cat method_num commensurable
-  &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
-1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA
-2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA
-3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA
-4 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
-5 component custom    matching   std        FALSE
-6 component custom    matching   std        TRUE         </code></pre>
+<pre><code># A tibble: 6 × 6
+  spec_type preset    method_cat method_num commensurable label
+  &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;chr&gt;
+1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA            Euclidean
+2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA            Gower
+3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA            Hennig--Liao
+4 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA            Unbiased independent
+5 component custom    matching   std        FALSE         Matching + z scores
+6 component custom    matching   std        TRUE          Matching + z scores (…</code></pre>
 </div>
 </div>
 <p>This explicit table is useful for reproducibility: it records exactly which distance definitions entered the comparison.</p>
 </section><section class="level2" data-number="4"><h2 data-number="4" id="running-the-benchmark">
 <span class="header-section-number">4</span> Running the benchmark<a class="anchor" aria-label="anchor" href="#running-the-benchmark"></a>
 </h2>
-<p><code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> applies <code><a href="../reference/mdist.html">mdist()</a></code> to each specification. An error in one row does not stop the remaining computations.</p>
+<p><code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> applies <code><a href="../reference/mdist.html">mdist()</a></code> to each specification and compares every pair of successful results. An error in one row does not stop the remaining computations. By default, <code>cluster_k = NULL</code>, so no clustering is performed.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">distance_benchmark</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
@@ -216,7 +227,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 6 component custom    matching   std        TRUE          TRUE  &lt;NA&gt; </code></pre>
 </div>
 </div>
-<p>The returned tibble adds three columns:</p>
+<p>The returned <code>MDistBenchmark</code> object remains a tibble and adds three columns:</p>
 <ul>
 <li>
 <code>result</code> contains the <code>MDist</code> object, or the captured error;</li>
@@ -255,113 +266,162 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </div>
 </div>
 <p>This behavior is especially helpful for larger sensitivity analyses, where some methods may be incompatible with the variables in a particular data set.</p>
-</section><section class="level2" data-number="5"><h2 data-number="5" id="summarising-the-resulting-geometries">
-<span class="header-section-number">5</span> Summarising the resulting geometries<a class="anchor" aria-label="anchor" href="#summarising-the-resulting-geometries"></a>
+</section><section class="level2" data-number="5"><h2 data-number="5" id="comparing-successful-distances">
+<span class="header-section-number">5</span> Comparing successful distances<a class="anchor" aria-label="anchor" href="#comparing-successful-distances"></a>
 </h2>
-<p>The successful <code>MDist</code> objects can be extracted from the <code>result</code> list-column and analysed like any other computed object.</p>
+<p><code><a href="../reference/benchmark_comparisons.html">benchmark_comparisons()</a></code> returns one row for each unique pair of successful specifications. Four diagnostics are always available:</p>
+<ul>
+<li>
+<code>mad</code> is the mean absolute difference between the corresponding pairwise dissimilarities;</li>
+<li>
+<code>relative_distance</code> divides MAD by the average magnitude of the two distances;</li>
+<li>
+<code>mds_congruence</code> compares their classical MDS configurations;</li>
+<li>
+<code>alienation</code> is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mrow><mn>1</mn><mo>−</mo><msup><mi>c</mi><mn>2</mn></msup></mrow></msqrt><annotation encoding="application/x-tex">\sqrt{1-c^2}</annotation></semantics></math>, where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math> is MDS congruence.</li>
+</ul>
+<p>The symmetric relative distance is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mn>2</mn><mrow><mi mathvariant="normal">mean</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">|</mo><msub><mi>d</mi><mi>a</mi></msub><mo>−</mo><msub><mi>d</mi><mi>b</mi></msub><mo stretchy="false" form="prefix">|</mo><mo stretchy="false" form="postfix">)</mo></mrow><mrow><mrow><mi mathvariant="normal">mean</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">|</mo><msub><mi>d</mi><mi>a</mi></msub><mo stretchy="false" form="prefix">|</mo><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mrow><mi mathvariant="normal">mean</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">|</mo><msub><mi>d</mi><mi>b</mi></msub><mo stretchy="false" form="prefix">|</mo><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\frac{2\operatorname{mean}(|d_a-d_b|)}
+{\operatorname{mean}(|d_a|)+\operatorname{mean}(|d_b|)}.
+</annotation></semantics></math></p>
+<p>It is zero for identical distances and does not depend on how many specifications are included in the benchmark.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">distance_values</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">distance_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">distance</span><span class="op">)</span></span>
-<span>  <span class="va">distance_matrix</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">lower.tri</a></span><span class="op">(</span><span class="va">distance_matrix</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="va">pairwise_diagnostics</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">distance_benchmark</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">successful_distances</span> <span class="op">&lt;-</span> <span class="va">distance_benchmark</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">ok</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    method <span class="op">=</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span></span>
-<span>      <span class="va">spec_type</span> <span class="op">==</span> <span class="st">"preset"</span>,</span>
-<span>      <span class="va">preset</span>,</span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>        <span class="va">method_cat</span>,</span>
-<span>        <span class="va">method_num</span>,</span>
-<span>        <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span></span>
-<span>          <span class="va">commensurable</span>,</span>
-<span>          <span class="st">"commensurable"</span>,</span>
-<span>          <span class="st">"not commensurable"</span></span>
-<span>        <span class="op">)</span>,</span>
-<span>        sep <span class="op">=</span> <span class="st">" / "</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    values <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">distance_values</span><span class="op">)</span>,</span>
-<span>    mean_distance <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dbl</a></span><span class="op">(</span><span class="va">values</span>, <span class="va">mean</span><span class="op">)</span>,</span>
-<span>    sd_distance <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dbl</a></span><span class="op">(</span><span class="va">values</span>, <span class="fu">stats</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="va">successful_distances</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">mean_distance</span>, <span class="va">sd_distance</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">pairwise_diagnostics</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
+<span>    <span class="va">method_1</span>,</span>
+<span>    <span class="va">method_2</span>,</span>
+<span>    <span class="va">mad</span>,</span>
+<span>    <span class="va">relative_distance</span>,</span>
+<span>    <span class="va">mds_congruence</span>,</span>
+<span>    <span class="va">alienation</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">relative_distance</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 3
-  method                             mean_distance sd_distance
-  &lt;chr&gt;                                      &lt;dbl&gt;       &lt;dbl&gt;
-1 euclidean                                  3.99        1.43
-2 gower                                      0.355       0.165
-3 hl                                         2.94        1.17
-4 u_indep                                    6.02        2.71
-5 matching / std / not commensurable         5.68        2.63
-6 matching / std / commensurable             6.02        2.71 </code></pre>
+<pre><code># A tibble: 10 × 6
+   method_1     method_2         mad relative_distance mds_congruence alienation
+   &lt;chr&gt;        &lt;chr&gt;          &lt;dbl&gt;             &lt;dbl&gt;          &lt;dbl&gt;      &lt;dbl&gt;
+ 1 Gower        Unbiased inde…  5.66             1.78           0.990     0.141
+ 2 Gower        Matching + z …  5.66             1.78           0.990     0.141
+ 3 Gower        Matching + z …  5.33             1.76           0.968     0.250
+ 4 Euclidean    Gower           3.64             1.67           0.995     0.0981
+ 5 Gower        Hennig--Liao    2.58             1.57           0.961     0.278
+ 6 Hennig--Liao Unbiased inde…  3.08             0.687          0.987     0.162
+ 7 Hennig--Liao Matching + z …  3.08             0.687          0.987     0.162
+ 8 Hennig--Liao Matching + z …  2.74             0.636          0.997     0.0747
+ 9 Euclidean    Unbiased inde…  2.07             0.414          0.997     0.0807
+10 Euclidean    Matching + z …  2.07             0.414          0.997     0.0807</code></pre>
 </div>
 </div>
-<p>The absolute scale can differ across specifications. Geometry can therefore also be compared through the association between corresponding pairwise dissimilarities. The following example uses Gower dissimilarity as a reference.</p>
+<p>Raw MAD retains differences in absolute scale. Relative distance makes those differences comparable, while congruence and alienation describe changes in the induced geometry. The measures are complementary rather than competing rankings.</p>
+<p><code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> displays any diagnostic as an annotated triangular heatmap. The optional <code>label</code> column in <code>candidate_specs</code> supplies the axis labels.</p>
+<div class="panel-tabset">
+<ul id="tabset-1" class="panel-tabset-tabby">
+<li><a data-tabby-default="" href="#tabset-1-1">Relative distance</a></li>
+<li><a href="#tabset-1-2">Alienation</a></li>
+</ul>
+<ul class="nav nav-tabs" id="NA" role="tablist"><li role="presentation" class="nav-item"><button data-bs-toggle="tab" data-bs-target="#NA" id="NA-tab" type="button" role="tab" aria-controls="NA" aria-selected="true" class="active nav-link">
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">gower_values</span> <span class="op">&lt;-</span> <span class="va">successful_distances</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">preset</span> <span class="op">==</span> <span class="st">"gower"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">values</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/pluck.html" class="external-link">pluck</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">geometry_agreement</span> <span class="op">&lt;-</span> <span class="va">successful_distances</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
-<span>    <span class="va">method</span>,</span>
-<span>    correlation_with_gower <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dbl</a></span><span class="op">(</span></span>
-<span>      <span class="va">values</span>,</span>
-<span>      <span class="op">~</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">.x</span>, <span class="va">gower_values</span><span class="op">)</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="va">geometry_agreement</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 2
-  method                             correlation_with_gower
-  &lt;chr&gt;                                               &lt;dbl&gt;
-1 euclidean                                           0.963
-2 gower                                               1
-3 hl                                                  0.867
-4 u_indep                                             0.962
-5 matching / std / not commensurable                  0.883
-6 matching / std / commensurable                      0.962</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">geometry_agreement</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span></span>
-<span>    <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span></span>
-<span>      x <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/reorder.factor.html" class="external-link">reorder</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">correlation_with_gower</span><span class="op">)</span>,</span>
-<span>      y <span class="op">=</span> <span class="va">correlation_with_gower</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"#2C7FB8"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_flip.html" class="external-link">coord_flip</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    x <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Correlation with Gower pairwise dissimilarities"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
+<span>  <span class="va">distance_benchmark</span>,</span>
+<span>  metric <span class="op">=</span> <span class="st">"relative_distance"</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="benchmarking_distance_choices_files/figure-html/plot-geometry-agreement-1.png" alt="Bar chart of the correlation between each candidate dissimilarity and Gower dissimilarity." width="672"></p>
+<figure><p><img src="benchmarking_distance_choices_files/figure-html/plot-relative-distance-1.png" alt="Triangular heatmap of pairwise relative distances among six distance specifications." width="864"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>A high correlation indicates similar pairwise ordering, not necessarily equivalent downstream performance. Scale summaries and geometry agreement are diagnostics, not selection criteria on their own.</p>
-</section><section class="level2" data-number="6"><h2 data-number="6" id="response-aware-candidates">
-<span class="header-section-number">6</span> Response-aware candidates<a class="anchor" aria-label="anchor" href="#response-aware-candidates"></a>
+</button></li></ul>
+<div class="tab-content"><div class="active  tab-pane" id="NA" role="tabpanel" aria-labelledby="NA-tab">
+
+<div id="tabset-1-2">
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
+<span>  <span class="va">distance_benchmark</span>,</span>
+<span>  metric <span class="op">=</span> <span class="st">"alienation"</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="benchmarking_distance_choices_files/figure-html/plot-alienation-1.png" alt="Triangular heatmap of pairwise alienation coefficients among six distance specifications." width="864"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+</div>
+</section><section class="level2" data-number="6"><h2 data-number="6" id="optional-clustering-comparisons">
+<span class="header-section-number">6</span> Optional clustering comparisons<a class="anchor" aria-label="anchor" href="#optional-clustering-comparisons"></a>
+</h2>
+<p>Supplying <code>cluster_k</code> asks the benchmark to cluster every successful distance. The same value of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math> and the same clustering method are used within each pairwise comparison. Available methods are <code>"pam"</code>, <code>"hclust"</code>, and <code>"spectral"</code>. If <code>cluster_k</code> is omitted or <code>NULL</code>, this potentially expensive step is skipped.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2026</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">clustering_benchmark</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">penguin_x</span>,</span>
+<span>  specs <span class="op">=</span> <span class="va">candidate_specs</span>,</span>
+<span>  cluster_k <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  cluster_methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pam"</span>, <span class="st">"spectral"</span><span class="op">)</span>,</span>
+<span>  spectral_nstart <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">clustering_benchmark</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
+<span>    <span class="va">method_1</span>,</span>
+<span>    <span class="va">method_2</span>,</span>
+<span>    <span class="va">ari_pam</span>,</span>
+<span>    <span class="va">ari_spectral</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">ari_pam</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 4
+   method_1             method_2                       ari_pam ari_spectral
+   &lt;chr&gt;                &lt;chr&gt;                            &lt;dbl&gt;        &lt;dbl&gt;
+ 1 Gower                Hennig--Liao                     0.870        0.828
+ 2 Gower                Matching + z scores              0.871        0.901
+ 3 Euclidean            Gower                            0.911        1
+ 4 Euclidean            Matching + z scores              0.924        0.901
+ 5 Euclidean            Hennig--Liao                     0.924        0.828
+ 6 Gower                Unbiased independent             0.929        1
+ 7 Gower                Matching + z scores (weighted)   0.929        1
+ 8 Hennig--Liao         Matching + z scores              0.933        0.917
+ 9 Unbiased independent Matching + z scores              0.941        0.901
+10 Matching + z scores  Matching + z scores (weighted)   0.941        0.901</code></pre>
+</div>
+</div>
+<p>The adjusted Rand indices compare two unsupervised partitions; the penguin species labels are not used. An ARI of one indicates identical assignments, whereas smaller values indicate greater sensitivity to the distance specification.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
+<span>  <span class="va">clustering_benchmark</span>,</span>
+<span>  metric <span class="op">=</span> <span class="st">"ari"</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="benchmarking_distance_choices_files/figure-html/plot-clustering-agreement-1.png" alt="Faceted triangular heatmaps of pairwise adjusted Rand indices for PAM and spectral clustering." width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+</section><section class="level2" data-number="7"><h2 data-number="7" id="response-aware-candidates">
+<span class="header-section-number">7</span> Response-aware candidates<a class="anchor" aria-label="anchor" href="#response-aware-candidates"></a>
 </h2>
 <p>Some specifications can use a response when constructing the dissimilarity. They can be listed with <code>mode = "response_aware_only"</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">response_specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
 <span>  mode <span class="op">=</span> <span class="st">"response_aware_only"</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -381,7 +441,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </div>
 <p>When the response is supplied to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>, it is used only by response-aware components and is not treated as an ordinary predictor.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">response_benchmark</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
@@ -397,15 +457,24 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 1 u_dep  TRUE  &lt;NA&gt;
 2 u_mix  TRUE  &lt;NA&gt; </code></pre>
 </div>
+<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">response_benchmark</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 8
+  method_1_id method_2_id method_1 method_2   mad relative_distance
+        &lt;int&gt;       &lt;int&gt; &lt;chr&gt;    &lt;chr&gt;    &lt;dbl&gt;             &lt;dbl&gt;
+1           1           2 u_dep    u_mix     1.30             0.215
+# ℹ 2 more variables: mds_congruence &lt;dbl&gt;, alienation &lt;dbl&gt;</code></pre>
+</div>
 </div>
 <p>If response-aware distances are compared by predictive performance, their construction must occur inside each resample. Constructing them once from the full outcome vector would leak assessment information into training.</p>
 <p>The recipe interface handles this separation directly. When a response-aware specification is used in <code><a href="../reference/step_mdist.html">step_mdist()</a></code>, the step discovers the single recipe outcome and fits the response-aware profiles using only the current analysis set. The fitted profiles are then applied to assessment observations without using their outcomes. Set <code>response_used = FALSE</code> when the comparison should use the predictor-only form of a response-aware specification.</p>
-</section><section class="level2" data-number="7"><h2 data-number="7" id="scaling-up-a-comparison">
-<span class="header-section-number">7</span> Scaling up a comparison<a class="anchor" aria-label="anchor" href="#scaling-up-a-comparison"></a>
+</section><section class="level2" data-number="8"><h2 data-number="8" id="scaling-up-a-comparison">
+<span class="header-section-number">8</span> Scaling up a comparison<a class="anchor" aria-label="anchor" href="#scaling-up-a-comparison"></a>
 </h2>
-<p>The same workflow can be expanded by filtering the full specification table. For example:</p>
+<p>The same workflow can be expanded by filtering the full specification table, as in the unevaluated example below. Keep in mind that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>M</mi><annotation encoding="application/x-tex">M</annotation></semantics></math> successful specifications produce <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo stretchy="false" form="prefix">(</mo><mi>M</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">M(M-1)/2</annotation></semantics></math> pairwise rows, and clustering adds one fitted partition for every distance and clustering-method combination.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">larger_specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
 <span>  mode <span class="op">=</span> <span class="st">"full"</span>,</span>
 <span>  method_cat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"matching"</span>, <span class="st">"tvd"</span><span class="op">)</span>,</span>

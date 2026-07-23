@@ -129,8 +129,12 @@ D_custom
 
 - [`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
   : Create a grid of \`mdist()\` method specifications
+- [`autoplot(`*`<MDistBenchmark>`*`)`](https://alfonsoiodicede.github.io/manydist_package/reference/autoplot.MDistBenchmark.md)
+  : Plot pairwise distance benchmark comparisons
+- [`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md)
+  : Extract pairwise distance benchmark comparisons
 - [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
-  : Benchmark \`mdist()\` over multiple method specifications
+  : Benchmark and compare multiple \`mdist()\` specifications
 - [`compare_lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/compare_lovo_mdist.md)
   : Compare LOVO diagnostics across multiple distance specifications
 - [`congruence_coeff()`](https://alfonsoiodicede.github.io/manydist_package/reference/congruence_coeff.md)
