@@ -60,9 +60,9 @@ can dominate one with few, independently of any relationship to the phenomenon o
 properties: *multivariate additivity* and *commensurability*. \textcolor{blue}{Multivariate additivity requires the overall distance to be the sum of variable-specific contributions, so that each variable enters the total additively. Importantly, a variable-specific contribution need not depend on that variable alone; it may be a function of the full same-type block, which is what later permits association-based constructions within the additive form. Additivity alone does not make the contributions comparable, since a variable
 measured on a wider scale, drawn from a more dispersed distribution, or split into more categories can still dominate the sum. Commensurability adds this missing calibration: the variable-specific distances are commensurable when the expected contribution of every variable is the same constant, so that no variable is favoured merely by its type, scale, or number of categories. For the general additive formulation, this is achieved by weighting each variable-specific dissimilarity by the reciprocal of its expected value. Together the two properties yield distances that are *unbiased* in the sense that measurement type and scale do not trivially drive a variable's influence -- while still allowing a variable to be up- or down-weighted deliberately when subject-matter knowledge justifies it.}
 
-The R package
+The \proglang{R} package
 \pkg{manydist} [@manydist2026] implements this framework. Its main function,
-mdist(), provides a unified entry point that:
+\pkg{mdist()}, provides a unified entry point that:
 
 - computes variable-wise dissimilarities using a selected numerical
   preprocessing and categorical dissimilarity;
