@@ -4,6 +4,9 @@ project:
   render:
     - article.qmd
 
+filters:
+  - jss-code.lua
+
 format:
   jss-pdf:
     keep-tex: true
@@ -17,5 +20,9 @@ execute:
   warning: false
   message: false
   freeze: false
+
+knitr:
+  opts_chunk:
+    prompt: true
 
 bibliography: manydist_refs.bib
