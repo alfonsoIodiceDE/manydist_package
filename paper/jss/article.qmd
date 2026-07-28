@@ -225,9 +225,13 @@ The remainder of the article first develops the methodological framework and the
 
 We follow the notation of @van2024unbiased. Let $I$ be the number of
 observations and let $Q=Q_{n}+Q_{c}$ be the number of variables, partitioned
-into $Q_{n}$ numerical and $Q_{c}$ categorical variables. Observation indices
-are $i,l,s$; $j$, $h$, and $k$ index generic, numerical, and categorical
-variables, respectively. Observed mixed, numerical, and categorical vectors
+into $Q_{n}$ numerical and $Q_{c}$ categorical variables. 
+
+<!-- Observation indices -->
+<!-- are $i,l,s$; $j$, $h$, and $k$ index generic, numerical, and categorical -->
+<!-- variables, respectively.  -->
+
+Observed mixed, numerical, and categorical vectors
 are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
 counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for an
 $I\times Q$ data matrix. 
