@@ -2,13 +2,45 @@
 title: "Distance-based Learning for Mixed Data: The manydist Package"
 author:
   - name: Alfonso Iodice D'Enza
-    affiliation: University of Naples Federico II
+    orcid: 0000-0002-6147-0052
+    email: iodicede@unina.it
+    affiliations:
+      - name: University of Naples Federico II
+        department: Department of Political Sciences
+        address: Via Leopoldo Rodinò 22
+        city: Naples
+        postal-code: '80138'
+        country: Italy
   - name: Michel van de Velden
-    affiliation: Erasmus University Rotterdam
+    orcid: 0000-0002-9807-9057
+    email: vandevelden@ese.eur.nl
+    affiliations:
+      - name: Erasmus University Rotterdam
+        department: Econometric Institute, Erasmus School of Economics
+        address: Burgemeester Oudlaan 50
+        city: Rotterdam
+        postal-code: '3062 PA'
+        country: The Netherlands
   - name: Angelos Markos
-    affiliation: Democritus University of Thrace
+    orcid: 0000-0002-4204-3573
+    email: amarkos@eled.duth.gr
+    affiliations:
+      - name: Democritus University of Thrace
+        department: Department of Primary Education, School of Education
+        address: Nea Chili
+        city: Alexandroupolis
+        postal-code: '68132'
+        country: Greece
   - name: Carlo Cavicchia
-    affiliation: Erasmus University Rotterdam
+    orcid: 0000-0003-1816-3521
+    email: cavicchia@ese.eur.nl
+    affiliations:
+      - name: Erasmus University Rotterdam
+        department: Econometric Institute, Erasmus School of Economics
+        address: Burgemeester Oudlaan 50
+        city: Rotterdam
+        postal-code: '3062 PA'
+        country: The Netherlands
 abstract: |
   Computing distances between observations described by mixed-type variables
   -- both numerical and categorical -- is a fundamental task in clustering,
@@ -53,12 +85,12 @@ combine numerical and categorical variables, and defining a distance that
 accounts for their different scales and measurement properties is not
 straightforward.
 
-\textcolor{blue}{A persistent difficulty is *importance bias*: the overall distance can be unequally affected by variables because of their type, scale, distribution, or number of categories. The mechanism is easiest to see for the simple matching dissimilarity, under which two observations differ on a categorical variable whenever they fall in different categories. As the number of categories grows, a random pair is more likely to differ, so the variable's expected contribution increases with the number of levels -- a nominal variable with many categories
-can dominate one with few, independently of any relationship to the phenomenon of interest. Numerical variables face the mirror image of this problem through scaling. Gower's distance [@Gower1971], the most widely used mixed-variable construction, rescales each numerical variable to the unit interval by its range; because most observations fall well inside the extremes, the resulting mean pairwise distance is typically small relative to that of a matching categorical variable, which is why Gower tends to favor categorical contributions [@Hennig2013; @foss2016]. Skewness compounds the effect: a heavy-tailed numerical variable is compressed further by range scaling, shrinking its contribution still more, while other scaling choices can amplify or attenuate the same variable unpredictably. Because these distortions follow from measurement type and scale rather than from information content, they are hard to anticipate and to correct one variable at a time.}
+A persistent difficulty is *importance bias*: the overall distance can be unequally affected by variables because of their type, scale, distribution, or number of categories. The mechanism is easiest to see for the simple matching dissimilarity, under which two observations differ on a categorical variable whenever they fall in different categories. As the number of categories grows, a random pair is more likely to differ, so the variable's expected contribution increases with the number of levels -- a nominal variable with many categories
+can dominate one with few, independently of any relationship to the phenomenon of interest. Numerical variables face the mirror image of this problem through scaling. Gower's distance [@Gower1971], the most widely used mixed-variable construction, rescales each numerical variable to the unit interval by its range; because most observations fall well inside the extremes, the resulting mean pairwise distance is typically small relative to that of a matching categorical variable, which is why Gower tends to favor categorical contributions [@Hennig2013; @foss2016]. Skewness compounds the effect: a heavy-tailed numerical variable is compressed further by range scaling, shrinking its contribution still more, while other scaling choices can amplify or attenuate the same variable unpredictably. Because these distortions follow from measurement type and scale rather than from information content, they are hard to anticipate and to correct one variable at a time.
 
 @van2024unbiased formalize unbiased mixed-variable distances through two
-properties: *multivariate additivity* and *commensurability*. \textcolor{blue}{Multivariate additivity requires the overall distance to be the sum of variable-specific contributions, so that each variable enters the total additively. Importantly, a variable-specific contribution need not depend on that variable alone; it may be a function of the full same-type block, which is what later permits association-based constructions within the additive form. Additivity alone does not make the contributions comparable, since a variable
-measured on a wider scale, drawn from a more dispersed distribution, or split into more categories can still dominate the sum. Commensurability adds this missing calibration: the variable-specific distances are commensurable when the expected contribution of every variable is the same constant, so that no variable is favoured merely by its type, scale, or number of categories. For the general additive formulation, this is achieved by weighting each variable-specific dissimilarity by the reciprocal of its expected value. Together the two properties yield distances that are *unbiased* in the sense that measurement type and scale do not trivially drive a variable's influence -- while still allowing a variable to be up- or down-weighted deliberately when subject-matter knowledge justifies it.}
+properties: *multivariate additivity* and *commensurability*. Multivariate additivity requires the overall distance to be the sum of variable-specific contributions, so that each variable enters the total additively. Importantly, a variable-specific contribution need not depend on that variable alone; it may be a function of the full same-type block, which is what later permits association-based constructions within the additive form. Additivity alone does not make the contributions comparable, since a variable
+measured on a wider scale, drawn from a more dispersed distribution, or split into more categories can still dominate the sum. Commensurability adds this missing calibration: the variable-specific distances are commensurable when the expected contribution of every variable is the same constant, so that no variable is favoured merely by its type, scale, or number of categories. For the general additive formulation, this is achieved by weighting each variable-specific dissimilarity by the reciprocal of its expected value. Together the two properties yield distances that are *unbiased* in the sense that measurement type and scale do not trivially drive a variable's influence -- while still allowing a variable to be up- or down-weighted deliberately when subject-matter knowledge justifies it.
 
 The \proglang{R} package
 \pkg{manydist} [@manydist2026] implements this framework. Its main function,
@@ -70,19 +102,22 @@ The \proglang{R} package
 - aggregates the contributions into an additive distance matrix.
 
 
-\textcolor{blue}{We organize these capabilities as a progression of increasing *awareness* in distance construction, in which each level relaxes an assumption made by the previous one. Scale- and type-aware distances address the biases just described: they place heterogeneous variable contributions on a common expected scale, so that neither measurement type nor units decides a variable's influence. This still treats variables as though they carried independent information. Association-aware distances drop that assumption within each block
--- when two numerical variables are strongly correlated, or two categorical variables encode overlapping distinctions, an independence-based distance counts the shared contrast twice; an association-aware construction recognizes the redundancy and lets a contribution depend on the whole same-type block. Interaction-aware distances go further, incorporating relationships *between*
-the numerical and categorical blocks, while response-aware distances use outcome information to construct task-specific neighbourhoods for supervised problems. The methodological development below concentrates on scale/type awareness and association awareness, which underlie every construction; the interaction- and response-aware extensions are introduced later, through the package interface and the learning workflows where they arise most naturally.}
+We organize these capabilities as a progression of increasing *awareness* in distance construction, in which each level relaxes an assumption made by the previous one. Scale- and type-aware distances address the biases just described: they place heterogeneous variable contributions on a common expected scale, so that neither measurement type nor units decides a variable's influence. This still treats variables as though they carried independent information. Association-aware distances drop that assumption within each block
+-- when two numerical variables are strongly correlated, or two categorical variables encode overlapping distinctions, an independence-based distance counts the shared contrast twice; an association-aware construction recognizes the redundancy and lets a contribution depend on the whole same-type block. 
+
+<!-- Interaction-aware distances go further, incorporating relationships *between* -->
+<!-- the numerical and categorical blocks, while response-aware distances use outcome information to construct task-specific neighbourhoods for supervised problems. The methodological development below concentrates on scale/type awareness and association awareness, which underlie every construction; the interaction- and response-aware extensions are introduced later, through the package interface and the learning workflows where they arise most naturally. -->
+
 
 Beyond distance construction, \pkg{manydist} provides leave-one-variable-out (LOVO)
 diagnostics and pairwise benchmarking of candidate distances, integration with
-\pkg{tidymodels} for predictive workflows, and distance-based interfaces to
+\pkg{tidymodels} [@tidymodels] for predictive workflows, and distance-based interfaces to
 partitioning around medoids (PAM) and spectral clustering.
 
 Several \proglang{R} packages provide distances for homogeneous numerical, categorical,
 or binary data. @tbl-related-homogeneous summarizes commonly used tools that
 serve as building blocks for clustering, ordination, and nearest-neighbour
-methods. \textcolor{blue}{\pkg{manydist} builds on rather than replaces these tools, computing comparable per-block dissimilarities and adding a commensurability layer they do not provide.}
+methods. \pkg{manydist} builds on rather than replaces these tools, computing comparable per-block dissimilarities and adding a commensurability layer they do not provide.
 
 ```{=latex}
 \begingroup
@@ -189,10 +224,8 @@ parallel or compiled implementations. For categorical and binary data,
 sparse transaction data, and \pkg{nomclust::nomclust()} provides frequency-weighted
 similarities.
 
-\textcolor{blue}{Packages for mixed data are summarized in @tbl-related-mixed and fall into three broad families. The first collects implementations of Gower's
-coefficient: \pkg{cluster::daisy()}, \pkg{FD::gowdis()}, \pkg{StatMatch::gower.dist()}, and \pkg{gower::gower\_dist()}. These are variants of one construction rather than independent measures, sharing its range scaling and its known bias toward categorical variables. The second family balances the two variable types through a construction-level parameter: \pkg{clustMixType::kproto()} combines numerical and categorical components under the k-prototypes algorithm [@Huang1998kprototypes], with the balance set by the user rather than equalized across variables, and \pkg{kmed::distmix()} offers several
-fixed mixed-distance definitions. The third family learns or adapts the
-type balance from the data: \pkg{kdml::dkss()} applies kernel metric learning to mitigate type and scale imbalance, and is therefore the closest in aim to the commensurable distances developed here, though it pursues that aim through bandwidth selection rather than through equalizing expected contributions. [NOT SURE IF dkss DOES THIS]}
+Packages for mixed data are summarized in @tbl-related-mixed and fall into three broad families. The first comprises implementations of Gower's
+coefficient: \pkg{cluster::daisy()}, \pkg{FD::gowdis()}, \pkg{StatMatch::gower.dist()}, and \pkg{gower::gower\_dist()}. These are variants of the same underlying construction rather than independent distance measures, sharing its range-standardization scheme and its tendency to give relatively greater influence to categorical variables when many categorical attributes are present or when standardized numerical differences are comparatively small. The second family controls the relative influence of numerical and categorical information through explicit weighting. \pkg{clustMixType::kproto()} combines numerical and categorical dissimilarities within the k-prototypes algorithm [@Huang1998kprototypes], using a weighting parameter $\lambda$ that may be specified or estimated automatically, while \pkg{kmed::distmix()} implements several established mixed-data distances, including the Gower, Podani, Wishart, Huang, Harikumar, and Ahmad formulations. The third family learns an adaptive mixed-data distance from the data. \pkg{kdml::dkss()} constructs a kernel-based distance in which variable-specific bandwidths are estimated from the data and determine each variable's contribution to the resulting metric. Although this likewise adapts variable contributions from the data, it differs fundamentally from the commensurable distances developed here, which explicitly equalize the expected contributions of numerical and categorical variables.
 
 ```{=latex}
 \begingroup
@@ -217,26 +250,24 @@ knitr::kable(
 \endgroup
 ```
 
-These tools are useful, but their variable contributions can depend on scale, prevalence, imbalance, and measurement type. \pkg{manydist} complements them with additive, commensurable, association-aware and interaction-aware constructions, together with diagnostic and modeling interfaces.
+These tools are useful, but their variable contributions can depend on scale, prevalence, imbalance, and measurement type. \pkg{manydist} complements them with additive, commensurable and association-aware constructions, together with diagnostic and modeling interfaces.
 
-The remainder of the article first develops the methodological framework and then follows the three stages of a distance-based analysis: *constructing* a distance, *diagnosing* and *comparing* candidate representations, and embedding the selected candidates in learning pipelines.
+\pkg{manydist} is available from the Comprehensive R Archive Network (CRAN)
+at \url{https://CRAN.R-project.org/package=manydist}. The package website,
+\url{https://alfonsoiodicede.github.io/manydist_package/}, provides the
+reference documentation, articles, and reproducible versions of the examples
+discussed below.
 
-## A unified mixed-variable distance framework
+The remainder of the article follows the three stages of a distance-based analysis: *constructing* a distance, *diagnosing* and *comparing* candidate representations, and embedding the selected candidates in learning pipelines. @sec-framework develops the methodological framework, stating multivariate additivity and commensurability and deriving the weights that equalize expected variable contributions for the numerical and categorical blocks. @sec-construction introduces the package interface, centred on `mdist()` and the `MDist` object that stores the fitted preprocessing. @sec-diagnostics covers leave-one-variable-out diagnostics and pairwise benchmarking of candidate distances. @sec-pipelines embeds distances in \pkg{tidymodels} workflows, illustrated by unsupervised clustering and supervised classification of World Development Indicators data. @sec-conclusion concludes.
+
+## A unified mixed-variable distance framework {#sec-framework}
 
 We follow the notation of @van2024unbiased. Let $I$ be the number of
 observations and let $Q=Q_{n}+Q_{c}$ be the number of variables, partitioned
-into $Q_{n}$ numerical and $Q_{c}$ categorical variables. 
-
-<!-- Observation indices -->
-<!-- are $i,l,s$; $j$, $h$, and $k$ index generic, numerical, and categorical -->
-<!-- variables, respectively.  -->
-
-Observed mixed, numerical, and categorical vectors
+into $Q_{n}$ numerical and $Q_{c}$ categorical variables. Observed mixed, numerical, and categorical vectors
 are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
 counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for an
 $I\times Q$ data matrix. 
-
-\textcolor{blue}{NOTE: $s$ is never used below}.
 
 ### General mixed-distance setup
 
@@ -343,7 +374,7 @@ d_j^{\mathrm{ind}}(\mathbf{x}_i,\mathbf{x}_l)
 =w_j\,\delta_j(x_{ij},x_{lj}).
 $$ {#eq-independence-distance}
 
-\textcolor{blue}{Because each contribution depends on a single variable, correlations among variables are ignored. When several variables encode the same underlying source of variation, that variation contributes repeatedly to the overall distance, even after the variables have been standardized or made commensurable. An association-based construction instead allows a contribution to depend on the complete block of variables of the same type,}
+Because each contribution depends on a single variable, correlations among variables are ignored. When several variables encode the same underlying source of variation, that variation contributes repeatedly to the overall distance, even after the variables have been standardized or made commensurable. An association-based construction instead allows a contribution to depend on the complete block of variables of the same type,
 
 $$
 \begin{aligned}
@@ -354,7 +385,6 @@ d_k^{\mathrm{assoc}}(\mathbf{x}_i,\mathbf{x}_l)
 \end{aligned}
 $$ {#eq-association-distance}
 
-\textcolor{blue}{
 The contribution now depends on the entire same-type block, through
 $\mathbf{x}_i^n$ or $\mathbf{x}_i^c$, rather than on the single coordinate
 $x_{ij}$ as in @eq-independence-distance; this is permitted by multivariate
@@ -363,9 +393,9 @@ it to that variable alone. For numerical variables, the joint structure is
 captured through the covariance of the numerical block, via principal-component
 preprocessing; for categorical variables, it is captured through conditional
 distributions. The \pkg{manydist} formulation does not use associations across
-the numerical and categorical blocks.}
+the numerical and categorical blocks.
 
-The distinction is illustrated with the Palmer penguins data. The same
+The distinction is illustrated with the Palmer penguins data [@palmerpenguins]. The same
 six-predictor data set is used throughout the remaining examples.
 
 ```{r}
@@ -698,12 +728,7 @@ association_plot
 
 ### Numerical variables
 
-In the numerical example, whitening uses the covariance structure to remove
-linear redundancy: Euclidean distance in the whitened coordinates is the
-Mahalanobis distance in the original standardized coordinates. manydist uses
-the same decorrelation principle through principal-component preprocessing,
-followed by component-wise commensurability to retain an additive
-decomposition.
+In the numerical example, whitening uses the covariance structure to remove linear redundancy. \pkg{manydist} uses the same decorrelation principle through principal-component preprocessing, followed by component-wise commensurability to retain an additive decomposition.
 
 For the numerical block, the additive construction uses weighted Manhattan
 contributions on possibly transformed coordinates:
@@ -714,41 +739,38 @@ d_{\mathrm{num}}(\mathbf{x}_i,\mathbf{x}_l)
 \left|f_h(\mathbf{x}_i)-f_h(\mathbf{x}_l)\right|,
 $$ {#eq-numerical-distance}
 
-where $f_h$ may be a univariate or multivariate transformation. \textcolor{blue}{Because commensurability divides each variable by its own
+where $f_h$ may be a univariate or multivariate transformation. Because commensurability divides each variable by its own
 empirical mean distance, any constant linear rescaling of a numerical variable
 cancels from the result: standard-deviation scaling and no scaling at all yield
 the same commensurable distance. Only a transformation that changes the shape of
 the marginal distribution -- rather than its location or spread -- alters the
 empirical mean distance and hence the commensurable contribution. Standardizing
 numerical variables beforehand is therefore unnecessary for the commensurable
-constructions, though it remains useful for the non-commensurable baselines.}
+constructions, though it remains useful for the non-commensurable baselines.
 
 Common transformations include:
 
-- **standard-deviation scaling:** $(x-\bar{x})/s_x$\textcolor{blue}{, the least
-  sensitive of the three to the underlying distribution};
+- **standard-deviation scaling:** $(x-\bar{x})/s_x$, which uses all
+  observations rather than only the extremes;
 - **range scaling:** $(x-x_{\min})/(x_{\max}-x_{\min})$, as in Gower's
-  distance\textcolor{blue}{, which preserves the distributional shape but is
-  sensitive to outliers through the extremes};
-- **robust scaling:** $(x-x_{\mathrm{Med}})/(x_{Q_3}-x_{Q_1})$\textcolor{blue}{,
-  which replaces the mean and range with their robust counterparts and so
-  resists outliers}.
-
+  distance, which preserves the distributional shape but is sensitive to
+  outliers through the extremes;
+- **robust scaling:** $(x-x_{\mathrm{Med}})/(x_{Q_3}-x_{Q_1})$, which replaces
+  the mean and range with their robust counterparts and so resists outliers.
+  
 When numerical variables are linearly related, principal-component scaling
 can rotate and rescale the numerical block. If the centered data matrix has
 covariance decomposition
 $\mathbf{S}=\mathbf{V}\bm{\Lambda}\mathbf{V}^\top$, then
 $\mathbf{X}^\ast=\mathbf{X}\mathbf{V}\bm{\Lambda}^{-1/2}$ gives standardized
 principal coordinates. This operation does not require dimensionality
-reduction; additivity then applies to the rotated axes. \textcolor{blue}{This
-also distinguishes principal-component scaling from the closely related
-Mahalanobis distance. Mahalanobis distance rotates the whitened coordinates
-back to the original orientation; because Euclidean distance is invariant to
-rotation, that step leaves it unchanged. The additive Manhattan distance used
-here is not rotation-invariant, so rotating back would alter the variable
-contributions and break the additive decomposition. \pkg{manydist} therefore
-retains the principal-component orientation, and the distance is additive with
-respect to the rotated rather than the original variables.}
+reduction; additivity then applies to the rotated axes. This also clarifies the relationship to the Mahalanobis distance, which is the Euclidean distance computed in the whitened coordinates and is therefore
+unaffected by their orientation. The additive Manhattan distance of
+@eq-numerical-distance is not rotation-invariant, and a per-variable
+contribution is undefined without a fixed set of coordinates to attach it to.
+\pkg{manydist} retains the principal-component orientation, so the
+contributions are associated with the principal coordinates rather than with
+the original variables.
 
 ### Categorical variables
 
@@ -760,11 +782,11 @@ association-based constructions.
 For categorical variable $k$, let $\bm{\Delta}_k$ be the
 $q_k\times q_k$ dissimilarity matrix between its categories, and let
 $\mathbf{Z}_k$ be
-the corresponding $I\times q_k$ indicator matrix. \textcolor{blue}{The product
+the corresponding $I\times q_k$ indicator matrix. The product
 $\mathbf{Z}_k\bm{\Delta}_k\mathbf{Z}_k^\top$ selects, for each pair of
 observations, the entry of $\bm{\Delta}_k$ corresponding to the two categories
 they hold, so the category-dissimilarity matrix fully determines the resulting
-distances.} Its observation-wise
+distances. Its observation-wise
 distance matrix and expected contribution are
 
 $$
@@ -776,22 +798,22 @@ $$ {#eq-categorical-distance}
 
 where $\bm{p}_k$ is the vector of category probabilities. The mean
 distance depends on the number and prevalence of categories and on
-$\bm{\Delta}_k$. \textcolor{blue}{For simple matching, for example,
+$\bm{\Delta}_k$. For simple matching, for example,
 $\bm{\Delta}_k=\mathbf{1}\mathbf{1}^\top-\mathbf{I}$ and the expected
 contribution reduces to $1-\bm{p}_k^\top\bm{p}_k$, which for equally likely
 categories equals $(q_k-1)/q_k$. This increases toward one as the number of
 categories grows, so a matching variable with many levels contributes more than
 one with few -- the categorical counterpart of the scale sensitivity seen for
-numerical variables.} The weights in @eq-empirical-weights restore
+numerical variables. The weights in @eq-empirical-weights restore
 commensurability.
 
 Indicator-based dissimilarities treat a binary indicator representation as
 numerical. Without scaling, Manhattan distance gives values zero or two.
-\textcolor{blue}{This fixed spacing ignores both the number of categories and
+This fixed spacing ignores both the number of categories and
 their prevalence. Hennig--Liao scaling [@Hennig2013], standard-deviation scaling,
 and direct category-dissimilarity scaling recalibrate these indicator distances
 so that they become comparable, before the commensurability weights equalize
-the expected contributions.}
+the expected contributions.
 
 Association-based dissimilarities incorporate relationships among categorical
 variables. Let
@@ -800,26 +822,26 @@ $\mathbf{R}^{k\mid k'}=(\mathbf{Z}_k^\top \mathbf{Z}_k)^{-1}
 distribution of variable $k'$ given the categories of variable $k$.
 Dissimilarities can compare rows $\mathbf{r}_a$ and $\mathbf{r}_b$ using total variation
 [@ahmad2007k] or a symmetric Kullback--Leibler construction
-[@le2005association]. \textcolor{blue}{Under
+[@le2005association]. Under
 independence every category of $k$ induces the same conditional distribution,
 the rows of $\mathbf{R}^{k\mid k'}$ coincide, and all category dissimilarities
 vanish; the dissimilarities grow as the categories become more distinct in what
 they imply about the other variables. This mirrors, for categorical variables,
 the way principal-component preprocessing removes linear redundancy among the
-numerical variables.}
+numerical variables.
 
 ```{=latex}
 \Needspace{8\baselineskip}
 ```
 
-## Distance construction
+## Distance construction {#sec-construction}
 
 The \pkg{manydist} interface separates the specification of a distance from its subsequent diagnostic and modeling uses. This section introduces distance construction; the following sections build diagnostics and learning pipelines on the resulting objects. The examples continue with the six-predictor Palmer penguins data prepared above.
 
 ```{r}
 #| label: attach-manydist
 
-library(manydist)
+library("manydist")
 ```
 
 The central function `mdist()` constructs distances for numerical,
@@ -839,15 +861,15 @@ d_u_dep
 
 The result is an `MDist` object that stores the dissimilarity together with the
 fitted preprocessing information and the distance specification.
-\textcolor{blue}{Retaining the preprocessing -- the commensurability weights,
+Retaining the preprocessing -- the commensurability weights,
 any principal-component rotation, and the estimated category dissimilarities --
 is what allows the same transformation to be reapplied to new observations
 rather than re-estimated from them, which is the basis for the prediction
-behaviour described below.} The standard `dist` representation is available
-through `to_dist()`. [The `MDist` object is the rich fitted representation that carries the
-specification and preprocessing, whereas `tos_dist()` returns the plain
+behaviour described below. The standard `dist` representation is available
+through `to_dist()`. The `MDist` object is the rich fitted representation that carries the
+specification and preprocessing, whereas `to_dist()` returns the plain
 base-R `dist` object consumed by downstream tools such as `hclust()` and
-`cmdscale()`.]{style="color: blue"}
+`cmdscale()`.
 
 ```{r}
 #| label: inspect-u-dep-distance
@@ -874,12 +896,12 @@ d_custom <- mdist(
 
 The same interface supports extensions to the basic predictor-only
 construction. The `response` argument supplies an outcome to response-aware
-components without treating it as an ordinary predictor. \textcolor{blue}{For a
+components without treating it as an ordinary predictor. For a
 response-aware preset it shapes the categorical dissimilarities using the
 outcome, producing task-specific neighbourhoods; for a preset that is not
 response-aware the argument is simply ignored. Its role is exercised in the
-supervised classification example of Section 5, where the outcome is confined
-to the training folds.}
+supervised classification example of @sec-pipelines, where the outcome is confined
+to the training folds.
 
 ```{r}
 #| label: build-response-aware-distance
@@ -891,16 +913,16 @@ d_response <- mdist(
 )
 ```
 
-The `new\_data` argument produces rectangular new-to-training dissimilarities.
-\textcolor{blue}{New observations are measured against the stored training
+The `new_data` argument produces rectangular new-to-training dissimilarities.
+New observations are measured against the stored training
 configuration -- using the weights, rotation, and category dissimilarities
 fixed at construction -- rather than having these quantities re-estimated from
 the new data, which would be undefined for a single new observation and would
-leak information in a predictive setting.} This distinction between square
+leak information in a predictive setting. This distinction between square
 training distances and rectangular prediction distances is handled
 automatically by the pipeline interface introduced later.
 
-### \textcolor{blue}{Distance presets}
+### Distance presets
 
 The constructions above combine three choices: a numerical preprocessing, a
 categorical dissimilarity, and whether commensurability weights are applied. A
@@ -921,7 +943,7 @@ exposes the three choices directly through the `method_num`, `method_cat`, and
 | `hl` | standard-deviation scaling | Hennig--Liao indicator scaling | no | no |
 | `mod_gower` | modified Gower [@liu2024] | -- | yes | no |
 | `gudmm` | generalized multi-aspect metric [@mousavi2023] | -- | no | no |
-| `dkps` | kernel product similarity [@ghashti2024] | -- | no | no |
+| `dkss` | kernel product similarity [@ghashti2024] | -- | no | no |
 | `u_indep` | standard-deviation scaling | simple matching | yes | yes |
 | `u_dep` | principal-component scaling | total variation distance | yes | yes |
 | `u_mix` | standard-deviation scaling | total variation distance | yes | yes |
@@ -935,7 +957,7 @@ Because a preset only names a combination of these components, the presets are
 not exhaustive: any admissible pairing can be requested through `custom`, and
 the commensurability weights apply to whichever components are chosen.
 
-## Distance diagnostics and benchmarking
+## Distance diagnostics and benchmarking {#sec-diagnostics}
 
 A distance is an intermediate data representation, so its sensitivity should
 be examined before it is supplied to a learning algorithm. `lovo_mdist()`
@@ -959,12 +981,12 @@ lovo_gower <- lovo_mdist(
 The diagnostics distinguish changes in pairwise dissimilarities from changes
 in the geometry they induce. `relative_distance` measures the relative change
 in pairwise dissimilarities, whereas `ac_importance` is the alienation between the full and reduced
-configurations. \textcolor{blue}{Here alienation is a coefficient in $[0,1]$, measuring the configuration variance left unexplained when the reduced configuration is matched to the full one; zero denotes identical geometry.} \textcolor{blue}{Reporting both is
+configurations. Here alienation is a coefficient in $[0,1]$, measuring the configuration variance left unexplained when the reduced configuration is matched to the full one; zero denotes identical geometry. Reporting both is
 deliberate: a variable can shift many pairwise distances while barely moving
 the low-dimensional configuration those distances induce, or move few distances
 in a way that nonetheless reshapes the configuration. The two metrics can
 therefore disagree, and each answers a different question about the variable's
-role.} Larger values indicate a larger contribution for both quantities.
+role. Larger values indicate a larger contribution for both quantities.
 
 ```{r}
 #| label: inspect-gower-diagnostics
@@ -1021,14 +1043,14 @@ partition obtained from all predictors with the partition obtained after
 leaving out the named predictor. An ARI of one indicates an unchanged
 partition; lower values indicate greater sensitivity. This is an internal
 stability diagnostic: the species labels are not used.
-\textcolor{blue}{For association-based specifications, leaving a variable out
-can change the construction itself, not only its inputs. Under `u\_dep`, removing
+For association-based specifications, leaving a variable out
+can change the construction itself, not only its inputs. Under `u_dep`, removing
 either categorical predictor leaves a single categorical variable, and an
 association-based categorical dissimilarity requires at least two; the reduced
-fit therefore falls back to matching. A consequence is that `u\_dep`'s
+fit therefore falls back to matching. A consequence is that `u_dep`'s
 leave-one-out values for the categorical predictors are not strictly comparable
 to those of the other predictors, since removing one variable also alters how
-the remaining categorical variable is treated.}
+the remaining categorical variable is treated.
 
 ```{r}
 #| label: fig-compare-lovo-pam
@@ -1063,11 +1085,10 @@ custom candidates. The returned object retains the specification, resulting
 compares every pair of successful distances.
 
 The pairwise diagnostics separate changes in magnitude from changes in
-geometry. The pairwise diagnostics separate changes in magnitude from changes in
-geometry. \textcolor{blue}{The four measures answer different questions and can
+geometry. The four measures answer different questions and can
 disagree, so they are read together rather than collapsed into a single
 ranking: raw magnitude, magnitude net of overall scale, low-dimensional
-geometry, and the induced partition.} `mad` is the mean absolute difference
+geometry, and the induced partition. `mad` is the mean absolute difference
 between the lower triangles of two dissimilarity matrices. Its symmetric scale-adjusted version is
 
 $$
@@ -1077,7 +1098,7 @@ r(d_a,d_b)
 {\operatorname{mean}(|d_a|)+\operatorname{mean}(|d_b|)}.
 $$ {#eq-benchmark-relative-distance}
 
-\textcolor{blue}{A large raw MAD can reflect scale alone, whereas relative distance removes the common magnitude.}
+A large raw MAD can reflect scale alone, whereas relative distance removes the common magnitude.
 
 The MDS congruence coefficient and its corresponding alienation coefficient
 compare the configurations induced by the two distances. If `cluster_k` is
@@ -1158,51 +1179,50 @@ as an annotated triangular heatmap. An error in one specification is captured
 without stopping the remaining computations, but a benchmark remains a
 sensitivity analysis rather than a model-selection rule.
 
-\textcolor{blue}{Taken together, the diagnostics indicate how much of an
+Taken together, the diagnostics indicate how much of an
 analysis rests on the choice of distance. When the measures converge -- a
 variable is influential, or two distances agree -- the downstream conclusion is
 robust to that choice. When they disagree, the distance is not a neutral
 preprocessing step but a modeling decision in its own right, one that should be
 carried forward and evaluated alongside the learning algorithm. The next section
 does exactly this, treating the distance as a tunable component of clustering and
-classification pipelines.}
+classification pipelines.
 
 
-
-## Distance-based learning pipelines
+## Distance-based learning pipelines {#sec-pipelines}
 
 `step_mdist()` integrates distance construction into a recipe. The fitted step
 stores the training data and preprocessing parameters, so the distance is
 re-estimated inside each resample and reused when genuinely new observations
-are processed. \textcolor{blue}{This re-estimation is the point: the
+are processed. This re-estimation is the point: the
 commensurability weights, any principal-component rotation, and the category
 dissimilarities are quantities estimated from data, not fixed constants.
 Computing one distance matrix on the full data and then resampling would let
 these estimates see the assessment observations, so the step instead refits them
 on each analysis set alone. This is the pipeline-level counterpart of the
-square-versus-rectangular distinction of Section 4.} Its `output` argument
+square-versus-rectangular distinction of @sec-construction. Its `output` argument
 selects the representation required by the downstream task: `"pairwise"` for
-clustering and `"distance_to_training"` for prediction. \textcolor{blue}{The two
+clustering and `"distance_to_training"` for prediction. The two
 shapes follow from the tasks: clustering operates on all pairwise distances
 within a single set, whereas nearest-neighbour prediction needs only the
 distances from each new observation to the training set. The rectangular form is
-therefore the same object produced by the `new\_data` argument in Section 3, now
-supplied automatically inside the workflow.} The resulting recipes can be paired
+therefore the same object produced by the `new_data` argument in @sec-construction, now
+supplied automatically inside the workflow. The resulting recipes can be paired
 with `pam_dist()` or `spectral_dist()` for clustering and with
 `nearest_neighbor_dist()` for nearest-neighbour learning.
 
 In a supervised recipe, response-aware specifications automatically obtain the
 single outcome from the formula. The outcome from each analysis set is used
-when the step is prepared, while assessment and test outcomes are never used. \textcolor{blue}{This discipline matters because a response-aware distance is
+when the step is prepared, while assessment and test outcomes are never used. This discipline matters because a response-aware distance is
 built partly from the outcome: if the outcome were seen on the assessment fold,
 the distance would encode information about the very labels being predicted, and
 the cross-validated estimate would be optimistic. Confining the outcome to the
 analysis fold subjects the distance to the same resampling discipline as the
-model it feeds.} Setting `response_used = FALSE` recovers the predictor-only
+model it feeds. Setting `response_used = FALSE` recovers the predictor-only
 construction.
 
 The packaged `wdi_2022` data provide a fixed snapshot of five numerical World
-Development Indicators and three World Bank classifications for 181 countries.
+Development Indicators and three World Bank classifications for 181 countries [@worldbank2022wdi].
 This example treats the distance as part of the learning workflow rather than
 as a fixed preliminary choice. The first task compares unsupervised country
 partitions; the second predicts income group using a supervised
@@ -1517,13 +1537,13 @@ classification_workflows <- workflowsets::workflow_set(
 )
 ```
 
-\textcolor{blue}{The design of the workflow set makes the distance itself a
-tuned component of the pipeline rather than a preliminary choice fixed by hand.}
+The design of the workflow set makes the distance itself a
+tuned component of the pipeline rather than a preliminary choice fixed by hand.
 The distance acts as a workflow-level tuning choice, while the number of
-neighbours is tuned within each workflow. \textcolor{blue}{Distance selection
+neighbours is tuned within each workflow. Distance selection
 and neighbourhood size are therefore evaluated under one resampling scheme, so
 the distance is chosen on the same footing as any other hyperparameter -- the
-modeling decision anticipated at the end of Section 4.} Balanced accuracy is the
+modeling decision anticipated at the end of @sec-diagnostics. Balanced accuracy is the
 primary metric because the income groups have different sizes.
 
 ```{r}
@@ -1798,7 +1818,7 @@ through agreement and separation diagnostics. In classification, distance
 choice and model tuning are evaluated jointly under a common resampling
 design, with response-aware preprocessing confined to the analysis folds.
 
-## Conclusion
+## Conclusion {#sec-conclusion}
 
 \pkg{manydist} implements the unbiased mixed-variable distance framework of
 @van2024unbiased and extends it into a workflow for constructing, diagnosing,
@@ -1837,3 +1857,12 @@ parallel back-ends already available for homogeneous data. By making distance
 construction, diagnosis, and use a single interface, \pkg{manydist} aims to make
 the choice of a mixed-variable distance a transparent and reproducible step in
 distance-based learning.
+
+## Computational details {.unnumbered}
+
+The results in this article were obtained using \proglang{R} 4.6.0 with
+\pkg{manydist} 0.5.1, \pkg{tidymodels} 1.4.1, and \pkg{palmerpenguins} 0.1.1.
+\proglang{R} itself and all packages used are available from CRAN at
+\url{https://CRAN.R-project.org/}. The development version of \pkg{manydist}
+and its documentation are hosted at
+\url{https://alfonsoiodicede.github.io/manydist_package/}.
