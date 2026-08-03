@@ -90,13 +90,20 @@ properties: *multivariate additivity* and *commensurability*. Multivariate addit
 measured on a wider scale, drawn from a more dispersed distribution, or split into more categories can still dominate the sum. Commensurability adds this missing calibration: the variable-specific distances are commensurable when the expected contribution of every variable is the same constant, so that no variable is favoured merely by its type, scale, or number of categories. For the general additive formulation, this is achieved by weighting each variable-specific dissimilarity by the reciprocal of its expected value. Together the two properties yield distances that are *unbiased* in the sense that measurement type and scale do not trivially drive a variable's influence -- while still allowing a variable to be up- or down-weighted deliberately when subject-matter knowledge justifies it.
 
 The \proglang{R} package
-\pkg{manydist} [@manydist2026] implements this framework. Its main function,
-\pkg{mdist()}, provides a unified entry point that:
+\pkg{manydist} [@manydist2026] implements this framework. \textbf{The properties of the
+framework} and the evidence for them are established in @van2024unbiased; the
+present article concerns its implementation, the diagnostics it makes available,
+and the discipline required to use an estimated distance inside a resampled
+workflow. Its main function,
+\code{mdist()}, provides a unified entry point that:
 
 - computes variable-wise dissimilarities using a selected numerical
   preprocessing and categorical dissimilarity;
 - estimates variable-wise weights that enforce commensurability; and
-- aggregates the contributions into an additive distance matrix.
+- aggregates the contributions into an additive distance matrix;
+- \textbf{retains the fitted preprocessing -- the weights, any rotation, and the
+  estimated category dissimilarities -- so that the same distance can be
+  reapplied to new observations rather than re-estimated from them.}
 
 
 We organize these capabilities as a progression of increasing *awareness* in distance construction, in which each level relaxes an assumption made by the previous one. Scale- and type-aware distances address the biases just described: they place heterogeneous variable contributions on a common expected scale, so that neither measurement type nor units decides a variable's influence. This still treats variables as though they carried independent information. Association-aware distances drop that assumption within each block
