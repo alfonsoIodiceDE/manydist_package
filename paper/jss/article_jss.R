@@ -339,6 +339,43 @@ d_custom <- mdist(
   commensurable = TRUE
 )
 
+## Commensurability cancels any per-variable affine scaling, so the sd,
+## range and robust settings of method_num return the same distance when
+## commensurable = TRUE. Both comparisons below should return TRUE.
+
+purrr::map(
+  c("sd", "range", "robust"),
+  ~ mdist(
+    penguins_x,
+    preset = "custom",
+    method_num = .x,
+    method_cat = "matching",
+    commensurable = TRUE
+  )$to_dist()
+) |>
+  (\(d) c(
+    all.equal(d[[1]], d[[2]]),
+    all.equal(d[[1]], d[[3]])
+  ))()
+
+## The same three settings do change the distance when the weights are
+## not applied. Contrast with the check above.
+
+purrr::map(
+  c("sd", "range", "robust"),
+  ~ mdist(
+    penguins_x,
+    preset = "custom",
+    method_num = .x,
+    method_cat = "matching",
+    commensurable = FALSE
+  )$to_dist()
+) |>
+  (\(d) c(
+    isTRUE(all.equal(d[[1]], d[[2]])),
+    isTRUE(all.equal(d[[1]], d[[3]]))
+  ))()
+
 d_response <- mdist(
   penguins,
   response = species,
@@ -441,6 +478,33 @@ benchmark_pairs |>
     align = c("l", "r", "r", "r", "r")
   )
 
+## Why the two Gower rows of the table above share a MAD and a relative
+## distance. Commensurability sets the expected contribution of every
+## variable to a common constant, so the mean pairwise distance of any
+## commensurable specification on these six predictors is the same. The
+## two u_ entries below should therefore be identical, and their common
+## value minus the Gower mean reproduces the shared MAD. Raw magnitude
+## against a non-commensurable baseline cannot separate two
+## commensurable distances; only the geometry measures can.
+
+mean_pairwise <- c(
+  u_indep = mean(mdist(penguins_x, preset = "u_indep")$to_dist()),
+  u_dep = mean(mdist(penguins_x, preset = "u_dep")$to_dist()),
+  gower = mean(mdist(penguins_x, preset = "gower")$to_dist())
+)
+
+round(mean_pairwise, 3)
+
+round(
+  c(
+    u_indep_minus_gower = unname(mean_pairwise["u_indep"] -
+                                   mean_pairwise["gower"]),
+    u_dep_minus_gower = unname(mean_pairwise["u_dep"] -
+                                 mean_pairwise["gower"])
+  ),
+  3
+)
+
 ###################################################
 ### Section 5: Distance-based learning pipelines
 ###################################################
@@ -465,6 +529,296 @@ distance_labels <- c(
   u_dep = "Unbiased dependent",
   u_mix = "Unbiased mixed"
 )
+
+## The neighbourhood grid is defined here because both the refitting
+## comparison below and the supervised tuning further down use it.
+
+neighbor_grid <- tibble::tibble(
+  neighbors = c(1L, 3L, 5L, 7L, 9L, 15L)
+)
+
+### Refitting the distance within resamples
+
+## The classification data and the resampling scheme are prepared first
+## because both the refitting comparison below and the supervised task
+## further down use them.
+
+wdi_classification <- wdi_2022 |>
+  dplyr::filter(income != "Not classified") |>
+  dplyr::mutate(
+    income = forcats::fct_drop(income),
+    region = forcats::fct_collapse(
+      region,
+      Americas = c(
+        "North America",
+        "Latin America & Caribbean"
+      )
+    )
+  ) |>
+  dplyr::select(-country, -lending)
+
+wdi_classification |>
+  dplyr::count(income)
+
+set.seed(2026)
+
+wdi_split <- rsample::initial_split(
+  wdi_classification,
+  prop = 0.75,
+  strata = income
+)
+
+wdi_train <- rsample::training(wdi_split)
+
+set.seed(2026)
+
+wdi_folds <- rsample::vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = income
+)
+
+## Three cross-validated estimates of the same nearest-neighbour
+## classifier. leaky_cv() and honest_cv() share the voting code in
+## knn_vote() and differ ONLY in whether the distance is estimated once
+## on the whole training partition or refit on each analysis set, so
+## their difference isolates the leakage. refit_cv() runs the
+## step_mdist() pipeline and checks that honest_cv() reproduces what the
+## package does internally.
+##
+## fit_mdist() drops `income` from the predictors in every case and
+## supplies it as a tidyselect `response` only for the presets that use
+## it. Passing the full frame without dropping it would silently make
+## the outcome an ordinary matching predictor.
+
+response_aware_presets <- c("u_dep", "u_mix")
+leakage_presets <- c("u_indep", "u_mix", "u_dep")
+
+knn_vote <- function(d_block, train_y, k) {
+  apply(d_block, 1, function(row) {
+    nn <- order(row)[seq_len(k)]
+    names(sort(table(train_y[nn]), decreasing = TRUE))[1]
+  })
+}
+
+fit_mdist <- function(data, preset, new_data = NULL) {
+  args <- if (preset %in% response_aware_presets) {
+    list(data, response = quote(income))
+  } else {
+    list(dplyr::select(data, -income))
+  }
+  args$preset <- preset
+  if (!is.null(new_data)) {
+    args$new_data <- new_data
+  }
+  do.call(mdist, args)
+}
+
+## Assertion. All three presets must see the same predictor set, with
+## `income` absent from every one of them.
+
+purrr::map(leakage_presets, ~ names(fit_mdist(wdi_train, .x)$data))
+
+## Assertion. With `region` the only categorical predictor, the
+## association-based presets can only condition on the outcome.
+## u_indep should report "matching"; u_dep and u_mix should report
+## "tvd".
+
+purrr::map_chr(
+  leakage_presets,
+  ~ fit_mdist(wdi_train, .x)$params$method_cat
+)
+
+fold_accuracy <- function(d_block, train_y, truth, k) {
+  pred <- knn_vote(d_block, train_y, k)
+  yardstick::bal_accuracy_vec(
+    truth = truth,
+    estimate = factor(pred, levels = levels(wdi_train$income))
+  )
+}
+
+leaky_cv <- function(preset, k) {
+  m_all <- as.matrix(fit_mdist(wdi_train, preset)$to_dist())
+
+  purrr::map_dbl(wdi_folds$splits, function(split) {
+    fit_id <- split$in_id
+    out_id <- rsample::complement(split)
+    fold_accuracy(
+      m_all[out_id, fit_id, drop = FALSE],
+      wdi_train$income[fit_id],
+      wdi_train$income[out_id],
+      k
+    )
+  })
+}
+
+honest_cv <- function(preset, k) {
+  purrr::map_dbl(wdi_folds$splits, function(split) {
+    fit_data <- rsample::analysis(split)
+    out_data <- rsample::assessment(split)
+
+    d_block <- unclass(
+      fit_mdist(
+        fit_data,
+        preset,
+        new_data = dplyr::select(out_data, -income)
+      )$distance
+    )
+
+    stopifnot(
+      nrow(d_block) == nrow(out_data),
+      ncol(d_block) == nrow(fit_data)
+    )
+
+    fold_accuracy(
+      d_block,
+      fit_data$income,
+      out_data$income,
+      k
+    )
+  })
+}
+
+refit_cv <- function(preset, k) {
+  wf <- workflows::workflow() |>
+    workflows::add_recipe(
+      recipes::recipe(income ~ ., data = wdi_train) |>
+        step_mdist(
+          recipes::all_predictors(),
+          preset = preset,
+          output = "distance_to_training"
+        )
+    ) |>
+    workflows::add_model(
+      nearest_neighbor_dist(
+        mode = "classification",
+        neighbors = k
+      ) |>
+        parsnip::set_engine("manydist")
+    )
+
+  tune::fit_resamples(
+    wf,
+    resamples = wdi_folds,
+    metrics = yardstick::metric_set(yardstick::bal_accuracy)
+  ) |>
+    tune::collect_metrics() |>
+    dplyr::filter(.metric == "bal_accuracy") |>
+    dplyr::pull(mean)
+}
+
+set.seed(2026)
+
+leakage_folds <- tibble::tibble(preset = leakage_presets) |>
+  dplyr::mutate(
+    leaky = purrr::map(preset, leaky_cv, k = 5L),
+    honest = purrr::map(preset, honest_cv, k = 5L),
+    pipeline = purrr::map_dbl(preset, refit_cv, k = 5L)
+  )
+
+## The folds are paired, so the standard error of the fold-wise
+## differences is the relevant one, not the standard error of either
+## estimate on its own.
+
+leakage_comparison <- leakage_folds |>
+  dplyr::mutate(
+    single_matrix = purrr::map_dbl(leaky, mean),
+    refit_per_fold = purrr::map_dbl(honest, mean),
+    optimism = single_matrix - refit_per_fold,
+    paired_se = purrr::map2_dbl(
+      leaky,
+      honest,
+      ~ stats::sd(.x - .y) / sqrt(length(.x))
+    ),
+    pipeline_gap = refit_per_fold - pipeline
+  )
+
+knitr::kable(
+  leakage_comparison |>
+    dplyr::transmute(
+      Distance = unname(distance_labels[preset]),
+      `Single matrix` = single_matrix,
+      `Refit per fold` = refit_per_fold,
+      Optimism = optimism,
+      `Paired SE` = paired_se
+    ),
+  digits = 3
+)
+
+## Check. honest_cv() should reproduce the step_mdist() pipeline, so
+## pipeline_gap should be at or near zero. A non-zero value is the
+## difference between knn_vote() and the packaged engine, and would have
+## to be subtracted from the optimism column above.
+
+leakage_comparison |>
+  dplyr::transmute(
+    Distance = unname(distance_labels[preset]),
+    honest = refit_per_fold,
+    pipeline,
+    gap = pipeline_gap
+  )
+
+## Check. Fold-by-fold differences, to see whether the optimism is
+## consistent in sign across resamples or driven by a single fold.
+
+leakage_folds |>
+  dplyr::mutate(
+    fold = list(seq_len(nrow(wdi_folds))),
+    difference = purrr::map2(leaky, honest, ~ .x - .y)
+  ) |>
+  dplyr::select(preset, fold, difference) |>
+  tidyr::unnest(c(fold, difference)) |>
+  tidyr::pivot_wider(
+    names_from = preset,
+    values_from = difference
+  )
+
+## Does the leak change which specification would be selected? Repeat
+## the comparison across the whole neighbourhood grid and record the
+## rank each specification receives under either approach.
+
+set.seed(2026)
+
+leakage_grid <- tidyr::expand_grid(
+  preset = leakage_presets,
+  k = neighbor_grid$neighbors
+) |>
+  dplyr::mutate(
+    single_matrix = purrr::map2_dbl(preset, k, ~ mean(leaky_cv(.x, .y))),
+    refit_per_fold = purrr::map2_dbl(preset, k, ~ mean(honest_cv(.x, .y)))
+  ) |>
+  dplyr::group_by(k) |>
+  dplyr::mutate(
+    leaky_rank = rank(-single_matrix),
+    honest_rank = rank(-refit_per_fold)
+  ) |>
+  dplyr::ungroup()
+
+leakage_grid |>
+  dplyr::transmute(
+    Distance = unname(distance_labels[preset]),
+    Neighbours = k,
+    `Single matrix` = leaky_rank,
+    `Refit per fold` = honest_rank
+  ) |>
+  tidyr::pivot_wider(
+    names_from = Neighbours,
+    values_from = c(`Single matrix`, `Refit per fold`),
+    names_sep = ", k = "
+  ) |>
+  knitr::kable()
+
+## The neighbourhood sizes at which the two approaches would select a
+## different specification.
+
+leakage_grid |>
+  dplyr::group_by(k) |>
+  dplyr::summarise(
+    leaky_best = unname(distance_labels[preset[which.max(single_matrix)]]),
+    honest_best = unname(distance_labels[preset[which.max(refit_per_fold)]]),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(disagree = leaky_best != honest_best)
 
 ### Unsupervised country clustering
 
@@ -595,40 +949,12 @@ ggplot2::autoplot(
 
 ### Supervised income classification
 
-wdi_classification <- wdi_2022 |>
-  dplyr::filter(income != "Not classified") |>
-  dplyr::mutate(
-    income = forcats::fct_drop(income),
-    region = forcats::fct_collapse(
-      region,
-      Americas = c(
-        "North America",
-        "Latin America & Caribbean"
-      )
-    )
-  ) |>
-  dplyr::select(-country, -lending)
+## wdi_classification, wdi_split, wdi_train, wdi_folds and neighbor_grid
+## were created above, before the refitting comparison.
 
-wdi_classification |>
-  dplyr::count(income)
-
-set.seed(2026)
-
-wdi_split <- rsample::initial_split(
-  wdi_classification,
-  prop = 0.75,
-  strata = income
-)
-
-wdi_train <- rsample::training(wdi_split)
-
-set.seed(2026)
-
-wdi_folds <- rsample::vfold_cv(
-  wdi_train,
-  v = 5,
-  strata = income
-)
+## The recipes contain an outcome, so u_dep and u_mix use the income
+## labels of the current analysis fold; the other three presets are
+## response-independent.
 
 classification_recipes <- purrr::map(
   distance_presets,
@@ -649,10 +975,6 @@ knn_spec <- nearest_neighbor_dist(
 classification_workflows <- workflowsets::workflow_set(
   preproc = classification_recipes,
   models = list(knn = knn_spec)
-)
-
-neighbor_grid <- tibble::tibble(
-  neighbors = c(1L, 3L, 5L, 7L, 9L, 15L)
 )
 
 set.seed(2026)
@@ -725,6 +1047,18 @@ knitr::kable(
     ),
   digits = 3
 )
+
+## Check. The tuning grid and the refitting comparison estimate the same
+## quantity, so the five-neighbour entries below should match the
+## `pipeline` column of leakage_comparison.
+
+classification_metrics |>
+  dplyr::filter(
+    .metric == "bal_accuracy",
+    neighbors == 5L,
+    wflow_id %in% paste0(leakage_presets, "_knn")
+  ) |>
+  dplyr::select(wflow_id, neighbors, mean)
 
 classification_metrics |>
   dplyr::filter(.metric == "bal_accuracy") |>
@@ -853,3 +1187,10 @@ confusion_table <- wdi_confusion$table |>
     values_from = Freq
   )
 
+knitr::kable(confusion_table)
+
+###################################################
+### Computational details
+###################################################
+
+sessionInfo()
