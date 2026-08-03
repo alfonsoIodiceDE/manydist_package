@@ -51,10 +51,7 @@ abstract: |
   constructing unbiased mixed-variable distances through multivariate
   additivity and commensurability. We describe the distance construction,
   distance diagnostics and benchmarking, and integration with clustering and
-  the tidymodels predictive-modeling ecosystem. The Palmer penguins data
-  illustrate how the framework avoids distortions present in standard
-  alternatives.
-  A World Development Indicators snapshot then illustrates how distance
+  the tidymodels predictive-modeling ecosystem. \textbf{The Palmer penguins data illustrate the proposed diagnostic tools, showing how leave-one-variable-out contributions and pairwise benchmarking make the choice of distance an inspectable part of an analysis rather than a fixed preprocessing decision.} A World Development Indicators snapshot then places the distance inside clustering and classification pipelines, where the preprocessing is refit within each resample. A World Development Indicators snapshot then illustrates how distance
   choice enters unsupervised clustering and supervised classification
   workflows.
 keywords:
@@ -266,7 +263,7 @@ We follow the notation of @van2024unbiased. Let $I$ be the number of
 observations and let $Q=Q_{n}+Q_{c}$ be the number of variables, partitioned
 into $Q_{n}$ numerical and $Q_{c}$ categorical variables. Observed mixed, numerical, and categorical vectors
 are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
-counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for an
+counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for the
 $I\times Q$ data matrix. 
 
 ### General mixed-distance setup
@@ -359,11 +356,7 @@ m_k&=\frac{1}{I(I-1)}\sum_{i\ne l}
 $$ {#eq-empirical-weights}
 
 Thus, each variable-wise distance is divided by its empirical mean before the
-contributions are combined. A stabilized form,
-$w_j=1/\max(m_j,\varepsilon)$, can be used when dispersion is extremely small.
-The formulation also permits constrained weights, such as common weights
-within numerical or categorical groups, when only within-type
-commensurability is required.
+contributions are combined. The formulation also permits constrained weights, such as common weights within numerical or categorical groups, when only within-type commensurability is required.
 
 ### Association-aware distances: beyond commensurability
 
@@ -752,11 +745,11 @@ Common transformations include:
 
 - **standard-deviation scaling:** $(x-\bar{x})/s_x$, which uses all
   observations rather than only the extremes;
-- **range scaling:** $(x-x_{\min})/(x_{\max}-x_{\min})$, as in Gower's
-  distance, which preserves the distributional shape but is sensitive to
-  outliers through the extremes;
+- **range scaling:** - **range scaling:** $(x-x_{\min})/(x_{\max}-x_{\min})$, as in Gower's
+  distance, \textbf{which preserves the distributional shape but, for the
+  non-commensurable presets, is sensitive to outliers through the extremes;}
 - **robust scaling:** $(x-x_{\mathrm{Med}})/(x_{Q_3}-x_{Q_1})$, which replaces
-  the mean and range with their robust counterparts and so resists outliers.
+  the mean and range with their robust counterparts and so resists outliers in those same presets.
   
 When numerical variables are linearly related, principal-component scaling
 can rotate and rescale the numerical block. If the centered data matrix has
@@ -946,7 +939,7 @@ exposes the three choices directly through the `method_num`, `method_cat`, and
 | `dkss` | kernel product similarity [@ghashti2024] | -- | no | no |
 | `u_indep` | standard-deviation scaling | simple matching | yes | yes |
 | `u_dep` | principal-component scaling | total variation distance | yes | yes |
-| `u_mix` | standard-deviation scaling | total variation distance | yes | yes |
+| `u_mix` | - | total variation distance | yes | yes |
 | `custom` | set by `method_num` | set by `method_cat` | set by `commensurable` | set by `commensurable` |
 
 : Distance presets and their properties. Additive distances satisfy multivariate
