@@ -105,7 +105,7 @@ workflow. Its main function,
 
 
 We organize these capabilities as a progression of increasing *awareness* in distance construction, in which each level relaxes an assumption made by the previous one. Scale- and type-aware distances address the biases just described: they place heterogeneous variable contributions on a common expected scale, so that neither measurement type nor units decides a variable's influence. This still treats variables as though they carried independent information. Association-aware distances drop that assumption within each block
--- when two numerical variables are strongly correlated, or two categorical variables encode overlapping distinctions, an independence-based distance counts the shared contrast twice; an association-aware construction recognizes the redundancy and lets a contribution depend on the whole same-type block [@vandevelden2024categorical]. **Response-aware distances go further still, using outcome information to shape the categorical dissimilarities and so construct neighbourhoods specific to a supervised task. Because the resulting dissimilarities depend on the very labels a supervised model is asked to predict, a single distance computed in advance would let every fold's neighbourhoods be shaped by the labels being predicted, which is what @sec-pipelines addresses.**
+-- when two numerical variables are strongly correlated, or two categorical variables encode overlapping distinctions, an independence-based distance counts the shared contrast twice. An association-aware construction recognizes the redundancy and lets a contribution depend on the whole same-type block. **Response-aware distances go further still, using outcome information to shape the categorical dissimilarities and so construct neighbourhoods specific to a supervised task. Because the resulting dissimilarities depend on the very labels a supervised model is asked to predict, a single distance computed in advance would let every fold's neighbourhoods be shaped by the labels being predicted, which is what @sec-pipelines addresses.**
 
 Beyond distance construction, \pkg{manydist} provides leave-one-variable-out (LOVO)
 diagnostics and pairwise benchmarking of candidate distances, integration with
@@ -778,7 +778,7 @@ the original variables.
 For categorical variables, association enters through conditional
 distributions rather than a covariance matrix. The category dissimilarity
 matrix provides a common representation for both independence-based and
-association-based constructions.
+association-based constructions, following the general framework of @vandevelden2024categorical, **which shows that a wide range of existing categorical distances can be expressed through a matrix of dissimilarities between categories and which the categorical methods in `mdist()` implement**.
 
 For categorical variable $k$, let $\bm{\Delta}_k$ be the
 $q_k\times q_k$ dissimilarity matrix between its categories, and let

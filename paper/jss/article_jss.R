@@ -432,19 +432,26 @@ lovo_comparison$autoplot(
     legend.position = "top"
   )
 
+## A named-vector lookup rather than dplyr::recode_values(), which is
+## new in dplyr 1.2.0 and would put a version floor on the first
+## benchmark chunk. The stopifnot() preserves the unmatched = "error"
+## behaviour that recode_values() provided.
+
+candidate_labels <- c(
+  gower = "Gower",
+  u_indep = "Unbiased independent",
+  u_dep = "Unbiased dependent"
+)
+
 candidate_specs <- all_dist_method_specs(
   mode = "presets_only",
   preset = c("gower", "u_indep", "u_dep")
 ) |>
   dplyr::mutate(
-    label = dplyr::recode_values(
-      preset,
-      "gower" ~ "Gower",
-      "u_indep" ~ "Unbiased independent",
-      "u_dep" ~ "Unbiased dependent",
-      unmatched = "error"
-    )
+    label = unname(candidate_labels[preset])
   )
+
+stopifnot(!anyNA(candidate_specs$label))
 
 set.seed(2026)
 
@@ -483,14 +490,16 @@ benchmark_pairs |>
 ## variable to a common constant, so the mean pairwise distance of any
 ## commensurable specification on these six predictors is the same. The
 ## two u_ entries below should therefore be identical, and their common
-## value minus the Gower mean reproduces the shared MAD. Raw magnitude
-## against a non-commensurable baseline cannot separate two
-## commensurable distances; only the geometry measures can.
+## value minus the Gower mean reproduces the shared MAD.
+
+d_gower <- mdist(penguins_x, preset = "gower")$to_dist()
+d_indep <- mdist(penguins_x, preset = "u_indep")$to_dist()
+d_dep <- mdist(penguins_x, preset = "u_dep")$to_dist()
 
 mean_pairwise <- c(
-  u_indep = mean(mdist(penguins_x, preset = "u_indep")$to_dist()),
-  u_dep = mean(mdist(penguins_x, preset = "u_dep")$to_dist()),
-  gower = mean(mdist(penguins_x, preset = "gower")$to_dist())
+  u_indep = mean(d_indep),
+  u_dep = mean(d_dep),
+  gower = mean(d_gower)
 )
 
 round(mean_pairwise, 3)
@@ -503,6 +512,17 @@ round(
                                  mean_pairwise["gower"])
   ),
   3
+)
+
+## The mean absolute difference equals the difference of means only
+## where the sign is constant across pairs. Both fractions below should
+## be 1, which makes the identity exact rather than approximate. It also
+## holds by construction. Gower's per-variable contributions are bounded
+## above by one, whereas commensurability puts the total near Q.
+
+c(
+  indep_exceeds_gower = mean(d_indep > d_gower),
+  dep_exceeds_gower = mean(d_dep > d_gower)
 )
 
 ###################################################
@@ -590,6 +610,9 @@ wdi_folds <- rsample::vfold_cv(
 ## supplies it as a tidyselect `response` only for the presets that use
 ## it. Passing the full frame without dropping it would silently make
 ## the outcome an ordinary matching predictor.
+##
+## knn_vote() breaks ties at random rather than by factor-level order,
+## which would systematically favour "High income".
 
 response_aware_presets <- c("u_dep", "u_mix")
 leakage_presets <- c("u_indep", "u_mix", "u_dep")
@@ -597,7 +620,9 @@ leakage_presets <- c("u_indep", "u_mix", "u_dep")
 knn_vote <- function(d_block, train_y, k) {
   apply(d_block, 1, function(row) {
     nn <- order(row)[seq_len(k)]
-    names(sort(table(train_y[nn]), decreasing = TRUE))[1]
+    tab <- table(train_y[nn])
+    tied <- names(tab)[tab == max(tab)]
+    if (length(tied) == 1L) tied else sample(tied, 1L)
   })
 }
 
@@ -795,17 +820,26 @@ leakage_grid <- tidyr::expand_grid(
   dplyr::ungroup()
 
 leakage_grid |>
-  dplyr::transmute(
-    Distance = unname(distance_labels[preset]),
-    Neighbours = k,
-    `Single matrix` = leaky_rank,
-    `Refit per fold` = honest_rank
+  dplyr::mutate(Distance = unname(distance_labels[preset])) |>
+  dplyr::select(Distance, k, leaky_rank, honest_rank) |>
+  tidyr::pivot_longer(
+    c(leaky_rank, honest_rank),
+    names_to = "Approach",
+    values_to = "rank"
+  ) |>
+  dplyr::mutate(
+    Approach = dplyr::if_else(
+      Approach == "leaky_rank",
+      "Single matrix",
+      "Refit per fold"
+    )
   ) |>
   tidyr::pivot_wider(
-    names_from = Neighbours,
-    values_from = c(`Single matrix`, `Refit per fold`),
-    names_sep = ", k = "
+    names_from = Distance,
+    values_from = rank
   ) |>
+  dplyr::arrange(k, dplyr::desc(Approach)) |>
+  dplyr::rename(Neighbours = k) |>
   knitr::kable()
 
 ## The neighbourhood sizes at which the two approaches would select a
@@ -831,6 +865,11 @@ clustering_recipes <- purrr::map(
       output = "pairwise"
     )
 )
+
+## spectral_dist() is stochastic through nstart, so the example fits
+## below are seeded as well as the full grid further down.
+
+set.seed(2026)
 
 wdi_pam_fit <- generics::fit(
   pam_dist(num_clusters = 4),
@@ -884,6 +923,10 @@ clustering_results <- tidyr::expand_grid(
   dplyr::mutate(
     distance_label = unname(distance_labels[distance])
   )
+
+## Each silhouette is computed in the metric that produced its own
+## partition, so the column is read downward, within a distance, and not
+## across distances.
 
 clustering_summary <- clustering_results |>
   dplyr::select(
@@ -1036,6 +1079,10 @@ classification_summary <- classification_ranking |>
   ) |>
   dplyr::arrange(rank)
 
+## The leading configurations are separated by less than one standard
+## error, so the Rank column distinguishes the commensurable
+## specifications from the baselines but not from one another.
+
 knitr::kable(
   classification_summary |>
     dplyr::transmute(
@@ -1073,7 +1120,20 @@ classification_metrics |>
       color = distance_label
     )
   ) +
-  ggplot2::geom_line() +
+  ggplot2::geom_ribbon(
+    ggplot2::aes(
+      ymin = mean - std_err,
+      ymax = mean + std_err,
+      fill = distance_label
+    ),
+    alpha = 0.09,
+    colour = NA,
+    show.legend = FALSE
+  ) +
+  ggplot2::geom_line(
+    ggplot2::aes(linetype = distance_label),
+    linewidth = 0.6
+  ) +
   ggplot2::geom_point(size = 1.8) +
   ggplot2::scale_x_continuous(
     breaks = neighbor_grid$neighbors
@@ -1082,16 +1142,27 @@ classification_metrics |>
     palette = "Dark2",
     name = "Distance"
   ) +
+  ggplot2::scale_fill_brewer(
+    palette = "Dark2"
+  ) +
+  ggplot2::scale_linetype_manual(
+    values = c(
+      "Euclidean" = "22",
+      "Gower" = "42",
+      "Unbiased dependent" = "solid",
+      "Unbiased independent" = "solid",
+      "Unbiased mixed" = "solid"
+    ),
+    name = "Distance"
+  ) +
   ggplot2::labs(
     x = "Number of neighbours",
     y = "Cross-validated balanced accuracy"
   ) +
   ggplot2::theme_minimal() +
   ggplot2::guides(
-    color = ggplot2::guide_legend(
-      nrow = 2,
-      byrow = TRUE
-    )
+    color = ggplot2::guide_legend(nrow = 2, byrow = TRUE),
+    linetype = ggplot2::guide_legend(nrow = 2, byrow = TRUE)
   ) +
   ggplot2::theme(legend.position = "top")
 
@@ -1160,6 +1231,18 @@ wdi_confusion <- yardstick::conf_mat(
   wdi_test_predictions,
   truth = income,
   estimate = .pred_class
+)
+
+## Balanced accuracy macro-averages one-versus-all sensitivity across
+## the four groups, whereas ordinary accuracy is the proportion correct
+## among the held-out countries. The two counts below are the ones
+## quoted in the text.
+
+c(
+  n_test = nrow(wdi_test_predictions),
+  n_correct = sum(
+    wdi_test_predictions$income == wdi_test_predictions$.pred_class
+  )
 )
 
 income_abbreviations <- c(
