@@ -598,21 +598,18 @@ wdi_folds <- rsample::vfold_cv(
   strata = income
 )
 
-## Three cross-validated estimates of the same nearest-neighbour
+## Two cross-validated estimates of the same nearest-neighbour
 ## classifier. leaky_cv() and honest_cv() share the voting code in
 ## knn_vote() and differ ONLY in whether the distance is estimated once
 ## on the whole training partition or refit on each analysis set, so
-## their difference isolates the leakage. refit_cv() runs the
-## step_mdist() pipeline and checks that honest_cv() reproduces what the
-## package does internally.
+## their difference isolates the leakage. pipeline_cv(), defined after
+## the comparison, checks that honest_cv() reproduces what the packaged
+## step_mdist() pipeline computes.
 ##
 ## fit_mdist() drops `income` from the predictors in every case and
 ## supplies it as a tidyselect `response` only for the presets that use
 ## it. Passing the full frame without dropping it would silently make
 ## the outcome an ordinary matching predictor.
-##
-## knn_vote() breaks ties at random rather than by factor-level order,
-## which would systematically favour "High income".
 
 response_aware_presets <- c("u_dep", "u_mix")
 leakage_presets <- c("u_indep", "u_mix", "u_dep")
@@ -620,9 +617,7 @@ leakage_presets <- c("u_indep", "u_mix", "u_dep")
 knn_vote <- function(d_block, train_y, k) {
   apply(d_block, 1, function(row) {
     nn <- order(row)[seq_len(k)]
-    tab <- table(train_y[nn])
-    tied <- names(tab)[tab == max(tab)]
-    if (length(tied) == 1L) tied else sample(tied, 1L)
+    names(sort(table(train_y[nn]), decreasing = TRUE))[1]
   })
 }
 
@@ -704,49 +699,16 @@ honest_cv <- function(preset, k) {
   })
 }
 
-refit_cv <- function(preset, k) {
-  wf <- workflows::workflow() |>
-    workflows::add_recipe(
-      recipes::recipe(income ~ ., data = wdi_train) |>
-        step_mdist(
-          recipes::all_predictors(),
-          preset = preset,
-          output = "distance_to_training"
-        )
-    ) |>
-    workflows::add_model(
-      nearest_neighbor_dist(
-        mode = "classification",
-        neighbors = k
-      ) |>
-        parsnip::set_engine("manydist")
-    )
-
-  tune::fit_resamples(
-    wf,
-    resamples = wdi_folds,
-    metrics = yardstick::metric_set(yardstick::bal_accuracy)
-  ) |>
-    tune::collect_metrics() |>
-    dplyr::filter(.metric == "bal_accuracy") |>
-    dplyr::pull(mean)
-}
-
-set.seed(2026)
-
-leakage_folds <- tibble::tibble(preset = leakage_presets) |>
-  dplyr::mutate(
-    leaky = purrr::map(preset, leaky_cv, k = 5L),
-    honest = purrr::map(preset, honest_cv, k = 5L),
-    pipeline = purrr::map_dbl(preset, refit_cv, k = 5L)
-  )
-
 ## The folds are paired, so the standard error of the fold-wise
 ## differences is the relevant one, not the standard error of either
 ## estimate on its own.
 
-leakage_comparison <- leakage_folds |>
+set.seed(2026)
+
+leakage_comparison <- tibble::tibble(preset = leakage_presets) |>
   dplyr::mutate(
+    leaky = purrr::map(preset, leaky_cv, k = 5L),
+    honest = purrr::map(preset, honest_cv, k = 5L),
     single_matrix = purrr::map_dbl(leaky, mean),
     refit_per_fold = purrr::map_dbl(honest, mean),
     optimism = single_matrix - refit_per_fold,
@@ -754,8 +716,7 @@ leakage_comparison <- leakage_folds |>
       leaky,
       honest,
       ~ stats::sd(.x - .y) / sqrt(length(.x))
-    ),
-    pipeline_gap = refit_per_fold - pipeline
+    )
   )
 
 knitr::kable(
@@ -770,23 +731,54 @@ knitr::kable(
   digits = 3
 )
 
-## Check. honest_cv() should reproduce the step_mdist() pipeline, so
-## pipeline_gap should be at or near zero. A non-zero value is the
-## difference between knn_vote() and the packaged engine, and would have
-## to be subtracted from the optimism column above.
+## Check. The article shows only the step_mdist() version of the honest
+## arm, on the grounds that the hand-rolled honest_cv() above reproduces
+## it exactly. pipeline_cv() is that version; the gap below should be
+## zero for all three presets. A non-zero value would be the difference
+## between knn_vote() and the packaged engine, and would have to be
+## subtracted from the optimism column above.
+
+pipeline_cv <- function(preset, k) {
+  workflows::workflow() |>
+    workflows::add_recipe(
+      recipes::recipe(income ~ ., data = wdi_train) |>
+        step_mdist(
+          recipes::all_predictors(),
+          preset = preset,
+          output = "distance_to_training"
+        )
+    ) |>
+    workflows::add_model(
+      nearest_neighbor_dist(mode = "classification", neighbors = k) |>
+        parsnip::set_engine("manydist")
+    ) |>
+    tune::fit_resamples(
+      resamples = wdi_folds,
+      metrics = yardstick::metric_set(yardstick::bal_accuracy)
+    ) |>
+    tune::collect_metrics(summarize = FALSE) |>
+    dplyr::filter(.metric == "bal_accuracy") |>
+    dplyr::pull(.estimate)
+}
+
+set.seed(2026)
 
 leakage_comparison |>
+  dplyr::mutate(
+    pipeline = purrr::map_dbl(preset, ~ mean(pipeline_cv(.x, 5L))),
+    gap = refit_per_fold - pipeline
+  ) |>
   dplyr::transmute(
     Distance = unname(distance_labels[preset]),
     honest = refit_per_fold,
     pipeline,
-    gap = pipeline_gap
+    gap
   )
 
 ## Check. Fold-by-fold differences, to see whether the optimism is
 ## consistent in sign across resamples or driven by a single fold.
 
-leakage_folds |>
+leakage_comparison |>
   dplyr::mutate(
     fold = list(seq_len(nrow(wdi_folds))),
     difference = purrr::map2(leaky, honest, ~ .x - .y)
@@ -1233,10 +1225,23 @@ wdi_confusion <- yardstick::conf_mat(
   estimate = .pred_class
 )
 
-## Balanced accuracy macro-averages one-versus-all sensitivity across
-## the four groups, whereas ordinary accuracy is the proportion correct
-## among the held-out countries. The two counts below are the ones
-## quoted in the text.
+## Balanced accuracy averages sensitivity and specificity across the
+## four groups, whereas ordinary accuracy is the proportion correct
+## among the held-out countries. The two components below should
+## average to the reported balanced accuracy.
+
+c(
+  sensitivity = yardstick::sens_vec(
+    wdi_test_predictions$income,
+    wdi_test_predictions$.pred_class,
+    estimator = "macro"
+  ),
+  specificity = yardstick::spec_vec(
+    wdi_test_predictions$income,
+    wdi_test_predictions$.pred_class,
+    estimator = "macro"
+  )
+)
 
 c(
   n_test = nrow(wdi_test_predictions),
