@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>michel-comments-0708</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="michel-comments-0708_files/libs/clipboard/clipboard.min.js"></script>
+<script src="michel-comments-0708_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="michel-comments-0708_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="michel-comments-0708_files/libs/quarto-html/popper.min.js"></script>
+<script src="michel-comments-0708_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="michel-comments-0708_files/libs/quarto-html/anchor.min.js"></script>
+<link href="michel-comments-0708_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="michel-comments-0708_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="michel-comments-0708_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="michel-comments-0708_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="michel-comments-0708_files/libs/bootstrap/bootstrap-138a6193a3bd40baf1e627da441a4734.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="michels-comments-on-the-jss-paper" class="level1">
+<h1>Michel’s comments on the JSS paper</h1>
+<p>Source PDF: <code>jss paper 0708.pdf</code></p>
+<p>Extracted annotations: <strong>140</strong> across <strong>20 pages</strong>.</p>
+<p>Annotation types: Highlight (124), StrikeOut (12), Text (4).</p>
+<p>The quoted passages below were reconstructed from the annotation coordinates. Minor spacing differences may occur around equations or inline code.</p>
+<section id="page-1" class="level2">
+<h2 class="anchored" data-anchor-id="page-1">Page 1</h2>
+<section id="highlight" class="level3">
+<h3 class="anchored" data-anchor-id="highlight">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> through multivariate addi tivity and commensurability.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Not sure we need this here. We could perhaps replace the last part by: constructing mixed-variable distances that correct for such biases.</p>
+</section>
+<section id="strikeout" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout">2. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> and</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-1" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-1">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> and the</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>lot of commas and ands. Perhaps this last part separate? (In addition, furthermore we show/illustrate how its functionality can be integrated in the tidymodels….etc.?</p>
+</section>
+<section id="highlight-2" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-2">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The Palmer penguins data</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>We illustrate the proposed diagnostic tools etc. using the Palmer penguins data. Furthermore,… (But then we need to more clear describe what we mean by: placing insider clustering and classification pipelines…</p>
+</section>
+<section id="highlight-3" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-3">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> A World Development Indicators snapshot then places the distance inside clustering and classification pipelines, where the preprocessing is refit within each resample.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Must make more clear what we mean</p>
+</section>
+<section id="text" class="level3">
+<h3 class="anchored" data-anchor-id="text">6. Text</h3>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think we need to think about setup structure to keep better track of all functionality. 1) Intro 2) Related/other software 3) The unified framework 4) Distance construction: mdist: method_cat, method_num + commensurability option. This allows for a huge list of (additive) distances; existing and non-existing. The commensurability option makes them unbiased. We also offer presets for a selection of additive ones and some non-additive ones from the literature. We should also probably say something about association-based and not. 5) Distance diagnostics: LOVO and comparison tools. But: all unsupervised. (But: association-based can/should be there). 6) Supervised settings: First review basics (we have y). Then: Make clear how our association-based distance offer a new set of distances. Then explain importance of careful (correct) model training and assessment. Explain the importance and peculiarities of data-splitting, and how this should be done to avoid leakage. Explain what methods we include. (KNN, Supervised clustering?) Show how it works. 7) Conclusion</p>
+</section>
+</section>
+<section id="page-2" class="level2">
+<h2 class="anchored" data-anchor-id="page-2">Page 2</h2>
+<section id="highlight-4" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-4">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Numerical variables face the mirror image of this problem through scaling.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>why is that mirror image? Maybe we can delete without it affecting the rest</p>
+</section>
+<section id="highlight-5" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-5">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> of a matching categorical</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-6" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-6">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> to favor categorical contributions</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-7" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-7">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> to correct one variable at a time.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>correct for.</p>
+</section>
+<section id="highlight-8" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-8">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> the resulting mean pairwise distance is typically small relative to that of a matching categorical variable, which is why Gower tends to favor categorical contributions (Hennig and Liao 2013; Foss et al.&nbsp;2016).</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>most pairwise distances tend to be much smaller than one, which is why categorical variables tend to dominate in Gower’s distance (HL, Foss)</p>
+</section>
+<section id="highlight-9" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-9">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Skewness compounds the effect:</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Skewed distributions for the numerical variables amplify this effect:</p>
+</section>
+<section id="highlight-10" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-10">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> heavy-tailed</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Is it heavy tailed or long tailed? (I would think that heavy means many observations close to the tail. This may be less problematic (or have reverse effects) than skewness with a long but narrow tail</p>
+</section>
+<section id="strikeout-1" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-1">8. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> while other scaling choices can amplify or attenuate the same variable unpredictably.</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-11" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-11">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> distortions</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>distortions to the overall distance</p>
+</section>
+<section id="highlight-12" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-12">10. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Because these distortions follow from measurement type and scale rather than from information content, they are hard to anticipate and to correct one variable at a time.</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-13" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-13">11. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> are hard to anticipate and to correct one variable at a time.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>they are undesirable factors in the calculation of an overall distance measure. van de Velden et al describe these problems and formulate a general mixed variable distance that can be used to construct mixed-variable distances that do not suffer from these problems.</p>
+</section>
+<section id="highlight-14" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-14">12. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> van de Velden et al.&nbsp;(2026) formalize unbiased mixed-variable distances through two properties: multivariate additivity and commensurability.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Two properties (or factors?) are essential for the unbiased mixed-variable distances proposed in van de Velden et al: multivar additivity and commensurability….</p>
+</section>
+<section id="highlight-15" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-15">13. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> requires</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>entails that? specifies that?</p>
+</section>
+<section id="strikeout-2" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-2">14. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> so that each variable enters the total additively.</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-16" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-16">15. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Importantly, a variable-specific contribution need not depend on that variable alone; it may be a function of the full same-type block, which is what later permits association-based constructions within the additive form.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I am not sure if we need this here. This is important but to emphasize it here, without more context, is probably just confusing.</p>
+</section>
+<section id="highlight-17" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-17">16. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> the</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>individual variable</p>
+</section>
+<section id="strikeout-3" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-3">17. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> drawn from a more dispersed dis tribution,</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-18" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-18">18. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> are commensurable</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>are considered to be. Or: are defined to be commensurable</p>
+</section>
+<section id="highlight-19" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-19">19. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> so that</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>. Hence, no variable contributes more (or less) to the distance based on its</p>
+</section>
+<section id="highlight-20" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-20">20. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> For</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>In</p>
+</section>
+<section id="highlight-21" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-21">21. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> this is</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>commensurability can be</p>
+</section>
+<section id="strikeout-4" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-4">22. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> - while still allowing a variable to be up- or down-weighted deliberately when subject-matter knowledge justifies it.</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-22" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-22">23. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> this framework.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>unbiased mixed-variable distance framework. (should we also add: as well as other mixed-variable distances that do not necessarily fall into it.)</p>
+</section>
+<section id="highlight-23" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-23">24. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> and the discipline required to use an estimated distance inside a resampled workflow.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>this is not clear. The dicipline? I guess that this concerns the “tidyverse” stuff. But, we have to write also for those not familiar with the jargon. I guess this is related to the last part in the abstract. We need to formulate this contribution clearly: As well as how distances can be implemented in a workflow allowing for a structured comparison of in- and out-of sample performances.</p>
+</section>
+<section id="highlight-24" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-24">25. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> a</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>that: 1. Can be used to define and calculate additive mixed variable distances comprising of numerical distances (allowing for various preprocessing options), and categorical variable distances (allowing for different category dissimilarity definitions).. 2. Can be used to construct unbiased distances by enforcing commensurability through variable-wise weighting 3. Allows for the construction of distances incorporating association between variables as well as association with a response variable. 4. Retains the preprocessing steps (such as preprocessing steps, category dissimilarities and variable specific weights) so that the same distance can be applied to “new observations” without requiring re-estimation.</p>
+<p>I think I combined the old 1 and 3. The fact that we have variable specific dissimilarities is important for lovo. But, the output of mdist is the aggregation so I am not sure whether mentioning one part of the calculation explicitly here….I explicitly added point 3. But without the terminology (association-aware and response-aware). I think these can come later. I do think it is important to mention association-based here as it is something not present in other packages.</p>
+</section>
+</section>
+<section id="page-3" class="level2">
+<h2 class="anchored" data-anchor-id="page-3">Page 3</h2>
+<section id="highlight-25" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-25">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Association-aware distances</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>But I think this is the first time we mention this. We had (or have) something about using other variables for individual variable distance. But I am not sure if this is the place, In fact, we may want to dedicate a bit more space, or at least a clearly separated part/section to this.</p>
+</section>
+<section id="text-1" class="level3">
+<h3 class="anchored" data-anchor-id="text-1">2. Text</h3>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think that perhaps this complete paragraph should be moved elsewhere. I do not think it fits the introduction. In fact, perhaps elsewhere we need a dedicated section on association-based and response-aware. On the other hand, if we want to say something about the package being able to deal with this (and in a sense, the third (fourth previously) point about being able to re-use on new observations is a bit linked….Still: if you think about it, the association-aware and response aware part is in the general formulation (perhaps the response part a bit less clear). So: Not sure if we need to make a big deal of this now. (Instead of simply having it implicitly in the sentence on pre-processing)….</p>
+</section>
+<section id="highlight-26" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-26">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Scale- and type-aware</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>new terminology</p>
+</section>
+<section id="highlight-27" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-27">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> pairwise benchmarking of candidate distances,</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>What is pairwise benchmarking? And: don;t we in fact have comparisons methods/visualizations that allow for much more than pairs? How about: lovo diganostics as well as several evaluation and comparion tools. In particular, integration with tidymodels (ref) is facilitated allowing appraisal of distances based on subsequent distance-based methods like cluster analysis and k-nn classification.</p>
+</section>
+<section id="highlight-28" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-28">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Several R packages provide distances for homogeneous numerical, categorical, or binary data.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Should we create a dedicated section on “other software”? Seems like this could work like that. Perhaps the only problem is that this is probably not complete. (And only R). But, we can probably mention this: Not exhaustive and only R….I mean, shouldn’t really be a problem I think.</p>
+</section>
+<section id="highlight-29" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-29">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> clustering, ordination, and nearest-neighbour met hods.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>distance-based data analysis methods</p>
+</section>
+<section id="strikeout-5" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-5">7. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> manydist builds on rather than replaces these tools, computing comparable per-block dissimilarities and adding a commensurability layer they do not provide.</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+</section>
+<section id="page-4" class="level2">
+<h2 class="anchored" data-anchor-id="page-4">Page 4</h2>
+<section id="highlight-30" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-30">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> matrices,</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>data?</p>
+</section>
+<section id="highlight-31" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-31">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> extensible</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>?</p>
+</section>
+<section id="highlight-32" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-32">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> provides frequency-weighted similarities.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>What is this? (Also some of the previous descriptions (sparse transaction data?) are a bit obscure to me. Wasn’t nomclust the package by Sulc? Doesn’t that have all the Boriah distances in there?</p>
+</section>
+<section id="highlight-33" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-33">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> cluster::daisy(),</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>but daisy has also all regular numerical distances. Shouldn’t we make that clear? (And: I assume that this is unlike, for example, the gower package that probably only has gower. Or not?</p>
+</section>
+<section id="highlight-34" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-34">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> of the same underlying construction</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>What do we mean?</p>
+</section>
+<section id="highlight-35" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-35">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> and its tendency to give relatively greater influence to categorical variables when many categorical attributes are present or when standardized numerical differences are comparatively small.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>This has nothing to do with the packages. This is simply a property of gower, as we explained.</p>
+</section>
+<section id="highlight-36" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-36">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> for mixed data</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I guess we can resolve my point after this (about daisy) by stating that packages implementing/allowing/providing options for mixed-variable distances are summarized in T2 and fall into three families.</p>
+</section>
+<section id="highlight-37" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-37">8. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> controls the relative influence of numerical and categorical information through explicit weighting.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>concerns mixed distance alternatives in which the numerical and categorical distance parts are aggregated by assigning weights for these two parts.</p>
+</section>
+<section id="highlight-38" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-38">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Gower, Podani, Wishart, Huang, Harikumar, and Ahmad</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>we probably need references. (For Podani, Wishart, Harikumar and Ahmad we do not have any yet I think)</p>
+</section>
+<section id="highlight-39" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-39">10. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> learns an adaptive</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>concerns mixed-data distances that estimate distances based on the data.</p>
+</section>
+<section id="strikeout-6" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-6">11. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> automatically,</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-40" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-40">12. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Related to</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>In?</p>
+</section>
+<section id="highlight-41" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-41">13. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> a weighting</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>weights</p>
+</section>
+<section id="highlight-42" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-42">14. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Both address the balance between variable types as part of a clustering procedure,</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>So the clustering part is also in kamila. Like cluspcamix, you cannot separate the two? So: we should probably add: as part of a clustering procedure and do not explicitly yield a separate distance matrix. (Or actually, use that to replace the whereas the …. sentence.)</p>
+</section>
+<section id="highlight-43" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-43">15. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> it differs from the commensurable distances developed here, which explicitly equalize the expected contributions of numerical and categorical variables.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>it does not necessarily lead to commensurable distances.</p>
+</section>
+<section id="strikeout-7" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-7">16. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> likewise</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-44" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-44">17. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> the estimated quantities must be refit within a resampling scheme, exactly as recipes refits step_pca() or step_normalize () on each analysis set.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>For new data, either new estimation is required or the estimated quantities must be stored and used for this.</p>
+</section>
+<section id="highlight-45" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-45">18. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> To our knowledge no other mixed-data distance implementation exposes a fitted representation that can be reapplied to new observations without re-estimation; Section 5 takes this up.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think this is too cryptic. We do not need it, or we need to explain more clearly.</p>
+</section>
+<section id="highlight-46" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-46">19. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Gower dissimilarity for numerical, nominal, ordinal and binary variables.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>But daisy has more than gower, not?</p>
+</section>
+<section id="highlight-47" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-47">20. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> variants</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>in what sense? weights?</p>
+</section>
+<section id="highlight-48" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-48">21. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> share a consequence</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>But do the others not have this also? For example Ahmad and Dey? But also clustrd and prototypes? (If the weight gamma is based on data, certainly. Not?)</p>
+</section>
+<section id="text-2" class="level3">
+<h3 class="anchored" data-anchor-id="text-2">22. Text</h3>
+<p><strong>Michel’s comment:</strong></p>
+<p>It seems we do not visualize the three types mentioned in the text in the table. Why not?</p>
+</section>
+</section>
+<section id="page-5" class="level2">
+<h2 class="anchored" data-anchor-id="page-5">Page 5</h2>
+<section id="highlight-49" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-49">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The remainder</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I would put this before the “Several R packages” part (that I think would make a good other software section)</p>
+</section>
+<section id="strikeout-8" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-8">2. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> These tools are useful, but their variable contributions can depend on scale, prevalence, imbalance, and measurement type.</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-50" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-50">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> them</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>the existing packages by offering</p>
+</section>
+<section id="highlight-51" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-51">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> association-aware and response-aware</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Then this needs to be explained. (I suggested to move from introduction). But, removing it is not a big problem I think. In fact, perhaps we can point to this after “…interfaces.” e.g.: Furthermore, in line with the general framework from vandevelden etal, mdist also allows for construction of distances exploiting association between variables, as well as association with a response variable.</p>
+</section>
+<section id="highlight-52" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-52">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> develops</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>briefly summarizes/revisits Actually. I prefer: In Section 2, we (and the same for other Sections…) Also: Section 2 provides an overview of existing packages….</p>
+</section>
+<section id="highlight-53" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-53">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> fitted preprocessing.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>do we need fitted? preprocessing estimates</p>
+</section>
+<section id="highlight-54" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-54">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> pairwise benchmarking</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-55" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-55">8. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> embeds distances</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>In Section 5, we show how distances can be embedded in</p>
+</section>
+<section id="highlight-56" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-56">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> I</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I doubt that I used that for number of observations. Actually, a lot of the notation (the capital Qs etc. is not the same as in JCGS). To be honest, unless a specific reason to divert, I would prefer the n’s, ps and qs. (But I do not care very much; still, if we change better not to say we follow the notation)</p>
+</section>
+</section>
+<section id="page-6" class="level2">
+<h2 class="anchored" data-anchor-id="page-6">Page 6</h2>
+<section id="highlight-57" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-57">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> the contribution</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>distance contribution?</p>
+</section>
+<section id="highlight-58" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-58">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Each component may depend on all elements of the two observations; the index identifies the associated contribution rather than restricting it to a single coordinate. This permits additive constructions that incorporate dependencies between variables. If every dj is a metric on XQ, their sum is also a metric.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I do think a lot seems very similar to what we have in JCGS. To some degree ok because referring is also a bit annoying. But, perhaps some of the details (this property of a distance being metric) is not needed here. On the other hand, perhaps it is good to keep here. (I see we do not proof, so we could refer to the paper for proof(s).</p>
+</section>
+<section id="highlight-59" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-59">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Scale- and type-aware distances</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Not sure about this title</p>
+</section>
+</section>
+<section id="page-7" class="level2">
+<h2 class="anchored" data-anchor-id="page-7">Page 7</h2>
+<section id="highlight-60" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-60">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The formulation also permits constrained weights, such as common weights within numerical or categorical groups, when only within-type commensurability is required. Under such constrained weights the per-variable cancellation described below no longer applies, and the numerical scaling choice again affects the result.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>But: since we do not do anything with this in the package (or do we?) we can leave it perhaps</p>
+</section>
+<section id="strikeout-9" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-9">2. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> beyond commensurability</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-61" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-61">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Association-aware distances:</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I find this a very interesting section. It made me rethink about some of the things we do. In fact, it made me seriously doubt the usefulness of the PCA-scaling option in combination with commensurability. The PCA rotation leads to independent dimensions. (By construction). But: The dimensions are also by definition not equally “important”. The first cover max variance, etc. If after rotating, we make commensurable, we increase the weights of the lower (not important in terms of variance) dimensions by a potentially large factor… The reason for doing PCA rotation is that this mimics Mahalanobis. Mahalabonis is insensitive to rotation and as such dimensions (variables) are not independent. Euclidean on Mahalanobis is the same as Euclidean on PCA. But: Manhattan differs. So: we used the PCA orientation as it provides “independent” directions. However, following this by the commensurability step leads to the “problem” I just mentioned: Unimportant dimensions get high weights, important (in terms of variance) dimensions get downweighted… I guess using fewer dimensions would be a good way to remedy…(But: this is all not for now).</p>
+<p>But: What we need to do is rewrite/reorganize this section. Start by observing that the general formulation allows for inclusion of association as the d’s are a function of all x’s (of the same type). Then, separate numerical and categorical. For numerical, explain that one way, related to Mahalanobis distances, involves PCA rotation. Perhaps explain why this could be a good idea (using the Palmer plots). But: perhaps we need to be a bit careful as I am not so sure about this being such a great idea….On the other hand: I think we had the option of doing PCA scores using k-dimensions? Do we want to go there?</p>
+<p>Next, explain that for categorical variables, the association can be exploited by using it to define category dissimilarities. This is obviously very different from the PCA/Mahalanobis idea. It is probably a bit easier to justify. (But: Perhaps that is not really needed here. We just describe what is possible).</p>
+<p>Finally, we should introduce/formalize the response-awareness concept. In particular: this is relevant for the categorical variables I think. (We do not have it for numerical yet. Do we?). It follows quite naturally when describing association-based for categorical. In fact, we can/should refer to the Pattern Recogniton paper where we propose this. And already “tested” it.</p>
+</section>
+<section id="strikeout-10" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-10">4. StrikeOut</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> by itself</p>
+</blockquote>
+<p><strong>Action:</strong> Delete the marked text.</p>
+</section>
+<section id="highlight-62" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-62">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> When several variables encode the same underlying source of variation, that variation contributes repeatedly to the overall distance, even after the variables have been standardized or made commensurable. An association-based construction instead allows a contribution to depend on the complete block of</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Maybe we should start here. And then, before An association-based construction. Simply note that definitions for variable specific distances allow for contributions of other variables. (I think we had a remark about that in the introduction. Here would be a good place to have that): Note that, in the general formulation variable specific distances are a function of the values of other variables (of the same type). This means that we can use dependencies/association between variables when defining variable specific distances. manydist allows for this both for numerical as categorical variables.</p>
+</section>
+</section>
+<section id="page-9" class="level2">
+<h2 class="anchored" data-anchor-id="page-9">Page 9</h2>
+<section id="highlight-63" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-63">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> whitening,</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-64" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-64">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Figure 1:</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think we do not refer to this Figure….</p>
+</section>
+<section id="highlight-65" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-65">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> whitening</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>needs to be define. Or avoided.</p>
+</section>
+<section id="highlight-66" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-66">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> to remove linear redundancy.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Indeed, if you put it like that it sort of becomes obvious that doing PCA (whitening) and then making commensurable is maybe not a good idea….We don’t remove redundancies and in fact may “explode” them…</p>
+</section>
+</section>
+<section id="page-10" class="level2">
+<h2 class="anchored" data-anchor-id="page-10">Page 10</h2>
+<section id="highlight-67" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-67">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Common transformations include: • standard-deviation scaling: (x - x)/sx, which uses all observations rather than only the extremes; • range scaling: (x - as in Gower’s distance, which preserves the Xmin)/(xmax - Xmin), distributional shape but, for the non-commensurable presets, is sensitive to outliers through the extremes; • robust scaling: (x - which replaces the mean and range with their XMed)/(xQ 3 - XQ 1 ), robust counterparts and so resists outliers in those same presets.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>This should all come before the association part. Not?</p>
+</section>
+</section>
+<section id="page-11" class="level2">
+<h2 class="anchored" data-anchor-id="page-11">Page 11</h2>
+<section id="highlight-68" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-68">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Indicator-based dissimilarities treat a binary indicator representation as numerical. Without scaling, Manhattan distance gives values zero or two. This fixed spacing ignores both the number of categories and their prevalence. Hennig- Liao scaling (Hennig and Liao 2013), standard-deviation scaling, and direct category-dissimilarity scaling recalibrate these indicator distances so that they become comparable, before the commensurability weights equalize the expected contributions.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think we do not need this</p>
+</section>
+<section id="highlight-69" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-69">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Association-based dissimilarities incorporate relationships among categorical variables. Let = Zk)-1ZI R klk’ (ZI Zk, be the conditional distribution of variable k’ given the categories of variable k. Dissimilarities can compare rows and using total variation (Ahmad and Dey r a r b 2007) or a symmetric Kullback- Leibler construction (Le and Ho 2005). Under independence every category of k induces the same condit ional distribution, the rows of R klk’ coincide, and all category dissimilarities vanish; the dissimilarities grow as the categories become more distinct in what they imply about the other variables. This mirrors, for categorical variables, the way principal-component preprocessing removes linear redundancy among the numerical variables. Because the construction conditions on the remaining categorical variables, it requires at least two of them; with a single categorical variable the fitted specification falls back to simple matching.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think this also follows to closely our JCGS paper. We should probably rethink a bit what is needed. And what not.</p>
+</section>
+<section id="highlight-70" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-70">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The same construction accommodates a response. When an outcome is supplied, the conditional distributions are taken with respect to it, so R records the kly distribution of the outcome within each category of variable and two categories k, are dissimilar to the extent that they imply different outcome distributions. This is what the argument of O supplies, and it is the only route by response mdist which the outcome enters a distance in manydist. It also means a response-aware categorical dissimilarity is available with a single categorical predictor, where the predictor-only construction would fall back to matching. The numerical block has no counterpart to this. Principal-component preprocessing uses the covariance of the predictors alone, so the outcome does not enter the numerical contributions under any preset.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Needs to be rephrase/organized</p>
+</section>
+</section>
+<section id="page-12" class="level2">
+<h2 class="anchored" data-anchor-id="page-12">Page 12</h2>
+<section id="strikeout-11" class="level3">
+<h3 class="anchored" data-anchor-id="strikeout-11">1. StrikeOut</h3>
+<p><strong>Michel’s comment:</strong></p>
+<p>,</p>
+</section>
+<section id="highlight-71" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-71">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> A preset identifies a complete distance specification.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Before the preset, we should explain basic components/workgins fo mdist: what goes in (without the preset). Than later the presets are easily explained as combinations of the inputs. More advanced options (response) can also be added. (Or we immediately mention, but revert).</p>
+<p>So: mdist(data, method_num, method_cat, commensurable). Where data is the data, method_num the preprocessing/scaling for numerical, method_cat the distance/dissimilarity definition for categorical variables and commensurable whether distance should be made commensurable or not.</p>
+<p>We also probably need to mention defaults. And all options (or: put that in a table).</p>
+<p>Then, list the presets and explain. Then: describe the resulting MDist object.</p>
+</section>
+<section id="highlight-72" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-72">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> u_dep</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-73" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-73">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> carries</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>contains</p>
+</section>
+<section id="highlight-74" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-74">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> consumed by downstream</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>used or necessary for ?</p>
+</section>
+<section id="highlight-75" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-75">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> hclust () and cmdscale ().</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>bit random subset of methods…. Actually: why not stop at returns an R dist object. (Also not call it plain).</p>
+</section>
+</section>
+<section id="page-13" class="level2">
+<h2 class="anchored" data-anchor-id="page-13">Page 13</h2>
+<section id="highlight-76" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-76">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> in the gower, euclidean, and hl presets.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>We need a list of presets (and a bit on why)</p>
+</section>
+</section>
+<section id="page-14" class="level2">
+<h2 class="anchored" data-anchor-id="page-14">Page 14</h2>
+<section id="highlight-77" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-77">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The custom preset exposes the three choices directly through the method_num, method_cat, and commensurable arguments.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Yes, move forward. (And: custom is in fact not really needed, is it as it defaults to this. Right?)</p>
+</section>
+<section id="highlight-78" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-78">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Table 3 summarizes the presets</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>We should state somewhere why some options are in here. (In particular, how some presets concern versions that do not fit the framework and hence cannot be replicated using custom)</p>
+</section>
+</section>
+<section id="page-15" class="level2">
+<h2 class="anchored" data-anchor-id="page-15">Page 15</h2>
+<section id="highlight-79" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-79">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> A distance is an intermediate data representation, so its sensitivity should be examined before it is supplied to a learning algorithm.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Bit strong statement….Would keep it more casual/objective and simply state that it could be interesting/insightful to inspect properties of certain distances. (Especially as there are so many options available) Actually: We in fact offer diagnostics based on what happens in the next step (cluster analysis and MDS).</p>
+<p>I think this is an important feature of our package. So we should clearly present (and sell this). The distinction mentioned here (before analysis, after analysis: I think you already referred to this as “downstream” tasks) is good. Let’s keep this. Introduce by observing this and explain how for both we propose LOVO measures. Then, we first introduce the direct (distance-based) ones (MAD, and relative MAD (actually: I am getting confused, do we have both? For the JCGS paper we did. Here I do not see this clearly). Then we do “downstream”. And for that is is pretty important that we make clear what options we have and why. (The cluster ones are, I think, easier to describe and justify. The MDS one is smaller, more peculiar/specific. We need to therefore be clear about what we do. What it does. What it “assumes” (an underlying metric MDS solution?). After that, we can go to the comparison functions. Because: after explaining the lovo functionality, it should be easy to mention that one can do this to compare different distances. So: we explain how one can do this in practice (by creating the list of methods defined by the method_cat, method_num arguments and (possibly), commensurability and preset ones. The response aware should probably not be treated here yet. If we have a response, we enter a “new world” where performance can be assessed using the y variable. This is the next section I think. So: here we first explain how lovo_mdist wokrs. (One dist only). Than, compare_lovo_mdist. Then, we explain how we have a function to give a huge list with candidates (?)</p>
+</section>
+<section id="highlight-80" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-80">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> one predictor</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>We do not have predictors….Just a variable</p>
+</section>
+<section id="highlight-81" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-81">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The diagnostics</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I guess this follows on the “quantifying resulting change” part. I think we need to connect that here. (What you now call diagnostics concern quantifications of such changes)</p>
+</section>
+<section id="highlight-82" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-82">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> relative_distance</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think we probably need a list/itimized list with options and explanations. And probably some context as well (as to why use one or the other etc.)</p>
+</section>
+<section id="highlight-83" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-83">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> the alienation between the full and reduced configurations.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>What configuration? Did we ever explain how this relates to/uses MDS?</p>
+</section>
+<section id="text-3" class="level3">
+<h3 class="anchored" data-anchor-id="text-3">6. Text</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> in the [O,</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>@</p>
+</section>
+<section id="highlight-84" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-84">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> measuring the configuration variance left unexplained</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Is that correct? Is that what alienation coefficient really is?</p>
+</section>
+<section id="highlight-85" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-85">8. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Reporting both is deliberate: a variable can shift many pairwise distances while barely moving the low-dimensional configuration those distances induce, or move few distances in a way that nonetheless reshapes the configuration. The two metrics can therefore disagree, and each answers a different question about the variable’s role. Larger values indicate a larger contribution for both quantities.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Yes, but I wonder if we should do the two immediately together. The distance one is very simple and intuitive. The AC one involves the MDS step (which we need to explain). It is less obvious that this is always appropriate. After all, it says something about the influence on MDS solution. If MDS is not appropriate, what does it say? Also: doesn’t it fit better with the cluster analysis measures? (There too: influence on a different method applied after. So: If cluster analysis is not appropriate, what do the values say?)</p>
+</section>
+<section id="highlight-86" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-86">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> benchmarking</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+</section>
+<section id="page-16" class="level2">
+<h2 class="anchored" data-anchor-id="page-16">Page 16</h2>
+<section id="highlight-87" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-87">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Figure 2: Relative</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Do we refer to this? I don’t think so. I think these plots are really nice. We should show them. And explain why they are nice and useful.</p>
+</section>
+<section id="highlight-88" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-88">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> lovo_gower$autoplot( = metric “relative_distance”, + reorder= + TRUE +) + = ggplot2:: guides ( colour “none”) +</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>wouldn’t: autoplot(lovo_gower) work? Wouldn’t that be nicer? (Or: plot(lovo_gower) ?)</p>
+</section>
+<section id="highlight-89" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-89">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The two metrics disagree</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+</section>
+<section id="page-17" class="level2">
+<h2 class="anchored" data-anchor-id="page-17">Page 17</h2>
+<section id="highlight-90" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-90">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Comparing distance specifications</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>This includes the alienation results. Also: confusing with respect for what is to come. The way I now (after reading several times) understand this is that this concerns lovo comparison. The next section (benchmarking) concerns overall comparisons. But: in unsupervised setting. (Supervised is Secition 5?) We have to be much more explicit structured concerning this.</p>
+</section>
+</section>
+<section id="page-18" class="level2">
+<h2 class="anchored" data-anchor-id="page-18">Page 18</h2>
+<section id="highlight-91" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-91">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Figure 3: Stability</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Also not referenced</p>
+</section>
+<section id="highlight-92" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-92">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> and can disagree,</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I am not sure I agree with your use of the term disagree….</p>
+</section>
+<section id="highlight-93" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-93">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The pairwise diagnostics</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>OK. So you compare two distance matrices. What does the pairwise add/avoid/help in understanding this? And: Shouldn’t we have this earlier? (Before the previous section with relative distances?)</p>
+</section>
+<section id="highlight-94" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-94">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> changes in magnitude from changes in geometry.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Tricky….In any case, let’s avoid. I think the distinction is between magnitude of distances (relative and mad!) and the effect on subsequent analyses. Let’s make that clear. And: Let’s start with the magnitudes.</p>
+</section>
+<section id="highlight-95" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-95">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> every pair of successful distances.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>succesful?</p>
+</section>
+<section id="highlight-96" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-96">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The MDS congruence coefficient and its corresponding alienation coefficient compare the configurations induced by the two distances.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Yes, and specifically for MDS (metric? non-metric? Which did we use?)</p>
+</section>
+<section id="highlight-97" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-97">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> If is specified, 0 cluster_ k benchmark_mdist also applies each requested clustering method to every distance and computes pairwise ARls. With the default cluster_k = NULL, no clustering is performed.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Too many things happen at the same time</p>
+</section>
+<section id="highlight-98" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-98">8. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Benchmarking</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Not sure whether this is the correct word. We do offer the function benchmark_mdist to do comparisons</p>
+</section>
+<section id="highlight-99" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-99">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> evaluates an explicit table of distance spec ifications.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>What is that? (I mean: I know were we are going, but if you don’t, this is not so straightforward)</p>
+</section>
+</section>
+<section id="page-19" class="level2">
+<h2 class="anchored" data-anchor-id="page-19">Page 19</h2>
+<section id="highlight-100" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-100">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> benchmark_pairs &lt;- benchmark_comparisons(distance_benchmark)</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-101" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-101">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> candidate_specs &lt;- all_dist_method_specs( mode = “presets_only”, + preset = c(“gower”, “u_indep”, “u_dep”) + I&gt; +) dplyr::mutate( + label= unname(candidate_labels[preset]) + + )</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>not a very simple example/illustration of what our package offers and can do. Too many other stuff (dplyr, mutate) is going on.</p>
+</section>
+<section id="highlight-102" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-102">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> under pairs of distances;</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-103" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-103">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> low-dimensional geometry,</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+<section id="highlight-104" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-104">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> determines</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>measures?</p>
+</section>
+<section id="highlight-105" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-105">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> whether those changes alter the partition.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>well, particularly how much they changed</p>
+</section>
+<section id="highlight-106" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-106">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> are therefore complementary rather than alternative rankings.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>you mean complementary to each other. They really measure different things. Perhaps we should be much stronger about that. (And have users make a choice before just running what ever)</p>
+</section>
+<section id="highlight-107" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-107">8. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> renders any pairwise diagnostic autoplot () as an annotated triangular heatmap.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>where? how?</p>
+</section>
+<section id="highlight-108" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-108">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> An error in one specification is captured</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>but what is an error? How can there be errors in one specification and not in another?</p>
+</section>
+<section id="highlight-109" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-109">10. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> a benchmark remains a sensitivity analysis rather than a model-selection rule.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>??</p>
+</section>
+<section id="highlight-110" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-110">11. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Gower</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>distance?</p>
+</section>
+<section id="highlight-111" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-111">12. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> has more than twice the alienation</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>what does that mean? twice as dissimilar? twice as bad MDS fit?</p>
+</section>
+<section id="highlight-112" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-112">13. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> a much lower PAM ARI.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I thought the ARI is between the methods. So: this just means they are dissimilar. (You get different cluster solutions).</p>
+</section>
+<section id="highlight-113" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-113">14. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> This</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>what exactly?</p>
+</section>
+</section>
+<section id="page-20" class="level2">
+<h2 class="anchored" data-anchor-id="page-20">Page 20</h2>
+<section id="highlight-114" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-114">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> distance, and so the same gap from the Gower</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>?</p>
+</section>
+<section id="highlight-115" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-115">2. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Taken together, the diagnostics indicate how much of an analysis rests on the choice of distance. When the measures converge - a variable is influential, or two distances agree - the downstream conclusion is robust to that choice. When they disagree, the distance is not a neutral preprocessing step but a modeling decision in its own right, one that should be carried forward and evaluated alongside the learning algorithm.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Not sure if we need to go into this. We are just presenting the package. Some guidance is good. But, we can be cautious. Especially as the downstream comparison is obviously not complete and multi-faceted (as we do mention ourselves).</p>
+</section>
+<section id="highlight-116" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-116">3. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Distance-based learning pipelines</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>This is an important contribution of our package. We need to carefully introduce the problem. Explain when/why this is important. (We made some remarks about this already, best to reiterate here more clearly)</p>
+</section>
+<section id="highlight-117" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-117">4. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Refitting the distance within resamples</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>To fast, to specific/technical</p>
+</section>
+<section id="highlight-118" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-118">5. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> recipe.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>for me a recipe is really food related. Using it here requires an introduction</p>
+</section>
+<section id="highlight-119" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-119">6. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> The fitted step stores the training data and preprocessing parameters, so the distance is re-estimated inside each resample and reused when genuinely new observations are processed. T his re-estimation is the point: the commensurability weights, any principal-component rotation, and the category dissimilarities are quantities estimated from data, not fixed constants. Computing one distance matrix on the full data and then resampling would let these estimates see the assessment observations, so the step instead refits them on each analysis set alone. This is the pipeline-level counterpart of the square-versus-rectangular distinction of Section 3.</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>I think we can be more concise. It is important to explain the point. But I have the impression that we are repeating ourselves. By doing so, using slightly different words, we may in fact not make things more clear but confuse the reader.</p>
+<p>I do not understnd the last sentence (This is the pipeline-level?)</p>
+</section>
+<section id="highlight-120" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-120">7. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> Its</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>This is about step_mdist()…very far away.</p>
+</section>
+<section id="highlight-121" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-121">8. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> required by the downstream task: for clustering and “pai rwise” for prediction. “distance_to_training”</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>Isn’t this the first time we do prediction? Shouldn’t we introduce this? Separate it from the other downstream task? (Clustering. But, can’t we also have MDS downstream? Didn’t we more or less consider that before?</p>
+</section>
+<section id="highlight-122" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-122">9. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> whereas nearest-neighbour prediction</p>
+</blockquote>
+<p><strong>Michel’s comment:</strong></p>
+<p>only mentioned in introduction</p>
+</section>
+</section>
+<section id="page-21" class="level2">
+<h2 class="anchored" data-anchor-id="page-21">Page 21</h2>
+<section id="highlight-123" class="level3">
+<h3 class="anchored" data-anchor-id="highlight-123">1. Highlight</h3>
+<blockquote class="blockquote">
+<p><strong>Marked text:</strong> a fixed snapshot</p>
+</blockquote>
+<p><strong>Action:</strong> Marked without a written comment.</p>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
