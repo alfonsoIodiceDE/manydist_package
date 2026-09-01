@@ -28,11 +28,12 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 
 | Status | Count |
 |---|---:|
-| Open | 113 |
-| Needs discussion | 6 |
-| Partially resolved | 3 |
-| Resolved | 15 |
-| Superseded | 3 |
+| Open | 55 |
+| Needs discussion | 38 |
+| In progress | 1 |
+| Partially resolved | 4 |
+| Resolved | 37 |
+| Superseded | 5 |
 | All other statuses | 0 |
 | **Total** | **140** |
 
@@ -42,16 +43,16 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 |---|---:|---|---|---|---|---|
 | M-001 | 1.1 | Highlight | through multivariate addi tivity and commensurability. | resolved | Abstract | Replaced the technical property list with a direct statement that the distances account for the biases. |
 | M-002 | 1.2 | StrikeOut | and | resolved | Abstract | Recast the contribution list and removed the marked conjunction. |
-| M-003 | 1.3 | Highlight | and the | partially resolved | Abstract | Moved pipeline integration into a separate sentence; that sentence still needs copyediting. |
+| M-003 | 1.3 | Highlight | and the | resolved | Abstract | Moved pipeline integration into a separate, copyedited sentence describing unsupervised and supervised pipelines. |
 | M-004 | 1.4 | Highlight | The Palmer penguins data | resolved | Abstract | Now explicitly links the Palmer penguins example to construction, diagnostics, and benchmarking. |
-| M-005 | 1.5 | Highlight | A World Development Indicators snapshot then places the distance inside clustering and… | partially resolved | Abstract | Now identifies unsupervised and supervised pipelines and names clustering and classification; grammar still needs correction. |
-| M-006 | 1.6 | Text | [general note] | open | — | — |
+| M-005 | 1.5 | Highlight | A World Development Indicators snapshot then places the distance inside clustering and… | resolved | Abstract | Now identifies the World Development Indicators snapshot, unsupervised and supervised pipelines, clustering and classification, and resample-specific refitting in a grammatically complete sentence. |
+| M-006 | 1.6 | Text | [general note] | resolved | Overall organization | Reorganized the article around the introduction, a dedicated software review, the unified framework, construction, diagnostics, pipelines, and conclusion. |
 | M-007 | 2.1 | Highlight | Numerical variables face the mirror image of this problem through scaling. | resolved | Introduction — importance bias | Deleted the “mirror image” sentence. |
 | M-008 | 2.2 | Highlight | of a matching categorical | resolved | Introduction — importance bias | Removed the marked comparison in the rewritten Gower discussion. |
 | M-009 | 2.3 | Highlight | to favor categorical contributions | needs discussion | Introduction — importance bias | The phrase remains, and the annotation contains no written explanation; confirm whether Michel wants the alternative “categorical variables tend to dominate.” |
 | M-010 | 2.4 | Highlight | to correct one variable at a time. | superseded | Introduction — importance bias | The containing sentence was replaced, so the requested preposition change is no longer applicable. |
 | M-011 | 2.5 | Highlight | the resulting mean pairwise distance is typically small relative to that of a matching… | partially resolved | Introduction — importance bias | Rewritten around a mean numerical distance below one; discuss whether “much smaller than one” and “categorical variables tend to dominate” are needed for the intended argument. |
-| M-012 | 2.6 | Highlight | Skewness compounds the effect: | resolved | Introduction — importance bias | Adopted “Skewed distributions for the numerical variables amplify this effect”; a spelling typo remains to fix. |
+| M-012 | 2.6 | Highlight | Skewness compounds the effect: | resolved | Introduction — importance bias | Adopted “Skewed distributions for the numerical variables amplify this effect” and corrected the spelling of “distributions.” |
 | M-013 | 2.7 | Highlight | heavy-tailed | resolved | Introduction — importance bias | Replaced “heavy-tailed” with “long-tailed.” |
 | M-014 | 2.8 | StrikeOut | while other scaling choices can amplify or attenuate the same variable unpredictably. | resolved | Introduction — importance bias | Deleted the marked clause. |
 | M-015 | 2.9 | Highlight | distortions | superseded | Introduction — importance bias | Replaced the containing passage with a new statement about undesirable factors in the overall distance. |
@@ -68,63 +69,63 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 | M-026 | 2.20 | Highlight | For | resolved | Introduction — additivity and commensurability | Changed “For the general additive formulation” to “In the general additive formulation.” |
 | M-027 | 2.21 | Highlight | this is | needs discussion | Introduction — additivity and commensurability | “This is achieved” remains; decide whether to make commensurability the grammatical subject. |
 | M-028 | 2.22 | StrikeOut | - while still allowing a variable to be up- or down-weighted deliberately when… | resolved | Introduction — additivity and commensurability | Deleted the marked qualification. |
-| M-029 | 2.23 | Highlight | this framework. | open | — | — |
-| M-030 | 2.24 | Highlight | and the discipline required to use an estimated distance inside a resampled workflow. | open | — | — |
-| M-031 | 2.25 | Highlight | a | open | — | — |
-| M-032 | 3.1 | Highlight | Association-aware distances | open | — | — |
-| M-033 | 3.2 | Text | [general note] | open | — | — |
-| M-034 | 3.3 | Highlight | Scale- and type-aware | open | — | — |
-| M-035 | 3.4 | Highlight | pairwise benchmarking of candidate distances, | open | — | — |
-| M-036 | 3.5 | Highlight | Several R packages provide distances for homogeneous numerical, categorical, or binary… | open | — | — |
-| M-037 | 3.6 | Highlight | clustering, ordination, and nearest-neighbour met hods. | open | — | — |
-| M-038 | 3.7 | StrikeOut | manydist builds on rather than replaces these tools, computing comparable per-block… | open | — | — |
-| M-039 | 4.1 | Highlight | matrices, | open | — | — |
-| M-040 | 4.2 | Highlight | extensible | open | — | — |
-| M-041 | 4.3 | Highlight | provides frequency-weighted similarities. | open | — | — |
-| M-042 | 4.4 | Highlight | cluster::daisy(), | open | — | — |
-| M-043 | 4.5 | Highlight | of the same underlying construction | open | — | — |
-| M-044 | 4.6 | Highlight | and its tendency to give relatively greater influence to categorical variables when… | open | — | — |
-| M-045 | 4.7 | Highlight | for mixed data | open | — | — |
-| M-046 | 4.8 | Highlight | controls the relative influence of numerical and categorical information through… | open | — | — |
-| M-047 | 4.9 | Highlight | Gower, Podani, Wishart, Huang, Harikumar, and Ahmad | open | — | — |
-| M-048 | 4.10 | Highlight | learns an adaptive | open | — | — |
-| M-049 | 4.11 | StrikeOut | automatically, | open | — | — |
-| M-050 | 4.12 | Highlight | Related to | open | — | — |
-| M-051 | 4.13 | Highlight | a weighting | open | — | — |
-| M-052 | 4.14 | Highlight | Both address the balance between variable types as part of a clustering procedure, | open | — | — |
-| M-053 | 4.15 | Highlight | it differs from the commensurable distances developed here, which explicitly equalize… | open | — | — |
-| M-054 | 4.16 | StrikeOut | likewise | open | — | — |
-| M-055 | 4.17 | Highlight | the estimated quantities must be refit within a resampling scheme, exactly as recipes… | open | — | — |
-| M-056 | 4.18 | Highlight | To our knowledge no other mixed-data distance implementation exposes a fitted… | open | — | — |
-| M-057 | 4.19 | Highlight | Gower dissimilarity for numerical, nominal, ordinal and binary variables. | open | — | — |
-| M-058 | 4.20 | Highlight | variants | open | — | — |
-| M-059 | 4.21 | Highlight | share a consequence | open | — | — |
-| M-060 | 4.22 | Text | [general note] | open | — | — |
-| M-061 | 5.1 | Highlight | The remainder | open | — | — |
-| M-062 | 5.2 | StrikeOut | These tools are useful, but their variable contributions can depend on scale,… | open | — | — |
-| M-063 | 5.3 | Highlight | them | open | — | — |
-| M-064 | 5.4 | Highlight | association-aware and response-aware | open | — | — |
-| M-065 | 5.5 | Highlight | develops | open | — | — |
-| M-066 | 5.6 | Highlight | fitted preprocessing. | open | — | — |
-| M-067 | 5.7 | Highlight | pairwise benchmarking | open | — | — |
-| M-068 | 5.8 | Highlight | embeds distances | open | — | — |
-| M-069 | 5.9 | Highlight | I | open | — | — |
-| M-070 | 6.1 | Highlight | the contribution | open | — | — |
-| M-071 | 6.2 | Highlight | Each component may depend on all elements of the two observations; the index… | open | — | — |
-| M-072 | 6.3 | Highlight | Scale- and type-aware distances | open | — | — |
-| M-073 | 7.1 | Highlight | The formulation also permits constrained weights, such as common weights within… | open | — | — |
-| M-074 | 7.2 | StrikeOut | beyond commensurability | open | — | — |
-| M-075 | 7.3 | Highlight | Association-aware distances: | open | — | — |
-| M-076 | 7.4 | StrikeOut | by itself | open | — | — |
-| M-077 | 7.5 | Highlight | When several variables encode the same underlying source of variation, that variation… | open | — | — |
-| M-078 | 9.1 | Highlight | whitening, | open | — | — |
-| M-079 | 9.2 | Highlight | Figure 1: | open | — | — |
-| M-080 | 9.3 | Highlight | whitening | open | — | — |
-| M-081 | 9.4 | Highlight | to remove linear redundancy. | open | — | — |
-| M-082 | 10.1 | Highlight | Common transformations include: • standard-deviation scaling: (x - x)/sx, which uses… | open | — | — |
-| M-083 | 11.1 | Highlight | Indicator-based dissimilarities treat a binary indicator representation as numerical.… | open | — | — |
-| M-084 | 11.2 | Highlight | Association-based dissimilarities incorporate relationships among categorical… | open | — | — |
-| M-085 | 11.3 | Highlight | The same construction accommodates a response. When an outcome is supplied, the… | open | — | — |
+| M-029 | 2.23 | Highlight | this framework. | resolved | Introduction — package contribution | Now states that `manydist` implements the unbiased framework as well as distances outside it. |
+| M-030 | 2.24 | Highlight | and the discipline required to use an estimated distance inside a resampled workflow. | resolved | Introduction and Other software | Replaced “discipline” with a copyedited learning-pipeline contribution and an explicit training-only fit-and-apply explanation. |
+| M-031 | 2.25 | Highlight | a | partially resolved | Introduction — `mdist()` capabilities | The list covers construction, commensurability, aggregation, and reuse; where to introduce association- and response-aware construction remains unsettled. |
+| M-032 | 3.1 | Highlight | Association-aware distances | partially resolved | Introduction and framework | A dedicated association-aware subsection is present, but the first introduction and placement of the overview paragraph remain under discussion. |
+| M-033 | 3.2 | Text | [general note] | needs discussion | Introduction — blue review paragraph | The awareness paragraph is explicitly marked for removal or relocation. |
+| M-034 | 3.3 | Highlight | Scale- and type-aware | needs discussion | Introduction — blue review paragraph | The terminology remains inside the paragraph marked for removal or relocation. |
+| M-035 | 3.4 | Highlight | pairwise benchmarking of candidate distances, | resolved | Introduction and roadmap | Replaced the opaque phrase with “pairwise comparisons of candidate distances” and “comparisons between candidate distances.” |
+| M-036 | 3.5 | Highlight | Several R packages provide distances for homogeneous numerical, categorical, or binary… | resolved | Other software | Created a dedicated `Other software` section and moved the review there. |
+| M-037 | 3.6 | Highlight | clustering, ordination, and nearest-neighbour met hods. | needs discussion | Other software | The specific method list remains; decide whether to replace it with “distance-based data analysis methods.” |
+| M-038 | 3.7 | StrikeOut | manydist builds on rather than replaces these tools, computing comparable per-block… | resolved | Other software | Removed the sentence from rendered output by commenting it out. |
+| M-039 | 4.1 | Highlight | matrices, | resolved | Other software — homogeneous packages | Changed “numerical matrices” to “numerical data” and corrected the punctuation. |
+| M-040 | 4.2 | Highlight | extensible | needs discussion | Other software — homogeneous packages | “Extensible catalogue” remains and may need a plainer explanation. |
+| M-041 | 4.3 | Highlight | provides frequency-weighted similarities. | needs discussion | Other software — homogeneous packages | The description remains; clarify `nomclust` and the Boriah-family coverage. |
+| M-042 | 4.4 | Highlight | cluster::daisy(), | needs discussion | Other software — mixed packages | The text still presents `daisy()` only with the Gower implementations; its broader numerical capabilities are not yet noted. |
+| M-043 | 4.5 | Highlight | of the same underlying construction | needs discussion | Other software — mixed packages | The phrase remains without explaining precisely how the implementations differ. |
+| M-044 | 4.6 | Highlight | and its tendency to give relatively greater influence to categorical variables when… | needs discussion | Other software — mixed packages | The Gower property remains embedded in the package comparison. |
+| M-045 | 4.7 | Highlight | for mixed data | needs discussion | Other software — mixed packages | Consider Michel’s clearer formulation “packages implementing mixed-variable distances.” |
+| M-046 | 4.8 | Highlight | controls the relative influence of numerical and categorical information through… | needs discussion | Other software — mixed packages | The family description remains unchanged. |
+| M-047 | 4.9 | Highlight | Gower, Podani, Wishart, Huang, Harikumar, and Ahmad | needs discussion | Other software — mixed packages | References for the named formulations have not yet been added. |
+| M-048 | 4.10 | Highlight | learns an adaptive | needs discussion | Other software — mixed packages | The “adaptive distance” wording remains; Michel’s data-estimation wording has not been adopted. |
+| M-049 | 4.11 | StrikeOut | automatically, | needs discussion | Other software — mixed packages | The marked word remains in the `kproto()` description. |
+| M-050 | 4.12 | Highlight | Related to | needs discussion | Other software — mixed packages | “Related to this family” remains. |
+| M-051 | 4.13 | Highlight | a weighting | needs discussion | Other software — mixed packages | Singular “a weighting” remains. |
+| M-052 | 4.14 | Highlight | Both address the balance between variable types as part of a clustering procedure, | needs discussion | Other software — mixed packages | The text does not yet explain that the procedures do not yield a separate distance matrix. |
+| M-053 | 4.15 | Highlight | it differs from the commensurable distances developed here, which explicitly equalize… | superseded | Other software — mixed packages | Removed the containing comparison rather than revising it. |
+| M-054 | 4.16 | StrikeOut | likewise | resolved | Other software — mixed packages | Removed the marked word with the containing sentence. |
+| M-055 | 4.17 | Highlight | the estimated quantities must be refit within a resampling scheme, exactly as recipes… | resolved | Other software — resampling paragraph | Replaced the generic refitting language with an explicit fit-and-apply description: `manydist` estimates data-dependent quantities from the training data only, holds them fixed for test-to-training distances, and explains the leakage that would result from fitting on the complete data set. |
+| M-056 | 4.18 | Highlight | To our knowledge no other mixed-data distance implementation exposes a fitted… | resolved | Other software — resampling paragraph | Deleted the broad novelty claim and replaced it with an explicit description of the resampling behavior. |
+| M-057 | 4.19 | Highlight | Gower dissimilarity for numerical, nominal, ordinal and binary variables. | needs discussion | Other software table | The table description of `daisy()` has not yet been broadened. |
+| M-058 | 4.20 | Highlight | variants | needs discussion | Other software table | The meaning of “variants” remains unexplained. |
+| M-059 | 4.21 | Highlight | share a consequence | superseded | Other software | Removed the containing claim. |
+| M-060 | 4.22 | Text | [general note] | needs discussion | Other software table | The three families described in the prose are not yet made visible in the table. |
+| M-061 | 5.1 | Highlight | The remainder | resolved | Introduction — roadmap | Moved the roadmap before the dedicated `Other software` section. |
+| M-062 | 5.2 | StrikeOut | These tools are useful, but their variable contributions can depend on scale,… | resolved | Other software — concluding paragraph | Deleted the marked sentence. |
+| M-063 | 5.3 | Highlight | them | resolved | Other software — concluding paragraph | Recast the transition as “complements this ecosystem.” |
+| M-064 | 5.4 | Highlight | association-aware and response-aware | partially resolved | Introduction, Other software, and framework | The terms are retained and explained elsewhere, but the introductory overview containing their first explanation is still marked for possible removal. |
+| M-065 | 5.5 | Highlight | develops | needs discussion | Introduction — roadmap | The roadmap still uses “develops” and section labels rather than Michel’s proposed direct section-by-section wording. |
+| M-066 | 5.6 | Highlight | fitted preprocessing. | needs discussion | Introduction — roadmap | “Fitted preprocessing” remains. |
+| M-067 | 5.7 | Highlight | pairwise benchmarking | resolved | Introduction — roadmap | Changed the roadmap wording to the broader “benchmarking of candidate distances.” |
+| M-068 | 5.8 | Highlight | embeds distances | resolved | Introduction — roadmap | Recast the roadmap sentence as “shows how distances can be embedded in `tidymodels` workflows.” |
+| M-069 | 5.9 | Highlight | I | needs discussion | Framework — notation | The `I`, `Q_n`, and `Q_c` notation remains unchanged. |
+| M-070 | 6.1 | Highlight | the contribution | needs discussion | Framework — general setup | The text still uses “contribution” rather than “distance contribution.” |
+| M-071 | 6.2 | Highlight | Each component may depend on all elements of the two observations; the index… | resolved | Framework — additivity | Retained the metric statement but added a citation to the proof in van de Velden et al. |
+| M-072 | 6.3 | Highlight | Scale- and type-aware distances | resolved | Framework — additivity and commensurability | Replaced the heading with “Multivariate additivity and commensurability.” |
+| M-073 | 7.1 | Highlight | The formulation also permits constrained weights, such as common weights within… | in progress | Framework — commensurability | Marked the paragraph `TO BE REMOVED`, but it remains in the source pending deletion. |
+| M-074 | 7.2 | StrikeOut | beyond commensurability | resolved | Framework — association-aware distances | Removed “beyond commensurability” from the heading. |
+| M-075 | 7.3 | Highlight | Association-aware distances: | needs discussion | Framework — association-aware distances | The subsection is explicitly marked for revision. The implementation rotates normalized predictors to ordinary PCA scores and subsequently commensurates each component; it does not apply the explicit $\bm{\Lambda}^{-1/2}$ whitening transformation currently shown in the manuscript. |
+| M-076 | 7.4 | StrikeOut | by itself | needs discussion | Framework — association-aware distances | The marked words remain. |
+| M-077 | 7.5 | Highlight | When several variables encode the same underlying source of variation, that variation… | needs discussion | Framework — association-aware distances | The proposed reorganization and revised opening have not yet been implemented. |
+| M-078 | 9.1 | Highlight | whitening, | resolved | Framework — numerical variables | Added a footnote defining whitening and its Mahalanobis-distance equivalence. |
+| M-079 | 9.2 | Highlight | Figure 1: | needs discussion | Framework — association-aware figure | Confirmed that the figure still has no textual cross-reference. Add a sentence such as “@fig-independence-association illustrates the change in geometry…” at the point where the example is introduced. |
+| M-080 | 9.3 | Highlight | whitening | resolved | Framework — numerical variables | Added a mathematical footnote defining whitening and its equivalence to Mahalanobis distance. |
+| M-081 | 9.4 | Highlight | to remove linear redundancy. | needs discussion | Framework — numerical variables | The definition is now supplied, but the text must distinguish exact whitening/Mahalanobis equivalence from the implemented PCA-score rotation followed by empirical component-wise commensurability; this remains linked to `M-075`. |
+| M-082 | 10.1 | Highlight | Common transformations include: • standard-deviation scaling: (x - x)/sx, which uses… | needs discussion | Framework — numerical variables | The transformation list still follows the general association-aware discussion. Decide whether to introduce numerical preprocessing before association-aware constructions, as Michel suggests. |
+| M-083 | 11.1 | Highlight | Indicator-based dissimilarities treat a binary indicator representation as numerical.… | needs discussion | Framework — categorical variables | The paragraph remains. Decide whether to delete it or reduce it to a single sentence needed to explain the available categorical presets. |
+| M-084 | 11.2 | Highlight | Association-based dissimilarities incorporate relationships among categorical… | needs discussion | Framework — categorical variables | The passage remains close to the methodological paper and should be shortened around what the package implements. A technical decision is also required for exact independence: all dissimilarities and their means become zero, so the current commensurability code returns `NaN`. |
+| M-085 | 11.3 | Highlight | The same construction accommodates a response. When an outcome is supplied, the… | needs discussion | Framework — categorical variables | The response-aware paragraph remains substantially unchanged and is still bold as revision markup. Reorganize it around the `response` argument, what is fitted, the single-predictor behavior, and the absence of a response-aware numerical counterpart. |
 | M-086 | 12.1 | StrikeOut | [general note] | open | — | — |
 | M-087 | 12.2 | Highlight | A preset identifies a complete distance specification. | open | — | — |
 | M-088 | 12.3 | Highlight | u_dep | open | — | — |
@@ -186,6 +187,19 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 ### 2026-08-31 — Abstract and partial introduction
 
 - Reconciled `M-001`–`M-005` and `M-007`–`M-028`; `M-006` remains open because it concerns the paper’s overall organization.
-- Source-only copyedits still required: “which construct” → “which constructs”; “distrubutions” → “distributions”; remove doubled spaces in the abstract; revise “integrate … in” and “a clustering and classification pipelines”; consider hyphenating “mixed-variable distance.”
+- Follow-up: completed the abstract and introduction copyedits, including “which constructs,” “distributions,” “integrate … into,” the clustering/classification sentence, doubled spaces, and “mixed-variable distance.”
 - `M-009`, `M-019`, `M-020`, `M-022`, `M-025`, and `M-027` are explicitly parked for discussion.
 - Rendered `article.qmd` successfully to a 33-page PDF. Visual inspection of pages 1–3 found no clipping, overlap, broken references, or other layout defects.
+
+### 2026-09-01 — Introduction, software review, and framework revisions
+
+- Reconciled `M-006`, `M-029`–`M-078`, `M-080`, and `M-081`; `M-079` remains open because the figure-reference issue was not changed.
+- The manuscript now has a dedicated `Other software` section, a revised package-summary transition, explicit training-to-test resampling language, consolidated additivity/commensurability headings, and a whitening/Mahalanobis footnote.
+- The resampling paragraph after `kdml::dkss()` should explicitly name `manydist` or be moved to the package-summary paragraph; as written, it appears to describe DKSS.
+- Follow-up: corrected “seamless,” the package-implementation sentence, “distance computations,” “the package’s main function,” the punctuation after “For numerical data,” and the comma splice in the blue awareness paragraph.
+- `git diff --check` still reports trailing whitespace in the paragraph marked `TO BE REMOVED` and after the whitening footnote; these lines are part of unresolved review material.
+- Review markers remain intentionally visible for the awareness paragraph, constrained weights, and the association-aware subsection.
+- Follow-up: `M-055` is closed after the revised paragraph explicitly names `manydist`, separates fitting from application, and states the leakage consequence. The shorter resampling statement after the mixed-software table now repeats the same point and should be consolidated with the detailed paragraph.
+- Technical follow-up for `M-075`/`M-081`: `manydist/R/ndist.R` uses `step_normalize()` followed by `step_pca()` and then divides each component-wise distance by its empirical mean. The manuscript currently writes the distinct whitening transformation $\mathbf{X}\mathbf{V}\bm{\Lambda}^{-1/2}$. Preserve the Mahalanobis equivalence as a definition of whitening, but do not imply that the implemented commensurable Manhattan construction is itself Mahalanobis distance.
+- `M-079` is now assessed: the figure label exists, but no `@fig-independence-association` reference appears in the prose.
+- `M-082`–`M-085` are now assessed and parked for discussion. A balanced two-factor test confirmed that exact categorical independence produces zero total-variation category dissimilarities and `NaN` commensurable distances because the component means are zero; the implementation and corresponding manuscript statement need an explicit zero-contribution or fallback rule.
