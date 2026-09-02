@@ -300,6 +300,16 @@
   line-height: 1.35;
 }
 
+/* Compact the generated bibliography so it stays within the slide canvas. */
+.reveal section#main-references .csl-bib-body {
+  font-size: 0.9em;
+  line-height: 1.22;
+}
+
+.reveal section#main-references .csl-entry {
+  margin-bottom: 0.35em;
+}
+
 
 
 .reveal #title-slide .title-conference {
@@ -327,12 +337,12 @@
 }
 
 .reveal section.outline-slide .outline-boxes {
-  width: 88%;
+  width: 92%;
   max-width: 1050px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
 }
 
 .reveal section.outline-slide .outline-box {
@@ -357,16 +367,73 @@
   padding: 0;
 }
 
-/* Alternating accents */
-.reveal section.outline-slide .outline-1,
-.reveal section.outline-slide .outline-3,
-.reveal section.outline-slide .outline-5 {
+/* Progressively differentiated accents */
+.reveal section.outline-slide .outline-1 {
+  border-left-color: var(--manydist-navy);
+}
+
+.reveal section.outline-slide .outline-2 {
+  border-left-color: var(--manydist-teal);
+}
+
+.reveal section.outline-slide .outline-3 {
   border-left-color: var(--manydist-coral);
 }
 
-.reveal section.outline-slide .outline-2,
 .reveal section.outline-slide .outline-4 {
-  border-left-color: var(--manydist-teal);
+  border-left-color: var(--manydist-gold);
+}
+
+.reveal section.outline-slide .outline-5 {
+  border-left-color: #8AB17D;
+}
+
+.reveal section.outline-slide .outline-grid-2x2 {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75em 1em;
+  align-items: stretch;
+}
+
+.reveal section.outline-slide .outline-grid-2x2 > .outline-box,
+.reveal section.outline-slide .outline-grid-2x2 > .fragment {
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.reveal section.outline-slide .outline-grid-2x2 > .fragment > .outline-box {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.reveal section.outline-slide .outline-with-small-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.85em;
+}
+
+.reveal section.outline-slide .outline-with-small-logo > p {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.reveal section.outline-slide img.outline-small-logo {
+  width: 74px !important;
+  max-width: 74px !important;
+  height: auto !important;
+  max-height: 74px !important;
+  display: block !important;
+  margin: 0 !important;
+}
+
+.reveal section.outline-slide .outline-with-small-logo .outline-text {
+  flex: 1;
 }
 
 

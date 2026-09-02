@@ -17,7 +17,7 @@ format:
     transition: fade
     progress: true
     slide-number: true
-    self-contained: true
+    embed-resources: true
     background-color: "#E6F4FA"
     title-slide-attributes:
       data-background-color: "#C1272D"
@@ -25,7 +25,7 @@ format:
       data-background-size: "contain"
       data-background-position: "center"
       data-background-repeat: "no-repeat"
-      data-background-opacity: "0.35"
+      data-background-opacity: "0.15"
 ---
 
 ```{r}
@@ -121,47 +121,59 @@ ggplot() +
   )
 ```
 
-## Outline {.outline-slide}
+## Increasing awareness in distance construction {.outline-slide}
+
+### A line of work for distance-based learning with mixed data
 
 ::: {.outline-boxes}
 
-::: {.outline-box .outline-1}
-**1. Distance-based learning with mixed data**  
-Increasing awareness in distance construction
-:::
+::::: {.outline-grid-2x2}
 
 ::::{.fragment}
-::: {.outline-box .outline-2}
-**2. Scale/type-aware distances**  
+::: {.outline-box .outline-1}
+**Scale/type-aware**  
 Additivity, commensurability, and bias in mixed data
 :::
 ::::
 
 ::::{.fragment}
-::: {.outline-box .outline-3}
-**3. Association-aware distances**  
+::: {.outline-box .outline-2}
+**Association-aware**  
 Redundancy, correlations, and categorical associations
 :::
 ::::
 
 ::::{.fragment}
-::: {.outline-box .outline-4}
-**4. Interaction- and response-aware extensions**  
-Continuous–categorical relationships and supervised neighbourhoods
+::: {.outline-box .outline-3}
+**Interaction-aware**  
+Continuous–categorical relationships and local neighbourhood structure
 :::
 ::::
 
 ::::{.fragment}
-::: {.outline-box .outline-5}
-**5. Building distance-based pipelines: `manydist`**  
-Distance construction, diagnostics, and learning workflows
+::: {.outline-box .outline-4}
+**Response-aware**  
+Supervised neighbourhoods and prediction-oriented distances
+:::
+::::
+
+:::::
+
+::::{.fragment}
+::: {.outline-box .outline-5 .outline-with-small-logo}
+![](figures/manydist_logo_transparent.png){.outline-small-logo}
+
+::: {.outline-text}
+**Building distance-based pipelines: `manydist`**  
+Distance construction, diagnostics, and reproducible learning workflows
+:::
 :::
 ::::
 
 :::
 
 
-# 1. Distance-based learning with mixed data
+# 1. Learning from distances
 
 ## Mixed-type data 
 
@@ -529,17 +541,17 @@ then
 ::: {.callout-tip appearance="simple" icon=false}
 ## a [mixed]{.text-teal} data set
 
--   $I$ observations described by $Q$ variables,  $Q_{n}$ numerical  and $Q_{c}$ categorical
+-   $n$ observations described by $Q$ variables,  $Q_{n}$ numerical  and $Q_{c}$ categorical
 
--   the $I\times Q$ data matrix ${\bf X}=\left[{\bf X}_{n},{\bf X}_{c}\right]$ is column-wise partitioned
+-   the $n\times Q$ data matrix ${\bf X}=\left[{\bf X}_{n},{\bf X}_{c}\right]$ is column-wise partitioned
 :::
 
 
 A formulation for mixed distance between observations $i$ and $\ell$:
 
 \begin{eqnarray}\label{genmixeddist_formula}
-    d\left(\mathbf{x}_i,\mathbf{x}_\ell\right)&=& \sum_{j_n=1}^{Q_n} d_{j_n}\left(\mathbf{x}^n_i,\mathbf{x}^n_\ell\right)+ \sum_{j_c=1}^{Q_c} d_{j_c}\left(\mathbf{x}^c_i,\mathbf{x}^c_\ell\right)=\\
-    &=& \sum_{j_n=1}^{Q_n} w_{j_n} \delta^n_{j_n}\left(\mathbf{x}^n_i,\mathbf{x}^n_\ell\right)+ \sum_{j_c=1}^{Q_c} w_{j_c}\delta^c_{j_c}\left(\mathbf{x}^c_i,\mathbf{x}^c_\ell\right)
+    d\left(\mathbf{x}_i,\mathbf{x}_\ell\right)&=& \sum_{j_n=1}^{Q_n} d_{j_n}\left(\mathbf{x}_i^{(n)},\mathbf{x}_\ell^{(n)}\right)+ \sum_{j_c=1}^{Q_c} d_{j_c}\left(\mathbf{x}_i^{(c)},\mathbf{x}_\ell^{(c)}\right)=\\
+    &=& \sum_{j_n=1}^{Q_n} w_{j_n} \delta^{(n)}_{j_n}\left(\mathbf{x}_i^{(n)},\mathbf{x}_\ell^{(n)}\right)+ \sum_{j_c=1}^{Q_c} w_{j_c}\delta^{(c)}_{j_c}\left(\mathbf{x}_i^{(c)},\mathbf{x}_\ell^{(c)}\right)
 \end{eqnarray}
 
 :::{.columns}
@@ -574,7 +586,7 @@ A formulation for mixed distance between observations $i$ and $\ell$:
 
 ## Synthetic data
 
-- $I=500$ observations from `normal`, `uniform`, `skewed`, and `bimodal` distributions
+- $n=500$ observations from `normal`, `uniform`, `skewed`, and `bimodal` distributions
 
 - `skewed` refers to a $\chi^2_{1/2}$ distribution 
 
@@ -1607,6 +1619,39 @@ Recovery of the true cluster labels is measured using the adjusted Rand index.
 - `u_mix` and `u_dep`  are comparatively stable in the mixed signal/noise scenarios
 :::
 
+## Association-aware distances improve cluster recovery
+
+:::: {.columns}
+
+::: {.column width="58%"}
+
+![](figures/fig_sim1.png){width=100% fig-align="center"}
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Associated mixed variables
+
+- $n=1000,2000$; $K=3$
+- correlated numerical variables
+- associated categorical variables
+- categorical variables depending on the numerical block
+- spectral clustering; 50 replications
+:::
+
+::: {.fragment}
+
+- association-aware distances are generally the most accurate
+- standard mixed-data distances are more sensitive to variable composition and noise
+
+:::
+
+:::
+
+::::
+
 # 4. Interaction- and response-aware extensions
 
 ## Interaction-aware distances
@@ -1628,7 +1673,7 @@ In mixed data, categorical differences may be meaningful because they are reflec
 
 ## How to measure interactions^[@iod2026_sc_mix]
 
-Define $\Delta^{int}$ to account for continuous--categorical interactions and use it to augment $\Delta^{tvd}$.
+Define $\Delta^{(\mathrm{int})}$ to account for continuous--categorical interactions and use it to augment $\Delta^{(\mathrm{tvd})}$.
 
 The mixed dissimilarity becomes
 
@@ -1643,20 +1688,20 @@ $$
 where
 
 $$
-{\bf D}_{cat}^{(int)}={\bf Z}\tilde{\Delta}{\bf Z}^\top
+{\bf D}_{cat}^{(int)}={\bf Z}\widetilde{\Delta}{\bf Z}^\top
 $$
 
 and
 
 $$
-\tilde{\Delta} = (1-\alpha)\Delta^{tvd} + \alpha \Delta^{int},
+\widetilde{\Delta} = (1-\alpha)\Delta^{(\mathrm{tvd})} + \alpha \Delta^{(\mathrm{int})},
 \qquad
 \alpha=\frac{1}{Q_c}.
 $$
 
-## What is $\Delta^{int}$?
+## What is $\Delta^{(\mathrm{int})}$?
 
-The entry $\delta_{int}^{j}(a,b)$ measures how much the continuous variables help discriminate between observations choosing category $a$ and those choosing category $b$ for categorical variable $j$.
+The entry $\delta_{j}^{(\mathrm{int})}(a,b)$ measures how much the continuous variables help discriminate between observations choosing category $a$ and those choosing category $b$ for categorical variable $j$.
 
 . . .
 
@@ -1670,38 +1715,58 @@ For each pair $(a,b)$:
 - use a nearest-neighbour rule in the continuous space.
 :::
 
-## Computing $\Delta^{int}_{j}$
+## Computing $\Delta^{(\mathrm{int})}_{j}$
 
 For each categorical variable $j$ and each pair of categories $(a,b)$:
 
-1. use ${\bf D}_{mah}$ to identify neighbours in the continuous space;
-2. consider a proportion of neighbours, say $\hat{\pi}_{nn}=0.1$;
+1. use ${\bf D}_{mah}$ to identify neighbours among observations belonging to $a$ or $b$;
+2. consider a proportion of neighbours, say $\pi_{nn}=0.1$;
 3. classify observations using a prior-corrected decision rule;
 4. compute balanced accuracy.
 
 $$
-\delta_{int}^{j}(a,b)
+\operatorname{BAcc}_{j}(a,b)
 =
 \frac{1}{2}
-\left(
-\frac{\texttt{true } a}{\texttt{true } a + \texttt{false } a}
+\left[
+\operatorname{TPR}_{a,j}(a,b)
 +
-\frac{\texttt{true } b}{\texttt{true } b + \texttt{false } b}
-\right).
+\operatorname{TPR}_{b,j}(a,b)
+\right].
 $$
 
-## Well separated or not?
+::: {.fragment}
 
-![](figures/phi_plots.png){fig-align="center" width="70%"}
+Map predictive performance onto a non-negative separability scale:
 
-:::{.fragment .centered}
-### high separability $\Rightarrow$ high interaction dissimilarity
+$$
+\delta_{j}^{(\mathrm{int})}(a,b)
+=
+\max\left\{
+0,\,
+2\operatorname{BAcc}_{j}(a,b)-1
+\right\}
+\in[0,1].
+$$
+
+### $0$ means chance-level or worse; $1$ means perfect separation
 :::
 
-## Building $\Delta^{int}_{j}$
+<!-- ## Well separated or not? -->
 
-For categorical variable $j$ with $q_j$ categories, compute  
-$\frac{q_j(q_j -1)}{2}$ category-pair quantities.
+<!-- ![](figures/phi_plots.png){fig-align="center" width="70%"} -->
+
+<!-- :::{.fragment .centered} -->
+<!-- ### high separability $\Rightarrow$ high interaction dissimilarity -->
+<!-- ::: -->
+
+## Building $\Delta^{(\mathrm{int})}_{j}$
+
+<!-- For categorical variable $j$ with $q_j$ categories, compute   -->
+<!-- $\frac{q_j(q_j -1)}{2}$ category-pair quantities. -->
+
+<!-- The entries shown below are the transformed dissimilarities -->
+<!-- $\delta_j^{(\mathrm{int})}(a,b)$, not raw balanced accuracies. -->
 
 ::: columns
 ::: {.column width="55%"}
@@ -1709,7 +1774,7 @@ $\frac{q_j(q_j -1)}{2}$ category-pair quantities.
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & \cdot & \cdot & \cdot \\
 \cdot & 0 & \cdot & \cdot \\
@@ -1720,7 +1785,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{int}_{j}$
+## Building $\Delta^{(\mathrm{int})}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1729,7 +1794,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & \color{#E76F51}{0.94} & \cdot & \cdot \\
 \color{#E76F51}{0.94} & 0 & \cdot & \cdot \\
@@ -1740,7 +1805,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{int}_{j}$
+## Building $\Delta^{(\mathrm{int})}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1749,7 +1814,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & 0.94 & \color{#E76F51}{0.40} & \cdot \\
 0.94 & 0 & \cdot & \cdot \\
@@ -1760,7 +1825,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{int}_{j}$
+## Building $\Delta^{(\mathrm{int})}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1769,7 +1834,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & \color{#E76F51}{0.39} \\
 0.94 & 0 & \cdot & \cdot \\
@@ -1780,7 +1845,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{int}_{j}$
+## Building $\Delta^{(\mathrm{int})}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1789,7 +1854,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & 0.39 \\
 0.94 & 0 & \color{#E76F51}{0.54} & \cdot \\
@@ -1800,7 +1865,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{int}_{j}$
+## Building $\Delta^{(\mathrm{int})}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1809,7 +1874,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & 0.39 \\
 0.94 & 0 & 0.54 & \color{#E76F51}{0.55} \\
@@ -1820,7 +1885,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{int}_{j}$
+## Building $\Delta^{(\mathrm{int})}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1829,7 +1894,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_{int} =
+\Delta_j^{(\mathrm{int})} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & 0.39 \\
 0.94 & 0 & 0.54 & 0.55 \\
@@ -1844,19 +1909,66 @@ $$
 ### the interaction matrix summarizes category-pair separability in the continuous space
 :::
 
-## Why this interaction is asymmetric
+## Why is the interaction directional?
 
-We model the joint structure as
+Let
+$\mathbf{x}_i=\left(\mathbf{x}_i^{(n)},\mathbf{x}_i^{(c)}\right)$.
+The joint distribution can always be factorized as
 
 $$
-f({\bf x}_{con},{\bf x}_{cat})
+f\!\left(\mathbf{x}_i^{(n)},\mathbf{x}_i^{(c)}\right)
 =
-f({\bf x}_{con})
-f({\bf x}_{cat}\mid {\bf x}_{con}).
+f\!\left(\mathbf{x}_i^{(n)}\right)
+f\!\left(\mathbf{x}_i^{(c)}\mid\mathbf{x}_i^{(n)}\right).
+$$
+
+::: {.fragment}
+
+This motivates using the numerical variables to quantify categorical distinctions:
+
+$$
+\mathbf{X}_{n}
+\quad\longrightarrow\quad
+\delta_{j}^{(\mathrm{int})}(a,b).
 $$
 
 ::: {.callout-note appearance="simple" icon=false .centered}
-The interaction term asks how categorical distinctions are reflected in the continuous geometry.
+The interaction term asks how categorical distinctions are reflected in the numerical geometry.
+:::
+:::
+
+## The mixed construction remains additive
+
+Represent the numerical and interaction-aware categorical components through
+maximum-normalised kernels:
+
+$$
+\overline K_{n}(i,\ell)
+=
+\exp\!\left\{-d_{\mathrm{mah}}
+\left(\mathbf{x}_i^{(n)},\mathbf{x}_\ell^{(n)}\right)\right\},
+$$
+
+$$
+\overline K_{c}^{(\mathrm{int})}(i,\ell)
+=
+\exp\!\left\{-d_{c}^{(\mathrm{int})}
+\left(\mathbf{x}_i^{(c)},\mathbf{x}_\ell^{(c)}\right)\right\}.
+$$
+
+::: {.fragment}
+
+Multiplication in kernel space becomes addition in dissimilarity space:
+
+$$
+-\log \overline K_{\mathrm{mix}}^{(\mathrm{int})}(i,\ell)
+=
+d_{\mathrm{mah}}\left(\mathbf{x}_i^{(n)},\mathbf{x}_\ell^{(n)}\right)
++
+d_{c}^{(\mathrm{int})}\left(\mathbf{x}_i^{(c)},\mathbf{x}_\ell^{(c)}\right).
+$$
+
+### ${\bf D}_{mix}^{(int)}={\bf D}_{mah}+{\bf Z}\widetilde{\Delta}{\bf Z}^{\sf T}$
 :::
 
 ## Spectral clustering: a graph partitioning problem
@@ -2012,6 +2124,1445 @@ but by their **cross-type interaction**.
 :::
 
 
+## Response-aware distances for KNN
+
+KNN is usually described as a lazy learner:
+
+- store the training data;
+- compute distances from a new observation to the training observations;
+- predict from the responses of the nearest neighbours.
+
+::: {.callout-note appearance="simple" icon=false}
+## Reframing KNN
+
+The distance is not just a preprocessing choice.  
+It determines the neighbourhoods used for classification or regression.
+:::
+
+:::{.fragment .centered}
+### in supervised learning, the response can help define these neighbourhoods
+:::
+
+
+## Response-aware mixed distance
+
+For mixed-type predictors, use a supervised distance with two components:
+
+$$
+D_{i\ell}
+=
+D^{(n)}\!\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)
++
+D^{(c)}\!\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right).
+$$
+
+::: {.columns}
+::: {.column width="50%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Numerical part
+
+Use discriminant information from $y$  
+to weight numerical differences.
+:::
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Categorical part
+
+Use the association between categories and $y$  
+to define category dissimilarities.
+:::
+
+:::
+:::
+
+
+## Numerical part: discriminant weighting^[@hastie1995dann]
+
+For continuous predictors, use the response to weight directions or variables.
+
+::: {.callout-note appearance="simple" icon=false}
+## Single-variable discriminant weighting
+
+For numerical variable $j$, define the Fisher score
+
+$$
+\omega_j = \frac{B_j}{W_j},
+$$
+
+where $B_j$ and $W_j$ are the between- and within-group variances.
+:::
+
+Then a supervised Manhattan-type distance is
+
+$$
+D^{(n)}\!\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)
+=
+\sum_{j=1}^{Q_n}
+\sqrt{\omega_j}
+\left|x_{ij}^{(n)}-x_{\ell j}^{(n)}\right|.
+$$
+
+## Categorical part: supervised TVD
+
+For categorical predictors, compare categories through their response profiles.
+
+Let ${\bf Z}_y$ be the indicator matrix of the response.  
+The supervised profile matrix is
+
+$$
+{\bf R}_s
+=
+{\bf P}_d^{-1}
+{\bf Z}^{\sf T}{\bf Z}_y.
+$$
+
+The supervised category dissimilarity is
+
+$$
+\delta_s^j(a,b)
+=
+\frac{1}{2}
+\sum_{\ell=1}^{q_y}
+\left|
+{\bf r}_{a\ell}^{j y}
+-
+{\bf r}_{b\ell}^{j y}
+\right|.
+$$
+
+:::{.fragment .centered}
+### categories are close if they show similar response distributions
+:::
+
+
+## Response-aware KNN: Carseats example
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+The `Carseats` data are used to predict whether sales are high.
+
+- 7 numerical predictors
+- 3 categorical predictors
+- categorical predictors with 2 or 3 categories
+- binary response: high vs. low sales
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Compared distances
+
+- `gower`: robust Manhattan + matching
+- `naive`: Euclidean on scaled numerical variables and dummies
+- `sup`: supervised numerical weighting + supervised TVD
+- `sup_add`: additive supervised version
+- `supf`: full supervised version
+:::
+
+
+## Response-aware KNN: Carseats results
+
+![](figures/supervised_knn_cars.png){width=82%, fig-align="center"}
+
+:::{.fragment}
+- response-aware distances improve nearest-neighbour classification accuracy
+- `sup`, `sup_add`, and `supf` are clearly above `gower` and `naive`
+- the response helps define neighbourhoods that better reflect the class structure
+:::
+
+
+
+
+
+# Building distance-based pipelines
+
+::: {.fragment .centered}
+![](figures/manydist_logo.png){width=35%}
+:::
+
+:::{.fragment .centered}
+### from distance construction to reproducible learning workflows
+:::
+
+## Building distance-based pipelines
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+
+::: {.callout-tip appearance="simple" icon=false}
+## `manydist`
+
+A package to construct, diagnose, and use distances for continuous, categorical, and mixed-type data.
+:::
+
+::: {.columns}
+
+::: {.column width="33%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Distance construction
+
+- `mdist()`
+  - presets and custom specifications
+  - response-aware distances
+
+- `step_mdist()`
+  - integrates distance construction into `tidymodels` workflows
+:::
+
+:::
+
+::: {.column width="33%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Diagnostics
+
+- `lovo_mdist()`
+- `compare_lovo_mdist()`
+- `benchmark_mdist()`
+:::
+
+:::
+
+::: {.column width="33%"}
+
+::: {.callout-important appearance="simple" icon=false}
+## Learning: model specs
+
+**Unsupervised learning**
+
+- `pam_dist()`
+- `spectral_dist()`
+
+**Supervised learning**
+
+- `nearest_neighbor_dist()`
+:::
+
+:::
+
+:::
+
+
+## `manydist`: socio-economic country profiles
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+A 2022 World Bank / WDI snapshot of country-level socio-economic indicators.
+
+- observations: countries
+- numerical variables: GDP per capita, life expectancy, unemployment, urban population, population growth
+- categorical variables: world region and income group
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## 
+
+Use `manydist` to build a mixed-type distance between countries and diagnose which variables shape the resulting dissimilarity structure.
+:::
+
+## Preparing the WDI data
+
+```{r}
+#| echo: false
+
+load("data/wdi_socio_2022.RData")
+set.seed(123)
+wdi_data |> 
+  dplyr::slice_sample(n = 8) |> 
+  dplyr::rename_with(~ wdi_labels[.x], .cols = dplyr::everything()) |> 
+  knitr::kable(format = "html") |> 
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 15
+  )
+```
+## Constructing a mixed-type distance using a preset
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Directly with `mdist()`
+
+```{r}
+#| echo: true
+
+wdi_x <- wdi_data |> 
+  dplyr::select(-country)
+
+d_preset <- mdist(
+  wdi_x,
+  preset = "u_dep"
+)
+```
+:::
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Inside a recipe with `step_mdist()`
+
+```{r}
+#| echo: true
+
+rec_preset <- recipe(~ ., data = wdi_x) |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+d_preset_step <- rec_preset |>
+  prep(training = wdi_x) |>
+  bake(new_data = NULL)
+```
+:::
+
+:::
+
+:::
+
+```{r}
+#| echo: true
+
+all.equal(
+  unname(as.matrix(d_preset$distance)),
+  unname(as.matrix(d_preset_step))
+)
+```
+
+:::{.fragment .centered}
+### `step_mdist()` embeds the same distance specification into a modelling workflow
+:::
+
+
+## Constructing a custom mixed-type distance
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Directly with `mdist()`
+
+```{r}
+#| echo: true
+
+wdi_x <- wdi_data |> 
+  dplyr::select(-country)
+
+d_custom <- mdist(
+  wdi_x,
+  method_cat  = "eskin",
+  method_num  = "std",
+  commensurable = FALSE
+)
+```
+:::
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Inside a recipe with `step_mdist()`
+
+```{r}
+#| echo: true
+
+rec_custom <- recipe(~ ., data = wdi_x) |>
+  step_mdist(
+    all_predictors(),
+    method_cat  = "eskin",
+    method_num  = "std",
+    commensurable = FALSE
+  )
+
+d_custom_step <- rec_custom |>
+  prep(training = wdi_x) |>
+  bake(new_data = NULL)
+```
+:::
+
+:::
+
+:::
+
+```{r}
+#| echo: true
+
+all.equal(
+  unname(as.matrix(d_custom$distance)),
+  unname(as.matrix(d_custom_step))
+)
+```
+
+
+
+
+
+
+## Comparing distance constructions {.smaller}
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+
+```{r}
+#| warning: false
+
+lovo_wdi_compare <- compare_lovo_mdist(
+  x = wdi_x,
+  methods = list(
+    gower = list(preset = "gower",commensurable=FALSE),
+     u_indep = list(preset = "u_indep"),
+    hl = list(preset = "hl"),
+    u_dep = list(preset = "u_dep"),
+    custom = list(
+      method_num = "std",
+      method_cat = "matching",
+      commensurable = FALSE
+    )
+  ),
+  cluster_k = 4
+)
+
+autoplot(lovo_wdi_compare, metric = "relative_distance")
+
+```
+
+
+::: {.callout-note appearance="simple" icon=false}
+## `lovo_mdist_compare()`
+
+The same leave-one-variable-out diagnostic can be computed for several distance definitions and compared in one display.
+:::
+
+
+## Distance-based classification pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| include: false
+
+set.seed(123)
+
+wdi_region <- wdi_data |>
+  dplyr::filter(region != "North America") |>
+  dplyr::mutate(
+    region = droplevels(region)
+  )
+
+wdi_split <- initial_split(
+  wdi_region,
+  strata = region
+)
+
+wdi_train <- training(wdi_split)
+wdi_test  <- testing(wdi_split)
+
+wdi_rec <- recipe(region ~ ., data = wdi_train) |>
+  update_role(country, new_role = "id") |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wdi_wf <- workflow() |>
+  add_recipe(wdi_rec) |>
+  add_model(knn_spec)
+```
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="2-8"}
+set.seed(123)
+
+wdi_region <- wdi_data |>
+  dplyr::filter(region != "North America") |>
+  dplyr::mutate(
+    region = droplevels(region)
+  )
+
+wdi_split <- initial_split(
+  wdi_region,
+  strata = region
+)
+
+wdi_train <- training(wdi_split)
+wdi_test  <- testing(wdi_split)
+
+wdi_rec <- recipe(region ~ ., data = wdi_train) |>
+  update_role(country, new_role = "id") |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wdi_wf <- workflow() |>
+  add_recipe(wdi_rec) |>
+  add_model(knn_spec)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+Prepare the classification task.
+:::
+
+:::
+
+:::
+
+
+## Distance-based classification pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="9-15"}
+set.seed(123)
+
+wdi_region <- wdi_data |>
+  dplyr::filter(region != "North America") |>
+  dplyr::mutate(
+    region = droplevels(region)
+  )
+
+wdi_split <- initial_split(
+  wdi_region,
+  strata = region
+)
+
+wdi_train <- training(wdi_split)
+wdi_test  <- testing(wdi_split)
+
+wdi_rec <- recipe(region ~ ., data = wdi_train) |>
+  update_role(country, new_role = "id") |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wdi_wf <- workflow() |>
+  add_recipe(wdi_rec) |>
+  add_model(knn_spec)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+Prepare the classification task.
+:::
+
+
+
+::: {.callout-tip appearance="simple" icon=false}
+## Split
+
+Create training and test sets.
+:::
+
+
+
+:::
+
+:::
+
+
+## Distance-based classification pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="16-22"}
+set.seed(123)
+
+wdi_region <- wdi_data |>
+  dplyr::filter(region != "North America") |>
+  dplyr::mutate(
+    region = droplevels(region)
+  )
+
+wdi_split <- initial_split(
+  wdi_region,
+  strata = region
+)
+
+wdi_train <- training(wdi_split)
+wdi_test  <- testing(wdi_split)
+
+wdi_rec <- recipe(region ~ ., data = wdi_train) |>
+  update_role(country, new_role = "id") |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wdi_wf <- workflow() |>
+  add_recipe(wdi_rec) |>
+  add_model(knn_spec)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+Prepare the classification task.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Split
+
+Create training and test sets.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Recipe
+
+Use `step_mdist()` to construct the distance representation.
+:::
+
+:::
+
+:::
+
+
+## Distance-based classification pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="24-27"}
+set.seed(123)
+
+wdi_region <- wdi_data |>
+  dplyr::filter(region != "North America") |>
+  dplyr::mutate(
+    region = droplevels(region)
+  )
+
+wdi_split <- initial_split(
+  wdi_region,
+  strata = region
+)
+
+wdi_train <- training(wdi_split)
+wdi_test  <- testing(wdi_split)
+
+wdi_rec <- recipe(region ~ ., data = wdi_train) |>
+  update_role(country, new_role = "id") |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wdi_wf <- workflow() |>
+  add_recipe(wdi_rec) |>
+  add_model(knn_spec)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+Prepare the classification task.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Split
+
+Create training and test sets.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Recipe
+
+Use `step_mdist()` to construct the distance representation.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Model
+
+Specify a distance-based KNN classifier.
+:::
+
+:::
+
+:::
+
+
+## Distance-based classification pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="29-31"}
+set.seed(123)
+
+wdi_region <- wdi_data |>
+  dplyr::filter(region != "North America") |>
+  dplyr::mutate(
+    region = droplevels(region)
+  )
+
+wdi_split <- initial_split(
+  wdi_region,
+  strata = region
+)
+
+wdi_train <- training(wdi_split)
+wdi_test  <- testing(wdi_split)
+
+wdi_rec <- recipe(region ~ ., data = wdi_train) |>
+  update_role(country, new_role = "id") |>
+  step_mdist(
+    all_predictors(),
+    preset = "u_dep"
+  )
+
+knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = tune()
+)
+
+wdi_wf <- workflow() |>
+  add_recipe(wdi_rec) |>
+  add_model(knn_spec)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Data
+
+Prepare the classification task.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Split
+
+Create training and test sets.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Recipe
+
+Use `step_mdist()` to construct the distance representation.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Model
+
+Specify a distance-based KNN classifier.
+:::
+
+::: {.callout-note appearance="simple" icon=false}
+## Workflow
+
+Combine preprocessing and model specification.
+:::
+
+:::
+
+:::
+
+  
+
+## Tuning a distance-based KNN pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| include: false
+
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="1-7"}
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Resample
+
+Create cross-validation folds on the training set.
+:::
+
+:::
+
+:::
+
+## Tuning a distance-based KNN pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="9-11"}
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Resample
+
+Create cross-validation folds on the training set.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Grid
+
+Define candidate values for the number of neighbours.
+:::
+
+:::
+
+:::
+
+## Tuning a distance-based KNN pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="13-18"}
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Resample
+
+Create cross-validation folds on the training set.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Grid
+
+Define candidate values for the number of neighbours.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Tune
+
+Evaluate each candidate value by cross-validation.
+:::
+
+:::
+
+:::
+
+## Tuning a distance-based KNN pipeline
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="20-23"}
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Resample
+
+Create cross-validation folds on the training set.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Grid
+
+Define candidate values for the number of neighbours.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Tune
+
+Evaluate each candidate value by cross-validation.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Select
+
+Choose the best-performing number of neighbours.
+:::
+
+:::
+
+:::
+
+## Tuning a distance-based KNN pipeline {.smaller}
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="25-28"}
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Resample
+
+Create cross-validation folds on the training set.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Grid
+
+Define candidate values for the number of neighbours.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Tune
+
+Evaluate each candidate value by cross-validation.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Select
+
+Choose the best-performing number of neighbours.
+:::
+
+::: {.callout-note appearance="simple" icon=false}
+## Finalize
+
+Insert the selected value into the workflow.
+:::
+
+:::
+
+:::
+
+## Tuning a distance-based KNN pipeline {.smaller}
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="58%"}
+
+::: {.code-large}
+
+```r {code-line-numbers="30-34"}
+set.seed(123)
+
+wdi_folds <- vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = region
+)
+
+knn_grid <- tibble(
+  neighbors = c(1, 3, 5, 7, 9, 11, 15)
+)
+
+knn_tuned <- tune_grid(
+  wdi_wf,
+  resamples = wdi_folds,
+  grid = knn_grid,
+  metrics = metric_set(accuracy)
+)
+
+best_k <- select_best(
+  knn_tuned,
+  metric = "accuracy"
+)
+
+final_wf <- finalize_workflow(
+  wdi_wf,
+  best_k
+)
+
+final_res <- last_fit(
+  final_wf,
+  split = wdi_split,
+  metrics = metric_set(accuracy)
+)
+```
+
+:::
+
+:::
+
+::: {.column width="42%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Resample
+
+Create cross-validation folds on the training set.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Grid
+
+Define candidate values for the number of neighbours.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Tune
+
+Evaluate each candidate value by cross-validation.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Select
+
+Choose the best-performing number of neighbours.
+:::
+
+::: {.callout-note appearance="simple" icon=false}
+## Finalize
+
+Insert the selected value into the workflow.
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## Test
+
+Fit the finalized workflow on the training set and evaluate it on the test set.
+:::
+
+:::
+
+:::
+
+## Tuning results
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="60%"}
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-height: 5
+
+autoplot(knn_tuned) +
+  labs(
+    x = "Number of neighbours",
+    y = "Cross-validated accuracy"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+  )
+```
+
+:::
+
+::: {.column width="40%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Test-set performance
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+final_res |>
+  collect_metrics() |>
+  mutate(.estimate = round(.estimate, 3)) |>
+  select(.metric, .estimate) |>
+  knitr::kable(
+    format = "html",
+    col.names = c("Metric", "Accuracy")
+  ) |>
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 18
+  )
+```
+:::
+
+::: {.callout-note appearance="simple" icon=false}
+## Workflow
+
+`last_fit()` fits the finalized workflow on the full training set and evaluates it once on the held-out test set.
+:::
+
+:::
+
+:::
+
+## Wrap-up
+
+::: {.fragment}
+::: {.callout-important appearance="simple" icon=false}
+## Preprocessing is modelling
+
+Distance construction determines which structure downstream methods can see.
+:::
+:::
+
+&nbsp;
+
+::: {.fragment}
+::: {.callout-tip appearance="simple" icon=false}
+## Cross-type interactions must be encoded
+
+$\Delta_j^{(\mathrm{int})}$ translates category separability in the numerical space into categorical dissimilarities.
+
+When the signal is interaction-driven, neither data block can reveal it alone.
+:::
+:::
+
+&nbsp;
+
+::: {.fragment}
+::: {.callout-note appearance="simple" icon=false}
+## Towards a common ground
+
+Similar distance-based ideas often appear under different names across statistics, machine learning, econometrics, psychometrics, and operational research.
+
+A package ecosystem such as **manydist** can make these choices easier to compare and reuse.
+:::
+:::
 
 
 
@@ -2052,8 +3603,157 @@ Alfonso Iodice D'Enza
 
 :::
 
+# Backup slides
 
+## From dissimilarity to a reference density
 
+Starting from a non-negative dissimilarity from a prototype,
 
+$$
+d_{{\bf S}_k}({\bf x},{\bf c}_k)\geq0,
+\qquad
+d_{{\bf S}_k}({\bf c}_k,{\bf c}_k)=0,
+$$
 
+a distance-based probability model can be constructed, provided that the
+exponential kernel is normalisable^[@Hennig19; @ben2008probabilistic]:
 
+$$
+f({\bf x};{\bf c}_k,{\bf S}_k)
+=
+g({\bf c}_k,{\bf S}_k,\eta)
+\exp\!\left\{-\eta d_{{\bf S}_k}({\bf x},{\bf c}_k)\right\},
+\qquad \eta>0.
+$$
+
+The factor $g({\bf c}_k,{\bf S}_k,\eta)$ makes $f$ a proper density.
+
+## Maximum normalization recovers the dissimilarity
+
+Because the density is maximal at the reference point,
+
+$$
+M_k
+=
+f({\bf c}_k;{\bf c}_k,{\bf S}_k)
+=
+g({\bf c}_k,{\bf S}_k,\eta).
+$$
+
+The maximum-normalised kernel is therefore
+
+$$
+\overline K_k({\bf x},{\bf c}_k)
+=
+\frac{f({\bf x};{\bf c}_k,{\bf S}_k)}{M_k}
+=
+\exp\!\left\{-\eta d_{{\bf S}_k}({\bf x},{\bf c}_k)\right\}.
+$$
+
+::: {.fragment .centered}
+### $d_{{\bf S}_k}({\bf x},{\bf c}_k)=-\eta^{-1}\log\overline K_k({\bf x},{\bf c}_k)$
+:::
+
+## The pairwise numerical component
+
+Let each observation act in turn as the reference prototype and choose $\eta=1$:
+
+$$
+f_n\!\left({\bf x}_i^{(n)};{\bf x}_\ell^{(n)},{\bf S}\right)
+=
+g_n({\bf S})
+\exp\!\left\{-d_{\mathrm{mah}}
+\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)\right\}.
+$$
+
+Using the reference maximum $M_n=g_n({\bf S})$ gives
+
+$$
+\overline K_n(i,\ell)
+=
+\exp\!\left\{-d_{\mathrm{mah}}
+\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)\right\}.
+$$
+
+::: {.fragment .centered}
+### $-\log\overline K_n(i,\ell)$ recovers the Mahalanobis dissimilarity
+:::
+
+## A categorical reference distribution
+
+For categorical variable $j$, let $x_{ij}^{(c)}=a$ and $x_{\ell j}^{(c)}=b$, and define
+
+$$
+\widetilde\delta_j(a,b)
+=
+(1-\alpha)\delta_j^{(\mathrm{tvd})}(a,b)
++
+\alpha\delta_j^{(\mathrm{int})}(a,b).
+$$
+
+Choosing $\eta_j=1$, define the categorical reference PMF
+
+$$
+p_j(a;b)
+=
+\frac{
+\exp\!\left\{-\widetilde\delta_j(a,b)\right\}
+}{
+\displaystyle\sum_{h\in\mathcal A_j}
+\exp\!\left\{-\widetilde\delta_j(h,b)\right\}
+}.
+$$
+
+::: {.fragment .centered}
+### smaller category dissimilarities receive larger reference probabilities
+:::
+
+## The categorical kernel recovers the dissimilarity
+
+Since $\widetilde\delta_j(b,b)=0$, the maximum reference probability is
+$M_j(b)=p_j(b;b)$. Therefore,
+
+$$
+\overline K_j(a,b)
+=
+\frac{p_j(a;b)}{M_j(b)}
+=
+\exp\!\left\{-\widetilde\delta_j(a,b)\right\}.
+$$
+
+For the whole categorical vector,
+
+$$
+\overline K_c^{(\mathrm{int})}(i,\ell)
+=
+\prod_{j=1}^{Q_c}\overline K_j
+\left(x_{ij}^{(c)},x_{\ell j}^{(c)}\right)
+=
+\exp\!\left\{-d_c^{(\mathrm{int})}
+\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right)\right\}.
+$$
+
+## Combining the kernels
+
+The product kernel is
+
+$$
+\overline K_{\mathrm{mix}}^{(\mathrm{int})}(i,\ell)
+=
+\overline K_n(i,\ell)\,
+\overline K_c^{(\mathrm{int})}(i,\ell).
+$$
+
+Hence,
+
+$$
+-\log\overline K_{\mathrm{mix}}^{(\mathrm{int})}(i,\ell)
+=
+d_{\mathrm{mah}}\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)
++
+d_c^{(\mathrm{int})}\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right).
+$$
+
+::: {.fragment .centered}
+### ${\bf D}_{mix}^{(int)}={\bf D}_{mah}+{\bf Z}\widetilde\Delta{\bf Z}^{\sf T}$
+:::
