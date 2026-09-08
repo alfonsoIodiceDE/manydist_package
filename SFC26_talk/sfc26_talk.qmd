@@ -175,54 +175,54 @@ Distance construction, diagnostics, and reproducible learning workflows
 
 # 1. Learning from distances
 
-## Mixed-type data 
+<!-- ## Mixed-type data  -->
 
-Most real data applications do not contain only numerical variables.
+<!-- Most real data applications do not contain only numerical variables. -->
 
-&nbsp;
+<!-- &nbsp; -->
 
-::: {.callout-tip appearance="simple" icon=false}
-## Tabular data
+<!-- ::: {.callout-tip appearance="simple" icon=false} -->
+<!-- ## Tabular data -->
 
-In socio-economic applications, observations are often described by a mixture of  
-**measurements**, **counts**, **categories**, and **ordered scales**.
-:::
+<!-- In socio-economic applications, observations are often described by a mixture of   -->
+<!-- **measurements**, **counts**, **categories**, and **ordered scales**. -->
+<!-- ::: -->
 
-&nbsp;
+<!-- &nbsp; -->
 
-::: {.columns}
+<!-- ::: {.columns} -->
 
-::: {.column width="50%"}
+<!-- ::: {.column width="50%"} -->
 
-::: {.callout-note appearance="simple" icon=false}
-## Numerical variables
+<!-- ::: {.callout-note appearance="simple" icon=false} -->
+<!-- ## Numerical variables -->
 
-- income
-- age
-- prices
-- growth rates
-- emissions
-- employment rates
-:::
+<!-- - income -->
+<!-- - age -->
+<!-- - prices -->
+<!-- - growth rates -->
+<!-- - emissions -->
+<!-- - employment rates -->
+<!-- ::: -->
 
-:::
+<!-- ::: -->
 
-::: {.column width="50%"}
+<!-- ::: {.column width="50%"} -->
 
-::: {.callout-important appearance="simple" icon=false}
-## Categorical variables
+<!-- ::: {.callout-important appearance="simple" icon=false} -->
+<!-- ## Categorical variables -->
 
-- region
-- education level
-- occupation
-- sector
-- household type
-- policy regime
-:::
+<!-- - region -->
+<!-- - education level -->
+<!-- - occupation -->
+<!-- - sector -->
+<!-- - household type -->
+<!-- - policy regime -->
+<!-- ::: -->
 
-:::
+<!-- ::: -->
 
-:::
+<!-- ::: -->
 
 
 ## Learning from mixed-type data
@@ -468,7 +468,7 @@ toy_data |>
 
 ```
 
-# 2. Scale/type-aware distances
+# 2. Desirable properties and general setup
 
 ## Desirable properties^[@vdv_jcgs]
 
@@ -575,6 +575,7 @@ A formulation for mixed distance between observations $i$ and $\ell$:
 ::::
 :::
 
+# Scale/type-induced biases
 
 ## Distributions, scaling and bias: the numeric case
 
@@ -1291,9 +1292,9 @@ $$
 
 Rows of ${\bf R}_{12}$ describe the distribution of $X_2$ within each category of $X_1$:
 
-- category $A$: $P(X_2=u \mid X_1=A)=0.67$, $P(X_2=v \mid X_1=A)=0.33$
-- category $B$: $P(X_2=u \mid X_1=B)=0.67$, $P(X_2=v \mid X_1=B)=0.33$
-- category $C$: $P(X_2=u \mid X_1=C)=0.25$, $P(X_2=v \mid X_1=C)=0.75$
+- $P(X_2=u \mid X_1=A)=\color{#E76F51}{\mathbf{0.67}}$, $P(X_2=v \mid X_1=A)=\color{#E76F51}{\mathbf{0.33}}$
+- $P(X_2=u \mid X_1=B)=\color{#E76F51}{\mathbf{0.67}}$, $P(X_2=v \mid X_1=B)=\color{#E76F51}{\mathbf{0.33}}$
+- $P(X_2=u \mid X_1=C)=\color{#E76F51}{\mathbf{0.25}}$, $P(X_2=v \mid X_1=C)=\color{#E76F51}{\mathbf{0.75}}$
 :::
 
 :::{.fragment .centered}
@@ -1366,8 +1367,8 @@ $$
 
 Rows of ${\bf R}_{21}$ describe the distribution of $X_1$ within each category of $X_2$:
 
-- category $u$: $P(X_1=A \mid X_2=u)=0.40$, $P(X_1=B \mid X_2=u)=0.40$, $P(X_1=C \mid X_2=u)=0.20$
-- category $v$: $P(X_1=A \mid X_2=v)=0.20$, $P(X_1=B \mid X_2=v)=0.20$, $P(X_1=C \mid X_2=v)=0.60$
+- $P(X_1=A \mid X_2=u)=\color{#E76F51}{\mathbf{0.40}}$, $P(X_1=B \mid X_2=u)=\color{#E76F51}{\mathbf{0.40}}$, $P(X_1=C \mid X_2=u)=\color{#E76F51}{\mathbf{0.20}}$
+- $P(X_1=A \mid X_2=v)=\color{#E76F51}{\mathbf{0.20}}$, $P(X_1=B \mid X_2=v)=\color{#E76F51}{\mathbf{0.20}}$, $P(X_1=C \mid X_2=v)=\color{#E76F51}{\mathbf{0.60}}$
 :::
 
 :::{.fragment .centered}
@@ -1452,6 +1453,14 @@ $$
 :::{.fragment .centered}
 ### category-level dissimilarities are translated into observation-level distances
 :::
+
+
+<!-- {.center style="text-align:center;"} -->
+
+## No one-size-fits-all distance  {.center}
+
+### The need for diagnostics
+
 
 ## From distances to data representation
 
@@ -1619,42 +1628,9 @@ Recovery of the true cluster labels is measured using the adjusted Rand index.
 - `u_mix` and `u_dep`  are comparatively stable in the mixed signal/noise scenarios
 :::
 
-## Association-aware distances improve cluster recovery
+# 4. Interaction-aware extensions
 
-:::: {.columns}
-
-::: {.column width="58%"}
-
-![](figures/fig_sim1.png){width=100% fig-align="center"}
-
-:::
-
-::: {.column width="42%"}
-
-::: {.callout-note appearance="simple" icon=false}
-## Associated mixed variables
-
-- $n=1000,2000$; $K=3$
-- correlated numerical variables
-- associated categorical variables
-- categorical variables depending on the numerical block
-- spectral clustering; 50 replications
-:::
-
-::: {.fragment}
-
-- association-aware distances are generally the most accurate
-- standard mixed-data distances are more sensitive to variable composition and noise
-
-:::
-
-:::
-
-::::
-
-# 4. Interaction- and response-aware extensions
-
-## Interaction-aware distances
+## Cross-type interactions
 
 Association-aware distances account for relations **within** variable blocks:
 
@@ -1671,9 +1647,190 @@ In mixed data, categorical differences may be meaningful because they are reflec
 ### the next step is to make distances [interaction-aware]{.text-coral}
 :::
 
+## The numerical geometry suggests two groups
+
+:::: {.columns}
+
+::: {.column width="66%"}
+![](figures/interaction_moons_geometry.png){width=100% fig-alt="Two interlocking half-moons shown without categorical labels."}
+:::
+
+::: {.column width="31%"}
+
+::: {style="font-size:4.8em;font-weight:750;line-height:.95;color:#E76F51;"}
+2
+:::
+
+### connected shapes
+
+A numerical distance can recover the **upper (U)** and **lower (L)** moon.
+
+::: {.callout-note appearance="simple" icon=false}
+## Geometry alone
+
+There is no preferred subdivision within either moon.
+:::
+
+:::
+
+::::
+
+
+## One factor is structured; the other is deliberately neutral
+
+:::: {.columns}
+
+::: {.column width="62%"}
+![](figures/interaction_moons_categories.png){width=100% fig-alt="Half-moons with signal band mapped to colour and nuisance category mapped to shape."}
+:::
+
+::: {.column width="35%"}
+
+**Signal band**
+
+- colour: $A,B,C$
+- unequal arc lengths: $10\%,45\%,45\%$
+- repeated on both moons
+
+**Nuisance factor**
+
+- shape: $N_1,N_2,N_3$
+- balanced within every band
+- spatially random
+
+:::
+
+::::
+
+::: {.fragment .centered}
+### only the signal factor has a systematic relationship with the numerical geometry
+:::
+
+
+## The target is the moon **AND** the signal category
+
+:::: {.columns}
+
+::: {.column width="39%"}
+
+::: {style="padding:.35em .5em;border-left:8px solid #E76F51;background:#FAF8F3;font-size:1.15em;text-align:center;"}
+$$
+\text{cluster}
+=
+\text{moon}\times\text{band}
+$$
+:::
+
+The desired partition contains six groups:
+
+$$
+\begin{aligned}
+&U\!A,\ U\!B,\ U\!C,\\
+&L\!A,\ L\!B,\ L\!C.
+\end{aligned}
+$$
+
+::: {.callout-important appearance="simple" icon=false}
+## The six-way intersection
+
+Moon alone gives two groups. Band alone gives three.
+:::
+
+:::
+
+::: {.column width="59%"}
+![](figures/interaction_moons_truth.png){width=100% fig-alt="The six target groups formed by crossing upper and lower moon with bands A, B, and C."}
+:::
+
+::::
+
+
+## Without interaction, the graph follows geometry
+
+:::: {.columns}
+
+::: {.column width="65%"}
+![](figures/interaction_moons_no_interaction.png){width=100% fig-alt="Six-cluster spectral partition obtained without the continuous-categorical interaction."}
+:::
+
+::: {.column width="32%"}
+
+::: {style="font-size:2.1em;font-weight:750;line-height:1.05;color:#E76F51;"}
+ARI = 0.490
+:::
+
+Spectral clustering is asked for $K=6$, but the graph does not know where $A$, $B$, and $C$ change.
+
+::: {.callout-note appearance="simple" icon=false}
+## The wrong boundaries
+
+The moons are subdivided according to numerical geometry—not the signal factor.
+:::
+
+:::
+
+::::
+
+
+
+
+## With interaction, the graph recovers the six intersections
+
+:::: {.columns}
+
+::: {.column width="65%"}
+![](figures/interaction_moons_with_interaction.png){width=100% fig-alt="The exact six-group spectral partition obtained with the continuous-categorical interaction."}
+:::
+
+::: {.column width="32%"}
+
+::: {style="font-size:2.1em;font-weight:750;line-height:1.05;color:#2A9D8F;"}
+ARI = 1.000
+:::
+
+The numerical distance preserves the two moons.
+
+$\Delta_{\mathrm{int}}$ adds barriers at the $A/B/C$ boundaries.
+
+::: {.callout-tip appearance="simple" icon=false}
+## Exact recovery
+
+The graph now encodes the required **moon AND category** structure.
+:::
+
+:::
+
+::::
+
+
+## The distance determines what spectral clustering can recover
+
+::: {style="margin-top:1.1em;font-size:.92em;text-align:center;color:#5B7F86;"}
+$$
+\begin{aligned}
+&\text{numerical geometry}
+\;+\;
+\text{categorical association}\\[0.25em]
+&\qquad+\;
+\text{cross-type interaction}
+\;\Longrightarrow\;
+\text{graph structure}
+\end{aligned}
+$$
+:::
+
+::: {style="max-width:1200px;margin:1.1em auto 0;font-size:1.08em;font-weight:620;line-height:1.32;text-align:center;"}
+If clusters are defined jointly by numerical and categorical information,  
+the distance must make that joint structure visible **before** the graph is partitioned.
+:::
+
+::: {.fragment .centered}
+### this motivates an interaction-aware construction for mixed-data dissimilarities
+:::
+
 ## How to measure interactions^[@iod2026_sc_mix]
 
-Define $\Delta^{(\mathrm{int})}$ to account for continuous--categorical interactions and use it to augment $\Delta^{(\mathrm{tvd})}$.
+Define $\Delta^{int}$ to account for continuous--categorical interactions and use it to augment $\Delta^{tvd}$.
 
 The mixed dissimilarity becomes
 
@@ -1688,20 +1845,20 @@ $$
 where
 
 $$
-{\bf D}_{cat}^{(int)}={\bf Z}\widetilde{\Delta}{\bf Z}^\top
+{\bf D}_{cat}^{(int)}={\bf Z}\tilde{\Delta}{\bf Z}^\top
 $$
 
 and
 
 $$
-\widetilde{\Delta} = (1-\alpha)\Delta^{(\mathrm{tvd})} + \alpha \Delta^{(\mathrm{int})},
+\tilde{\Delta} = (1-\alpha)\Delta^{tvd} + \alpha \Delta^{int},
 \qquad
 \alpha=\frac{1}{Q_c}.
 $$
 
-## What is $\Delta^{(\mathrm{int})}$?
+## What is $\Delta^{int}$?
 
-The entry $\delta_{j}^{(\mathrm{int})}(a,b)$ measures how much the continuous variables help discriminate between observations choosing category $a$ and those choosing category $b$ for categorical variable $j$.
+The entry $\delta_{int}^{j}(a,b)$ measures how much the continuous variables help discriminate between observations choosing category $a$ and those choosing category $b$ for categorical variable $j$.
 
 . . .
 
@@ -1715,9 +1872,9 @@ For each pair $(a,b)$:
 - use a nearest-neighbour rule in the continuous space.
 :::
 
-## Computing $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
-For each categorical variable $j$ and each pair of categories $(a,b)$:
+For each categorical variable $j$ and each category pair $(a,b)$:
 
 1. use ${\bf D}_{mah}$ to identify neighbours among observations belonging to $a$ or $b$;
 2. consider a proportion of neighbours, say $\pi_{nn}=0.1$;
@@ -1725,13 +1882,13 @@ For each categorical variable $j$ and each pair of categories $(a,b)$:
 4. compute balanced accuracy.
 
 $$
-\operatorname{BAcc}_{j}(a,b)
+\operatorname{BAcc}^{j}(a,b)
 =
 \frac{1}{2}
 \left[
-\operatorname{TPR}_{a,j}(a,b)
+\operatorname{TPR}^{j}_{a}(a,b)
 +
-\operatorname{TPR}_{b,j}(a,b)
+\operatorname{TPR}^{j}_{b}(a,b)
 \right].
 $$
 
@@ -1740,33 +1897,22 @@ $$
 Map predictive performance onto a non-negative separability scale:
 
 $$
-\delta_{j}^{(\mathrm{int})}(a,b)
+\delta^{j}_{int}(a,b)
 =
 \max\left\{
 0,\,
-2\operatorname{BAcc}_{j}(a,b)-1
+2\operatorname{BAcc}^{j}(a,b)-1
 \right\}
 \in[0,1].
 $$
 
+
 ### $0$ means chance-level or worse; $1$ means perfect separation
 :::
+## Computing $\Delta^{int}_{j}$
 
-<!-- ## Well separated or not? -->
-
-<!-- ![](figures/phi_plots.png){fig-align="center" width="70%"} -->
-
-<!-- :::{.fragment .centered} -->
-<!-- ### high separability $\Rightarrow$ high interaction dissimilarity -->
-<!-- ::: -->
-
-## Building $\Delta^{(\mathrm{int})}_{j}$
-
-<!-- For categorical variable $j$ with $q_j$ categories, compute   -->
-<!-- $\frac{q_j(q_j -1)}{2}$ category-pair quantities. -->
-
-<!-- The entries shown below are the transformed dissimilarities -->
-<!-- $\delta_j^{(\mathrm{int})}(a,b)$, not raw balanced accuracies. -->
+For categorical variable $j$ with $q_j$ categories, compute  
+$\frac{q_j(q_j -1)}{2}$ category-pair quantities.
 
 ::: columns
 ::: {.column width="55%"}
@@ -1774,7 +1920,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & \cdot & \cdot & \cdot \\
 \cdot & 0 & \cdot & \cdot \\
@@ -1785,7 +1931,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1794,7 +1940,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & \color{#E76F51}{0.94} & \cdot & \cdot \\
 \color{#E76F51}{0.94} & 0 & \cdot & \cdot \\
@@ -1805,7 +1951,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1814,7 +1960,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & 0.94 & \color{#E76F51}{0.40} & \cdot \\
 0.94 & 0 & \cdot & \cdot \\
@@ -1825,7 +1971,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1834,7 +1980,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & \color{#E76F51}{0.39} \\
 0.94 & 0 & \cdot & \cdot \\
@@ -1845,7 +1991,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1854,7 +2000,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & 0.39 \\
 0.94 & 0 & \color{#E76F51}{0.54} & \cdot \\
@@ -1865,7 +2011,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1874,7 +2020,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & 0.39 \\
 0.94 & 0 & 0.54 & \color{#E76F51}{0.55} \\
@@ -1885,7 +2031,7 @@ $$
 :::
 :::
 
-## Building $\Delta^{(\mathrm{int})}_{j}$
+## Computing $\Delta^{int}_{j}$
 
 ::: columns
 ::: {.column width="55%"}
@@ -1894,7 +2040,7 @@ $$
 
 ::: {.column width="45%"}
 $$
-\Delta_j^{(\mathrm{int})} =
+\Delta_{int} =
 \begin{pmatrix}
 0 & 0.94 & 0.40 & 0.39 \\
 0.94 & 0 & 0.54 & 0.55 \\
@@ -1906,70 +2052,90 @@ $$
 :::
 
 :::{.fragment}
-### the interaction matrix summarizes category-pair separability in the continuous space
+### summarize category-pair separability in the continuous space
 :::
 
-## Why is the interaction directional?
 
-Let
-$\mathbf{x}_i=\left(\mathbf{x}_i^{(n)},\mathbf{x}_i^{(c)}\right)$.
-The joint distribution can always be factorized as
+
+
+
+## Just one-way interaction? {style="font-size:0.85em;"}
+
+:::: {.columns}
+
+::: {.column width="43%"}
+
+::: {.callout-note appearance="simple" icon=false}
+## Factorization motivates the direction
+
+For ${\bf x}_i=({\bf x}_{i_n},{\bf x}_{i_c})$,
 
 $$
-f\!\left(\mathbf{x}_i^{(n)},\mathbf{x}_i^{(c)}\right)
+f({\bf x}_{i_n},{\bf x}_{i_c})
 =
-f\!\left(\mathbf{x}_i^{(n)}\right)
-f\!\left(\mathbf{x}_i^{(c)}\mid\mathbf{x}_i^{(n)}\right).
+f({\bf x}_{i_n})
+f({\bf x}_{i_c}\mid {\bf x}_{i_n}).
 $$
 
-::: {.fragment}
-
-This motivates using the numerical variables to quantify categorical distinctions:
-
-$$
-\mathbf{X}_{n}
-\quad\longrightarrow\quad
-\delta_{j}^{(\mathrm{int})}(a,b).
-$$
-
-::: {.callout-note appearance="simple" icon=false .centered}
-The interaction term asks how categorical distinctions are reflected in the numerical geometry.
-:::
+We therefore use the numerical block as the reference representation for categorical distinctions.
 :::
 
-## The mixed construction remains additive
-
-Represent the numerical and interaction-aware categorical components through
-maximum-normalised kernels:
-
-$$
-\overline K_{n}(i,\ell)
-=
-\exp\!\left\{-d_{\mathrm{mah}}
-\left(\mathbf{x}_i^{(n)},\mathbf{x}_\ell^{(n)}\right)\right\},
-$$
-
-$$
-\overline K_{c}^{(\mathrm{int})}(i,\ell)
-=
-\exp\!\left\{-d_{c}^{(\mathrm{int})}
-\left(\mathbf{x}_i^{(c)},\mathbf{x}_\ell^{(c)}\right)\right\}.
-$$
-
-::: {.fragment}
-
-Multiplication in kernel space becomes addition in dissimilarity space:
-
-$$
--\log \overline K_{\mathrm{mix}}^{(\mathrm{int})}(i,\ell)
-=
-d_{\mathrm{mah}}\left(\mathbf{x}_i^{(n)},\mathbf{x}_\ell^{(n)}\right)
-+
-d_{c}^{(\mathrm{int})}\left(\mathbf{x}_i^{(c)},\mathbf{x}_\ell^{(c)}\right).
-$$
-
-### ${\bf D}_{mix}^{(int)}={\bf D}_{mah}+{\bf Z}\widetilde{\Delta}{\bf Z}^{\sf T}$
 :::
+
+::: {.column width="55%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Dissimilarity and a reference density
+
+For a non-negative dissimilarity to a prototype, when the exponential kernel is normalisable,
+
+$$
+f({\bf x};{\bf c},{\bf S})
+=
+g({\bf c},{\bf S},\eta)
+\exp\{-\eta d_{\bf S}({\bf x},{\bf c})\}.
+$$
+
+Since $M=f({\bf c};{\bf c},{\bf S})=g({\bf c},{\bf S},\eta)$,
+
+$$
+\begin{aligned}
+\overline K({\bf x},{\bf c})
+&=\frac{f({\bf x};{\bf c},{\bf S})}{M}
+=\exp\{-\eta d_{\bf S}({\bf x},{\bf c})\},\\
+d_{\bf S}({\bf x},{\bf c})
+&=-\frac{1}{\eta}\log\overline K({\bf x},{\bf c}).
+\end{aligned}
+$$
+:::
+
+:::
+
+::::
+
+::: {.callout-important appearance="simple" icon=false}
+## Pairwise consequence
+
+Take another observation as the reference prototype, ${\bf c}\leftarrow{\bf x}_{i'}$, and set $\eta=1$:
+
+$$
+\begin{aligned}
+\overline K_{\mathrm{mix}}(i,i')
+&=
+\overline K_{\mathrm n}(i,i')\,\overline K_{\mathrm c\mid n}(i,i')
+\\
+-\log\overline K_{\mathrm{mix}}(i,i')
+&=
+d_{\mathrm n}(i,i')+d_{\mathrm c\mid n}(i,i').
+\end{aligned}
+$$
+:::
+
+::: {.centered style="font-size:0.62em; margin-top:0.2em;"}
+Distance-to-prototype construction: [@ben2008probabilistic; @Hennig19]. Full mixed-data derivation: [@iod2026_sc_mix].
+:::
+
+# downstream analysis
 
 ## Spectral clustering: a graph partitioning problem
 
@@ -2001,46 +2167,18 @@ ggnet2(
   edge.label.size = 12
 )
 ```
-:::
-  
-  
-::: {.callout-note appearance="simple" icon=false}
 
-## The affinity matrix ${\bf A}$
+The **affinity matrix ${\bf A}$**
 
 The elements ${\bf w}_{ij}$ of ${\bf A}$ are high when observations $i$ and $j$ are likely to belong to the same group, and low otherwise.
+:::
 
-
-```{r}
-tib_graph <- tibble(
-  . = letters[1:4],
-  a = c("0", "0", "w_ca", "0"),
-  b = c("0", "0", "w_cb", "w_db"),
-  c = c("w_ac", "w_cb", "0", "w_dc"),
-  d = c("0", "w_bd", "w_cd", "0")
-)
-
-tib_graph |> 
-  kbl(align = "c") |> 
-  kable_styling(full_width = FALSE, font_size = 16) |> 
-  kable_minimal() |>   
-  column_spec(
-    c(1:5),
-    border_right = TRUE,
-    border_left = TRUE
-  ) |> 
-  column_spec(
-    c(2:5),
-    color = "#E76F51"
-  )
-```
-
-:::  
+  
 
 
 ## Spectral clustering: making the graph easy to cut
 
-An approximate solution to the graph partitioning problem:
+An approximate solution to the graph partitioning problem [@ng2001spectral]:
 
 ::: {.callout-note appearance="simple" icon=false}
 ## From distances to affinities
@@ -2060,7 +2198,6 @@ The parameter $\sigma$ controls the neighbourhood scale.
 ::: {.callout-tip appearance="simple" icon=false}
 ## Normalized graph Laplacian
 
-The normalized affinity matrix is
 
 $$
 {\bf L}
@@ -2072,7 +2209,7 @@ $$
 {\bf Q}{\Lambda}{\bf Q}^{\sf T},
 $$
 
-where ${\bf D}_{r}=\operatorname{diag}({\bf r})$, ${\bf r}={\bf A}{\bf 1}$, ${\bf 1}$ is an $n$-dimensional vector of ones.
+where ${\bf D}_{r}=\operatorname{diag}({\bf r})$, ${\bf r}={\bf A}{\bf 1}$, ${\bf 1}$ is an $I$-dimensional vector of ones.
 :::
 
 
@@ -2080,8 +2217,7 @@ where ${\bf D}_{r}=\operatorname{diag}({\bf r})$, ${\bf r}={\bf A}{\bf 1}$, ${\b
 ::: {.callout-important appearance="simple" icon=false}
 ## Spectral embedding
 
-The spectral clustering solution is obtained by applying $K$-means to the rows of  
-${\bf \tilde Q}$, the matrix containing the first $K$ eigenvectors of ${\bf L}$.
+apply $K$-means to the rows of  ${\bf \tilde Q}$, containing the first $K$ eigenvectors of ${\bf L}$.
 :::
 
 ## Why spectral clustering here?
@@ -2093,36 +2229,172 @@ Interaction-aware distances can encode local connectivity and non-convex structu
 ![](figures/parcoord_SC_solution.png){width=45%}
 ![](figures/SC_non_convex_solution.png){width=45%}
 
-## Experiment: interaction-driven clusters
+# Synthetic experiments
+
+## Simulation 1: associated mixed variables
+
+::: {.callout-note appearance="simple" icon=false}
+## General design
+
+- two sample sizes: $I = 1000$ and $I = 2000$
+- number of clusters fixed to $K = 3$
+- 50 datasets generated for each configuration
+- spectral clustering applied to each dissimilarity matrix
+- performance measured by adjusted Rand index
+:::
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Variable composition
+
+Four scenarios were considered:
+
+1. $Q_n = 15$, $Q_c = 15$
+2. $Q_n = 10$, $Q_c = 20$
+3. $Q_n = 20$, $Q_c = 10$
+4. $Q_n = 10$, $Q_c = 10$  plus  noise
+:::
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important appearance="simple" icon=false}
+## Aim
+
+The simulation creates mixed data with:
+
+- correlated numerical variables;
+- associated categorical variables;
+- categorical variables depending on numerical variables;
+- an additional noise scenario.
+
+:::
+
+:::
+
+:::
+
+
+
+## Simulation 1: associated mixed variables
+
+::: {.callout-note appearance="simple" icon=false}
+## Data-generating idea
+
+1. Generate numerical variables from cluster-specific multivariate normal distributions.
+
+   - different cluster means;
+   - different correlation structures.
+
+2. Generate binary categorical variables conditionally on the numerical variables.
+
+   - the first categorical variable depends on the numerical block;
+   - later categorical variables depend on the numerical block and on previous categorical variables.
+:::
+
+::: {.fragment .centered}
+### the design induces numerical correlations, categorical associations, and numerical--categorical dependence
+:::
+
+## Simulation 1: results
+
+![](figures/fig_sim1.png){.r-stretch fig-align="center"}
+
+
+## Simulation 1: results
+
+:::: {.columns}
+
+::: {.column width="55%"}
+
+![](figures/fig_sim1.png){width=100% fig-align="center"}
+
+:::
+
+::: {.column width="45%"}
+
+&nbsp;
+
+&nbsp;
+
+- Association-based distances are generally the most accurate.
+- When continuous variables dominate, AB distances achieve almost perfect recovery.
+- Standard mixed-data distances are more sensitive to variable composition and noise.
+
+:::
+
+::::
+
+## Simulation 2: interaction-driven clusters
+
+::: {.columns}
+
+::: {.column width="48%"}
 
 ::: {.callout-note appearance="simple" icon=false}
 ## Design
 
-- $n=500$ and $n=1000$
-- six continuous variables: $V_1,\ldots,V_6$
-- three categorical variables: $C_1,C_2,C_3$
+- $I = 500, 1000$
+- six continuous variables and three categorical variables
 - $V_4,V_5,V_6$ generated independently from $N(0,1)$
 - $V_1,V_2,V_3$ generated conditionally on $C_1$ and $C_2$
 :::
 
+:::
+
+::: {.column width="48%"}
+
 ::: {.callout-important appearance="simple" icon=false}
 ## Main feature
 
-The clusters are not defined by continuous variables alone or categorical variables alone,  
-but by their **cross-type interaction**.
+The clusters are not defined by continuous variables alone or categorical variables alone.
+
+They are defined by their **cross-type interaction**.
 :::
 
-
-## Interaction-aware spectral clustering results
-
-![](figures/fig_sim2.png){width=100%, fig-align="center"}
-
-:::{.fragment}
-- when the cluster structure is interaction-driven, `ab_dis_int` clearly outperforms all competitors
-- `ab_dis` without interactions, Gower, modified Gower, and the naive distance remain close to chance-level separation
-- the result supports the need to explicitly encode continuous--categorical interactions
 :::
 
+:::
+
+:::{.fragment .centered}
+### this is the setting where $\Delta^{int}$ should matter
+:::
+
+## Simulation 2: results
+
+![](figures/fig_sim2.png){.r-stretch fig-align="center"}
+
+
+## Simulation 2: results
+
+:::: {.columns}
+
+::: {.column width="55%"}
+
+![](figures/fig_sim2.png){width=100% fig-align="center"}
+
+:::
+
+::: {.column width="45%"}
+
+
+&nbsp;
+
+&nbsp;
+
+- `ab_dis_int`  outperforms the competitors.
+- distances that do not account for cross-type provide almost a chance-level performance.
+
+:::
+
+::::
+
+
+# 5. Response-aware extensions
 
 ## Response-aware distances for KNN
 
@@ -3603,157 +3875,354 @@ Alfonso Iodice D'Enza
 
 :::
 
-# Backup slides
+# Backup: distance--density derivation
 
-## From dissimilarity to a reference density
+## Just one-way interaction?
+
+::: {.callout-note appearance="simple" icon=false}
+## Factorization motivates the direction
+
+Let ${\bf x}_i=\left({\bf x}_{i_{n}},{\bf x}_{i_{c}}\right).$
+
+The joint distribution can always be written as
+
+$$
+f({\bf x}_{i_{n}},{\bf x}_{i_{c}})
+=
+f({\bf x}_{i_{n}})
+f({\bf x}_{i_{c}}\mid{\bf x}_{i_{n}}).
+$$
+:::
+
+::: {.fragment}
+
+This motivates using the continuous variables to quantify categorical distinctions:
+
+$$
+{\bf X}_{n}
+\quad\longrightarrow\quad
+\delta^{j}_{int}(a,b).
+$$
+
+:::
+
+::: {.fragment .centered}
+### How can this result be connected to pairwise dissimilarities?
+:::
+
+
+## Just one-way interaction?
+
+::: {.callout-tip appearance="simple" icon=false}
+## Dissimilarity and reference density
+
 
 Starting from a non-negative dissimilarity from a prototype,
 
 $$
-d_{{\bf S}_k}({\bf x},{\bf c}_k)\geq0,
+d_{{\bf S}_k}({\bf x}_i,{\bf c}_k)\geq0,
 \qquad
 d_{{\bf S}_k}({\bf c}_k,{\bf c}_k)=0,
 $$
 
-a distance-based probability model can be constructed, provided that the
-exponential kernel is normalisable^[@Hennig19; @ben2008probabilistic]:
+a distance-based probability model can be constructed, provided that
+the exponential kernel is normalisable
+^[@Hennig19; @ben2008probabilistic]:
 
 $$
-f({\bf x};{\bf c}_k,{\bf S}_k)
+f({\bf x}_i;{\bf c}_k,{\bf S}_k)
 =
 g({\bf c}_k,{\bf S}_k,\eta)
-\exp\!\left\{-\eta d_{{\bf S}_k}({\bf x},{\bf c}_k)\right\},
-\qquad \eta>0.
+\exp\left\{
+-\eta d_{{\bf S}_k}({\bf x}_i,{\bf c}_k)
+\right\},
+\qquad \eta>0,
 $$
 
-The factor $g({\bf c}_k,{\bf S}_k,\eta)$ makes $f$ a proper density.
+where $g({\bf c}_k,{\bf S}_k,\eta)$ makes $f$ a proper density.
+:::
 
-## Maximum normalization recovers the dissimilarity
+## Just one-way interaction?
 
-Because the density is maximal at the reference point,
+::: {.callout-tip appearance="simple" icon=false}
+## Dissimilarity and reference density
+
+Since the density is maximal at the reference point,
 
 $$
 M_k
+=
+\max_{\bf x}f({\bf x};{\bf c}_k,{\bf S}_k)
 =
 f({\bf c}_k;{\bf c}_k,{\bf S}_k)
 =
 g({\bf c}_k,{\bf S}_k,\eta).
 $$
 
-The maximum-normalised kernel is therefore
+the **maximum-normalised kernel** is
 
 $$
-\overline K_k({\bf x},{\bf c}_k)
+\overline K_k({\bf x}_i,{\bf c}_k)
 =
-\frac{f({\bf x};{\bf c}_k,{\bf S}_k)}{M_k}
+\frac{
+f({\bf x}_i;{\bf c}_k,{\bf S}_k)
+}{
+M_k
+}
 =
-\exp\!\left\{-\eta d_{{\bf S}_k}({\bf x},{\bf c}_k)\right\}.
+\exp\left\{
+-\eta d_{{\bf S}_k}({\bf x}_i,{\bf c}_k)
+\right\}.
 $$
 
-::: {.fragment .centered}
-### $d_{{\bf S}_k}({\bf x},{\bf c}_k)=-\eta^{-1}\log\overline K_k({\bf x},{\bf c}_k)$
+Therefore,
+
+$$
+d_{{\bf S}_k}({\bf x}_i,{\bf c}_k)
+=
+-\frac{1}{\eta}
+\log\overline K_k({\bf x}_i,{\bf c}_k).
+$$
+
 :::
 
-## The pairwise numerical component
+## Just one-way interaction?
 
-Let each observation act in turn as the reference prototype and choose $\eta=1$:
+::: {.callout-warning appearance="simple" icon=false}
+## The pairwise continuous component
+
+For pairwise comparison, let every observation act in turn as the
+reference prototype:
 
 $$
-f_n\!\left({\bf x}_i^{(n)};{\bf x}_\ell^{(n)},{\bf S}\right)
+{\bf c}_k
+\longrightarrow
+{\bf x}_{i'_{n}},
+\qquad
+{\bf S}_k
+\longrightarrow
+{\bf S}.
+$$
+
+Use the ordinary Mahalanobis distance and choose $\eta=1$:
+
+$$
+f_{\mathrm{n}}
+({\bf x}_{i_{n}};{\bf x}_{i'_{n}},{\bf S})
 =
-g_n({\bf S})
-\exp\!\left\{-d_{\mathrm{mah}}
-\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)\right\}.
+g_{\mathrm{n}}({\bf S})
+\exp\left\{
+-d_{\mathrm{mah}}
+({\bf x}_{i_{n}},{\bf x}_{i'_{n}})
+\right\}.
 $$
+Using the reference maximum
+$M_{\mathrm{n}}=g_{\mathrm{n}}({\bf S})$
+from the preceding construction 
 
-Using the reference maximum $M_n=g_n({\bf S})$ gives
+the **maximum-normalised continuous kernel** is 
 
 $$
-\overline K_n(i,\ell)
+\overline K_{\mathrm{n}}(i,i')
 =
-\exp\!\left\{-d_{\mathrm{mah}}
-\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)\right\}.
+\frac{
+f_{\mathrm{n}}
+({\bf x}_{i_{n}};{\bf x}_{i'_{n}},{\bf S})
+}{
+M_{\mathrm{n}}
+}
+=
+\exp\left\{
+-d_{\mathrm{mah}}
+({\bf x}_{i_{n}},{\bf x}_{i'_{n}})
+\right\}.
 $$
-
-::: {.fragment .centered}
-### $-\log\overline K_n(i,\ell)$ recovers the Mahalanobis dissimilarity
 :::
 
-## A categorical reference distribution
 
-For categorical variable $j$, let $x_{ij}^{(c)}=a$ and $x_{\ell j}^{(c)}=b$, and define
+
+
+
+::: {.fragment .centered}
+### $-\log\overline K_{\mathrm{n}}(i,i')$ recovers the ordinary Mahalanobis distance
+:::
+
+
+## Just one-way interaction?
+
+::: {.callout-tip appearance="simple" icon=false}
+## The pairwise interaction-aware categorical component
+
+For categorical variable $j$, let $x_{ij_{\mathrm c}}=a$ and $x_{i'j_{\mathrm c}}=b$.
+
+The interaction-aware category dissimilarity is
 
 $$
-\widetilde\delta_j(a,b)
+\widetilde{\delta}^{\,j}(a,b)
 =
-(1-\alpha)\delta_j^{(\mathrm{tvd})}(a,b)
+(1-\alpha)\delta^{j}_{tvd}(a,b)
 +
-\alpha\delta_j^{(\mathrm{int})}(a,b).
+\alpha\delta^{j}_{int}(a,b).
 $$
+
+Assume that $\widetilde{\delta}^{\,j}(a,b)\geq0$ and $\widetilde{\delta}^{\,j}(b,b)=0$.
+
+
+:::
+
+::: {.fragment}
 
 Choosing $\eta_j=1$, define the categorical reference PMF
 
 $$
 p_j(a;b)
 =
+\operatorname{softmax}_{h\in\mathcal A_j}
+\left\{
+-\widetilde{\delta}^{\,j}(h,b)
+\right\}_{a}
+=
 \frac{
-\exp\!\left\{-\widetilde\delta_j(a,b)\right\}
+\exp\left\{
+-\widetilde{\delta}^{\,j}(a,b)
+\right\}
 }{
-\displaystyle\sum_{h\in\mathcal A_j}
-\exp\!\left\{-\widetilde\delta_j(h,b)\right\}
+\displaystyle
+\sum_{h\in\mathcal A_j}
+\exp\left\{
+-\widetilde{\delta}^{\,j}(h,b)
+\right\}
 }.
 $$
+
+:::
 
 ::: {.fragment .centered}
 ### smaller category dissimilarities receive larger reference probabilities
 :::
 
-## The categorical kernel recovers the dissimilarity
+## Just one-way interaction?
 
-Since $\widetilde\delta_j(b,b)=0$, the maximum reference probability is
-$M_j(b)=p_j(b;b)$. Therefore,
+::: {.callout-tip appearance="simple" icon=false}
+## The pairwise interaction-aware categorical component
+
+Because $\widetilde{\delta}^{\,j}(b,b)=0$, the maximum reference
+probability is
+
+$$
+M_j(b)
+=
+p_j(b;b)
+=
+\frac{1}{
+\displaystyle
+\sum_{h\in\mathcal A_j}
+\exp\left\{
+-\widetilde{\delta}^{\,j}(h,b)
+\right\}
+}.
+$$
+
+::: {.fragment}
+
+The **maximum-normalised categorical kernel**
 
 $$
 \overline K_j(a,b)
 =
 \frac{p_j(a;b)}{M_j(b)}
 =
-\exp\!\left\{-\widetilde\delta_j(a,b)\right\}.
+\exp\left\{
+-\widetilde{\delta}^{\,j}(a,b)
+\right\},
 $$
 
-For the whole categorical vector,
 
-$$
-\overline K_c^{(\mathrm{int})}(i,\ell)
-=
-\prod_{j=1}^{Q_c}\overline K_j
-\left(x_{ij}^{(c)},x_{\ell j}^{(c)}\right)
-=
-\exp\!\left\{-d_c^{(\mathrm{int})}
-\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right)\right\}.
-$$
 
-## Combining the kernels
-
-The product kernel is
-
-$$
-\overline K_{\mathrm{mix}}^{(\mathrm{int})}(i,\ell)
-=
-\overline K_n(i,\ell)\,
-\overline K_c^{(\mathrm{int})}(i,\ell).
-$$
-
-Hence,
-
-$$
--\log\overline K_{\mathrm{mix}}^{(\mathrm{int})}(i,\ell)
-=
-d_{\mathrm{mah}}\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)
-+
-d_c^{(\mathrm{int})}\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right).
-$$
+:::
+:::
 
 ::: {.fragment .centered}
-### ${\bf D}_{mix}^{(int)}={\bf D}_{mah}+{\bf Z}\widetilde\Delta{\bf Z}^{\sf T}$
+### $-\log\overline K_j(a,b)=\widetilde{\delta}^{\,j}(a,b)$ recovers the interaction-aware  dissimilarity 
+:::
+
+
+
+## Just one-way interaction?
+
+::: {.callout-tip appearance="simple" icon=false}
+## Combining the kernels
+
+For the whole categorical vector, define the separable maximum-normalised kernel
+
+$$
+\begin{aligned}
+\overline K_{\mathrm{c}}^{(int)}(i,i')
+&=
+\prod_{j=1}^{Q_c}
+\overline K_j
+(x_{ij_{c}},x_{i'j_{c}})
+\\
+&=
+\exp\left\{
+-\sum_{j=1}^{Q_c}
+\widetilde{\delta}^{\,j}
+(x_{ij_{c}},x_{i'j_{c}})
+\right\}
+\\
+&=
+\exp\left\{
+-d_{\mathrm{c}}^{(int)}
+({\bf x}_{i_{c}},{\bf x}_{i'_{c}})
+\right\}.
+\end{aligned}
+$$
+:::
+
+## Just one-way interaction?
+
+::: {.callout-tip appearance="simple" icon=false}
+## Combining the kernels
+
+Combine the continuous and categorical kernels:
+
+$$
+\overline K_{\mathrm{mix}}^{(int)}(i,i')
+=
+\overline K_{\mathrm{n}}(i,i')
+\,
+\overline K_{\mathrm{c}}^{(int)}(i,i')=
+\exp\left\{
+-
+d_{\mathrm{mah}}
+({\bf x}_{i_{n}},{\bf x}_{i'_{n}})
+-
+d_{\mathrm{c}}^{(int)}
+({\bf x}_{i_{c}},{\bf x}_{i'_{c}})
+\right\}
+$$
+
+:::
+
+::: {.fragment .centered}
+### $-log \overline{K}_{\mathrm{mix}}^{(int)}(i,i')=d_{\mathrm{mah}}({\bf x}_{i_{n}},{\bf x}_{i'_{n}})
++d_{\mathrm{c}}^{(int)}({\bf x}_{i_{c}},{\bf x}_{i'_{c}})$
+
+### recovers the overall dissimilarity 
+:::
+
+
+
+&nbsp;
+
+::: {.fragment}
+
+### in algebraic form
+
+::: {.centered}
+
+**${\bf D}_{mix}^{(int)} ={\bf D}_{mah}+{\bf Z}\widetilde{\Delta}{\bf Z}^{\sf T}.$**
+
+:::
+
 :::

@@ -7,10 +7,10 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 ## Progress
 
 - Assessed and documented: 85 of 140
-- Resolved or superseded: 42
+- Resolved or superseded: 43
 - Partially resolved: 4
 - In progress: 1
-- Needs discussion: 38
+- Needs discussion: 37
 - Not yet assessed: 55
 
 ## Responses
@@ -162,7 +162,7 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 
 | ID | Response | Status |
 |---|---|---|
-| M-082 | The numerical-transformation list still follows the general association-aware discussion. We should decide whether to introduce numerical preprocessing first, as suggested. | needs discussion |
+| M-082 | Moved the numerical construction and transformation list before multivariate additivity, commensurability, and the association-aware discussion. | resolved |
 | M-083 | The indicator-based paragraph remains. We should either remove it or retain only the sentence needed to explain package options. | needs discussion |
 | M-084 | The categorical association passage should be shortened and recast around the implementation rather than closely repeating the methodological paper. In addition, exact categorical independence currently yields zero component means and therefore `NaN` after commensurability; the package and text need an explicit rule for this case. | needs discussion |
 | M-085 | The response-aware passage still needs reorganization and its bold revision markup must be removed before submission. | needs discussion |

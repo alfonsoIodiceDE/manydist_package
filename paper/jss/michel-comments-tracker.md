@@ -29,10 +29,10 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 | Status | Count |
 |---|---:|
 | Open | 55 |
-| Needs discussion | 38 |
+| Needs discussion | 37 |
 | In progress | 1 |
 | Partially resolved | 4 |
-| Resolved | 37 |
+| Resolved | 38 |
 | Superseded | 5 |
 | All other statuses | 0 |
 | **Total** | **140** |
@@ -122,7 +122,7 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 | M-079 | 9.2 | Highlight | Figure 1: | needs discussion | Framework — association-aware figure | Confirmed that the figure still has no textual cross-reference. Add a sentence such as “@fig-independence-association illustrates the change in geometry…” at the point where the example is introduced. |
 | M-080 | 9.3 | Highlight | whitening | resolved | Framework — numerical variables | Added a mathematical footnote defining whitening and its equivalence to Mahalanobis distance. |
 | M-081 | 9.4 | Highlight | to remove linear redundancy. | needs discussion | Framework — numerical variables | The definition is now supplied, but the text must distinguish exact whitening/Mahalanobis equivalence from the implemented PCA-score rotation followed by empirical component-wise commensurability; this remains linked to `M-075`. |
-| M-082 | 10.1 | Highlight | Common transformations include: • standard-deviation scaling: (x - x)/sx, which uses… | needs discussion | Framework — numerical variables | The transformation list still follows the general association-aware discussion. Decide whether to introduce numerical preprocessing before association-aware constructions, as Michel suggests. |
+| M-082 | 10.1 | Highlight | Common transformations include: • standard-deviation scaling: (x - x)/sx, which uses… | resolved | Framework — general setup | Moved the numerical construction and transformation list before multivariate additivity, commensurability, and the association-aware discussion. |
 | M-083 | 11.1 | Highlight | Indicator-based dissimilarities treat a binary indicator representation as numerical.… | needs discussion | Framework — categorical variables | The paragraph remains. Decide whether to delete it or reduce it to a single sentence needed to explain the available categorical presets. |
 | M-084 | 11.2 | Highlight | Association-based dissimilarities incorporate relationships among categorical… | needs discussion | Framework — categorical variables | The passage remains close to the methodological paper and should be shortened around what the package implements. A technical decision is also required for exact independence: all dissimilarities and their means become zero, so the current commensurability code returns `NaN`. |
 | M-085 | 11.3 | Highlight | The same construction accommodates a response. When an outcome is supplied, the… | needs discussion | Framework — categorical variables | The response-aware paragraph remains substantially unchanged and is still bold as revision markup. Reorganize it around the `response` argument, what is fitted, the single-predictor behavior, and the absence of a response-aware numerical counterpart. |
@@ -203,3 +203,9 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 - Technical follow-up for `M-075`/`M-081`: `manydist/R/ndist.R` uses `step_normalize()` followed by `step_pca()` and then divides each component-wise distance by its empirical mean. The manuscript currently writes the distinct whitening transformation $\mathbf{X}\mathbf{V}\bm{\Lambda}^{-1/2}$. Preserve the Mahalanobis equivalence as a definition of whitening, but do not imply that the implemented commensurable Manhattan construction is itself Mahalanobis distance.
 - `M-079` is now assessed: the figure label exists, but no `@fig-independence-association` reference appears in the prose.
 - `M-082`–`M-085` are now assessed and parked for discussion. A balanced two-factor test confirmed that exact categorical independence produces zero total-variation category dissimilarities and `NaN` commensurable distances because the component means are zero; the implementation and corresponding manuscript statement need an explicit zero-contribution or fallback rule.
+
+### 2026-09-03 — Framework reordering and render repair
+
+- `M-082` is resolved: the numerical construction and its common transformations now precede the association-aware discussion.
+- Replaced the block-level `\new{...}` wrapper around the moved equations and list with a scoped LaTeX colour group. This preserves the blue review markup while allowing Quarto to process equation identifiers and cross-references.
+- Rendered the complete 34-page manuscript successfully and visually checked pages 5–10; the moved blue block, equations, references, page breaks, and Figure 1 render correctly.

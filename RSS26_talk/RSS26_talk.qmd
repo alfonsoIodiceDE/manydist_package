@@ -21,7 +21,7 @@ format:
     footer: "RSS International Conference 2026 · Bournemouth"
     title-slide-attributes:
       data-background-color: "#5B7F86"
-      data-background-image: "figures/manydist_logo_transparent.png"
+      data-background-image: "figures/gelati.jpg"
       data-background-size: "contain"
       data-background-position: "center"
       data-background-repeat: "no-repeat"
