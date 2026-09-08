@@ -28,12 +28,12 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 
 | Status | Count |
 |---|---:|
-| Open | 55 |
-| Needs discussion | 37 |
+| Open | 0 |
+| Needs discussion | 42 |
 | In progress | 1 |
 | Partially resolved | 4 |
-| Resolved | 38 |
-| Superseded | 5 |
+| Resolved | 80 |
+| Superseded | 13 |
 | All other statuses | 0 |
 | **Total** | **140** |
 
@@ -126,61 +126,61 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 | M-083 | 11.1 | Highlight | Indicator-based dissimilarities treat a binary indicator representation as numerical.… | needs discussion | Framework — categorical variables | The paragraph remains. Decide whether to delete it or reduce it to a single sentence needed to explain the available categorical presets. |
 | M-084 | 11.2 | Highlight | Association-based dissimilarities incorporate relationships among categorical… | needs discussion | Framework — categorical variables | The passage remains close to the methodological paper and should be shortened around what the package implements. A technical decision is also required for exact independence: all dissimilarities and their means become zero, so the current commensurability code returns `NaN`. |
 | M-085 | 11.3 | Highlight | The same construction accommodates a response. When an outcome is supplied, the… | needs discussion | Framework — categorical variables | The response-aware paragraph remains substantially unchanged and is still bold as revision markup. Reorganize it around the `response` argument, what is fitted, the single-predictor behavior, and the absence of a response-aware numerical counterpart. |
-| M-086 | 12.1 | StrikeOut | [general note] | open | — | — |
-| M-087 | 12.2 | Highlight | A preset identifies a complete distance specification. | open | — | — |
-| M-088 | 12.3 | Highlight | u_dep | open | — | — |
-| M-089 | 12.4 | Highlight | carries | open | — | — |
-| M-090 | 12.5 | Highlight | consumed by downstream | open | — | — |
-| M-091 | 12.6 | Highlight | hclust () and cmdscale (). | open | — | — |
-| M-092 | 13.1 | Highlight | in the gower, euclidean, and hl presets. | open | — | — |
-| M-093 | 14.1 | Highlight | The custom preset exposes the three choices directly through the method_num,… | open | — | — |
-| M-094 | 14.2 | Highlight | Table 3 summarizes the presets | open | — | — |
-| M-095 | 15.1 | Highlight | A distance is an intermediate data representation, so its sensitivity should be… | open | — | — |
-| M-096 | 15.2 | Highlight | one predictor | open | — | — |
-| M-097 | 15.3 | Highlight | The diagnostics | open | — | — |
-| M-098 | 15.4 | Highlight | relative_distance | open | — | — |
-| M-099 | 15.5 | Highlight | the alienation between the full and reduced configurations. | open | — | — |
-| M-100 | 15.6 | Text | in the [O, | open | — | — |
-| M-101 | 15.7 | Highlight | measuring the configuration variance left unexplained | open | — | — |
-| M-102 | 15.8 | Highlight | Reporting both is deliberate: a variable can shift many pairwise distances while… | open | — | — |
-| M-103 | 15.9 | Highlight | benchmarking | open | — | — |
-| M-104 | 16.1 | Highlight | Figure 2: Relative | open | — | — |
-| M-105 | 16.2 | Highlight | lovo_gower$autoplot( = metric "relative_distance", + reorder= + TRUE +) + = ggplot2::… | open | — | — |
-| M-106 | 16.3 | Highlight | The two metrics disagree | open | — | — |
-| M-107 | 17.1 | Highlight | Comparing distance specifications | open | — | — |
-| M-108 | 18.1 | Highlight | Figure 3: Stability | open | — | — |
-| M-109 | 18.2 | Highlight | and can disagree, | open | — | — |
-| M-110 | 18.3 | Highlight | The pairwise diagnostics | open | — | — |
-| M-111 | 18.4 | Highlight | changes in magnitude from changes in geometry. | open | — | — |
-| M-112 | 18.5 | Highlight | every pair of successful distances. | open | — | — |
-| M-113 | 18.6 | Highlight | The MDS congruence coefficient and its corresponding alienation coefficient compare… | open | — | — |
-| M-114 | 18.7 | Highlight | If is specified, 0 cluster_ k benchmark_mdist also applies each requested clustering… | open | — | — |
-| M-115 | 18.8 | Highlight | Benchmarking | open | — | — |
-| M-116 | 18.9 | Highlight | evaluates an explicit table of distance spec ifications. | open | — | — |
-| M-117 | 19.1 | Highlight | benchmark_pairs <- benchmark_comparisons(distance_benchmark) | open | — | — |
-| M-118 | 19.2 | Highlight | candidate_specs <- all_dist_method_specs( mode = "presets_only", + preset = c("gower",… | open | — | — |
-| M-119 | 19.3 | Highlight | under pairs of distances; | open | — | — |
-| M-120 | 19.4 | Highlight | low-dimensional geometry, | open | — | — |
-| M-121 | 19.5 | Highlight | determines | open | — | — |
-| M-122 | 19.6 | Highlight | whether those changes alter the partition. | open | — | — |
-| M-123 | 19.7 | Highlight | are therefore complementary rather than alternative rankings. | open | — | — |
-| M-124 | 19.8 | Highlight | renders any pairwise diagnostic autoplot () as an annotated triangular heatmap. | open | — | — |
-| M-125 | 19.9 | Highlight | An error in one specification is captured | open | — | — |
-| M-126 | 19.10 | Highlight | a benchmark remains a sensitivity analysis rather than a model-selection rule. | open | — | — |
-| M-127 | 19.11 | Highlight | Gower | open | — | — |
-| M-128 | 19.12 | Highlight | has more than twice the alienation | open | — | — |
-| M-129 | 19.13 | Highlight | a much lower PAM ARI. | open | — | — |
-| M-130 | 19.14 | Highlight | This | open | — | — |
-| M-131 | 20.1 | Highlight | distance, and so the same gap from the Gower | open | — | — |
-| M-132 | 20.2 | Highlight | Taken together, the diagnostics indicate how much of an analysis rests on the choice… | open | — | — |
-| M-133 | 20.3 | Highlight | Distance-based learning pipelines | open | — | — |
-| M-134 | 20.4 | Highlight | Refitting the distance within resamples | open | — | — |
-| M-135 | 20.5 | Highlight | recipe. | open | — | — |
-| M-136 | 20.6 | Highlight | The fitted step stores the training data and preprocessing parameters, so the distance… | open | — | — |
-| M-137 | 20.7 | Highlight | Its | open | — | — |
-| M-138 | 20.8 | Highlight | required by the downstream task: for clustering and "pai rwise" for prediction.… | open | — | — |
-| M-139 | 20.9 | Highlight | whereas nearest-neighbour prediction | open | — | — |
-| M-140 | 21.1 | Highlight | a fixed snapshot | open | — | — |
+| M-086 | 12.1 | StrikeOut | [general note] | superseded | Distance construction — opening | The punctuation marked in the earlier passage disappeared when the section opening was rewritten. |
+| M-087 | 12.2 | Highlight | A preset identifies a complete distance specification. | resolved | Distance construction — basic interface | Introduced `x`, `method_num`, `method_cat`, and `commensurable`, including defaults and main options, before discussing presets; the `MDist` object follows the preset table. |
+| M-088 | 12.3 | Highlight | u_dep | needs discussion | Distance construction — preset example | `u_dep` remains the principal worked preset, but the annotation contains no written explanation. Confirm whether Michel intended a different example or only marked the term. |
+| M-089 | 12.4 | Highlight | carries | resolved | Distance construction — `MDist` object | Replaced “carries” with “contains” in the rewritten object description. |
+| M-090 | 12.5 | Highlight | consumed by downstream | resolved | Distance construction — `MDist` object | Removed the marked wording; the text now states simply that `to_dist()` returns the standard R `dist` representation. |
+| M-091 | 12.6 | Highlight | hclust () and cmdscale (). | resolved | Distance construction — `MDist` object | Removed the arbitrary list of downstream functions and stopped at the returned R `dist` representation. |
+| M-092 | 13.1 | Highlight | in the gower, euclidean, and hl presets. | resolved | Distance construction — presets | Added a dedicated preset subsection and table, together with an explanation of the `u_` family and the comparison presets. |
+| M-093 | 14.1 | Highlight | The custom preset exposes the three choices directly through the method_num,… | resolved | Distance construction — basic interface | Moved component specification before presets and clarified that `preset = "custom"` is the default, so it need not be requested explicitly. |
+| M-094 | 14.2 | Highlight | Table 3 summarizes the presets | resolved | Distance construction — presets | Explained why the presets are included and why some require dedicated implementations outside the three-component custom interface. |
+| M-095 | 15.1 | Highlight | A distance is an intermediate data representation, so its sensitivity should be… | resolved | Diagnostics — opening | Replaced the prescriptive claim with an objective motivation and explicitly separated direct distance diagnostics from downstream MDS and clustering diagnostics. |
+| M-096 | 15.2 | Highlight | one predictor | resolved | Diagnostics — LOVO | Replaced “predictor” with “variable” throughout the LOVO introduction. |
+| M-097 | 15.3 | Highlight | The diagnostics | resolved | Diagnostics — LOVO | Connected the diagnostic quantities directly to the change produced by recomputing the distance after each variable is omitted. |
+| M-098 | 15.4 | Highlight | relative_distance | resolved | Diagnostics — LOVO | Added an itemized explanation of `mad_importance`, normalized `relative_distance`, MDS diagnostics, and optional clustering diagnostics. |
+| M-099 | 15.5 | Highlight | the alienation between the full and reduced configurations. | resolved | Diagnostics — MDS-based LOVO | Introduced classical MDS, the default dimensionality, the compared configurations, and the congruence/alienation relationship before interpretation. |
+| M-100 | 15.6 | Text | in the [O, | superseded | Diagnostics — MDS-based LOVO | The malformed notation disappeared with the rewritten passage. |
+| M-101 | 15.7 | Highlight | measuring the configuration variance left unexplained | resolved | Diagnostics — MDS-based LOVO | Removed the unsupported variance-explained interpretation and now defines alienation as $\sqrt{1-c_j^2}$, interpreted as change in the selected MDS representation. |
+| M-102 | 15.8 | Highlight | Reporting both is deliberate: a variable can shift many pairwise distances while… | resolved | Diagnostics — LOVO | Separated direct and downstream diagnostics and states that they describe different objects; MDS measures are explicitly conditional on interest in an MDS representation. |
+| M-103 | 15.9 | Highlight | benchmarking | needs discussion | Diagnostics — section title | The annotation has no written explanation. The term remains in the section title because the exported function is `benchmark_mdist()`, while the prose now generally uses “comparison.” |
+| M-104 | 16.1 | Highlight | Figure 2: Relative | resolved | Diagnostics — LOVO figure | Added an explicit textual reference to the figure and explained what it shows and why it is useful. |
+| M-105 | 16.2 | Highlight | lovo_gower$autoplot( = metric "relative_distance", + reorder= + TRUE +) + = ggplot2::… | resolved | Diagnostics — LOVO figure | Simplified the call to `ggplot2::autoplot(lovo_gower, ...)`; retained explicit `metric` and `reorder` arguments so the displayed diagnostic and ordering are reproducible. |
+| M-106 | 16.3 | Highlight | The two metrics disagree | superseded | Diagnostics — LOVO interpretation | Removed the “disagree” framing; the revision states that the measures describe different objects. |
+| M-107 | 17.1 | Highlight | Comparing distance specifications | resolved | Diagnostics — subsection structure | Split the material into “Comparing LOVO diagnostics across distance specifications” and “Comparing candidate distance specifications,” making the two operations explicit. |
+| M-108 | 18.1 | Highlight | Figure 3: Stability | resolved | Diagnostics — comparative LOVO figure | Added an explicit reference and a detailed explanation of the plotted within-distance PAM LOVO quantities. |
+| M-109 | 18.2 | Highlight | and can disagree, | resolved | Diagnostics — organization | Removed the marked wording and replaced it with a direct-versus-downstream distinction. |
+| M-110 | 18.3 | Highlight | The pairwise diagnostics | resolved | Diagnostics — candidate comparison | Reorganized candidate comparison to begin with direct magnitude measures and then separately introduce MDS and clustering comparisons. |
+| M-111 | 18.4 | Highlight | changes in magnitude from changes in geometry. | resolved | Diagnostics — candidate comparison | Avoided the geometry claim and now distinguishes original dissimilarity matrices from the results of specified MDS or clustering procedures. |
+| M-112 | 18.5 | Highlight | every pair of successful distances. | resolved | Diagnostics — candidate comparison | Replaced “successful distances” with “every pair of distances that could be computed.” |
+| M-113 | 18.6 | Highlight | The MDS congruence coefficient and its corresponding alienation coefficient compare… | resolved | Diagnostics — candidate comparison | Now specifies classical MDS, the default two-dimensional representation, and that congruence and alienation compare those representations. |
+| M-114 | 18.7 | Highlight | If is specified, 0 cluster_ k benchmark_mdist also applies each requested clustering… | resolved | Diagnostics — candidate comparison | Moved clustering into its own paragraph and explains separately when it is run and how partitions are compared. |
+| M-115 | 18.8 | Highlight | Benchmarking | needs discussion | Diagnostics — terminology | Most prose now uses “compare” or “comparison,” but “benchmarking” remains in the section title and exported function name; confirm the preferred article terminology. |
+| M-116 | 18.9 | Highlight | evaluates an explicit table of distance spec ifications. | resolved | Diagnostics — candidate specifications | Replaced the opaque description with a direct explanation that specifications may be supplied or generated with `all_dist_method_specs()`. |
+| M-117 | 19.1 | Highlight | benchmark_pairs <- benchmark_comparisons(distance_benchmark) | needs discussion | Diagnostics — benchmark output | Simplified the example to print `benchmark_comparisons(distance_benchmark)` directly, but the annotation contains no written explanation; confirm whether further change was intended. |
+| M-118 | 19.2 | Highlight | candidate_specs <- all_dist_method_specs( mode = "presets_only", + preset = c("gower",… | resolved | Diagnostics — benchmark example | Simplified the example by removing the `dplyr::mutate()` label manipulation and retaining only preset selection and the benchmark call. |
+| M-119 | 19.3 | Highlight | under pairs of distances; | resolved | Diagnostics — direct comparisons | Recast the passage explicitly for two candidate distances and defines both MAD and the symmetric relative-distance measure. |
+| M-120 | 19.4 | Highlight | low-dimensional geometry, | resolved | Diagnostics — MDS comparisons | Replaced the broad geometry wording with the more precise “chosen classical MDS representations.” |
+| M-121 | 19.5 | Highlight | determines | resolved | Diagnostics — clustering comparisons | Uses “measure agreement” rather than “determines.” |
+| M-122 | 19.6 | Highlight | whether those changes alter the partition. | resolved | Diagnostics — clustering comparisons | Now explains that decreasing ARI indicates increasingly different assignments and measures how much partitions differ. |
+| M-123 | 19.7 | Highlight | are therefore complementary rather than alternative rankings. | resolved | Diagnostics — synthesis | States more strongly that the diagnostics describe different objects and should not be interpreted as alternative estimates of one quantity. |
+| M-124 | 19.8 | Highlight | renders any pairwise diagnostic autoplot () as an annotated triangular heatmap. | resolved | Diagnostics — benchmark figure | Added a concrete `autoplot()` call, an explicit figure reference, and an explanation of the displayed relative-distance comparison. |
+| M-125 | 19.9 | Highlight | An error in one specification is captured | superseded | Diagnostics — candidate comparison | Removed the implementation-error discussion from the article. |
+| M-126 | 19.10 | Highlight | a benchmark remains a sensitivity analysis rather than a model-selection rule. | resolved | Diagnostics — synthesis | Rephrased cautiously: the diagnostics describe different aspects of candidate distances but do not by themselves select a preferred distance. |
+| M-127 | 19.11 | Highlight | Gower | superseded | Diagnostics — removed results narrative | Removed the containing numerical comparison rather than retaining the ambiguous shorthand. |
+| M-128 | 19.12 | Highlight | has more than twice the alienation | superseded | Diagnostics — removed results narrative | Removed the unsupported ratio interpretation. |
+| M-129 | 19.13 | Highlight | a much lower PAM ARI. | resolved | Diagnostics — clustering comparison | The new text defines ARI as agreement between partitions and explicitly states that it does not establish preference. |
+| M-130 | 19.14 | Highlight | This | superseded | Diagnostics — removed results narrative | Removed the vague pronoun with the containing narrative. |
+| M-131 | 20.1 | Highlight | distance, and so the same gap from the Gower | superseded | Diagnostics — removed results narrative | Removed the unclear comparison with the containing narrative. |
+| M-132 | 20.2 | Highlight | Taken together, the diagnostics indicate how much of an analysis rests on the choice… | resolved | Diagnostics — synthesis | Replaced the strong conclusion with a cautious statement that usefulness depends on intended use and that the diagnostics do not alone choose a distance. |
+| M-133 | 20.3 | Highlight | Distance-based learning pipelines | resolved | Pipelines — opening | Added a substantive introduction explaining why data-adaptive distances must be fitted on training data and naming the unsupervised and supervised settings. |
+| M-134 | 20.4 | Highlight | Refitting the distance within resamples | resolved | Pipelines — organization | Added a general workflow introduction before the more specific resampling subsection and renamed the latter around its motivation. |
+| M-135 | 20.5 | Highlight | recipe. | resolved | Pipelines — workflow introduction | Defines a `tidymodels` recipe before introducing `step_mdist()`. |
+| M-136 | 20.6 | Highlight | The fitted step stores the training data and preprocessing parameters, so the distance… | resolved | Pipelines — workflow introduction | Condensed the repeated explanation and removed the unclear “pipeline-level counterpart” sentence. |
+| M-137 | 20.7 | Highlight | Its | resolved | Pipelines — workflow representations | Names `step_mdist()` explicitly when introducing its `output` argument. |
+| M-138 | 20.8 | Highlight | required by the downstream task: for clustering and "pai rwise" for prediction.… | resolved | Pipelines — workflow representations | Separately explains square pairwise distances for clustering and rectangular new-to-training distances for nearest-neighbour prediction, and mentions MDS as a non-workflow downstream use. |
+| M-139 | 20.9 | Highlight | whereas nearest-neighbour prediction | resolved | Pipelines — workflow representations | Introduces supervised nearest-neighbour classification before explaining its required representation and later provides a dedicated application subsection. |
+| M-140 | 21.1 | Highlight | a fixed snapshot | needs discussion | Pipelines — WDI data | The phrase “fixed snapshot” remains and the annotation contains no written explanation; confirm whether Michel intended it to be removed or clarified. |
 
 ## Verification notes
 
@@ -209,3 +209,11 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 - `M-082` is resolved: the numerical construction and its common transformations now precede the association-aware discussion.
 - Replaced the block-level `\new{...}` wrapper around the moved equations and list with a scoped LaTeX colour group. This preserves the blue review markup while allowing Quarto to process equation identifiers and cross-references.
 - Rendered the complete 34-page manuscript successfully and visually checked pages 5–10; the moved blue block, equations, references, page breaks, and Figure 1 render correctly.
+
+### 2026-09-08 — Distance construction through learning pipelines
+
+- Reconciled `M-086`–`M-140`; all 140 annotations have now been assessed and documented in the response log.
+- In this batch, 42 comments are resolved and 8 are superseded by the rewritten material. Five remain for discussion: `M-088`, `M-103`, `M-115`, `M-117`, and `M-140`.
+- Rendered the complete 35-page manuscript successfully and visually checked pages 11–32. The revised sections, code blocks, tables, plots, and section transitions have no clipping, overlap, or missing cross-references.
+- Final copy/layout fixes identified in the rendered PDF: change the Table 3 caption from “clustering function” to `mdist()`; remove the manually written “Figure” before the references to Figures 2, 3, 4, and 6; replace “subsetted” with “subset”; and change the `dkss` description from kernel product to kernel summation similarity.
+- Table 4 currently breaks across pages 13–14 with only the `u_mix` row on the second page. Consider tightening or repositioning it during the final layout pass.

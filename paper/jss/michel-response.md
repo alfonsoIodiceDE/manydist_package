@@ -6,12 +6,12 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 
 ## Progress
 
-- Assessed and documented: 85 of 140
-- Resolved or superseded: 43
+- Assessed and documented: 140 of 140
+- Resolved or superseded: 93
 - Partially resolved: 4
 - In progress: 1
-- Needs discussion: 37
-- Not yet assessed: 55
+- Needs discussion: 42
+- Not yet assessed: 0
 
 ## Responses
 
@@ -168,6 +168,89 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 | M-085 | The response-aware passage still needs reorganization and its bold revision markup must be removed before submission. | needs discussion |
 
 **Location:** Framework, `Numerical variables` and `Categorical variables` subsections.
+
+### Distance construction — M-086 to M-094
+
+| ID | Response | Status |
+|---|---|---|
+| M-086 | The marked punctuation disappeared when the section opening was rewritten. | superseded |
+| M-087 | Introduced the data, numerical preprocessing, categorical dissimilarity, and commensurability arguments—including defaults and main options—before introducing presets. The `MDist` object is described afterwards. | resolved |
+| M-088 | `u_dep` remains the principal worked preset, but the annotation contains no written explanation. We should confirm whether a different example was intended. | needs discussion |
+| M-089 | Replaced “carries” with “contains” in the rewritten `MDist` description. | resolved |
+| M-090 | Removed “consumed by downstream” and now states simply that `to_dist()` returns the standard R `dist` representation. | resolved |
+| M-091 | Removed the arbitrary `hclust()` and `cmdscale()` examples and stopped at the returned `dist` representation. | resolved |
+| M-092 | Added a dedicated preset subsection and table, with an explanation of the `u_` family and comparison presets. | resolved |
+| M-093 | Moved direct component specification before presets and clarified that `preset = "custom"` is already the default. | resolved |
+| M-094 | Explained why the presets are included and why some require dedicated implementations outside the custom three-component interface. | resolved |
+
+**Location:** `Distance construction` section.
+
+### LOVO diagnostics — M-095 to M-106
+
+| ID | Response | Status |
+|---|---|---|
+| M-095 | Replaced the strong recommendation with an objective motivation and organized the diagnostics into direct distance measures and downstream MDS or clustering measures. | resolved |
+| M-096 | Replaced “predictor” with “variable” in the LOVO description. | resolved |
+| M-097 | Connected the reported diagnostics directly to the changes produced by leaving out each variable and recomputing the distance. | resolved |
+| M-098 | Added an itemized explanation of MAD, normalized relative distance, MDS diagnostics, and optional clustering diagnostics. | resolved |
+| M-099 | Introduced classical MDS, the selected dimensionality, and the full and reduced configurations before defining congruence and alienation. | resolved |
+| M-100 | The malformed notation disappeared with the rewritten passage. | superseded |
+| M-101 | Removed the unsupported “variance left unexplained” interpretation and defines alienation directly from the congruence coefficient. | resolved |
+| M-102 | Separated direct from downstream diagnostics and explains that they describe different objects; the MDS measures are explicitly conditional on interest in an MDS representation. | resolved |
+| M-103 | The annotation on “benchmarking” contains no written explanation. The word remains in the section title because the exported function is `benchmark_mdist()`, while the prose generally uses “comparison.” | needs discussion |
+| M-104 | Added an explicit reference to the LOVO figure and explains what it shows. | resolved |
+| M-105 | Simplified the plotting call while retaining explicit `metric` and `reorder` arguments to reproduce the displayed quantity and ordering. | resolved |
+| M-106 | Removed the claim that the two metrics “disagree” and instead explains that they describe different objects. | superseded |
+
+**Location:** `Distance diagnostics and benchmarking`, opening and LOVO subsection.
+
+### Comparing distance specifications — M-107 to M-132
+
+| ID | Response | Status |
+|---|---|---|
+| M-107 | Split the material into comparisons of LOVO diagnostics and comparisons of complete candidate distance specifications. | resolved |
+| M-108 | Added an explicit reference to the comparative LOVO figure and explains its PAM-based quantities. | resolved |
+| M-109 | Removed the “disagree” wording and adopted the direct-versus-downstream distinction. | resolved |
+| M-110 | Reorganized candidate comparison to begin with distance-magnitude measures and then separately introduce MDS and clustering comparisons. | resolved |
+| M-111 | Avoided the broad magnitude-versus-geometry claim and distinguishes original dissimilarities from specified downstream analyses. | resolved |
+| M-112 | Replaced “successful distances” with “distances that could be computed.” | resolved |
+| M-113 | Specifies classical MDS, the default dimensionality, and the representations being compared. | resolved |
+| M-114 | Moved optional clustering comparisons into a separate paragraph explaining when they are run and how to interpret ARI. | resolved |
+| M-115 | Most prose now uses “comparison,” but “benchmarking” remains in the section title and exported function name. Preferred article terminology remains to be agreed. | needs discussion |
+| M-116 | Explains directly how candidate specifications are supplied or generated with `all_dist_method_specs()`. | resolved |
+| M-117 | Simplified the example to print `benchmark_comparisons(distance_benchmark)` directly. The annotation has no written explanation, so we should confirm whether further change was intended. | needs discussion |
+| M-118 | Simplified the code by removing the `dplyr::mutate()` label manipulation. | resolved |
+| M-119 | Defines MAD and relative distance explicitly for two candidate distances. | resolved |
+| M-120 | Replaced “low-dimensional geometry” with the more precise “chosen classical MDS representations.” | resolved |
+| M-121 | Uses “measure agreement” rather than “determines.” | resolved |
+| M-122 | Explains that lower ARI means increasingly different assignments and therefore quantifies how much the partitions differ. | resolved |
+| M-123 | States that the diagnostics describe different objects rather than alternative estimates or rankings of one quantity. | resolved |
+| M-124 | Added a concrete `autoplot()` example, figure reference, and explanation of the displayed pairwise comparison. | resolved |
+| M-125 | Removed the implementation-error discussion from the article. | superseded |
+| M-126 | Rephrased cautiously that the diagnostics do not, by themselves, select a preferred distance. | resolved |
+| M-127 | Removed the ambiguous shorthand with the containing results narrative. | superseded |
+| M-128 | Removed the unsupported ratio interpretation of alienation. | superseded |
+| M-129 | Defines ARI as agreement between partitions and explicitly states that it does not establish preference. | resolved |
+| M-130 | Removed the vague pronoun with the containing results narrative. | superseded |
+| M-131 | Removed the unclear comparison with the containing results narrative. | superseded |
+| M-132 | Replaced the strong synthesis with a cautious, use-dependent interpretation of the diagnostics. | resolved |
+
+**Location:** Comparative LOVO and candidate-distance subsections.
+
+### Learning pipelines — M-133 to M-140
+
+| ID | Response | Status |
+|---|---|---|
+| M-133 | Added an introduction explaining why data-adaptive distances must be fitted on training data and names the unsupervised and supervised settings. | resolved |
+| M-134 | Added a general workflow subsection before the more specific resampling demonstration and renamed the latter around its motivation. | resolved |
+| M-135 | Defines a `tidymodels` recipe before introducing `step_mdist()`. | resolved |
+| M-136 | Condensed the repeated fit-and-apply explanation and removed the unclear pipeline-level analogy. | resolved |
+| M-137 | Names `step_mdist()` explicitly when introducing its `output` argument. | resolved |
+| M-138 | Separately explains pairwise clustering distances, new-to-training prediction distances, and MDS as a non-workflow downstream use. | resolved |
+| M-139 | Introduces supervised nearest-neighbour classification before explaining its required representation and later gives it a dedicated subsection. | resolved |
+| M-140 | “Fixed snapshot” remains, and the annotation contains no written explanation. We should confirm whether Michel wanted the phrase removed or clarified. | needs discussion |
+
+**Location:** `Distance-based learning pipelines` section.
 
 <!--
 Use this structure for each addressed comment:
