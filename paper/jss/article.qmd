@@ -1047,7 +1047,6 @@ The principal arguments are summarized below. The default specification uses sta
 
 The complete set of categorical methods can be inspected with `dist_methods_tbl_cat()`. Additional arguments control particular constructions, such as the number of retained principal components when `method_num = "pc_scores"`; these are documented in the package reference.
 
-Because `preset = "custom"` is the default, these components can be specified directly without explicitly requesting a custom preset. For example,
 
 ```{r}
 #| label: build-custom-distance
@@ -1141,7 +1140,7 @@ Finally, the `new_data` argument computes rectangular new-to-training dissimilar
 
 ## Distance diagnostics and benchmarking {#sec-diagnostics}
 
-With several plausible distance specifications available for mixed data, it can be informative to examine how the resulting dissimilarities depend on the variables included and how differences between distances propagate to subsequent analyses. \pkg{manydist} provides diagnostics at two levels. The first compares dissimilarity matrices directly. The second considers their consequences for particular downstream procedures, namely multidimensional scaling (MDS) and clustering. These levels answer different questions: the former concerns the distance itself, whereas the latter is conditional on the subsequent analysis being considered.
+With several plausible distance specifications available for mixed data, it can be informative to examine how the resulting dissimilarities depend on the variables included and how differences between distances propagate to downstream analyses. The \pkg{manydist} package provides diagnostics at two levels. The first compares dissimilarity matrices directly. The second considers their consequences for particular downstream procedures, namely multidimensional scaling (MDS) and clustering. These levels answer different questions: the former concerns the distance itself, whereas the latter is conditional on the downstream analyses being considered.
 
 ### Leave-one-variable-out diagnostics
 
@@ -1332,7 +1331,7 @@ The available diagnostics should not be interpreted as alternative estimates of 
 
 Distance-based methods are often described as if the distance matrix were a fixed input to the analysis. This is appropriate when the distance is fully specified in advance, but not when its construction involves quantities estimated from the data. In \pkg{manydist}, for example, commensurability weights, principal-component rotations, and some categorical dissimilarities are estimated from the observations used to fit the distance. In resampling and prediction, these quantities must therefore be estimated from the training data only and then held fixed when new observations are processed. Otherwise, information from assessment or test observations can enter the distance construction before model evaluation.
 
-\pkg{manydist} integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow rather than a preprocessing operation performed once in advance. The interfaces considered here cover two settings: unsupervised clustering and supervised nearest-neighbour classification. MDS is also a downstream use of a distance, as considered in @sec-diagnostics, but it is not part of the learning workflows illustrated below.
+The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow rather than a preprocessing operation performed once in advance. The interfaces considered here cover two settings: unsupervised clustering and supervised nearest-neighbour classification. MDS is also a downstream use of a distance, as considered in @sec-diagnostics, but it is not part of the learning workflows illustrated below.
 
 ### Integrating fitted distances into learning workflows
 
@@ -1824,7 +1823,7 @@ Together, these summaries show separately how the clustering assignments vary wi
 
 ### Supervised income classification
 
-For supervised learning, \pkg{manydist} provides `nearest_neighbor_dist()`, a nearest-neighbour model that predicts each new observation from its distances to the training observations. Accordingly, the recipes below use `output = "distance_to_training"`.
+For supervised learning, the \pkg{manydist} package provides `nearest_neighbor_dist()`, a nearest-neighbour model that predicts each new observation from its distances to the training observations. Accordingly, the recipes below use `output = "distance_to_training"`.
 
 Because these recipes include `income` as an outcome, response-aware specifications (`u_dep` and `u_mix`) use the income labels from the current analysis set when their categorical dissimilarities are fitted. The labels from assessment folds and from the final held-out data are not used in this preprocessing. The other three specifications remain response-independent.
 
@@ -2144,7 +2143,7 @@ Together, the two applications illustrate how the same fitted-distance interface
 
 ## Conclusion {#sec-conclusion}
 
-\pkg{manydist} implements the unbiased mixed-variable distance framework of
+The \pkg{manydist} package implements the unbiased mixed-variable distance framework of
 @van2024unbiased and extends it into a workflow for constructing, diagnosing,
 and applying distances. The central function `mdist()` combines a numerical
 preprocessing, a categorical dissimilarity, and commensurability weights into an
