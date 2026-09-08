@@ -7,10 +7,10 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 ## Progress
 
 - Assessed and documented: 140 of 140
-- Resolved or superseded: 93
-- Partially resolved: 4
+- Resolved or superseded: 98
+- Partially resolved: 5
 - In progress: 1
-- Needs discussion: 42
+- Needs discussion: 36
 - Not yet assessed: 0
 
 ## Responses
@@ -139,11 +139,11 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 | M-070 | “Contribution” remains rather than “distance contribution.” | needs discussion |
 | M-071 | Retained the statement about sums of metrics but added a reference to the proof in van de Velden et al. | resolved |
 | M-072 | Replaced “Scale- and type-aware distances” with “Multivariate additivity and commensurability.” | resolved |
-| M-073 | Marked the constrained-weights paragraph `TO BE REMOVED`; the deletion has not yet been completed. | in progress |
+| M-073 | Deleted the constrained-weights paragraph. | resolved |
 | M-074 | Removed “beyond commensurability” from the association-aware heading. | resolved |
-| M-075 | Marked the association-aware subsection for revision. The implementation uses ordinary PCA scores after normalization and then commensurates the component-wise distances; this must be distinguished from explicit PCA whitening by $\bm{\Lambda}^{-1/2}$. | needs discussion |
-| M-076 | “By itself” remains. | needs discussion |
-| M-077 | The proposed reorganization and revised opening of the association-aware discussion have not yet been implemented. | needs discussion |
+| M-075 | The current purple trial whitens the retained PCA scores and applies a single factor to scale their complete Manhattan distance to mean $Q_n$. The final construction and corresponding package update remain to be agreed. | in progress |
+| M-076 | Removed “by itself.” | resolved |
+| M-077 | Replaced the earlier opening with a concise distinction between commensurability and within-block association awareness. | resolved |
 
 **Location:** Unified framework, additivity/commensurability and association-aware subsections.
 
@@ -151,10 +151,10 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 
 | ID | Response | Status |
 |---|---|---|
-| M-078 | Added a footnote defining whitening through its equivalence with Mahalanobis distance. | resolved |
-| M-079 | Confirmed that Figure 1 still has no textual cross-reference. We should add an explicit reference where the Palmer penguins illustration is introduced. | needs discussion |
-| M-080 | Defined whitening mathematically and stated the full-rank and retained-subspace qualifications. | resolved |
-| M-081 | The definition is now present, but the text must distinguish exact whitening/Mahalanobis equivalence from the implemented PCA-score rotation followed by empirical component-wise commensurability. This remains linked to the planned association-aware rewrite. | needs discussion |
+| M-078 | Defines whitening as PCA rotation followed by division by $\sqrt{\lambda_h}$, giving uncorrelated retained coordinates with unit variance; the current trial uses it before block scaling. | resolved |
+| M-079 | Added an explicit reference to Figure 1 and revised its third panel to display block-scaled whitened coordinates, retaining the concise three-panel layout. | resolved |
+| M-080 | Distinguishes PCA decorrelation from whitening and explains that the common block factor does not undo whitening's direction-specific rescaling. | resolved |
+| M-081 | Distinguishes PCA rotation, whitening, block-level Manhattan calibration, component-wise empirical scaling, and Mahalanobis distance. | resolved |
 
 **Location:** Framework, association-aware figure and `Numerical variables` subsection.
 
@@ -164,7 +164,7 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 |---|---|---|
 | M-082 | Moved the numerical construction and transformation list before multivariate additivity, commensurability, and the association-aware discussion. | resolved |
 | M-083 | The indicator-based paragraph remains. We should either remove it or retain only the sentence needed to explain package options. | needs discussion |
-| M-084 | The categorical association passage should be shortened and recast around the implementation rather than closely repeating the methodological paper. In addition, exact categorical independence currently yields zero component means and therefore `NaN` after commensurability; the package and text need an explicit rule for this case. | needs discussion |
+| M-084 | Shortened the categorical association passage, corrected the conditional-distribution notation to $\mathbf{R}^{k'\mid k}$, and now states explicitly that identically zero dissimilarities cannot be reciprocal-mean scaled. The package still needs an agreed zero-contribution or fallback rule. | partially resolved |
 | M-085 | The response-aware passage still needs reorganization and its bold revision markup must be removed before submission. | needs discussion |
 
 **Location:** Framework, `Numerical variables` and `Categorical variables` subsections.
@@ -241,7 +241,7 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 
 | ID | Response | Status |
 |---|---|---|
-| M-133 | Added an introduction explaining why data-adaptive distances must be fitted on training data and names the unsupervised and supervised settings. | resolved |
+| M-133 | Added an introduction explaining why data-adaptive distances must be fitted on fitting data, names the unsupervised and supervised settings, and distinguishes the outer training/test split from the analysis/assessment splits used in resampling. | resolved |
 | M-134 | Added a general workflow subsection before the more specific resampling demonstration and renamed the latter around its motivation. | resolved |
 | M-135 | Defines a `tidymodels` recipe before introducing `step_mdist()`. | resolved |
 | M-136 | Condensed the repeated fit-and-apply explanation and removed the unclear pipeline-level analogy. | resolved |

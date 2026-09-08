@@ -72,6 +72,7 @@ header-includes:
   - \usepackage{bm}
   - \usepackage{needspace}
   - \usepackage{xcolor}
+  - \definecolor{assocrevision}{RGB}{126,47,142}
   - \newcommand{\new}[1]{{\color{blue}#1}}
 ---
 
@@ -254,11 +255,12 @@ directly from all observations supplied to them and do not expose separate
 fitting and application operations. By contrast, for supported distance
 specifications, \pkg{manydist} explicitly separates these operations. Within
 each resample, the numerical preprocessing, category dissimilarities, and
-commensurability weights are estimated using only the training data and then
-held fixed when computing test-to-training distances. Estimating these
-quantities once on the complete data set before resampling would allow the test
-observations to influence the learned distance and would therefore introduce
-data leakage. @sec-pipelines illustrates this fit-and-apply procedure.
+commensurability weights are estimated using only the observations assigned to
+model fitting and then held fixed when distances are computed for the
+observations assigned to evaluation. Estimating these quantities once on the
+complete data set before resampling would allow the evaluation observations to
+influence the learned distance and would therefore introduce data leakage.
+@sec-pipelines illustrates this fit-and-apply procedure.
 
 ```{=latex}
 \begingroup
@@ -306,9 +308,8 @@ We follow the notation of @van2024unbiased. Let $I$ be the number of
 observations and let $Q=Q_{n}+Q_{c}$ be the number of variables, partitioned
 into $Q_{n}$ numerical and $Q_{c}$ categorical variables. Observed mixed, numerical, and categorical vectors
 are denoted by $\mathbf{x}$, $\mathbf{x}^n$, and $\mathbf{x}^c$; their random
-counterparts use $\bm{X}$. The symbol $\mathbf{X}$ is reserved for the
-$I\times Q$ data matrix. 
-
+counterparts use $\bm{X}$. The observed $I\times Q$ data matrix is denoted by
+$\mathbf{X}_{\mathrm{obs}}$.
 
 For observed vectors $\mathbf{x}_i$ and $\mathbf{x}_l$, manydist constructs an
 overall distance by combining contributions from the numerical and categorical
@@ -329,10 +330,10 @@ numerical block, and the categorical contribution indexed by $k$ can depend
 on the complete categorical block. The present formulation does not use
 cross-type associations inside these component dissimilarities.
 
-```{=latex}
-\begingroup
-\color{blue}
-```
+<!-- ```{=latex} -->
+<!-- \begingroup -->
+<!-- \color{blue} -->
+<!-- ``` -->
 
 For $Q$-dimensional observations
 $\mathbf{x}_i=(x_{i1},\ldots,x_{iQ})$ and
@@ -346,11 +347,7 @@ d(\mathbf{x}_i,\mathbf{x}_l)
 $$ {#eq-additivity}
 
 where $d_j(\mathbf{x}_i,\mathbf{x}_l)$ is the contribution associated with
-variable $j$.
-Each component may depend on all elements of the two observations; the index
-identifies the associated contribution rather than restricting it to a single
-coordinate. This permits additive constructions that incorporate dependencies
-between variables. If every $d_j$ is a metric on $\mathcal{X}^Q$, their sum is
+variable $j$. If every $d_j$ is a metric on $\mathcal{X}^Q$, their sum is
 also a metric [see @van2024unbiased for the proof].
 
 For the numerical block, the additive construction uses weighted Manhattan
@@ -362,12 +359,7 @@ d_{\mathrm{num}}(\mathbf{x}_i,\mathbf{x}_l)
 \left|f_h(\mathbf{x}_i)-f_h(\mathbf{x}_l)\right|,
 $$ {#eq-numerical-distance}
 
-where $f_h$ may be a univariate or multivariate transformation.
-<!-- Standardizing -->
-<!-- numerical variables beforehand is therefore unnecessary for the commensurable -->
-<!-- constructions, though it remains useful for the non-commensurable baselines. -->
-
-Common transformations of the starting values may be required to deal with different measurement scales:
+where $f_h$ may be a univariate or multivariate transformation. Common transformations of the starting values may be required to deal with different measurement scales:
 
 - **standard-deviation scaling:** $(x-\bar{x})/s_x$, which uses all
   observations rather than only the extremes;
@@ -375,7 +367,8 @@ Common transformations of the starting values may be required to deal with diffe
   distance, which preserves the distributional shape but, for the
   non-commensurable presets, is sensitive to outliers through the extremes;
 - **robust scaling:** $(x-x_{\mathrm{Med}})/(x_{Q_3}-x_{Q_1})$, which replaces
-  the mean and range with their robust counterparts and so resists outliers in those same presets.
+  the mean and standard deviation with the median and interquartile range and
+  so resists outliers in those same presets.
 
 For categorical variable $k$ with $q_k$ categories, let
 $\mathbf{z}_{ik}$ denote the $q_k$-dimensional indicator vector identifying
@@ -434,16 +427,17 @@ d_{\mathrm{c}}(\mathbf{x}_i,\mathbf{x}_l)
 \end{aligned}
 $$ {#eq-categorical-distance}
 
-```{=latex}
-\endgroup
-```
+<!-- ```{=latex} -->
+<!-- \endgroup -->
+<!-- ``` -->
 
 
 
 ### Commensurability
 
-We call a mixed-variable distance *unbiased* when the contribution associated
-with each variable does not depend on its measurement type or scale, that is, it is multivariate additive and *commensurabile*.
+We call a mixed-variable distance *unbiased* when it is multivariate additive
+and its variable contributions are *commensurable*, so their expected
+magnitudes do not depend on measurement type or scale.
 
 
 
@@ -461,7 +455,8 @@ where the particular value of the constant $c$ is unimportant. Additivity
 provides an interpretable decomposition; commensurability places those
 contributions on equivalent expected scales.
 
-For @eq-mixed-distance, commensurability follows from the population weights
+For components with positive expected dissimilarity, commensurability in
+@eq-mixed-distance follows from the population weights
 
 $$
 w_h=
@@ -475,7 +470,8 @@ w_k=
 }.
 $$ {#eq-population-weights}
 
-In practice, manydist estimates these expectations from the observed pairs:
+In practice, manydist estimates these expectations from the observed pairs,
+provided the resulting component means are positive:
 
 $$
 \begin{aligned}
@@ -490,20 +486,14 @@ $$ {#eq-empirical-weights}
 
 Thus, each variable-wise distance is divided by its empirical mean before the
 contributions are combined.
-Because commensurability divides each variable by its own
-empirical mean distance, any constant linear rescaling of a numerical variable
-cancels from the result: standard-deviation scaling and no scaling at all yield
-the same commensurable distance. Only a transformation that changes the shape of
-the marginal distribution -- rather than its location or spread -- alters the
-empirical mean distance and hence the commensurable contribution.
 
-\new{TO BE REMOVED The formulation also permits constrained weights, such as common weights within numerical or categorical groups, when only within-type commensurability is required. Under such constrained weights the per-variable cancellation described below no longer applies, and the numerical scaling choice again affects the result.}
-
-Under commensurability the  transformations introduced in @sec-framework  are vacuous. Each is a location-scale map $f_h(x)=(x-a_h)/b_h$, so the offset cancels in the
+For a numerical variable $h$, the location-scale transformations introduced
+above are vacuous once variable-wise commensurability is applied. Each has the
+form $f_h(x)=(x-a_h)/b_h$, so the offset cancels in the
 difference and the scale factor cancels between
 $\left|f_h(\mathbf{x}_i)-f_h(\mathbf{x}_l)\right|$ and $m_h$; the three yield
 identical distances, and identical to the untransformed variables. The scaling
-choice is therefore consequential only for the non-commensurable presets.
+choice is therefore consequential only for the non-commensurable settings.
 
 
 For categorical variable $k$, let $\bm{p}_k$ denote the vector of category
@@ -527,61 +517,95 @@ commensurability.
 ### Association-aware distances
 
 Commensurability corrects differences in the expected magnitude of the
-variable contributions, but it does not by itself account for information
+variable contributions, but it does not account for information
 shared by several variables. The general formulation above already permits
 such associations: a contribution indexed by variable $j$ need not be a
 function of $x_{ij}$ and $x_{lj}$ alone, but may depend on the complete
 same-type vectors $\mathbf{x}_i^n,\mathbf{x}_l^n$ or
 $\mathbf{x}_i^c,\mathbf{x}_l^c$. Association-aware constructions use this
 freedom to incorporate joint structure within the numerical and categorical
-blocks. The current formulation does not use associations across those two
 blocks.
 
 #### Numerical variables
 
-For numerical variables, \pkg{manydist} first standardizes the original
-coordinates so that their measurement units do not determine the subsequent
-orientation. Let $\mathbf{Z}$ denote the resulting data matrix and write its
-sample correlation matrix as
+```{=latex}
+\begingroup
+\color{assocrevision}
+```
+
+The following is a proposed association-aware construction for numerical
+variables; it does not yet describe the current package implementation. Let
+$\widetilde{\mathbf{X}}$ denote the centered and standardized $I\times Q_n$
+data matrix. Its sample correlation matrix has the eigendecomposition
 
 $$
-\mathbf{R}=\mathbf{V}\bm{\Lambda}\mathbf{V}^{\top}.
-$$
+\mathbf{R}
+=\frac{1}{I-1}\widetilde{\mathbf{X}}^{\top}
+ \widetilde{\mathbf{X}}
+=\mathbf{V}\bm{\Lambda}\mathbf{V}^{\top}.
+$$ {#eq-pc-decomposition}
 
-The ordinary principal-component scores are
-$\mathbf{T}=\mathbf{Z}\mathbf{V}$. Their columns are uncorrelated, although
-they are not generally independent, and have variances given by the diagonal
-elements of $\bm{\Lambda}$. With $K$ retained components, the implemented
-commensurable numerical contribution is
-
-$$
-d_{\mathrm{num}}^{\mathrm{PC}}(\mathbf{x}_i,\mathbf{x}_l)
-=\sum_{h=1}^{K}
-\frac{|t_{ih}-t_{lh}|}{m_h^{\mathrm{PC}}},
-\qquad
-m_h^{\mathrm{PC}}
-=\frac{1}{I(I-1)}\sum_{r\ne s}|t_{rh}-t_{sh}|.
-$$ {#eq-pc-commensurable}
-
-Thus, `method_num = "pc_scores"` performs a rotation rather than an explicit
-whitening transformation; `commensurable = TRUE` subsequently places the
-absolute-difference contribution of every retained principal coordinate on
-the same empirical mean scale. This sequence also makes explicit whitening
-unnecessary. If $w_{ih}=t_{ih}/\sqrt{\lambda_h}$ denotes a whitened score,
-then
+Let $\mathbf{V}_{\mathcal{D}}=(\mathbf{v}_1,\ldots,\mathbf{v}_{\mathcal{D}})$
+contain the $\mathcal{D}\leq Q_n$ retained eigenvectors associated with
+positive eigenvalues, and let
+$\mathbf{T}_{\mathcal{D}}=\widetilde{\mathbf{X}}\mathbf{V}_{\mathcal{D}}$
+denote the corresponding
+principal-component scores. With
+$\bm{\Lambda}_{\mathcal{D}}=
+\operatorname{diag}(\lambda_1,\ldots,\lambda_{\mathcal{D}})$, the retained scores
+are whitened as
 
 $$
-\frac{|w_{ih}-w_{lh}|}
-     {\operatorname{mean}_{r\ne s}|w_{rh}-w_{sh}|}
-=
-\frac{|t_{ih}-t_{lh}|}
-     {\operatorname{mean}_{r\ne s}|t_{rh}-t_{sh}|}.
-$$ {#eq-whitening-cancels}
+\mathbf{U}_{\mathcal{D}}
+=\mathbf{T}_{\mathcal{D}}\bm{\Lambda}_{\mathcal{D}}^{-1/2},
+$$ {#eq-pc-whitening}
 
-Whitening followed by component-wise commensurability therefore gives exactly
-the same contribution as PCA rotation followed by commensurability.
+whose columns are uncorrelated and have unit sample variance. Writing $u_{ih}$
+for its entries, the unscaled whitened Manhattan distance is
 
-The distinction is illustrated in @fig-independence-association using two
+$$
+\widetilde d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_i,\mathbf{x}_l)
+=\sum_{h=1}^{\mathcal{D}}|u_{ih}-u_{lh}|.
+$$ {#eq-pc-unscaled}
+
+```{=latex}
+\Needspace{12\baselineskip}
+```
+
+Its mean over distinct ordered pairs is
+
+$$
+m_{\mathrm{num}}^{\mathrm{W}}
+=\frac{1}{I(I-1)}\sum_{r\ne s}
+ \widetilde d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_r,\mathbf{x}_s).
+$$ {#eq-pc-block-mean}
+
+The block-scaled numerical distance is then
+
+$$
+d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_i,\mathbf{x}_l)
+=\frac{Q_n}{m_{\mathrm{num}}^{\mathrm{W}}}
+ \widetilde d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_i,\mathbf{x}_l).
+$$ {#eq-pc-block-commensurable}
+
+The numerical block therefore has empirical mean $Q_n$, while the individually
+commensurated categorical variables have total mean $Q_c$. This is block-level
+rather than component-level commensurability: the final factor is common to all
+whitened coordinates.
+<!-- Under joint normality their expected contributions are -->
+<!-- $Q_n/\mathcal{D}$ each; outside normality they need not be exactly equal.  -->
+If
+$\mathcal{D}<Q_n$, the target remains $Q_n$ so that dimension reduction does
+not automatically reduce the numerical block's overall weight.
+
+With all components retained, Euclidean distance after whitening is
+Mahalanobis distance. The construction above replaces the Euclidean norm with
+the Manhattan norm and is therefore an association-aware $L_1$ analogue, not
+Mahalanobis distance itself.
+<!-- Zero or near-zero eigenvalues require omission or -->
+<!-- regularization; retaining $\mathcal{D}<Q_n$ components gives a pseudometric on -->
+<!-- the original numerical space. -->
+The construction is illustrated in @fig-independence-association using two
 strongly correlated measurements from the Palmer penguins data
 [@palmerpenguins].
 
@@ -608,11 +632,11 @@ penguins_y <- penguins |>
 
 ```{r}
 #| label: fig-independence-association
-#| fig-cap: "Scale correction and association awareness. Raw Manhattan distance is dominated by body mass. Commensurating the original-coordinate contributions removes the scale difference but retains the correlated axes, so shared body-size variation enters through both variables. Rotating standardized data to principal coordinates and commensurating their contributions instead expresses differences along uncorrelated directions, as used by `method_num = \"pc_scores\"` with `commensurable = TRUE`."
+#| fig-cap: "Scale correction and association awareness. Raw Manhattan distance is dominated by body mass. Individually commensurating the original-coordinate contributions removes the scale difference but retains the correlated axes. The proposed association-aware construction rotates and whitens the standardized data before scaling the complete numerical distance to mean $Q_n=2$."
 #| fig-subcap:
 #|   - "Raw coordinates ($r = 0.87$)."
 #|   - "Commensurable original coordinates."
-#|   - "Commensurable principal coordinates."
+#|   - "Block-scaled whitened coordinates."
 #| layout: [[1], [1, 1]]
 #| fig-width: 4.5
 #| fig-height: 2.6
@@ -640,7 +664,8 @@ pca_fit <- stats::prcomp(
 )
 
 mean_absolute_pair_distance <- function(x) {
-  mean(abs(outer(x, x, "-")))
+  pairwise_distances <- abs(outer(x, x, "-"))
+  mean(pairwise_distances[upper.tri(pairwise_distances)])
 }
 
 commensurate_columns <- function(x) {
@@ -648,9 +673,22 @@ commensurate_columns <- function(x) {
   sweep(x, MARGIN = 2, STATS = component_means, FUN = "/")
 }
 
+scale_manhattan_block <- function(x, target_mean) {
+  pairwise_distances <- as.matrix(stats::dist(x, method = "manhattan"))
+  block_mean <- mean(pairwise_distances[upper.tri(pairwise_distances)])
+  x * (target_mean / block_mean)
+}
+
 commensurable_original <- commensurate_columns(standardized_data)
-commensurable_pc <- commensurate_columns(
-  pca_fit$x[, 1:2, drop = FALSE]
+whitened_pc <- sweep(
+  pca_fit$x[, 1:2, drop = FALSE],
+  MARGIN = 2,
+  STATS = pca_fit$sdev[1:2],
+  FUN = "/"
+)
+block_scaled_pc <- scale_manhattan_block(
+  whitened_pc,
+  target_mean = ncol(standardized_data)
 )
 
 dependence_data <- dependence_data |>
@@ -659,8 +697,8 @@ dependence_data <- dependence_data |>
     pc2 = pca_fit$x[, 2],
     flipper_comm = commensurable_original[, 1],
     body_mass_comm = commensurable_original[, 2],
-    pc1_comm = commensurable_pc[, 1],
-    pc2_comm = commensurable_pc[, 2]
+    pc1_block = block_scaled_pc[, 1],
+    pc2_block = block_scaled_pc[, 2]
   )
 
 pc1_targets <- stats::quantile(
@@ -713,10 +751,10 @@ standardized_segment <- selected_points |>
 
 association_segment <- selected_points |>
   dplyr::summarise(
-    x = dplyr::first(.data$pc1_comm),
-    y = dplyr::first(.data$pc2_comm),
-    xend = dplyr::last(.data$pc1_comm),
-    yend = dplyr::last(.data$pc2_comm),
+    x = dplyr::first(.data$pc1_block),
+    y = dplyr::first(.data$pc2_block),
+    xend = dplyr::last(.data$pc1_block),
+    yend = dplyr::last(.data$pc2_block),
     distance = abs(.data$xend - .data$x) + abs(.data$yend - .data$y),
     xmid = (.data$x + .data$xend) / 2,
     ymid = (.data$y + .data$yend) / 2
@@ -737,7 +775,7 @@ association_components <- manhattan_segments(association_segment)
 
 common_score_max <- ceiling(max(abs(c(
   commensurable_original,
-  commensurable_pc
+  block_scaled_pc
 ))))
 common_score_limits <- c(-common_score_max, common_score_max)
 common_score_breaks <- pretty(common_score_limits, n = 7)
@@ -877,7 +915,7 @@ independence_plot <- ggplot2::ggplot(
 
 association_plot <- ggplot2::ggplot(
   dependence_data,
-  ggplot2::aes(x = .data$pc1_comm, y = .data$pc2_comm)
+  ggplot2::aes(x = .data$pc1_block, y = .data$pc2_block)
 ) +
   ggplot2::geom_point(size = 0.65, color = "grey70") +
   ggplot2::stat_ellipse(
@@ -918,7 +956,7 @@ association_plot <- ggplot2::ggplot(
     ggplot2::aes(
       x = .data$xmid,
       y = .data$ymid,
-      label = paste0("d[1]^{PC} == ", round(.data$distance, 2))
+      label = paste0("d[1]^{block} == ", round(.data$distance, 2))
     ),
     parse = TRUE,
     inherit.aes = FALSE,
@@ -938,8 +976,8 @@ association_plot <- ggplot2::ggplot(
   ) +
   ggplot2::coord_equal() +
   ggplot2::labs(
-    x = "PC1 contribution",
-    y = "PC2 contribution"
+    x = "Block-scaled whitened PC1",
+    y = "Block-scaled whitened PC2"
   ) +
   distance_plot_theme
 
@@ -948,26 +986,21 @@ independence_plot
 association_plot
 ```
 
+```{=latex}
+\Needspace{8\baselineskip}
+```
 
-The first two panels of @fig-independence-association separate scale correction
-from association awareness. Commensurability equalizes the two marginal
-contributions in the middle panel, but their strong correlation remains. The
-last panel applies @eq-pc-commensurable: PCA fixes an orientation in which the
-coordinates are uncorrelated, and commensurability then equalizes their mean
-absolute-difference contributions. Unlike Euclidean distance after whitening,
-which equals Mahalanobis distance, this is an additive Manhattan distance in
-the principal-component orientation. It is related to the Mahalanobis idea of
-using covariance structure, but it is not Mahalanobis distance.
+The three panels of @fig-independence-association separate scale correction
+from association awareness. The second panel equalizes the two marginal
+contributions but retains their correlation. In the third, PCA rotates the
+coordinates and whitening rescales them to unit variance, so the change is not
+merely a rotation; one common factor then gives the complete numerical distance
+mean $Q_n=2$.
 
-Equalizing the retained principal-coordinate contributions necessarily gives
-more relative weight to directions with little variation. This is useful when
-small departures from a strong relationship are informative, but it can also
-amplify low-variance noise. Explained variance is therefore not itself a
-measure of substantive importance. By default all available components are
-retained; `ncomp` or `threshold` can restrict the construction to a leading
-subspace when dimensionality reduction is justified. Such restriction is a
-modeling decision: dropping components also reduces the expected total
-contribution of the numerical block relative to the categorical block.
+```{=latex}
+\endgroup
+\clearpage
+```
 
 #### Categorical variables
 
@@ -979,8 +1012,9 @@ Indicator-based dissimilarities instead treat a binary indicator representation
 as numerical; without scaling, Manhattan distance gives values zero or two and
 ignores both category prevalence and the number of categories.
 
-For an association-based construction, let
-$\mathbf{R}^{k\mid k'}=(\mathbf{Z}_k^\top\mathbf{Z}_k)^{-1}
+For an association-based construction, assuming every retained category is
+observed, let
+$\mathbf{R}^{k'\mid k}=(\mathbf{Z}_k^\top\mathbf{Z}_k)^{-1}
 \mathbf{Z}_k^\top\mathbf{Z}_{k'}$ be the conditional distribution of variable
 $k'$ given the categories of variable $k$. Dissimilarities between two
 categories $a$ and $b$ of variable $k$ compare the corresponding rows
@@ -989,29 +1023,23 @@ symmetric Kullback--Leibler construction [@le2005association]. Under
 independence, every category of $k$ induces the same conditional distribution
 of $k'$, so the rows coincide and the association-based category
 dissimilarities vanish. They increase as the categories become more distinct
-in what they imply about the other categorical variables.
+in what they imply about the other categorical variables. If a variable's
+dissimilarities vanish identically, its mean in @eq-empirical-weights is zero;
+the reciprocal-mean weight is then undefined, so the implementation must either
+retain that component as a zero contribution or apply an explicitly stated
+fallback rule.
 
-This construction is conceptually different from PCA rotation: it changes the
-dissimilarities between categories rather than changing the coordinate system.
-Commensurability subsequently divides each categorical-variable contribution
-by its empirical mean, placing the association-based categorical contributions
-on the same expected scale as the commensurable principal-coordinate
-contributions. Without a response, the construction requires at least two
-categorical variables; with only one, the fitted specification falls back to
-simple matching.
 
 #### Response-aware categorical distances
 
 The same conditional-distribution construction accommodates an outcome, as
 proposed and evaluated by @vandevelden2024categorical. When a response $y$ is
-supplied, $\mathbf{R}^{k\mid y}$ records its distribution within each category
+supplied, $\mathbf{R}^{y\mid k}$ records its distribution within each category
 of predictor $k$. Two categories are then dissimilar to the extent that they
 imply different response distributions. This is the response-awareness used by
 the `response` argument of `mdist()`, and it is the only route by which an
 outcome enters a distance in \pkg{manydist}. It also makes a response-aware
-categorical dissimilarity available with a single categorical predictor. The
-numerical block currently has no response-aware counterpart: its PCA rotation
-uses predictor associations only.
+categorical dissimilarity available with a single categorical predictor.
 
 ```{=latex}
 \Needspace{8\baselineskip}
@@ -1329,15 +1357,15 @@ The available diagnostics should not be interpreted as alternative estimates of 
 
 ## Distance-based learning pipelines {#sec-pipelines}
 
-Distance-based methods are often described as if the distance matrix were a fixed input to the analysis. This is appropriate when the distance is fully specified in advance, but not when its construction involves quantities estimated from the data. In \pkg{manydist}, for example, commensurability weights, principal-component rotations, and some categorical dissimilarities are estimated from the observations used to fit the distance. In resampling and prediction, these quantities must therefore be estimated from the training data only and then held fixed when new observations are processed. Otherwise, information from assessment or test observations can enter the distance construction before model evaluation.
+Distance-based methods are often described as if the distance matrix were a fixed input to the analysis. This is appropriate when the distance is fully specified in advance, but not when its construction involves quantities estimated from the data. In \pkg{manydist}, for example, commensurability weights, principal-component rotations, and some categorical dissimilarities are estimated from the observations used to fit the distance. In resampling and prediction, these quantities must therefore be estimated from the data used for fitting and then held fixed when new observations are processed. Otherwise, information from observations reserved for model evaluation can enter the distance construction before that evaluation takes place.
 
 The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow rather than a preprocessing operation performed once in advance. The interfaces considered here cover two settings: unsupervised clustering and supervised nearest-neighbour classification. MDS is also a downstream use of a distance, as considered in @sec-diagnostics, but it is not part of the learning workflows illustrated below.
 
 ### Integrating fitted distances into learning workflows
 
-In the \pkg{tidymodels} framework, a *recipe* is an object that specifies preprocessing operations to be estimated from training data and subsequently applied to new data. `step_mdist()` adds fitted distance construction as one such preprocessing step.
+In the \pkg{tidymodels} framework, a *recipe* is an object that specifies preprocessing operations to be estimated from data used for fitting and subsequently applied to new data. The framework distinguishes two levels of data splitting. An initial split creates a *training set* and a *test set*, with the latter reserved for final evaluation. Resampling then operates within the training set: each resample contains an *analysis set* (the fold-specific training data) and an *assessment set* (the held-out fold). We use training and test for the initial split, and analysis and assessment for the resampling splits, throughout this section. `step_mdist()` adds fitted distance construction as a recipe preprocessing step.
 
-`step_mdist()` estimates the distance construction from the training data and stores the quantities needed to apply it subsequently, including commensurability weights, any principal-component rotation, and estimated category dissimilarities. During resampling, these quantities are re-estimated separately within each analysis set and then held fixed when its assessment observations are processed. For response-aware specifications, the outcome from the analysis set may also enter the fitted categorical dissimilarities, while assessment and test outcomes are not used.
+`step_mdist()` estimates the distance construction from the data on which the step is fitted and stores the quantities needed to apply it subsequently, including commensurability weights, any principal-component rotation, and estimated category dissimilarities. During resampling, these quantities are re-estimated separately within each analysis set and then held fixed when the corresponding assessment set is processed. For response-aware specifications, the outcome from the analysis set may also enter the fitted categorical dissimilarities, while outcomes from the assessment set or final test set are not used.
 
 The representation required from the fitted distance depends on the learning task. In clustering, all observations in the current data set are compared with one another, so the downstream method uses a square pairwise distance matrix. In nearest-neighbour prediction, each new observation is compared only with the training observations, producing a rectangular new-to-training distance matrix. The `output` argument of `step_mdist()` selects between these representations: `"pairwise"` for clustering and `"distance_to_training"` for nearest-neighbour prediction. The resulting recipes can be paired with `pam_dist()` or `spectral_dist()` for clustering and with `nearest_neighbor_dist()` for nearest-neighbour learning.
 
@@ -1373,7 +1401,7 @@ distance_labels <- c(
 )
 ```
 
-For the supervised task, countries labelled `"Not classified"` are removed. Country is an identifier, and lending category is excluded because it is administratively related to income group. The two-country North America level is pooled with Latin America and the Caribbean to reduce the risk that a categorical level is absent from an analysis fold.
+For the supervised task, countries labelled `"Not classified"` are removed. Country is an identifier, and lending category is excluded because it is administratively related to income group. The two-country North America level is pooled with Latin America and the Caribbean to reduce the risk that a categorical level is absent from an analysis set.
 
 ```{r}
 #| label: prepare-wdi-classification
@@ -1396,7 +1424,7 @@ wdi_classification |>
   dplyr::count(income)
 ```
 
-A stratified split reserves 25% of the countries for final evaluation. The remaining training partition supplies a common set of five stratified folds for evaluating every distance and neighbourhood size.
+A stratified initial split reserves 25% of the countries as the test set for final evaluation. The remaining training set supplies a common set of five stratified resamples for evaluating every distance and neighbourhood size.
 
 ```{r}
 #| label: split-wdi-classification
@@ -1430,7 +1458,7 @@ neighbor_grid <- tibble::tibble(
 
 ### Why the distance must be refitted during resampling
 
-The practical consequence of treating distance construction as a fitted preprocessing operation can be demonstrated in the supervised task. @tbl-refitting-leakage compares the same five-neighbour classifier under two cross-validation procedures for three commensurable specifications. In the first, a single distance is fitted on the complete training partition and then subsetted by fold. In the second, the distance is fitted separately within each analysis fold and then applied to that fold's assessment observations. The voting rule and resamples are otherwise identical, so the comparison isolates the effect of fitting the distance before rather than within resampling.
+The practical consequence of treating distance construction as a fitted preprocessing operation can be demonstrated in the supervised task. @tbl-refitting-leakage compares the same five-neighbour classifier under two cross-validation procedures for three commensurable specifications. In the first, a single distance is fitted on the complete training set and then subset by resample. In the second, the distance is fitted separately within each analysis set and then applied to the corresponding assessment set. The voting rule and resamples are otherwise identical, so the comparison isolates the effect of fitting the distance before rather than within resampling.
 
 The intended workflow can be written directly with `step_mdist()`:
 
@@ -1565,7 +1593,7 @@ leakage_comparison <- tibble::tibble(preset = leakage_presets) |>
 
 ```{r}
 #| label: tbl-refitting-leakage
-#| tbl-cap: "Cross-validated balanced accuracy for WDI income classification with five neighbours, computing the distance once on the training partition against refitting it on each analysis set. The standard error is that of the paired fold-wise differences."
+#| tbl-cap: "Cross-validated balanced accuracy for WDI income classification with five neighbours, computing the distance once on the training set against refitting it on each analysis set. The standard error is that of the paired fold-wise differences."
 #| echo: false
 
 knitr::kable(
@@ -1825,7 +1853,7 @@ Together, these summaries show separately how the clustering assignments vary wi
 
 For supervised learning, the \pkg{manydist} package provides `nearest_neighbor_dist()`, a nearest-neighbour model that predicts each new observation from its distances to the training observations. Accordingly, the recipes below use `output = "distance_to_training"`.
 
-Because these recipes include `income` as an outcome, response-aware specifications (`u_dep` and `u_mix`) use the income labels from the current analysis set when their categorical dissimilarities are fitted. The labels from assessment folds and from the final held-out data are not used in this preprocessing. The other three specifications remain response-independent.
+Because these recipes include `income` as an outcome, response-aware specifications (`u_dep` and `u_mix`) use the income labels from the current analysis set when their categorical dissimilarities are fitted. Labels from the assessment sets and the final test set are not used in this preprocessing. The other three specifications remain response-independent.
 
 One recipe is defined for each distance and paired with the same nearest-neighbour model. The number of neighbours is tuned over the grid defined above.
 
@@ -2020,7 +2048,7 @@ classification_metrics |>
   ggplot2::theme(legend.position = "top")
 ```
 
-Only after the distance specification and number of neighbours have been selected is the held-out partition used. `last_fit()` refits the selected recipe and nearest-neighbour model on the complete training partition and evaluates them on the held-out countries.
+Only after the distance specification and number of neighbours have been selected is the test set used. `last_fit()` refits the selected recipe and nearest-neighbour model on the complete training set and evaluates them on the test countries.
 
 ```{=latex}
 \Needspace{6\baselineskip}
@@ -2086,10 +2114,10 @@ heldout_accuracy <- final_wdi_metrics |>
 ```
 
 Cross-validation selected the `r selected_distance_label` distance with
-`r best_neighbors$neighbors` neighbours. On the held-out countries, the
+`r best_neighbors$neighbors` neighbours. On the test countries, the
 selected workflow attained balanced accuracy
 `r sprintf("%.3f", heldout_balanced_accuracy)` and ordinary accuracy
-`r sprintf("%.3f", heldout_accuracy)`. Balanced accuracy averages class-specific performance across the four groups, whereas ordinary accuracy is the overall proportion of correctly classified countries. Given the modest held-out class counts, these values complete the workflow illustration rather than establish a general performance ranking.
+`r sprintf("%.3f", heldout_accuracy)`. Balanced accuracy averages class-specific performance across the four groups, whereas ordinary accuracy is the overall proportion of correctly classified countries. Given the modest test-set class counts, these values complete the workflow illustration rather than establish a general performance ranking.
 
 ```{r}
 #| label: inspect-wdi-classification-predictions
@@ -2107,7 +2135,7 @@ wdi_confusion <- yardstick::conf_mat(
 
 ```{r}
 #| label: tbl-wdi-confusion
-#| tbl-cap: "Held-out WDI income-group confusion matrix. Rows are predicted classes and columns are observed classes."
+#| tbl-cap: "Test-set WDI income-group confusion matrix. Rows are predicted classes and columns are observed classes."
 #| echo: false
 
 income_abbreviations <- c(
@@ -2138,7 +2166,7 @@ confusion_table <- wdi_confusion$table |>
 knitr::kable(confusion_table)
 ```
 
-Together, the two applications illustrate how the same fitted-distance interface supports different learning tasks. In clustering, `step_mdist()` supplies a pairwise representation that can be combined with alternative clustering methods. In classification, it supplies new-to-training distances so that distance specification and neighbourhood size can be evaluated under a common resampling design, with all fitted preprocessing---including any response-aware categorical dissimilarities---restricted to the appropriate analysis data.
+Together, the two applications illustrate how the same fitted-distance interface supports different learning tasks. In clustering, `step_mdist()` supplies a pairwise representation that can be combined with alternative clustering methods. In classification, it supplies new-to-training distances so that distance specification and neighbourhood size can be evaluated under a common resampling design, with all fitted preprocessing---including any response-aware categorical dissimilarities---restricted to the appropriate analysis sets.
 
 
 ## Conclusion {#sec-conclusion}
