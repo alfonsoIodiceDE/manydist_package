@@ -394,7 +394,7 @@ response_specs <- all_dist_method_specs(
 ) |>
   dplyr::filter(
     spec_type == "preset",
-    preset %in% c("u_dep", "u_mix")
+    preset %in% c("u_dep", "u_dep_bw", "u_mix")
   )
 
 response_specs

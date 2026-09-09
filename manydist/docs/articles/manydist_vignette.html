@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">manydist</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -91,7 +91,7 @@
 </h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package">manydist</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package/">manydist</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/recipes" class="external-link">recipes</a></span><span class="op">)</span></span></code></pre></div>
@@ -374,6 +374,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span>  <span class="st">"euclidean"</span>,</span>
 <span>  <span class="st">"unbiased_dependent"</span>,</span>
 <span>  <span class="st">"u_dep"</span>,</span>
+<span>  <span class="st">"u_dep_bw"</span>,</span>
 <span>  <span class="st">"u_indep"</span>,</span>
 <span>  <span class="st">"u_mix"</span>,</span>
 <span>  <span class="st">"hl"</span>,</span>
@@ -383,9 +384,9 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code> [1] "custom"             "gower"              "euclidean"
- [4] "unbiased_dependent" "u_dep"              "u_indep"
- [7] "u_mix"              "hl"                 "gudmm"
-[10] "dkss"               "mod_gower"         </code></pre>
+ [4] "unbiased_dependent" "u_dep"              "u_dep_bw"
+ [7] "u_indep"            "u_mix"              "hl"
+[10] "gudmm"              "dkss"               "mod_gower"         </code></pre>
 </div>
 </div>
 <p>Some presets are intended mainly for train-train dissimilarities and may not support distances from new observations to training observations.</p>

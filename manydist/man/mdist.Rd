@@ -54,15 +54,16 @@ the average contribution of each variable to the overall distance is equal
 to 1.}
 
 \item{ncomp}{Integer or `NULL`. Number of principal components to retain
-when `method_num = "pc_scores"`. If `NULL`, all available components are
-used unless `threshold` is supplied and supported by the underlying method.}
+when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
+available components are used unless `threshold` is supplied and supported
+by the underlying method.}
 
 \item{threshold}{Numeric or `NULL`. Optional cumulative variance threshold
-used when `method_num = "pc_scores"`.}
+used when `method_num = "pc_scores"` or `preset = "u_dep_bw"`.}
 
 \item{preset}{Character string specifying a predefined distance
 specification. Available values include `"custom"`, `"gower"`,
-`"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+`"unbiased_dependent"`, `"u_dep"`, `"u_dep_bw"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
 When `preset` is not `"custom"`, arguments such as `method_cat`,
 `method_num`, `commensurable`, and `interaction` are normally handled by
@@ -120,7 +121,11 @@ averaged over variables or returned as a sum of variable-wise contributions.
 
 The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
 convenience specifications for unbiased or commensurable mixed-variable
-dissimilarities. The `"euclidean"` preset computes Euclidean distance after
+dissimilarities. The `"u_dep_bw"` preset uses the same categorical
+construction as `"u_dep"`, but whitens the retained numerical principal
+components and scales their complete Manhattan distance by the number of
+original numerical variables divided by its mean over distinct training
+pairs. The `"euclidean"` preset computes Euclidean distance after
 standardizing numerical variables and one-hot encoding and standardizing
 categorical variables. For numerical-only inputs, `"std"` remains the
 default, but `method_num` can be overridden. Setting `method_num = "none"`

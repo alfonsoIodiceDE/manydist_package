@@ -28,7 +28,7 @@
 #'   never use the outcome.
 #' @param preset Character string specifying the distance preset passed to
 #'   [mdist()]. Available values include `"custom"`, `"gower"`,
-#'   `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+#'   `"unbiased_dependent"`, `"u_dep"`, `"u_dep_bw"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 #'   `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`. Preset parameters
 #'   are normally fixed by the selected preset. The exception is `method_num`
 #'   for `preset = "euclidean"` when all predictors selected by the step are
@@ -49,10 +49,11 @@
 #'   the average contribution of each variable to the overall distance is equal
 #'   to 1, when supported by the selected distance specification.
 #' @param ncomp Integer or `NULL`. Number of principal components to retain
-#'   when `method_num = "pc_scores"`. If `NULL`, all available components are
-#'   used unless `threshold` is supplied and supported by the underlying method.
+#'   when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
+#'   available components are used unless `threshold` is supplied and supported
+#'   by the underlying method.
 #' @param threshold Numeric or `NULL`. Optional cumulative variance threshold
-#'   used when `method_num = "pc_scores"`.
+#'   used when `method_num = "pc_scores"` or `preset = "u_dep_bw"`.
 #' @param columns Names of columns selected at prep time. Used internally by
 #'   recipes.
 #' @param response_col Name of the outcome selected at prep time when it is
@@ -230,7 +231,7 @@ step_mdist_new <- function(terms, role, trained,
 .step_mdist_is_response_aware <- function(preset, method_cat) {
   preset <- .normalize_preset(preset)
 
-  if (preset %in% c("unbiased_dependent", "u_dep", "u_mix")) {
+  if (preset %in% c("unbiased_dependent", "u_dep", "u_dep_bw", "u_mix")) {
     return(TRUE)
   }
 

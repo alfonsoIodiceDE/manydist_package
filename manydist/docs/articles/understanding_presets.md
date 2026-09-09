@@ -94,6 +94,22 @@ The result shows that, in this case, the preset is equivalent to the
 corresponding explicit specification of `method_cat`, `method_num`, and
 `commensurable`.
 
+The separate `"u_dep_bw"` preset retains the association-aware
+categorical construction of `"u_dep"` but changes the numerical
+construction. After standardizing the original numerical variables, it
+rotates the data to principal-component coordinates and whitens the
+retained scores. It then computes one Manhattan distance for the
+complete numerical block and multiplies that matrix by
+
+\[ , \]
+
+where the mean is calculated over distinct training pairs. Thus the
+numerical block has training mean `p_num`, even if fewer than `p_num`
+components are retained. The fitted PCA transformation and block scale
+are reused for new observations. This differs from `"u_dep"`, which
+commensurates the numerical principal-component contributions
+separately.
+
 ## 4 Presets based on specific distance constructions
 
 Other presets are not merely combinations of the basic arguments above.

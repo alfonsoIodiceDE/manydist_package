@@ -83,6 +83,12 @@ D_resp
     ##     - numerical preprocessing: pc_scores
     ##     - commensurability adjustment: TRUE
 
+The separate `"u_dep_bw"` preset uses the same categorical construction as
+`"u_dep"`, but applies block-wise commensurability to the numerical variables.
+It computes a Manhattan distance on whitened principal-component scores and
+scales the complete numerical block so that its mean over distinct training
+pairs equals the number of original numerical variables.
+
 Custom specifications can be defined by combining a categorical method,
 a numerical preprocessing method, and a commensurability rule.
 

@@ -69,6 +69,11 @@
                            euclidean          = c("method_num"),
                            unbiased_dependent = c("method_cat", "method_num", "commensurable"),
                            u_dep              = c("method_cat", "method_num", "commensurable"),
+                           u_dep_bw = c(
+                             "method_cat", "method_num", "commensurable",
+                             "retained_ncomp", "numeric_block_mean",
+                             "numeric_block_scale"
+                           ),
                            u_indep            = c("method_cat", "method_num", "commensurable"),
                            u_mix              = c("method_cat", "method_num", "commensurable"),
                            hl                 = c("method_cat", "method_num", "commensurable"),
@@ -84,6 +89,9 @@
                            commensurable = "commensurability adjustment",
                            ncomp         = "number of principal components",
                            threshold     = "inertia threshold",
+                           retained_ncomp = "retained principal components",
+                           numeric_block_mean = "mean unscaled numerical block distance",
+                           numeric_block_scale = "numerical block scale factor",
                            cont_p        = "number of continuous variables",
                            cat_p         = "number of categorical variables"
                          ),

@@ -46,7 +46,8 @@ response_aware_methods()
 #> [40] "ruzicka"           "soergel"           "sorensen"         
 #> [43] "squared_chi"       "squared_chord"     "squared_euclidean"
 #> [46] "taneja"            "tanimoto"          "topsoe"           
-#> [49] "wavehedges"        "u_dep"             "u_mix"            
+#> [49] "wavehedges"        "u_dep"             "u_dep_bw"         
+#> [52] "u_mix"            
 response_aware_methods(argument = "method_cat")
 #>  [1] "gifi_chi2"         "le_and_ho"         "tvd"              
 #>  [4] "additive_symm"     "avg"               "bhattacharyya"    
@@ -64,7 +65,8 @@ response_aware_methods(argument = "method_cat")
 #> [40] "ruzicka"           "soergel"           "sorensen"         
 #> [43] "squared_chi"       "squared_chord"     "squared_euclidean"
 #> [46] "taneja"            "tanimoto"          "topsoe"           
-#> [49] "wavehedges"        "u_dep"             "u_mix"            
+#> [49] "wavehedges"        "u_dep"             "u_dep_bw"         
+#> [52] "u_mix"            
 response_aware_methods(argument = "preset")
 #>  [1] "gifi_chi2"         "le_and_ho"         "tvd"              
 #>  [4] "additive_symm"     "avg"               "bhattacharyya"    
@@ -82,5 +84,6 @@ response_aware_methods(argument = "preset")
 #> [40] "ruzicka"           "soergel"           "sorensen"         
 #> [43] "squared_chi"       "squared_chord"     "squared_euclidean"
 #> [46] "taneja"            "tanimoto"          "topsoe"           
-#> [49] "wavehedges"        "u_dep"             "u_mix"            
+#> [49] "wavehedges"        "u_dep"             "u_dep_bw"         
+#> [52] "u_mix"            
 ```

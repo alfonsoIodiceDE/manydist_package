@@ -351,6 +351,7 @@ c(
   "euclidean",
   "unbiased_dependent",
   "u_dep",
+  "u_dep_bw",
   "u_indep",
   "u_mix",
   "hl",
@@ -361,9 +362,9 @@ c(
 ```
 
      [1] "custom"             "gower"              "euclidean"
-     [4] "unbiased_dependent" "u_dep"              "u_indep"
-     [7] "u_mix"              "hl"                 "gudmm"
-    [10] "dkss"               "mod_gower"         
+     [4] "unbiased_dependent" "u_dep"              "u_dep_bw"
+     [7] "u_indep"            "u_mix"              "hl"
+    [10] "gudmm"              "dkss"               "mod_gower"         
 
 Some presets are intended mainly for train-train dissimilarities and may
 not support distances from new observations to training observations.

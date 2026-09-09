@@ -147,6 +147,7 @@ dissimilarities.
 | euclidean | Euclidean distance after one-hot encoding categorical variables. |
 | u_indep | Unbiased distance with independent variable-wise contributions. |
 | u_dep | Unbiased association-aware distance. |
+| u_dep_bw | Association-aware distance with block-wise numerical commensurability. |
 | u_mix | Mixed unbiased association-aware distance. |
 | hl | Heterogeneous Euclidean-type distance. |
 | gudmm | Generalized distance for mixed data. |

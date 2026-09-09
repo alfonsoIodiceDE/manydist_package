@@ -13,7 +13,7 @@ prediction and clustering models that operate on dissimilarity matrices."></head
 
     <a class="navbar-brand me-2" href="../index.html">manydist</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -110,7 +110,7 @@ never use the outcome.</p></dd>
 <dt id="arg-preset">preset<a class="anchor" aria-label="anchor" href="#arg-preset"></a></dt>
 <dd><p>Character string specifying the distance preset passed to
 [mdist()]. Available values include `"custom"`, `"gower"`,
-`"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+`"unbiased_dependent"`, `"u_dep"`, `"u_dep_bw"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`. Preset parameters
 are normally fixed by the selected preset. The exception is `method_num`
 for `preset = "euclidean"` when all predictors selected by the step are
@@ -143,13 +143,14 @@ to 1, when supported by the selected distance specification.</p></dd>
 
 <dt id="arg-ncomp">ncomp<a class="anchor" aria-label="anchor" href="#arg-ncomp"></a></dt>
 <dd><p>Integer or `NULL`. Number of principal components to retain
-when `method_num = "pc_scores"`. If `NULL`, all available components are
-used unless `threshold` is supplied and supported by the underlying method.</p></dd>
+when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
+available components are used unless `threshold` is supplied and supported
+by the underlying method.</p></dd>
 
 
 <dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
 <dd><p>Numeric or `NULL`. Optional cumulative variance threshold
-used when `method_num = "pc_scores"`.</p></dd>
+used when `method_num = "pc_scores"` or `preset = "u_dep_bw"`.</p></dd>
 
 
 <dt id="arg-columns">columns<a class="anchor" aria-label="anchor" href="#arg-columns"></a></dt>

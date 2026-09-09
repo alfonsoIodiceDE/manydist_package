@@ -113,7 +113,8 @@ The recipe outcome is `species`. Selecting
 keeps it out of the predictor set. Because Gower distance is not
 response-aware, `species` is not used in the distance calculation below.
 
-For response-aware specifications such as `u_dep` and `u_mix`, however,
+For response-aware specifications such as `u_dep`, `u_dep_bw`, and
+`u_mix`, however,
 [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
 automatically discovers the single recipe outcome and uses the outcomes
 from the current analysis set when the step is prepared. The fitted

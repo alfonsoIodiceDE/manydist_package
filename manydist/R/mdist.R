@@ -8,6 +8,129 @@
 }
 
 
+.fit_u_dep_bw_numeric <- function(x, ncomp, threshold = NULL) {
+  x <- as.matrix(x)
+  storage.mode(x) <- "double"
+
+  if (nrow(x) < 2L) {
+    stop(
+      "`preset = \"u_dep_bw\"` requires at least two training observations ",
+      "to estimate the numerical block scale.",
+      call. = FALSE
+    )
+  }
+
+  center <- colMeans(x)
+  scale <- apply(x, 2, stats::sd)
+
+  if (any(!is.finite(scale)) || any(scale <= .Machine$double.eps)) {
+    stop(
+      "`preset = \"u_dep_bw\"` requires numerical variables with positive ",
+      "finite standard deviations.",
+      call. = FALSE
+    )
+  }
+
+  x_std <- sweep(sweep(x, 2, center, "-"), 2, scale, "/")
+  pca <- stats::prcomp(x_std, center = FALSE, scale. = FALSE)
+
+  positive_tol <- sqrt(.Machine$double.eps) * max(pca$sdev)
+  positive <- which(is.finite(pca$sdev) & pca$sdev > positive_tol)
+
+  if (length(positive) == 0L) {
+    stop(
+      "`preset = \"u_dep_bw\"` could not retain a principal component with ",
+      "positive variance.",
+      call. = FALSE
+    )
+  }
+
+  if (is.null(threshold)) {
+    if (length(ncomp) != 1L || !is.finite(ncomp) ||
+        ncomp < 1 || ncomp != as.integer(ncomp)) {
+      stop("`ncomp` must be a positive integer.", call. = FALSE)
+    }
+
+    retained <- positive[seq_len(min(as.integer(ncomp), length(positive)))]
+  } else {
+    if (length(threshold) != 1L || !is.finite(threshold) ||
+        threshold <= 0 || threshold > 1) {
+      stop("`threshold` must be a number in (0, 1].", call. = FALSE)
+    }
+
+    positive_variances <- pca$sdev[positive]^2
+    cumulative <- cumsum(positive_variances / sum(positive_variances))
+    retained <- positive[seq_len(which(cumulative >= threshold)[1L])]
+  }
+
+  rotation <- pca$rotation[, retained, drop = FALSE]
+  pc_sdev <- pca$sdev[retained]
+  train_scores <- sweep(x_std %*% rotation, 2, pc_sdev, "/")
+
+  raw_distance <- stats::dist(train_scores, method = "manhattan")
+  block_mean <- mean(as.numeric(raw_distance))
+
+  if (!is.finite(block_mean) || block_mean <= .Machine$double.eps) {
+    stop(
+      "`preset = \"u_dep_bw\"` could not estimate a positive finite mean ",
+      "distance for the numerical block.",
+      call. = FALSE
+    )
+  }
+
+  list(
+    center = center,
+    scale = scale,
+    rotation = rotation,
+    pc_sdev = pc_sdev,
+    train_scores = train_scores,
+    retained_ncomp = length(retained),
+    block_mean = block_mean,
+    block_scale = ncol(x) / block_mean
+  )
+}
+
+
+.apply_u_dep_bw_numeric <- function(numeric_prep, new_data = NULL) {
+  train_scores <- numeric_prep$train_scores
+
+  if (is.null(new_data)) {
+    distance <- as.matrix(stats::dist(train_scores, method = "manhattan"))
+  } else {
+    new_x <- as.matrix(new_data)
+    storage.mode(new_x) <- "double"
+    new_x_std <- sweep(
+      sweep(new_x, 2, numeric_prep$center, "-"),
+      2,
+      numeric_prep$scale,
+      "/"
+    )
+    target_scores <- sweep(
+      new_x_std %*% numeric_prep$rotation,
+      2,
+      numeric_prep$pc_sdev,
+      "/"
+    )
+
+    distance <- matrix(
+      0,
+      nrow = nrow(target_scores),
+      ncol = nrow(train_scores)
+    )
+
+    for (component in seq_len(ncol(train_scores))) {
+      distance <- distance + abs(outer(
+        target_scores[, component],
+        train_scores[, component],
+        "-"
+      ))
+    }
+  }
+
+  distance * numeric_prep$block_scale
+}
+
+
 .to_dissimilarity <- function(dist_matrix, reference = NULL) {
   if (nrow(dist_matrix) == ncol(dist_matrix) &&
       isTRUE(all.equal(dist_matrix, t(dist_matrix), tolerance = 1e-10))) {
@@ -73,6 +196,13 @@
       method_cat    = "tvd",
       commensurable = TRUE,
       method_num    = "pc_scores",
+      interaction   = FALSE
+    ),
+
+    u_dep_bw = list(
+      method_cat    = "tvd",
+      commensurable = TRUE,
+      method_num    = "whitened_pc_scores",
       interaction   = FALSE
     ),
 
@@ -182,7 +312,8 @@
     preset, method_cat,
     commensurable, method_num,
     ncomp, threshold,
-    interaction, prop_nn, score, decision
+    interaction, prop_nn, score, decision,
+    u_dep_bw_numeric = NULL
 ) {
 
   cont_dist_mat <- NULL
@@ -191,16 +322,23 @@
   method <- .numeric_metric_from_preset(preset)
 
   if (!is.null(cont_data)) {
-    cont_dist_mat <- ndist(
-      x = cont_data,
-      validate_x = cont_data_val,
-      method = method,
-      commensurable = commensurable,
-      scaling = method_num,
-      ncomp = ncomp,
-      threshold = threshold
-    ) |>
-      as.matrix()
+    if (identical(preset, "u_dep_bw")) {
+      cont_dist_mat <- .apply_u_dep_bw_numeric(
+        numeric_prep = u_dep_bw_numeric,
+        new_data = cont_data_val
+      )
+    } else {
+      cont_dist_mat <- ndist(
+        x = cont_data,
+        validate_x = cont_data_val,
+        method = method,
+        commensurable = commensurable,
+        scaling = method_num,
+        ncomp = ncomp,
+        threshold = threshold
+      ) |>
+        as.matrix()
+    }
   }
 
   if (!is.null(cat_data)) {
@@ -355,6 +493,15 @@
 
   gower_prep <- NULL
   dummy_recipe <- NULL
+  u_dep_bw_numeric <- NULL
+
+  if (identical(preset, "u_dep_bw") && !is.null(cont_data)) {
+    u_dep_bw_numeric <- .fit_u_dep_bw_numeric(
+      x = cont_data,
+      ncomp = ncomp,
+      threshold = threshold
+    )
+  }
 
   if (preset == "gower") {
     if (is.null(cont_data) && !is.null(cat_data)) {
@@ -394,7 +541,8 @@
       cat_names      = names(cat_data),
       cat_levels     = cat_levels,
       gower_prep     = gower_prep,
-      dummy_recipe   = dummy_recipe
+      dummy_recipe   = dummy_recipe,
+      u_dep_bw_numeric = u_dep_bw_numeric
     ),
     class = "mdist_preprocessor"
   )
@@ -447,6 +595,7 @@
     "custom",
     "unbiased_dependent",
     "u_dep",
+    "u_dep_bw",
     "u_indep",
     "u_mix",
     "hl"
@@ -469,7 +618,8 @@
       interaction = prep$interaction,
       prop_nn = prep$prop_nn,
       score = prep$score,
-      decision = prep$decision
+      decision = prep$decision,
+      u_dep_bw_numeric = prep$u_dep_bw_numeric
     )
 
   } else if (prep$preset == "gower") {
@@ -733,13 +883,14 @@
 #'   the average contribution of each variable to the overall distance is equal
 #'   to 1.
 #' @param ncomp Integer or `NULL`. Number of principal components to retain
-#'   when `method_num = "pc_scores"`. If `NULL`, all available components are
-#'   used unless `threshold` is supplied and supported by the underlying method.
+#'   when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
+#'   available components are used unless `threshold` is supplied and supported
+#'   by the underlying method.
 #' @param threshold Numeric or `NULL`. Optional cumulative variance threshold
-#'   used when `method_num = "pc_scores"`.
+#'   used when `method_num = "pc_scores"` or `preset = "u_dep_bw"`.
 #' @param preset Character string specifying a predefined distance
 #'   specification. Available values include `"custom"`, `"gower"`,
-#'   `"unbiased_dependent"`, `"u_dep"`, `"u_indep"`, `"u_mix"`, `"hl"`,
+#'   `"unbiased_dependent"`, `"u_dep"`, `"u_dep_bw"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 #'   `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
 #'   When `preset` is not `"custom"`, arguments such as `method_cat`,
 #'   `method_num`, `commensurable`, and `interaction` are normally handled by
@@ -772,7 +923,11 @@
 #'
 #' The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
 #' convenience specifications for unbiased or commensurable mixed-variable
-#' dissimilarities. The `"euclidean"` preset computes Euclidean distance after
+#' dissimilarities. The `"u_dep_bw"` preset uses the same categorical
+#' construction as `"u_dep"`, but whitens the retained numerical principal
+#' components and scales their complete Manhattan distance by the number of
+#' original numerical variables divided by its mean over distinct training
+#' pairs. The `"euclidean"` preset computes Euclidean distance after
 #' standardizing numerical variables and one-hot encoding and standardizing
 #' categorical variables. For numerical-only inputs, `"std"` remains the
 #' default, but `method_num` can be overridden. Setting `method_num = "none"`
@@ -876,6 +1031,9 @@ mdist <- function(x, new_data = NULL, response = NULL,
     cont_p        = if (!is.null(prep$cont_data)) ncol(prep$cont_data) else 0,
     response_col  = prep$response_col,
     y             = prep$y,
+    numeric_block_mean = prep$u_dep_bw_numeric$block_mean %||% NULL,
+    numeric_block_scale = prep$u_dep_bw_numeric$block_scale %||% NULL,
+    retained_ncomp = prep$u_dep_bw_numeric$retained_ncomp %||% NULL,
     preprocessor  = prep
   )
 

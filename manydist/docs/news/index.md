@@ -1,11 +1,74 @@
 # Changelog
 
+## manydist 0.5.2
+
+### Distance construction
+
+- Added the `"u_dep_bw"` preset for association-aware distances with
+  block-wise numerical commensurability. The preset computes Manhattan
+  distances on whitened principal-component scores and scales the
+  complete numerical block so that its mean over distinct training pairs
+  equals the number of original numerical variables. It retains the
+  response-aware categorical construction used by `"u_dep"`.
+
+- `"u_dep_bw"` supports principal-component selection through `ncomp` or
+  `threshold`. For new observations, the PCA transformation and
+  numerical block scaling estimated from the training data are reused.
+
 ## manydist 0.5.1
+
+CRAN release: 2026-07-23
+
+### Benchmarking and diagnostics
+
+- Extended
+  [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
+  to compare every pair of successful distance specifications using mean
+  absolute distance differences, symmetric relative distance,
+  multidimensional-scaling congruence, and alienation.
+- Added optional clustering comparisons to
+  [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md).
+  Supplying `cluster_k` computes pairwise adjusted Rand indices for PAM,
+  hierarchical, and/or spectral clustering; clustering is skipped when
+  `cluster_k = NULL`.
+- Added
+  [`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md)
+  to extract the pairwise diagnostics stored in an `MDistBenchmark`
+  result without recomputing the distances.
+- Added an
+  [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+  method for `MDistBenchmark` objects, with annotated heatmaps for
+  distance, geometry, and clustering-agreement diagnostics.
+
+### Distance construction and recipe workflows
+
+- Updated
+  [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
+  so response-aware specifications can obtain a single outcome directly
+  from the recipe formula during preparation. The fitted response-aware
+  profiles are reused when new data are baked, so assessment and test
+  outcomes are neither required nor used.
+- Added the `response_used` argument to
+  [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md),
+  allowing response use to be disabled explicitly.
+- Allowed `method_num` to override the default standardization of the
+  `"euclidean"` preset for numerical-only data. In particular,
+  `method_num = "none"` computes ordinary Euclidean distances on the
+  original variables.
 
 ### Data
 
 - Added `wdi_2022`, a documented snapshot of selected 2022 World
   Development Indicators for reproducible mixed-type distance examples.
+
+### Documentation and testing
+
+- Added focused tests for response-aware
+  [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
+  workflows and the pairwise benchmarking interface.
+- Expanded the package website with task-oriented articles on distance
+  construction, diagnostics and benchmarking, clustering, and
+  nearest-neighbour workflows.
 
 ## manydist 0.5.0
 

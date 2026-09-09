@@ -75,13 +75,13 @@ dist_methods_tbl <- function() {
   preset_tbl <- tibble::tibble(
     method = c(
       "custom", "gower", "gudmm", "dkss", "mod_gower",
-      "euclidean", "hl", "u_dep", "u_indep", "u_mix"
+      "euclidean", "hl", "u_dep", "u_dep_bw", "u_indep", "u_mix"
     ),
     argument = "preset",
     data_type = "mixed",
     distance_basis = c(
       "user_defined",
-      rep("mixed_block", 9)
+      rep("mixed_block", 10)
     ),
     response_aware = c(
       FALSE,  # custom
@@ -92,6 +92,7 @@ dist_methods_tbl <- function() {
       FALSE,  # euclidean
       FALSE,  # hl
       TRUE,   # u_dep
+      TRUE,   # u_dep_bw
       FALSE,  # u_indep
       TRUE    # u_mix
     ),
@@ -104,6 +105,7 @@ dist_methods_tbl <- function() {
       "manydist",      # euclidean
       "manydist",      # hl
       "manydist",      # u_dep
+      "manydist",      # u_dep_bw
       "manydist",      # u_indep
       "manydist"       # u_mix
     )

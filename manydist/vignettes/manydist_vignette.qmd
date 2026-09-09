@@ -207,6 +207,7 @@ c(
   "euclidean",
   "unbiased_dependent",
   "u_dep",
+  "u_dep_bw",
   "u_indep",
   "u_mix",
   "hl",

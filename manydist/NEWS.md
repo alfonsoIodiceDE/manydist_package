@@ -1,3 +1,18 @@
+# manydist 0.5.2
+
+## Distance construction
+
+- Added the `"u_dep_bw"` preset for association-aware distances with block-wise
+  numerical commensurability. The preset computes Manhattan distances on
+  whitened principal-component scores and scales the complete numerical block
+  so that its mean over distinct training pairs equals the number of original
+  numerical variables. It retains the response-aware categorical construction
+  used by `"u_dep"`.
+
+- `"u_dep_bw"` supports principal-component selection through `ncomp` or
+  `threshold`. For new observations, the PCA transformation and numerical block
+  scaling estimated from the training data are reused.
+
 # manydist 0.5.1
 
 ## Benchmarking and diagnostics

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">manydist</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,10 +33,36 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.5.1" id="manydist-051">manydist 0.5.1<a class="anchor" aria-label="anchor" href="#manydist-051"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.5.2" id="manydist-052">manydist 0.5.2<a class="anchor" aria-label="anchor" href="#manydist-052"></a></h2>
+<div class="section level3">
+<h3 id="distance-construction-0-5-2">Distance construction<a class="anchor" aria-label="anchor" href="#distance-construction-0-5-2"></a></h3>
+<ul><li><p>Added the <code>"u_dep_bw"</code> preset for association-aware distances with block-wise numerical commensurability. The preset computes Manhattan distances on whitened principal-component scores and scales the complete numerical block so that its mean over distinct training pairs equals the number of original numerical variables. It retains the response-aware categorical construction used by <code>"u_dep"</code>.</p></li>
+<li><p><code>"u_dep_bw"</code> supports principal-component selection through <code>ncomp</code> or <code>threshold</code>. For new observations, the PCA transformation and numerical block scaling estimated from the training data are reused.</p></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.5.1" id="manydist-051">manydist 0.5.1<a class="anchor" aria-label="anchor" href="#manydist-051"></a></h2><p class="text-muted">CRAN release: 2026-07-23</p>
+<div class="section level3">
+<h3 id="benchmarking-and-diagnostics-0-5-1">Benchmarking and diagnostics<a class="anchor" aria-label="anchor" href="#benchmarking-and-diagnostics-0-5-1"></a></h3>
+<ul><li>Extended <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> to compare every pair of successful distance specifications using mean absolute distance differences, symmetric relative distance, multidimensional-scaling congruence, and alienation.</li>
+<li>Added optional clustering comparisons to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>. Supplying <code>cluster_k</code> computes pairwise adjusted Rand indices for PAM, hierarchical, and/or spectral clustering; clustering is skipped when <code>cluster_k = NULL</code>.</li>
+<li>Added <code><a href="../reference/benchmark_comparisons.html">benchmark_comparisons()</a></code> to extract the pairwise diagnostics stored in an <code>MDistBenchmark</code> result without recomputing the distances.</li>
+<li>Added an <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> method for <code>MDistBenchmark</code> objects, with annotated heatmaps for distance, geometry, and clustering-agreement diagnostics.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="distance-construction-and-recipe-workflows-0-5-1">Distance construction and recipe workflows<a class="anchor" aria-label="anchor" href="#distance-construction-and-recipe-workflows-0-5-1"></a></h3>
+<ul><li>Updated <code><a href="../reference/step_mdist.html">step_mdist()</a></code> so response-aware specifications can obtain a single outcome directly from the recipe formula during preparation. The fitted response-aware profiles are reused when new data are baked, so assessment and test outcomes are neither required nor used.</li>
+<li>Added the <code>response_used</code> argument to <code><a href="../reference/step_mdist.html">step_mdist()</a></code>, allowing response use to be disabled explicitly.</li>
+<li>Allowed <code>method_num</code> to override the default standardization of the <code>"euclidean"</code> preset for numerical-only data. In particular, <code>method_num = "none"</code> computes ordinary Euclidean distances on the original variables.</li>
+</ul></div>
 <div class="section level3">
 <h3 id="data-0-5-1">Data<a class="anchor" aria-label="anchor" href="#data-0-5-1"></a></h3>
 <ul><li>Added <code>wdi_2022</code>, a documented snapshot of selected 2022 World Development Indicators for reproducible mixed-type distance examples.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-and-testing-0-5-1">Documentation and testing<a class="anchor" aria-label="anchor" href="#documentation-and-testing-0-5-1"></a></h3>
+<ul><li>Added focused tests for response-aware <code><a href="../reference/step_mdist.html">step_mdist()</a></code> workflows and the pairwise benchmarking interface.</li>
+<li>Expanded the package website with task-oriented articles on distance construction, diagnostics and benchmarking, clustering, and nearest-neighbour workflows.</li>
 </ul></div>
 </div>
     <div class="section level2">

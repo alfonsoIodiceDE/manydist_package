@@ -67,62 +67,63 @@ categorical methods are restricted to response-aware methods.
 
 ``` r
 all_dist_method_specs()
-#> # A tibble: 482 × 5
+#> # A tibble: 483 × 5
 #>    spec_type preset    method_cat method_num commensurable
 #>    <chr>     <chr>     <chr>      <chr>      <lgl>        
 #>  1 preset    euclidean NA         NA         NA           
 #>  2 preset    gower     NA         NA         NA           
 #>  3 preset    hl        NA         NA         NA           
 #>  4 preset    u_dep     NA         NA         NA           
-#>  5 preset    u_indep   NA         NA         NA           
-#>  6 preset    u_mix     NA         NA         NA           
-#>  7 preset    dkss      NA         NA         NA           
-#>  8 preset    gudmm     NA         NA         NA           
-#>  9 preset    mod_gower NA         NA         NA           
-#> 10 preset    custom    NA         NA         NA           
-#> # ℹ 472 more rows
+#>  5 preset    u_dep_bw  NA         NA         NA           
+#>  6 preset    u_indep   NA         NA         NA           
+#>  7 preset    u_mix     NA         NA         NA           
+#>  8 preset    dkss      NA         NA         NA           
+#>  9 preset    gudmm     NA         NA         NA           
+#> 10 preset    mod_gower NA         NA         NA           
+#> # ℹ 473 more rows
 all_dist_method_specs(mode = "presets_only")
-#> # A tibble: 10 × 5
+#> # A tibble: 11 × 5
 #>    spec_type preset    method_cat method_num commensurable
 #>    <chr>     <chr>     <chr>      <chr>      <lgl>        
 #>  1 preset    euclidean NA         NA         NA           
 #>  2 preset    gower     NA         NA         NA           
 #>  3 preset    hl        NA         NA         NA           
 #>  4 preset    u_dep     NA         NA         NA           
-#>  5 preset    u_indep   NA         NA         NA           
-#>  6 preset    u_mix     NA         NA         NA           
-#>  7 preset    dkss      NA         NA         NA           
-#>  8 preset    gudmm     NA         NA         NA           
-#>  9 preset    mod_gower NA         NA         NA           
-#> 10 preset    custom    NA         NA         NA           
+#>  5 preset    u_dep_bw  NA         NA         NA           
+#>  6 preset    u_indep   NA         NA         NA           
+#>  7 preset    u_mix     NA         NA         NA           
+#>  8 preset    dkss      NA         NA         NA           
+#>  9 preset    gudmm     NA         NA         NA           
+#> 10 preset    mod_gower NA         NA         NA           
+#> 11 preset    custom    NA         NA         NA           
 all_dist_method_specs(mode = "response_aware_only")
-#> # A tibble: 354 × 5
-#>    spec_type preset method_cat    method_num commensurable
-#>    <chr>     <chr>  <chr>         <chr>      <lgl>        
-#>  1 preset    u_dep  NA            NA         NA           
-#>  2 preset    u_mix  NA            NA         NA           
-#>  3 component custom additive_symm none       FALSE        
-#>  4 component custom additive_symm pc_scores  FALSE        
-#>  5 component custom additive_symm pc_scores  TRUE         
-#>  6 component custom additive_symm range      FALSE        
-#>  7 component custom additive_symm robust     FALSE        
-#>  8 component custom additive_symm robust     TRUE         
-#>  9 component custom additive_symm std        FALSE        
-#> 10 component custom additive_symm std        TRUE         
-#> # ℹ 344 more rows
+#> # A tibble: 355 × 5
+#>    spec_type preset   method_cat    method_num commensurable
+#>    <chr>     <chr>    <chr>         <chr>      <lgl>        
+#>  1 preset    u_dep    NA            NA         NA           
+#>  2 preset    u_dep_bw NA            NA         NA           
+#>  3 preset    u_mix    NA            NA         NA           
+#>  4 component custom   additive_symm none       FALSE        
+#>  5 component custom   additive_symm pc_scores  FALSE        
+#>  6 component custom   additive_symm pc_scores  TRUE         
+#>  7 component custom   additive_symm range      FALSE        
+#>  8 component custom   additive_symm robust     FALSE        
+#>  9 component custom   additive_symm robust     TRUE         
+#> 10 component custom   additive_symm std        FALSE        
+#> # ℹ 345 more rows
 all_dist_method_specs(mode = "full", method_cat = c("tvd", "le_and_ho"))
-#> # A tibble: 26 × 5
+#> # A tibble: 27 × 5
 #>    spec_type preset    method_cat method_num commensurable
 #>    <chr>     <chr>     <chr>      <chr>      <lgl>        
 #>  1 preset    euclidean NA         NA         NA           
 #>  2 preset    gower     NA         NA         NA           
 #>  3 preset    hl        NA         NA         NA           
 #>  4 preset    u_dep     NA         NA         NA           
-#>  5 preset    u_indep   NA         NA         NA           
-#>  6 preset    u_mix     NA         NA         NA           
-#>  7 preset    dkss      NA         NA         NA           
-#>  8 preset    gudmm     NA         NA         NA           
-#>  9 preset    mod_gower NA         NA         NA           
-#> 10 preset    custom    NA         NA         NA           
-#> # ℹ 16 more rows
+#>  5 preset    u_dep_bw  NA         NA         NA           
+#>  6 preset    u_indep   NA         NA         NA           
+#>  7 preset    u_mix     NA         NA         NA           
+#>  8 preset    dkss      NA         NA         NA           
+#>  9 preset    gudmm     NA         NA         NA           
+#> 10 preset    mod_gower NA         NA         NA           
+#> # ℹ 17 more rows
 ```

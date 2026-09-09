@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">manydist</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -73,7 +73,7 @@
 <h3 id="initialization">Initialization<a class="anchor" aria-label="anchor" href="#initialization"></a>
 </h3>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package">manydist</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package/">manydist</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://allisonhorst.github.io/palmerpenguins/" class="external-link">palmerpenguins</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span></code></pre></div>
@@ -115,6 +115,7 @@
 <span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="do">##     - categorical method: tvd</span></span>
 <span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="do">##     - numerical preprocessing: pc_scores</span></span>
 <span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="do">##     - commensurability adjustment: TRUE</span></span></code></pre></div>
+<p>The separate <code>"u_dep_bw"</code> preset uses the same categorical construction as <code>"u_dep"</code>, but applies block-wise commensurability to the numerical variables. It computes a Manhattan distance on whitened principal-component scores and scales the complete numerical block so that its mean over distinct training pairs equals the number of original numerical variables.</p>
 <p>Custom specifications can be defined by combining a categorical method, a numerical preprocessing method, and a commensurability rule.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">D_custom</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mdist.html">mdist</a></span><span class="op">(</span><span class="va">penguins_small</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">species</span><span class="op">)</span>,</span>

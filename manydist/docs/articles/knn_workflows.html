@@ -29,7 +29,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">manydist</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -86,7 +86,7 @@
 </h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package">manydist</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://alfonsoiodicede.github.io/manydist_package/">manydist</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
@@ -168,7 +168,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span class="header-section-number">4</span> A distance-to-training recipe<a class="anchor" aria-label="anchor" href="#a-distance-to-training-recipe"></a>
 </h2>
 <p>The recipe outcome is <code>species</code>. Selecting <code><a href="https://recipes.tidymodels.org/reference/has_role.html" class="external-link">all_predictors()</a></code> keeps it out of the predictor set. Because Gower distance is not response-aware, <code>species</code> is not used in the distance calculation below.</p>
-<p>For response-aware specifications such as <code>u_dep</code> and <code>u_mix</code>, however, <code><a href="../reference/step_mdist.html">step_mdist()</a></code> automatically discovers the single recipe outcome and uses the outcomes from the current analysis set when the step is prepared. The fitted profiles are reused for assessment and test observations; their outcomes are never required or used. Set <code>response_used = FALSE</code> to construct a predictor-only version of a response-aware distance.</p>
+<p>For response-aware specifications such as <code>u_dep</code>, <code>u_dep_bw</code>, and <code>u_mix</code>, however, <code><a href="../reference/step_mdist.html">step_mdist()</a></code> automatically discovers the single recipe outcome and uses the outcomes from the current analysis set when the step is prepared. The fitted profiles are reused for assessment and test observations; their outcomes are never required or used. Set <code>response_used = FALSE</code> to construct a predictor-only version of a response-aware distance.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gower_recipe</span> <span class="op">&lt;-</span> <span class="fu">recipes</span><span class="fu">::</span><span class="fu"><a href="https://recipes.tidymodels.org/reference/recipe.html" class="external-link">recipe</a></span><span class="op">(</span></span>

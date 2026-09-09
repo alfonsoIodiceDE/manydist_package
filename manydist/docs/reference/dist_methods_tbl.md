@@ -48,7 +48,7 @@ The table is used by helpers such as \[all_dist_method_specs()\] and
 
 ``` r
 dist_methods_tbl()
-#> # A tibble: 79 × 6
+#> # A tibble: 80 × 6
 #>    method        argument   data_type   distance_basis response_aware engine    
 #>    <chr>         <chr>      <chr>       <chr>          <lgl>          <chr>     
 #>  1 gifi_chi2     method_cat categorical association    TRUE           manydist  
@@ -61,7 +61,7 @@ dist_methods_tbl()
 #>  8 chebyshev     method_cat categorical association    TRUE           philentro…
 #>  9 clark         method_cat categorical association    TRUE           philentro…
 #> 10 cosine        method_cat categorical association    TRUE           philentro…
-#> # ℹ 69 more rows
+#> # ℹ 70 more rows
 
 dist_methods_tbl() |>
   dplyr::count(argument)
@@ -70,5 +70,5 @@ dist_methods_tbl() |>
 #>   <chr>      <int>
 #> 1 method_cat    64
 #> 2 method_num     5
-#> 3 preset        10
+#> 3 preset        11
 ```
