@@ -48,6 +48,7 @@ dist_methods_tbl() |>
 | gower     | FALSE          | manydist      |
 | hl        | FALSE          | manydist      |
 | u_dep     | TRUE           | manydist      |
+| u_dep_bw  | TRUE           | manydist      |
 | u_indep   | FALSE          | manydist      |
 | u_mix     | TRUE           | manydist      |
 | dkss      | FALSE          | kdml          |

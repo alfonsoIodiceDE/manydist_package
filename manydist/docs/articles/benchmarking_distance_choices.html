@@ -138,19 +138,20 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span>    <span class="va">commensurable</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 10 × 5
+<pre><code># A tibble: 11 × 5
    spec_type preset    method_cat method_num commensurable
    &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
  1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA
  2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA
  3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA
  4 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA
- 5 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
- 6 preset    u_mix     &lt;NA&gt;       &lt;NA&gt;       NA
- 7 preset    dkss      &lt;NA&gt;       &lt;NA&gt;       NA
- 8 preset    gudmm     &lt;NA&gt;       &lt;NA&gt;       NA
- 9 preset    mod_gower &lt;NA&gt;       &lt;NA&gt;       NA
-10 preset    custom    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
+ 5 preset    u_dep_bw  &lt;NA&gt;       &lt;NA&gt;       NA
+ 6 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
+ 7 preset    u_mix     &lt;NA&gt;       &lt;NA&gt;       NA
+ 8 preset    dkss      &lt;NA&gt;       &lt;NA&gt;       NA
+ 9 preset    gudmm     &lt;NA&gt;       &lt;NA&gt;       NA
+10 preset    mod_gower &lt;NA&gt;       &lt;NA&gt;       NA
+11 preset    custom    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
 </div>
 </div>
 <p>It is usually better to begin with a small set of substantively different choices than to run every possible combination. Here we compare four presets and two custom specifications.</p>
@@ -432,11 +433,12 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span></span>
 <span><span class="va">response_specs</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 × 5
-  spec_type preset method_cat method_num commensurable
-  &lt;chr&gt;     &lt;chr&gt;  &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
-1 preset    u_dep  &lt;NA&gt;       &lt;NA&gt;       NA
-2 preset    u_mix  &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
+<pre><code># A tibble: 3 × 5
+  spec_type preset   method_cat method_num commensurable
+  &lt;chr&gt;     &lt;chr&gt;    &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
+1 preset    u_dep    &lt;NA&gt;       &lt;NA&gt;       NA
+2 preset    u_dep_bw &lt;NA&gt;       &lt;NA&gt;       NA
+3 preset    u_mix    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
 </div>
 </div>
 <p>When the response is supplied to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>, it is used only by response-aware components and is not treated as an ordinary predictor.</p>
@@ -451,19 +453,22 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span><span class="va">response_benchmark</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">preset</span>, <span class="va">ok</span>, <span class="va">error</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 × 3
-  preset ok    error
-  &lt;chr&gt;  &lt;lgl&gt; &lt;chr&gt;
-1 u_dep  TRUE  &lt;NA&gt;
-2 u_mix  TRUE  &lt;NA&gt; </code></pre>
+<pre><code># A tibble: 3 × 3
+  preset   ok    error
+  &lt;chr&gt;    &lt;lgl&gt; &lt;chr&gt;
+1 u_dep    TRUE  &lt;NA&gt;
+2 u_dep_bw TRUE  &lt;NA&gt;
+3 u_mix    TRUE  &lt;NA&gt; </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">response_benchmark</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 1 × 8
-  method_1_id method_2_id method_1 method_2   mad relative_distance
-        &lt;int&gt;       &lt;int&gt; &lt;chr&gt;    &lt;chr&gt;    &lt;dbl&gt;             &lt;dbl&gt;
-1           1           2 u_dep    u_mix     1.30             0.215
+<pre><code># A tibble: 3 × 8
+  method_1_id method_2_id method_1 method_2    mad relative_distance
+        &lt;int&gt;       &lt;int&gt; &lt;chr&gt;    &lt;chr&gt;     &lt;dbl&gt;             &lt;dbl&gt;
+1           1           2 u_dep    u_dep_bw 0.0122           0.00203
+2           1           3 u_dep    u_mix    1.30             0.215
+3           2           3 u_dep_bw u_mix    1.29             0.214
 # ℹ 2 more variables: mds_congruence &lt;dbl&gt;, alienation &lt;dbl&gt;</code></pre>
 </div>
 </div>

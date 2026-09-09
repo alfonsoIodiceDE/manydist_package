@@ -238,6 +238,7 @@ response_aware_presets |>
 | Response-aware preset |
 |:----------------------|
 | u_dep                 |
+| u_dep_bw              |
 | u_mix                 |
 
 For example, the `"u_dep"` preset can use the response when constructing

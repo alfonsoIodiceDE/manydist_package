@@ -87,19 +87,20 @@ all_dist_method_specs(mode = "presets_only") |>
   )
 ```
 
-    # A tibble: 10 × 5
+    # A tibble: 11 × 5
        spec_type preset    method_cat method_num commensurable
        <chr>     <chr>     <chr>      <chr>      <lgl>
      1 preset    euclidean <NA>       <NA>       NA
      2 preset    gower     <NA>       <NA>       NA
      3 preset    hl        <NA>       <NA>       NA
      4 preset    u_dep     <NA>       <NA>       NA
-     5 preset    u_indep   <NA>       <NA>       NA
-     6 preset    u_mix     <NA>       <NA>       NA
-     7 preset    dkss      <NA>       <NA>       NA
-     8 preset    gudmm     <NA>       <NA>       NA
-     9 preset    mod_gower <NA>       <NA>       NA
-    10 preset    custom    <NA>       <NA>       NA           
+     5 preset    u_dep_bw  <NA>       <NA>       NA
+     6 preset    u_indep   <NA>       <NA>       NA
+     7 preset    u_mix     <NA>       <NA>       NA
+     8 preset    dkss      <NA>       <NA>       NA
+     9 preset    gudmm     <NA>       <NA>       NA
+    10 preset    mod_gower <NA>       <NA>       NA
+    11 preset    custom    <NA>       <NA>       NA           
 
 It is usually better to begin with a small set of substantively
 different choices than to run every possible combination. Here we
@@ -400,11 +401,12 @@ response_specs <- all_dist_method_specs(
 response_specs
 ```
 
-    # A tibble: 2 × 5
-      spec_type preset method_cat method_num commensurable
-      <chr>     <chr>  <chr>      <chr>      <lgl>
-    1 preset    u_dep  <NA>       <NA>       NA
-    2 preset    u_mix  <NA>       <NA>       NA           
+    # A tibble: 3 × 5
+      spec_type preset   method_cat method_num commensurable
+      <chr>     <chr>    <chr>      <chr>      <lgl>
+    1 preset    u_dep    <NA>       <NA>       NA
+    2 preset    u_dep_bw <NA>       <NA>       NA
+    3 preset    u_mix    <NA>       <NA>       NA           
 
 When the response is supplied to
 [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md),
@@ -423,21 +425,24 @@ response_benchmark |>
   dplyr::select(preset, ok, error)
 ```
 
-    # A tibble: 2 × 3
-      preset ok    error
-      <chr>  <lgl> <chr>
-    1 u_dep  TRUE  <NA>
-    2 u_mix  TRUE  <NA> 
+    # A tibble: 3 × 3
+      preset   ok    error
+      <chr>    <lgl> <chr>
+    1 u_dep    TRUE  <NA>
+    2 u_dep_bw TRUE  <NA>
+    3 u_mix    TRUE  <NA> 
 
 ``` r
 
 benchmark_comparisons(response_benchmark)
 ```
 
-    # A tibble: 1 × 8
-      method_1_id method_2_id method_1 method_2   mad relative_distance
-            <int>       <int> <chr>    <chr>    <dbl>             <dbl>
-    1           1           2 u_dep    u_mix     1.30             0.215
+    # A tibble: 3 × 8
+      method_1_id method_2_id method_1 method_2    mad relative_distance
+            <int>       <int> <chr>    <chr>     <dbl>             <dbl>
+    1           1           2 u_dep    u_dep_bw 0.0122           0.00203
+    2           1           3 u_dep    u_mix    1.30             0.215
+    3           2           3 u_dep_bw u_mix    1.29             0.214
     # ℹ 2 more variables: mds_congruence <dbl>, alienation <dbl>
 
 If response-aware distances are compared by predictive performance,

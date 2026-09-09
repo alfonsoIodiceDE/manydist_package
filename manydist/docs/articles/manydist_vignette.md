@@ -1154,12 +1154,12 @@ specs_preview |>
      2 preset    gower     <NA>       <NA>       NA
      3 preset    hl        <NA>       <NA>       NA
      4 preset    u_dep     <NA>       <NA>       NA
-     5 preset    u_indep   <NA>       <NA>       NA
-     6 preset    u_mix     <NA>       <NA>       NA
-     7 preset    dkss      <NA>       <NA>       NA
-     8 preset    gudmm     <NA>       <NA>       NA
-     9 preset    mod_gower <NA>       <NA>       NA
-    10 preset    custom    <NA>       <NA>       NA           
+     5 preset    u_dep_bw  <NA>       <NA>       NA
+     6 preset    u_indep   <NA>       <NA>       NA
+     7 preset    u_mix     <NA>       <NA>       NA
+     8 preset    dkss      <NA>       <NA>       NA
+     9 preset    gudmm     <NA>       <NA>       NA
+    10 preset    mod_gower <NA>       <NA>       NA           
 
 The same table—or a deliberately chosen subset—can be passed to
 [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md).
@@ -1193,12 +1193,12 @@ bench |>
      2 preset    gower     <NA>       <NA>       NA            TRUE  <NA>
      3 preset    hl        <NA>       <NA>       NA            TRUE  <NA>
      4 preset    u_dep     <NA>       <NA>       NA            TRUE  <NA>
-     5 preset    u_indep   <NA>       <NA>       NA            TRUE  <NA>
-     6 preset    u_mix     <NA>       <NA>       NA            TRUE  <NA>
-     7 preset    dkss      <NA>       <NA>       NA            TRUE  <NA>
-     8 preset    gudmm     <NA>       <NA>       NA            TRUE  <NA>
-     9 preset    mod_gower <NA>       <NA>       NA            TRUE  <NA>
-    10 preset    custom    <NA>       <NA>       NA            TRUE  <NA> 
+     5 preset    u_dep_bw  <NA>       <NA>       NA            TRUE  <NA>
+     6 preset    u_indep   <NA>       <NA>       NA            TRUE  <NA>
+     7 preset    u_mix     <NA>       <NA>       NA            TRUE  <NA>
+     8 preset    dkss      <NA>       <NA>       NA            TRUE  <NA>
+     9 preset    gudmm     <NA>       <NA>       NA            TRUE  <NA>
+    10 preset    mod_gower <NA>       <NA>       NA            TRUE  <NA> 
 
 ``` r
 
@@ -1218,10 +1218,10 @@ benchmark_comparisons(bench) |>
      1 euclidean gower                 1.67      0.0981
      2 euclidean hl                    0.304     0.199
      3 euclidean u_dep                 0.415     0.231
-     4 euclidean u_indep               0.414     0.0807
-     5 euclidean u_mix                 0.418     0.0765
-     6 euclidean dkss                  1.43      0.240
-     7 euclidean gudmm                 0.879     0.226
-     8 euclidean mod_gower             1.51      0.283
-     9 euclidean custom                0.418     0.0765
+     4 euclidean u_dep_bw              0.413     0.230
+     5 euclidean u_indep               0.414     0.0807
+     6 euclidean u_mix                 0.418     0.0765
+     7 euclidean dkss                  1.43      0.240
+     8 euclidean gudmm                 0.879     0.226
+     9 euclidean mod_gower             1.51      0.283
     10 gower     hl                    1.57      0.278 
