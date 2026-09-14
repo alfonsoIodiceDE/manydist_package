@@ -76,7 +76,10 @@ find_script_path <- function() {
 
 script_path <- find_script_path()
 talk_dir <- dirname(dirname(script_path))
-out_dir <- file.path(talk_dir, "figures")
+out_dir <- Sys.getenv(
+  "INTERACTION_MOONS_OUT_DIR",
+  unset = file.path(talk_dir, "figures")
+)
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 set.seed(20260728)
@@ -216,6 +219,7 @@ truth_cols <- c(
   "upper x C" = "#3A0CA3",
   "lower x C" = "#4CC9F0"
 )
+point_outline <- "#263238"
 
 base_theme <- theme_minimal(base_size = 16) +
   theme(
@@ -229,7 +233,14 @@ base_theme <- theme_minimal(base_size = 16) +
   )
 
 p_geometry <- ggplot(dat, aes(V1, V2)) +
-  geom_point(colour = "#5B7F86", size = 2.1, alpha = 0.86) +
+  geom_point(
+    shape = 21,
+    fill = "#5B7F86",
+    colour = point_outline,
+    size = 3.2,
+    stroke = 0.45,
+    alpha = 0.90
+  ) +
   coord_equal() +
   labs(
     title = "The numerical geometry",
@@ -238,26 +249,53 @@ p_geometry <- ggplot(dat, aes(V1, V2)) +
   base_theme +
   theme(legend.position = "none")
 
-p_band <- ggplot(dat, aes(V1, V2, colour = band, shape = nuisance)) +
-  geom_point(size = 3, alpha = 0.88) +
-  scale_colour_manual(values = band_cols) +
-  scale_shape_manual(values = c(N1 = 16, N2 = 17, N3 = 15)) +
+p_band <- ggplot(dat, aes(V1, V2, fill = band, shape = nuisance)) +
+  geom_point(
+    colour = point_outline,
+    size = 4.2,
+    stroke = 0.65,
+    alpha = 0.92
+  ) +
+  scale_fill_manual(values = band_cols) +
+  scale_shape_manual(values = c(N1 = 21, N2 = 24, N3 = 22)) +
   coord_equal() +
   labs(
     title = "Both categorical variables mapped",
     subtitle = "Band forms unequal arcs; nuisance is spatially random",
-    colour = "Signal band",
+    fill = "Signal band",
     shape = "Nuisance"
   ) +
   guides(
-    colour = guide_legend(order = 1),
-    shape = guide_legend(order = 2)
+    fill = guide_legend(
+      order = 1,
+      override.aes = list(
+        shape = 21,
+        size = 5,
+        colour = point_outline,
+        alpha = 1
+      )
+    ),
+    shape = guide_legend(
+      order = 2,
+      override.aes = list(
+        size = 5,
+        fill = "#A7B0B5",
+        colour = point_outline,
+        alpha = 1
+      )
+    )
   ) +
   base_theme
 
-p_truth <- ggplot(dat, aes(V1, V2, colour = truth)) +
-  geom_point(size = 3.0, alpha = 0.88) +
-  scale_colour_manual(values = truth_cols) +
+p_truth <- ggplot(dat, aes(V1, V2, fill = truth)) +
+  geom_point(
+    shape = 21,
+    colour = point_outline,
+    size = 3.7,
+    stroke = 0.45,
+    alpha = 0.90
+  ) +
+  scale_fill_manual(values = truth_cols) +
   coord_equal() +
   labs(
     title = "Target: moon x band",
@@ -266,9 +304,15 @@ p_truth <- ggplot(dat, aes(V1, V2, colour = truth)) +
   base_theme +
   theme(legend.position = "none")
 
-p_no <- ggplot(dat, aes(V1, V2, colour = cl_no_int)) +
-  geom_point(size = 3.0, alpha = 0.88) +
-  scale_colour_manual(values = truth_cols) +
+p_no <- ggplot(dat, aes(V1, V2, fill = cl_no_int)) +
+  geom_point(
+    shape = 21,
+    colour = point_outline,
+    size = 3.7,
+    stroke = 0.45,
+    alpha = 0.90
+  ) +
+  scale_fill_manual(values = truth_cols) +
   coord_equal() +
   labs(
     title = "Spectral without interaction",
@@ -277,9 +321,15 @@ p_no <- ggplot(dat, aes(V1, V2, colour = cl_no_int)) +
   base_theme +
   theme(legend.position = "none")
 
-p_yes <- ggplot(dat, aes(V1, V2, colour = cl_with_int)) +
-  geom_point(size = 3.0, alpha = 0.88) +
-  scale_colour_manual(values = truth_cols) +
+p_yes <- ggplot(dat, aes(V1, V2, fill = cl_with_int)) +
+  geom_point(
+    shape = 21,
+    colour = point_outline,
+    size = 3.7,
+    stroke = 0.45,
+    alpha = 0.90
+  ) +
+  scale_fill_manual(values = truth_cols) +
   coord_equal() +
   labs(
     title = "Spectral with interaction",

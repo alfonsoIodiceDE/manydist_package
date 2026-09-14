@@ -470,3 +470,73 @@
   font-size: 1.05em;
   line-height: 1.25;
 }
+
+/* =========================================================
+   PIPELINE CODE-TO-CALLOUT CORRESPONDENCE
+   ========================================================= */
+
+/* Give the active code range the same teal cue as its explanation. */
+.reveal .pipeline-code code.has-line-highlights > span.highlight-line {
+  display: inline-block;
+  box-sizing: border-box;
+  width: calc(100% + 0.45em);
+  margin-left: -0.45em;
+  padding-left: 0.45em;
+  background: linear-gradient(
+    90deg,
+    rgba(42, 157, 143, 0.20),
+    rgba(42, 157, 143, 0.04)
+  );
+  box-shadow: inset 5px 0 0 var(--manydist-teal);
+}
+
+/* Earlier steps stay visible but recede as the pipeline builds. */
+.reveal section .pipeline-step > .callout {
+  border-left-color: #B8C5C8 !important;
+  background-color: #F5F7F7 !important;
+  opacity: 0.62;
+}
+
+.reveal section .pipeline-step > .callout .callout-title {
+  background-color: #E9EEEF !important;
+}
+
+/* The current explanation matches the highlighted code range. */
+.reveal section .pipeline-step.pipeline-active > .callout {
+  border-left-color: var(--manydist-teal) !important;
+  background-color: #F1FAF8 !important;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.22);
+  opacity: 1;
+}
+
+.reveal section .pipeline-step.pipeline-active > .callout .callout-title {
+  background-color: rgba(42, 157, 143, 0.12) !important;
+}
+
+.reveal section .pipeline-step.pipeline-active > .callout .callout-title,
+.reveal section .pipeline-step.pipeline-active > .callout .callout-title p,
+.reveal section .pipeline-step.pipeline-active > .callout .callout-title strong {
+  color: var(--manydist-teal) !important;
+}
+
+/* Keep every tuning stage at one scale while fitting all six explanations. */
+.reveal section.tuning-pipeline-slide .tuning-steps .callout {
+  margin: 0.22em 0 !important;
+  padding-right: 0.45em !important;
+  padding-left: 0.45em !important;
+}
+
+.reveal section.tuning-pipeline-slide .tuning-steps .callout-body {
+  margin-top: 0 !important;
+}
+
+.reveal section.tuning-pipeline-slide .tuning-steps .callout-title p {
+  margin: 0.08em 0 !important;
+}
+
+.reveal section.tuning-pipeline-slide .tuning-steps .callout-content,
+.reveal section.tuning-pipeline-slide .tuning-steps .callout-content p {
+  margin: 0 !important;
+  padding-bottom: 0.10em !important;
+  line-height: 1.22 !important;
+}
