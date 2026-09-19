@@ -49,15 +49,14 @@ abstract: |
   suffer from importance biases: the contribution of a variable may depend on
   its measurement type, distribution, scaling, or number of categories. We
   present the R package manydist, which constructs mixed-variable distances
-  that account for such biases. Using the Palmer penguins data, we describe
+  that account for such biases. We describe
   distance construction, diagnostics, and benchmarking, showing how
   leave-one-variable-out contributions and comparisons between candidate
   distances make the choice of distance an inspectable part of an analysis
   rather than a fixed preprocessing decision. We then illustrate how to
   integrate distance construction into both unsupervised and supervised
-  pipelines. In particular, using a World Development Indicators snapshot, we
-  build clustering and classification pipelines in which the preprocessing is
-  refit within each resample.
+  pipelines. In particular, \textcolor{blue}{using a real world mixed data set we show the package can be used to implement clustering and classification pipelines that allow for proper out-of-sample evaluations.}
+  
 keywords:
   - distance
   - mixed data
@@ -94,7 +93,7 @@ The proposed unbiased mixed-variable distances have two essential
 properties: *multivariate additivity* and *commensurability*. Multivariate additivity requires the overall distance to be the sum of variable-specific contributions, so that each variable enters the total additively. Additivity alone does not make the contributions comparable, since a variable
 measured on a wider scale or split into more categories can still dominate the sum. Commensurability adds this missing calibration: the variable-specific distances are defined to be commensurable when the expected contribution of every variable is the same constant, so that no variable is favoured merely by its type, scale, or number of categories. In the general additive formulation, this is achieved by weighting each variable-specific dissimilarity by the reciprocal of its expected value. Together the two properties yield distances that are *unbiased* in the sense that measurement type and scale do not trivially drive a variable's influence.
 
-Common distances such as Euclidean, Manhattan, Hamming, and Gower are independence-based: their variable-specific contributions are constructed without reference to associations among variables. When variables share information, these distances may count the same underlying contrast more than once, introducing redundancy into the distance calculation. Association-aware alternatives incorporate the joint structure of the data: for example, Mahalanobis distance accounts for covariance among numerical variables [@mahalanobis1936], whereas categorical constructions can define category dissimilarities through total variation between conditional distributions [@ahmad2007k; @vandevelden2024categorical].
+Common distances such as Euclidean, Manhattan, Hamming, and Gower are independence-based: their variable-specific contributions are constructed without reference to associations among variables. When variables share information, these distances may count the same underlying contrast more than once, introducing redundancy into the distance calculation. \textcolor{blue}{In what follows, we use the term association-aware distances for distance measures that explicitly incorporate associations among variables in their construction. For example, Mahalanobis distance accounts for covariance among numerical variables, whereas categorical constructions can define category dissimilarities through total variation between conditional distributions} [@ahmad2007k; @vandevelden2024categorical].
 
 The \proglang{R} package
 \pkg{manydist} [@manydist2026] implements unbiased mixed-variable distances, independence-based and association-aware,
@@ -106,13 +105,10 @@ package's main function,
 \code{mdist()}, provides a unified entry point that:
 
 - computes variable-wise dissimilarities using a selected numerical
-  preprocessing and categorical dissimilarity;
+  preprocessing and categorical dissimilarity measure;
 - estimates variable-wise weights that enforce commensurability;
 - aggregates the contributions into an additive distance matrix;
-- retains the fitted preprocessing -- the weights, any rotation, and the
-  estimated category dissimilarities -- so that the same distance can be
-  reapplied to new observations rather than re-estimated from them.
-
+- retains the fitted preprocessing steps so that the same distance can be reapplied to new observations without having to re-estimate them.
 
 Beyond distance construction, \pkg{manydist} provides leave-one-variable-out (LOVO)
 diagnostics and pairwise comparisons of candidate distances, integration with
@@ -120,20 +116,18 @@ diagnostics and pairwise comparisons of candidate distances, integration with
 partitioning around medoids (PAM) and spectral clustering.
 
 The remainder of the article begins with a brief overview of related
-\proglang{R} packages (@sec-others). @sec-framework develops the methodological
+\proglang{R} packages (@sec-others). In @sec-framework we briefly describe the methodological
 framework, stating multivariate additivity and commensurability and deriving
 the weights that equalize expected variable contributions in the numerical and
 categorical blocks. @sec-construction introduces the package interface, centred
 on `mdist()` and the `MDist` object that stores the fitted preprocessing.
-@sec-diagnostics covers leave-one-variable-out diagnostics and comparisons of
+@sec-diagnostics covers leave-one-variable-out diagnostics and appraisal of
 candidate distances. @sec-pipelines shows how distances can be embedded in
-\pkg{tidymodels} workflows, illustrated by unsupervised clustering and
-supervised classification of World Development Indicators data.
-@sec-conclusion concludes the paper.
+\pkg{tidymodels} workflows. @sec-conclusion concludes the paper.
 
 
 
-## Other software {#sec-others}
+## Related software {#sec-others}
 
 Several \proglang{R} packages provide distances for homogeneous numerical, categorical,
 or binary data. @tbl-related-homogeneous summarizes commonly used tools that
@@ -508,23 +502,16 @@ which depends on the number and prevalence of categories and on
 $\bm{\Delta}_k$. For simple matching, for example,
 $\bm{\Delta}_k=\mathbf{1}\mathbf{1}^\top-\mathbf{I}$ and the expected
 contribution reduces to $1-\bm{p}_k^\top\bm{p}_k$, which for equally likely
-categories equals $(q_k-1)/q_k$. This increases toward one as the number of
-categories grows, so a matching variable with many levels contributes more than
-one with few -- the categorical counterpart of the scale sensitivity seen for
-numerical variables. The weights in @eq-empirical-weights restore
-commensurability.
+categories equals $(q_k-1)/q_k$. \textcolor{blue}{More generally, categorical variables need not have the same expected contribution even when they are measured on the same nominal scale. Differences in their category distributions and in the dissimilarity construction itself can induce unequal contributions; see} @van2024unbiased \textcolor{blue}{for a more detailed treatment. Simple matching provides a particularly transparent example: its expected contribution increases toward one as the number of categories grows, so a matching variable with many levels contributes more than one with few. The weights in @eq-empirical-weights correct these differences in expected contribution and thereby restore commensurability.}
 
 ### Association-aware distances
 
-Commensurability corrects differences in the expected magnitude of the
+Commensurability corrects differences in the magnitude of the
 variable contributions, but it does not account for information
-shared by several variables. The general formulation above already permits
-such associations: a contribution indexed by variable $j$ need not be a
-function of $x_{ij}$ and $x_{lj}$ alone, but may depend on the complete
+shared by several variables. \textcolor{blue}{The general formulation in} @eq-mixed-distance} \textcolor{blue}does permit incorporation of
+such associations as a contribution indexed by variable $j$ may depend on the complete
 same-type vectors $\mathbf{x}_i^n,\mathbf{x}_l^n$ or
-$\mathbf{x}_i^c,\mathbf{x}_l^c$. Association-aware constructions use this
-freedom to incorporate joint structure within the numerical and categorical
-blocks.
+$\mathbf{x}_i^c,\mathbf{x}_l^c$ rather than only on the values for variable $j$. We refer to dissimilarities that incorporate this joint multivariate structure as association-aware distances.}
 
 #### Numerical variables
 
@@ -623,11 +610,6 @@ penguins <- palmerpenguins::penguins |>
     sex
   ) |>
   tidyr::drop_na()
-
-penguins_x <- penguins |>
-  dplyr::select(-species)
-penguins_y <- penguins |>
-  dplyr::pull(species)
 ```
 
 ```{r}
@@ -1004,15 +986,10 @@ mean $Q_n=2$.
 
 #### Categorical variables
 
-For categorical variables, association enters through conditional
-distributions rather than a covariance matrix. The category-dissimilarity
+\textcolor{blue}{The category-dissimilarity
 matrix provides a common representation for independence- and
-association-based constructions, following @vandevelden2024categorical.
-Indicator-based dissimilarities instead treat a binary indicator representation
-as numerical; without scaling, Manhattan distance gives values zero or two and
-ignores both category prevalence and the number of categories.
-
-For an association-based construction, assuming every retained category is
+association-based constructions, following} @vandevelden2024categorical. \textcolor{blue}{For categorical variables, association enters through conditional
+distributions rather than a covariance matrix.} For an association-based construction, assuming every retained category is
 observed, let
 $\mathbf{R}^{k'\mid k}=(\mathbf{Z}_k^\top\mathbf{Z}_k)^{-1}
 \mathbf{Z}_k^\top\mathbf{Z}_{k'}$ be the conditional distribution of variable
@@ -1032,14 +1009,8 @@ fallback rule.
 
 #### Response-aware categorical distances
 
-The same conditional-distribution construction accommodates an outcome, as
-proposed and evaluated by @vandevelden2024categorical. When a response $y$ is
-supplied, $\mathbf{R}^{y\mid k}$ records its distribution within each category
-of predictor $k$. Two categories are then dissimilar to the extent that they
-imply different response distributions. This is the response-awareness used by
-the `response` argument of `mdist()`, and it is the only route by which an
-outcome enters a distance in \pkg{manydist}. It also makes a response-aware
-categorical dissimilarity available with a single categorical predictor.
+\textcolor{blue} {We use the term} *response-aware categorical distance* for a categorical distance whose category dissimilarities are constructed using their associations with an outcome variable. The same conditional-distribution construction can be applied when a categorical response variable is available, as proposed and evaluated by @vandevelden2024categorical. In particular, when a response $\mathbf{y}$ is supplied, $\mathbf{R}^{y\mid k}$ records its distribution within each category of predictor $k$. The category dissimilarity is then determined based on differences in these distributions across the response-variable classes. We refer to this type of distance as *response-aware*. 
+
 
 ```{=latex}
 \Needspace{8\baselineskip}
@@ -1047,7 +1018,47 @@ categorical dissimilarity available with a single categorical predictor.
 
 ## Distance construction {#sec-construction}
 
-The \pkg{manydist} interface separates the specification of a distance from its subsequent diagnostic and modeling uses. This section introduces the construction of distances with `mdist()`; the following sections build diagnostics and learning pipelines on the resulting objects. The examples continue with the six-predictor Palmer penguins data prepared above.
+The \pkg{manydist} interface separates distance specification from its subsequent diagnostic and modeling uses. This section introduces distance construction with `mdist()`; the following sections develop diagnostics and learning pipelines based on the resulting objects. The examples that follow use the Palmer penguins data.
+
+### Data preparation
+
+The examples use the Palmer penguins data from the \pkg{palmerpenguins} package. We retain four numerical variables, two categorical variables, and `species`, which will later be used as a response variable. Observations with missing values are removed. The categorical variables are stored as factors, as required for their categorical treatment by `mdist()`.
+
+```{r}
+#| label: prepare-penguins-analysis
+
+penguins <- palmerpenguins::penguins |>
+  dplyr::select(
+    species,
+    bill_length_mm,
+    bill_depth_mm,
+    flipper_length_mm,
+    body_mass_g,
+    island,
+    sex
+  ) |>
+  tidyr::drop_na() |>
+  dplyr::mutate(
+    dplyr::across(c(species, island, sex), as.factor)
+  )
+```
+
+To illustrate later how a fitted distance can be applied to new observations, we split the data into training and test sets. The response variable is retained in both data frames: it can be excluded when constructing predictor-only distances or supplied through the `response` argument when a response-aware distance is required.
+
+```{r}
+#| label: split-penguins-analysis
+
+set.seed(2026)
+
+penguin_split <- rsample::initial_split(
+  penguins,
+  prop = 0.75,
+  strata = species
+)
+
+penguin_train <- rsample::training(penguin_split)
+penguin_test <- rsample::testing(penguin_split)
+```
 
 ```{r}
 #| label: attach-manydist
@@ -1055,14 +1066,15 @@ The \pkg{manydist} interface separates the specification of a distance from its 
 library("manydist")
 ```
 
-The central function `mdist()` constructs distances for numerical, categorical, or mixed-type data. At its most basic, a distance is specified through the data and three components:
+The central function `mdist()` constructs distances for numerical, categorical, or mixed-type data. Its primary input, `x`, is the data set from which the distance is constructed. At its most basic, a distance is specified through `x` and three components:
 
 * `method_num`, which determines the preprocessing of the numerical variables;
 * `method_cat`, which determines the dissimilarity used for categorical variables; and
 * `commensurable`, which determines whether the component contributions are rescaled to have equal expected contributions before they are combined.
 
+The variables in `x` should have the appropriate R classes before calling `mdist()`. \textcolor{blue}{Numerical variables, including integer-valued variables, are treated as numerical, whereas categorical variables should be stored as factors. Character variables should therefore be converted to factors when they represent categorical information. Likewise, binary variables coded numerically as 0/1 are treated as numerical unless converted to factors.}
 
-The principal arguments are summarized below. The default specification uses standard-deviation scaling for the numerical variables, total-variation dissimilarities for the categorical variables, and commensurability.
+The main arguments are summarized below. The default specification uses standard-deviation scaling for the numerical variables, total-variation dissimilarities for the categorical variables, and commensurability.
 
 | Argument | Role | Default | Main options |
 |---|---|---|---|
@@ -1071,16 +1083,16 @@ The principal arguments are summarized below. The default specification uses sta
 | `method_cat` | Categorical dissimilarity | `"tvd"` | `"matching"`, `"tvd"`, and further association-, independence-, and indicator-based methods |
 | `commensurable` | Equalize expected component contributions | `TRUE` | `TRUE`, `FALSE` |
 
-: Principal arguments of the clustering function {#tbl-args tbl-colwidths="[18,22,10,50]"}
+: Main arguments of the clustering function {#tbl-args tbl-colwidths="[18,22,10,50]"}
 
-The complete set of categorical methods can be inspected with `dist_methods_tbl_cat()`. Additional arguments control particular constructions, such as the number of retained principal components when `method_num = "pc_scores"`; these are documented in the package reference.
+The complete set of category dissimilarity options can be inspected with `dist_methods_tbl_cat()`. Additional arguments control particular constructions, such as the number of retained principal components when `method_num = "pc_scores"`; these are documented in the package reference.
 
 
 ```{r}
 #| label: build-custom-distance
 
 d_custom <- mdist(
-  penguins_x,
+  dplyr::select(penguin_train, -species),
   method_cat = "matching",
   method_num = "pc_scores",
   commensurable = TRUE
@@ -1097,7 +1109,7 @@ For the commensurable constructions, any per-variable affine rescaling of a nume
 purrr::map(
   c("std", "range", "robust"),
   ~ mdist(
-    penguins_x,
+    dplyr::select(penguin_train, -species),
     method_num = .x,
     method_cat = "matching",
     commensurable = TRUE
@@ -1111,9 +1123,9 @@ purrr::map(
 
 ### Distance presets
 
-For commonly used specifications, `mdist()` provides named presets. A preset fixes the relevant components and, where necessary, any additional computation required by that distance. The presets serve two purposes. The `u_` family provides convenient, reproducible specifications within the unbiased-distance framework developed above. The remaining presets provide familiar or recently proposed comparison distances. Some of these use constructions that cannot be expressed solely as a combination of `method_num`, `method_cat`, and `commensurable`, and therefore require dedicated preset implementations.
+For commonly used specifications, `mdist()` provides named presets. A preset fixes the relevant components and, where necessary, any additional computation required by that distance. The presets serve two purposes. The `u_` family provides convenient, reproducible specifications within the unbiased-distance framework developed above. The remaining presets provide a set of mixed-distance variants from the literature. Some of these use constructions that cannot be expressed solely as a combination of `method_num`, `method_cat`, and `commensurable`, and therefore require dedicated preset implementations.
 
-@tbl-presets summarizes the presets used in this article.
+@tbl-presets summarizes the available presets.
 
 | Preset | Numerical preprocessing | Categorical dissimilarity | Additive | Unbiased | Response-aware |
 |:---|:---|:---|:--:|:--:|:--:|
@@ -1135,7 +1147,7 @@ For example, `u_dep` combines principal-component preprocessing of the numerical
 #| label: build-u-dep-distance
 
 d_u_dep <- mdist(
-  penguins_x,
+  dplyr::select(penguin_train, -species),
   preset = "u_dep"
 )
 
@@ -1157,7 +1169,7 @@ The basic construction can also be extended with outcome information. The `respo
 #| label: build-response-aware-distance
 
 d_response <- mdist(
-  penguins,
+  penguin_train,
   response = species,
   preset = "u_dep"
 )
@@ -1168,22 +1180,22 @@ Finally, the `new_data` argument computes rectangular new-to-training dissimilar
 
 ## Distance diagnostics and benchmarking {#sec-diagnostics}
 
-With several plausible distance specifications available for mixed data, it can be informative to examine how the resulting dissimilarities depend on the variables included and how differences between distances propagate to downstream analyses. The \pkg{manydist} package provides diagnostics at two levels. The first compares dissimilarity matrices directly. The second considers their consequences for particular downstream procedures, namely multidimensional scaling (MDS) and clustering. These levels answer different questions: the former concerns the distance itself, whereas the latter is conditional on the downstream analyses being considered.
+With several plausible distance specifications available for mixed data, it can be informative to examine how the resulting dissimilarities depend on the variables included and how differences between distances propagate to downstream analyses. The \pkg{manydist} package provides diagnostics at two levels. The first compares dissimilarity matrices directly. The second considers their consequences for particular downstream procedures, namely multidimensional scaling (MDS) and clustering. 
 
 ### Leave-one-variable-out diagnostics
 
-`lovo_mdist()` implements leave-one-variable-out (LOVO) diagnostics for a single distance specification. It first computes the distance using all variables and then removes each variable in turn, recomputes the distance, and quantifies the resulting change.
+\textcolor{blue}{Leave-one-variable-out (LOVO) diagnostics} for individual distance specifications are available through the `lovo_mdist()` function. This function first computes the distance using all variables and then removes each variable in turn, recomputes the distance, and quantifies the resulting change. The function can be called using the same inputs as `mdist()`. However,  for diagnostics involving a subsequent analysis, additional information concerning the downstream method need to be supplied.  
+
+To illustrate this functionality,  consider the penguins data set and the gower distance. Leave-one-variable-out results can be obtained using:
 
 ```{r}
 #| label: diagnose-gower-distance
 
 lovo_gower <- lovo_mdist(
-  penguins_x,
+  dplyr::select(penguin_train, -species),
   preset = "gower"
 )
 ```
-
-The LOVO diagnostics can be read in two stages. The direct distance diagnostics quantify changes in the dissimilarity matrix itself:
 
 - `mad_importance` is the mean absolute difference between the full dissimilarity matrix and the matrix obtained after leaving out a variable.
 - `relative_distance` is the normalized version of `mad_importance`, allowing the relative LOVO contributions of the variables to be compared on a common scale.
@@ -1207,7 +1219,7 @@ lovo_gower$results |>
   dplyr::arrange(dplyr::desc(relative_distance))
 ```
 
-Figure @fig-gower-lovo displays the relative LOVO contributions for the Gower distance. It provides a direct view of which variables most affect the pairwise dissimilarities when omitted.
+\textcolor{blue}{A visual summary of the leave-one-variable-out results} on the dissimilarities can be obtained using the `autoplot` function from `ggplot2` and the measure (i.e., either "mad_importance", or, the default, "relative_distance"):
 
 ```{r}
 #| label: fig-gower-lovo
@@ -1238,7 +1250,7 @@ Clustering provides another optional downstream diagnostic. When `cluster_k` is 
 #| label: diagnose-gower-pam
 
 lovo_gower_pam <- lovo_mdist(
-  penguins_x,
+  dplyr::select(penguin_train, -species),
   preset = "gower",
   cluster_k = 3,
   cluster_methods = "pam"
@@ -1257,7 +1269,7 @@ Here we compare four specifications and request three-cluster PAM diagnostics:
 #| label: compare-lovo-pam
 
 lovo_comparison <- compare_lovo_mdist(
-  x = penguins_x,
+  x = dplyr::select(penguin_train, -species),
   methods = list(
     Gower = list(preset = "gower"),
     Euclidean = list(preset = "euclidean"),
@@ -1305,7 +1317,7 @@ candidate_specs <- all_dist_method_specs(
 set.seed(2026)
 
 distance_benchmark <- benchmark_mdist(
-  x = penguins_x,
+  x = dplyr::select(penguin_train, -species),
   specs = candidate_specs,
   cluster_k = 3,
   cluster_methods = "pam"
@@ -1316,7 +1328,7 @@ benchmark_comparisons(distance_benchmark)
 
 The comparisons again fall into direct distance measures and measures associated with particular downstream analyses.
 
-For two candidate distances $d_a$ and $d_b$, `mad` is the mean absolute difference between their pairwise dissimilarities. Because this quantity retains the overall scale of the two distances, `relative_distance` provides the symmetric scale-adjusted comparison
+For two candidate distances $d_a$ and $d_b$, `mad` is the mean absolute difference between their pairwise dissimilarities. When comparing distance specifications, the overall scale of the distance values can differ considerably, a direct comparison of the absolute difference may therefore not be appropriate. Hence, `relative distance` is also provided, defined as: 
 
 $$
 r(d_a,d_b)
@@ -1332,9 +1344,9 @@ $$ {#eq-benchmark-relative-distance}
 
 Thus, `mad` describes the absolute magnitude of the differences between the two dissimilarity matrices, whereas `relative_distance` expresses that difference relative to their overall magnitudes.
 
-The MDS-based comparisons address a different question. Classical MDS is applied separately to the two distances, using `dims = 2` by default, and the resulting configurations are compared using the congruence coefficient and its corresponding alienation coefficient. These statistics concern similarity of the chosen MDS representations rather than direct similarity of the original dissimilarity matrices.
+Similar to the leave-one-variable-out measures, we assess how different distance specifications lead to different (classical) mds configurations by calculating the the congruence coefficient and its corresponding alienation coefficient.
 
-Clustering comparisons are optional. When `cluster_k` is specified, each requested clustering method is applied to every candidate distance, and partitions produced by the same clustering method are compared across pairs of distance specifications using ARI. An ARI of one indicates identical partitions, while lower values indicate increasingly different assignments. These values measure agreement between the resulting partitions; they do not indicate that either distance or partition is preferable.
+Clustering comparisons are optional and require specification of the clustering algorithn(s) and the number of clusters. When `cluster_k` is specified, each requested clustering method is applied to every candidate distance, and partitions produced by the same clustering method are compared across pairs of distance specifications using ARI. An ARI of one indicates identical partitions, while lower values indicate increasingly different assignments. These values measure agreement between the resulting partitions; they do not provide any information about the quality of the cluster solutions.
 
 The pairwise results can be extracted with `benchmark_comparisons()` as above or displayed using the `autoplot()` method. For example, Figure @fig-benchmark-relative-distance shows the symmetric relative-distance comparison among the three candidate specifications.
 
@@ -1350,9 +1362,7 @@ ggplot2::autoplot(
 )
 ```
 
-The same display can be requested for raw MAD, MDS congruence or alienation, and, when clustering has been requested, ARI.
-
-The available diagnostics should not be interpreted as alternative estimates of a single quantity. MAD and relative distance compare dissimilarity matrices directly; congruence and alienation compare a particular classical MDS representation; and ARI compares partitions obtained from a specified clustering procedure. Which comparisons are informative therefore depends on how the distance is intended to be used. The diagnostics describe different aspects of candidate distance specifications rather than providing, by themselves, a rule for selecting a preferred distance.
+The same display can be requested for raw MAD, MDS congruence or alienation, and, when clustering has been requested, ARI. Which comparisons are informative therefore depends on how the distance is intended to be used. The diagnostics describe different aspects of candidate distance specifications rather than providing, by themselves, a rule for selecting a preferred distance.
 
 
 ## Distance-based learning pipelines {#sec-pipelines}
