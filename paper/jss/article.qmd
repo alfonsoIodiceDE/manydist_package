@@ -1013,7 +1013,7 @@ retain that component as a zero contribution or apply an explicitly stated
 fallback rule.
 
 
-#### Response-aware categorical distances
+### Response-aware categorical distances {#sec-responseaware}
 
 \textcolor{blue} {We use the term} *response-aware* for a categorical distance whose category dissimilarities are constructed using their associations with a response variable. The same conditional-distribution construction can be applied when a categorical response variable is available, as proposed and evaluated by @vandevelden2024categorical. In particular, when a response $\mathbf{y}$ is supplied, $\mathbf{R}^{y\mid k}$ records its distribution within each category of predictor $k$. The category dissimilarity is then determined based on differences in these distributions across the response-variable classes.  
 
@@ -1024,11 +1024,11 @@ fallback rule.
 
 ## Distance construction {#sec-construction}
 
-The \pkg{manydist} interface separates distance specification from its subsequent diagnostic and modeling uses. This section introduces distance construction with `mdist()`; the following sections develop diagnostics and learning pipelines based on the resulting objects. The examples that follow use the Palmer penguins data.
+The \pkg{manydist} package separates the construction of a distance from its subsequent diagnostic and modeling uses. This section introduces distance construction with `mdist()`, including custom specifications, named presets, response-aware distances, and application to new observations. The following sections build on these fitted distance objects for diagnostics and learning pipelines.
 
 ### Data preparation
 
-The examples use the Palmer penguins data from the \pkg{palmerpenguins} package. We retain four numerical variables, two categorical variables, and `species`, which will later be used as a response variable. Observations with missing values are removed. The categorical variables are stored as factors, as required for their categorical treatment by `mdist()`.
+The examples use the Palmer penguins data from the \pkg{palmerpenguins} package. We retain four numerical variables, two categorical variables, and the categorical response `species`, which will later be used as a response variable. Observations with missing values are removed. The categorical variables are stored as factors, as required for their categorical treatment by `mdist()`.
 
 ```{r}
 #| label: prepare-penguins-analysis
@@ -1066,6 +1066,8 @@ penguin_train <- rsample::training(penguin_split)
 penguin_test <- rsample::testing(penguin_split)
 ```
 
+### Constructing a distance with mdist()
+
 ```{r}
 #| label: attach-manydist
 
@@ -1089,24 +1091,65 @@ The main arguments are summarized below. The default specification uses standard
 | `method_cat` | Categorical dissimilarity | `"tvd"` | `"matching"`, `"tvd"`, and further association-, independence-, and indicator-based methods |
 | `commensurable` | Equalize expected component contributions | `TRUE` | `TRUE`, `FALSE` |
 
-: Main arguments of the clustering function {#tbl-args tbl-colwidths="[18,22,10,50]"}
+: Main arguments of `mdist()` {#tbl-args tbl-colwidths="[18,22,10,50]"}
 
-The complete set of category dissimilarity options can be inspected with `dist_methods_tbl_cat()`. Method-specific arguments control additional aspects of the distance construction, such as the number of principal components retained when `method_num = "pc_scores"`; full details are provided in the package reference documentation.
+The complete set of categorical dissimilarity options can be inspected with `dist_methods_tbl_cat()`. Method-specific arguments control additional aspects of the distance construction, such as the number of principal components retained when `method_num = "pc_scores"`; full details are provided in the package reference documentation.
+
+To illustrate how the different components of `mdist()` determine the resulting distance, consider first Gower's distance. For complete data with equal variable weights, Gower's construction combines range-scaled absolute differences for numerical variables with matching dissimilarities for categorical variables and averages these contributions across variables. The corresponding unnormalized sum can therefore be obtained as
 
 ```{r}
-#| label: build-custom-distance
+#| label: build-gower-from-components
 
-d_custom <- mdist(
+d_gower_sum <- mdist(
   dplyr::select(penguin_train, -species),
+  method_num = "range",
   method_cat = "matching",
-  method_num = "pc_scores",
+  commensurable = FALSE
+)
+```
+
+This differs from the usual Gower distance only by the normalization by the number of variables. The same distance on the conventional Gower scale is available directly through the `"gower"` preset:
+
+```{r}
+#| label: build-gower-preset
+
+d_gower <- mdist(
+  dplyr::select(penguin_train, -species),
+  preset = "gower"
+)
+
+p <- ncol(dplyr::select(penguin_train, -species))
+
+all.equal(
+  as.matrix(d_gower_sum$distance) / p,
+  as.matrix(d_gower$distance)
+)
+```
+
+The comparison returns `TRUE`. Thus, the preset provides the usual normalized Gower distance, corresponding to standard implementations such as those in \pkg{cluster} and \pkg{gower}.
+
+Other distance specifications can be constructed by changing the numerical preprocessing, categorical dissimilarity, and commensurability settings. For example, the default specification of `mdist()` uses standard-deviation scaling for numerical variables, total-variation dissimilarities for categorical variables, and commensurability:
+
+```{r}
+#| label: build-default-distance
+
+d_default <- mdist(
+  dplyr::select(penguin_train, -species)
+)
+```
+
+Equivalently, this can be written explicitly as
+
+```{r}
+d_default_explicit <- mdist(
+  dplyr::select(penguin_train, -species),
+  method_num = "std",
+  method_cat = "tvd",
   commensurable = TRUE
 )
 ```
 
-constructs a commensurable additive distance using matching dissimilarities for the categorical variables and principal-component preprocessing for the numerical block.
-
-For the commensurable constructions, any per-variable affine rescaling of a numerical variable cancels when its contribution is divided by its empirical mean distance. Consequently, `"std"`, `"range"`, and `"robust"` produce the same distance when `commensurable = TRUE`; their choice matters for non-commensurable constructions. Multivariate transformations such as `"pc_scores"` are different because they alter the coordinate system rather than simply rescaling variables individually.
+When `commensurable = TRUE`, any variable-wise affine rescaling of the numerical variables cancels when each contribution is divided by its empirical mean distance. Consequently, choices such as `"std"`, `"range"`, and `"robust"` produce the same distance under commensurability. Multivariate transformations such as `"pc_scores"` are different because they change the coordinate system rather than rescaling each variable separately.
 
 ```{r}
 #| label: verify-scaling-vacuity
@@ -1116,20 +1159,22 @@ purrr::map(
   ~ mdist(
     dplyr::select(penguin_train, -species),
     method_num = .x,
-    method_cat = "matching",
+    method_cat = "tvd",
     commensurable = TRUE
-  )$to_dist()
+  )$distance
 ) |>
   (\(d) c(
     all.equal(d[[1]], d[[2]]),
     all.equal(d[[1]], d[[3]])
   ))()
 ```
-### Distance presets (NEW)
 
-\textcolor{blue}{For commonly used specifications,} `mdist()` provides named presets that fix the relevant numerical preprocessing, categorical dissimilarity, commensurability setting, and, where required, additional method-specific components. The `u_` presets correspond to specifications within the unbiased mixed-variable distance framework. The remaining presets provide a set of mixed-distance variants from the literature that do not fall in the framework as defined through @eq-mixed-distance, hence they cannot be expressed as a combination of `method_num`, `method_cat`, and `commensurable`. The presets are therefore required to produce the distances.
+### Distance presets 
 
-@tbl-presets summarizes the available presets.
+Having illustrated the use of a preset with Gower's distance, we now summarize the complete set of presets available in `mdist()`. These presets fix the relevant numerical preprocessing, categorical dissimilarity, commensurability setting, and, where required, additional method-specific components. 
+
+@tbl-presets summarizes the available presets. The `u_` presets correspond to specifications within the unbiased mixed-variable distance framework. With the exception of Gower's distance, which can be reproduced from the basic `mdist()` components, the remaining presets represent mixed-data distances from the literature that fall outside the framework defined in @eq-mixed-distance. They therefore cannot be expressed solely through `method_num`, `method_cat`, and `commensurable` and require dedicated preset implementations.
+
 
 | Preset | Numerical preprocessing | Categorical dissimilarity | Additive | Unbiased | Response-aware |
 |:---|:---|:---|:--:|:--:|:--:|
@@ -1145,55 +1190,34 @@ purrr::map(
 
 : Distance presets used in this article. Additive distances satisfy multivariate additivity and unbiased distances additionally enforce commensurability. Response-awareness affects the categorical dissimilarity only and applies when a response variable is supplied; otherwise the corresponding presets reduce to their predictor-only form. {#tbl-presets tbl-colwidths="[12,28,26,10,10,14]"}
 
-The presets provide convenient, reproducible specifications that can be supplied directly through the preset argument of `mdist()`. Response awareness applies only when a response variable is supplied; otherwise the corresponding presets reduce to their predictor-only form. For the commensurable specifications, variable-wise affine rescaling of numerical variables does not affect the resulting distance, whereas multivariate transformations such as principal-component preprocessing do.
-
-ADD umix
-
-### Distance presets (OLD)
-
-For commonly used specifications, `mdist()` provides named presets. A preset fixes the relevant components and, where necessary, any additional computation required by that distance. The presets serve two purposes. The `u_` family provides convenient, reproducible specifications within the unbiased-distance framework developed above. The remaining presets provide a set of mixed-distance variants from the literature. Some of these use constructions that cannot be expressed solely as a combination of `method_num`, `method_cat`, and `commensurable`, and therefore require dedicated preset implementations.
-
-@tbl-presets summarizes the available presets.
-
-| Preset | Numerical preprocessing | Categorical dissimilarity | Additive | Unbiased | Response-aware |
-|:---|:---|:---|:--:|:--:|:--:|
-| `gower` | range scaling to unit interval | simple matching | yes | no | no |
-| `euclidean` | standard-deviation scaling | indicator (one-hot) coding | no | no | no |
-| `hl` | standard-deviation scaling | Hennig--Liao indicator scaling | no | no | no |
-| `mod_gower` | modified Gower [@liu2024] | -- | yes | no | no |
-| `gudmm` | generalized multi-aspect metric [@mousavi2023] | -- | no | no | no |
-| `dkss` | kernel product similarity [@ghashti2024] | -- | no | no | no |
-| `u_indep` | standard-deviation scaling | simple matching | yes | yes | no |
-| `u_dep` | principal-component scaling | total variation distance | yes | yes | yes |
-| `u_mix` | standard-deviation scaling | total variation distance | yes | yes | yes |
-
-: Distance presets used in this article. Additive distances satisfy multivariate additivity and unbiased distances additionally enforce commensurability. Response-awareness affects the categorical dissimilarity only and applies when a response variable is supplied; otherwise the corresponding presets reduce to their predictor-only form. Because commensurability cancels per-variable affine scaling, the numerical preprocessing listed for `u_indep` and `u_mix` does not affect the resulting distance. Principal-component preprocessing in `u_dep` is multivariate and therefore does affect the distance. {#tbl-presets tbl-colwidths="[12,28,26,10,10,14]"}
-
-For example, `u_dep` combines principal-component preprocessing of the numerical block, association-based categorical dissimilarities, and commensurability weights:
+The presets provide convenient, reproducible specifications that can be supplied directly through the preset argument of `mdist()`. For example, the `u_mix` preset combines standard-deviation scaling for the numerical variables with total-variation dissimilarities for the categorical variables and commensurability:
 
 ```{r}
-#| label: build-u-dep-distance
+#| label: build-u-mix-distance
 
-d_u_dep <- mdist(
+d_u_mix <- mdist(
   dplyr::select(penguin_train, -species),
-  preset = "u_dep"
+  preset = "u_mix"
 )
 
-d_u_dep
+d_u_mix
 ```
 
-The result is an `MDist` object that contains the computed dissimilarity together with the fitted distance specification and preprocessing information. In particular, it retains the commensurability weights, any principal-component rotation, and the estimated category dissimilarities. Retaining these quantities allows the same fitted distance construction to be applied to new observations rather than re-estimated from them. The standard R `dist` representation is returned by `to_dist()`.
+This provides a concise specification of the corresponding unbiased mixed-variable distance without requiring its individual components to be supplied separately.
+
 
 ```{r}
-#| label: inspect-u-dep-distance
+#| label: inspect-u-mix-distance
 
-as.matrix(d_u_dep$to_dist())[1:4, 1:4] |>
-  round(digits = 2)
+round(
+  as.matrix(d_u_mix$distance)[1:4, 1:4],
+  2
+)
 ```
 
-### Response-aware distances and new observations (NEW)
+### Response-aware distances
 
-The response-aware constructions described in @sec-framework are available in `mdist()` through the `response` argument. The response is used to estimate categorical dissimilarities but is not itself treated as a predictor. For example, using `species` as the response in the Palmer penguins data,
+The response-aware constructions described in @sec-responseaware are available in `mdist()` through the `response` argument. The response is used to estimate categorical dissimilarities but is not itself treated as a predictor. For example, using `species` as the response in the Palmer penguins data,
 
 
 ```{r}
@@ -1208,6 +1232,8 @@ d_response <- mdist(
 
 constructs a distance in which differences between categories of the categorical predictors can depend on their conditional distributions over `species`. The numerical part of the distance remains predictor-based.
 
+### Application to new observations
+
 A fitted `MDist` object can also be applied to new observations. The `new_data` argument computes rectangular dissimilarities between the new observations and the training observations using the quantities estimated from the training data, rather than re-estimating the distance construction from the new data.
 
 ```{r}
@@ -1221,7 +1247,7 @@ d_response_new <- mdist(
 )
 ```
 
-Thus, the category dissimilarities, commensurability weights, and any fitted numerical transformation are estimated from `penguin_train` and subsequently applied unchanged to `penguin_test`. This fit-and-apply distinction is particularly important in predictive settings, where estimating the distance construction using the evaluation observations would introduce data leakage.
+Note that `species` is not supplied for `penguin_test`: the response information entering the distance construction is estimated from the training data only. Thus, the category dissimilarities, commensurability weights, and any fitted numerical transformation are estimated from `penguin_train` and subsequently applied unchanged to `penguin_test`. This fit-and-apply distinction is particularly important in predictive settings, where estimating the distance construction using the evaluation observations would introduce data leakage.
 
 ## Distance diagnostics and benchmarking {#sec-diagnostics}
 
@@ -1290,44 +1316,78 @@ LOVO can also describe the consequences of removing a variable for a subsequent 
 
 These MDS diagnostics should be distinguished from `mad_importance` and `relative_distance`. A variable can change the original dissimilarity matrix substantially without producing a comparable change in a low-dimensional MDS representation, or conversely. The quantities do not provide competing estimates of the same effect: they describe different objects. MDS-based diagnostics are therefore most relevant when such a representation is itself of interest.
 
-Clustering provides another optional downstream diagnostic. When `cluster_k` is supplied, `lovo_mdist()` applies the specified clustering method to the full and reduced distances and compares the resulting partitions using ARI. The corresponding LOVO clustering importance is defined as $1-\mathrm{ARI}$, so zero indicates an unchanged partition and larger values indicate a greater change after the variable is omitted. For example, PAM-based diagnostics for a three-cluster solution are obtained with
+The impact of leaving a variable out on cluster analysis can be assessed by specifying the number of clusters and one or more of the following distance based clustering algorithms: hierarchical clustering (`hclust` with complete linkage), partitioning around medoids (`pam`) and spectral clustering (`spectral`, with some defaults?). The effect of leaving a variable out is assessed by calculating the adjusted rand index (ARI; reference) between the clusters obtained by using all variables to the solution obtained by leaving-one-variable out. The clustering importance is defined as 1-ARI so that higher values correspond to more impact on the solution. 
+
+For example,
 
 ```{r}
-#| label: diagnose-gower-pam
-
-lovo_gower_pam <- lovo_mdist(
+lovo_gower <- lovo_mdist(
   dplyr::select(penguin_train, -species),
   preset = "gower",
-  cluster_k = 3,
-  cluster_methods = "pam"
+  cluster_methods = c("hclust", "pam", "spectral"),
+  cluster_k = 3
 )
 ```
 
-As with the MDS diagnostics, clustering-based LOVO measures are conditional on the downstream procedure: their interpretation depends on the clustering method and the specified number of clusters.
+The `results` field of `lovo_gower` contains the numerical LOVO diagnostics. Visualizations can be obtained with `autoplot()` by specifying the desired metric. For example, the clustering-based diagnostics for the three algorithms are obtained as follows:
+
+```{r}
+#| eval: false
+
+ggplot2::autoplot(
+  lovo_gower,
+  metric = "pam_importance"
+)
+
+ggplot2::autoplot(
+  lovo_gower,
+  metric = "hclust_importance"
+)
+
+ggplot2::autoplot(
+  lovo_gower,
+  metric = "spectral_importance"
+)
+```
 
 ### Comparing LOVO diagnostics across distance specifications
 
-The same LOVO analysis can be repeated for several distance specifications using `compare_lovo_mdist()`. Each element of `methods` defines one distance specification, and the function applies `lovo_mdist()` separately to each one before combining the results. This makes it possible to examine whether the effect of leaving out a variable depends on how the distance itself is constructed.
-
-Here we compare four specifications and request three-cluster PAM diagnostics:
+To compare variable-specific effects across alternative distance specifications, the \pkg{manydist} package provides the compare_lovo_mdist() function. The function takes a list of distance specifications and, when relevant, downstream analysis settings. For example,
 
 ```{r}
-#| label: compare-lovo-pam
+variants <- list(
+  Gower = list(preset = "gower"),
+  Euclidean = list(preset = "euclidean"),
+  HL = list(preset = "hl"),
+  `Unbiased Gower` = list(
+    method_num = "range",
+    method_cat = "matching",
+    commensurable = TRUE
+  )
+)
 
 lovo_comparison <- compare_lovo_mdist(
-  x = dplyr::select(penguin_train, -species),
-  methods = list(
-    Gower = list(preset = "gower"),
-    Euclidean = list(preset = "euclidean"),
-    `Unbiased independent` = list(preset = "u_indep"),
-    `Unbiased dependent` = list(preset = "u_dep")
-  ),
-  cluster_k = 3,
-  cluster_methods = "pam"
+  dplyr::select(penguin_train, -species),
+  methods = variants,
+  cluster_methods = "pam",
+  cluster_k = 3
 )
 ```
 
-Figure @fig-compare-lovo-pam shows the corresponding PAM-based LOVO importance. Each value is $1-\mathrm{ARI}$ between the partition obtained from all variables and the partition obtained after leaving out the indicated variable. The comparison is therefore made *within* each distance specification: larger values indicate that omitting the variable changes its three-cluster PAM solution more strongly. No species labels are used.
+
+```{r}
+#| label: fig-compare-lovo-distance
+#| fig-cap: "Relative leave-one-variable-out contributions under four distance specifications. Larger values indicate a greater relative change in the pairwise dissimilarities when the variable is omitted."
+#| fig-width: 6.3
+#| fig-height: 3.6
+
+ggplot2::autoplot(
+  lovo_comparison,
+  metric = "relative_distance",
+  reorder = TRUE
+)
+```
+
 
 ```{r}
 #| label: fig-compare-lovo-pam
@@ -1341,6 +1401,8 @@ ggplot2::autoplot(
   reorder = TRUE
 )
 ```
+
+@fig-compare-lovo-distance compares the relative LOVO contributions across distance specifications, whereas @fig-compare-lovo-pam shows the corresponding PAM-based importance. For each variable and distance specification, pam_importance is defined as ($1-\mathrm{ARI}$), where ARI compares the three-cluster PAM partition obtained from all variables with the partition obtained after omitting that variable. The comparison is therefore made within each distance specification: larger values indicate that leaving out the variable produces a greater change in the corresponding PAM solution. The species labels are not used in either analysis.
 
 The same comparison can instead be displayed for `mad_importance`, `relative_distance`, or the MDS-based diagnostics, depending on which aspect of the LOVO analysis is relevant.
 
@@ -1370,11 +1432,13 @@ distance_benchmark <- benchmark_mdist(
   cluster_k = 3,
   cluster_methods = "pam"
 )
-
-benchmark_comparisons(distance_benchmark)
 ```
 
-The comparisons again fall into direct distance measures and measures associated with particular downstream analyses.
+A tibble with the results of all pair-wise comparison can be obtained using `benchmark_comparisons`:
+
+```{r}
+benchmark_comparisons(distance_benchmark)
+```
 
 For two candidate distances $d_a$ and $d_b$, `mad` is the mean absolute difference between their pairwise dissimilarities. \textcolor{blue}{When comparing distance specifications,} the overall scale of the distance values can differ considerably, a direct comparison of the absolute difference may therefore not be appropriate. Hence, `relative distance` is also provided, defined as: 
 
