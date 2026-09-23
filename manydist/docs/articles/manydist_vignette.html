@@ -899,8 +899,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
  8 component custom    matching   std        TRUE          TRUE  &lt;NA&gt;
  9 component custom    tvd        robust     FALSE         TRUE  &lt;NA&gt;
 10 component custom    tvd        robust     TRUE          TRUE  &lt;NA&gt;
-11 component custom    tvd        std        FALSE         TRUE  &lt;NA&gt;
-12 component custom    tvd        std        TRUE          TRUE  &lt;NA&gt; </code></pre>
+# ℹ 2 more rows</code></pre>
 </div>
 </div>
 <p>The <code>ok</code> column reports whether the distance computation completed successfully. Failed specifications are kept in the output, with the corresponding error message stored in <code>error</code>.</p>
@@ -977,7 +976,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVO object
   preset : gower
-  dims   : 2
+  MDS diagnostics : not computed
   n_obs  : 333
   response used : FALSE
   top vars:
@@ -998,9 +997,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <div class="cell-output cell-output-stdout">
 <pre><code>Summary of MDistLOVO
   preset : gower
-  dims   : 2
   n_obs  : 333
-  response used : FALSE
 
 Relative distance:
   range [0.1003, 0.2916], mean 0.1667
@@ -1044,7 +1041,7 @@ Top by relative distance:
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVO object
   preset : u_dep
-  dims   : 2
+  MDS diagnostics : not computed
   n_obs  : 333
   response used : TRUE
   top vars:

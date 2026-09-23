@@ -93,9 +93,43 @@
 <p><code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> computes leave-one-variable-out diagnostics for assessing variable contributions to a distance construction.</p>
 <p>The function first computes the full dissimilarity matrix using all predictors. Then, one predictor at a time, it removes a variable, recomputes the dissimilarity matrix, and compares the reduced dissimilarity with the full one.</p>
 <p>Variables whose removal strongly changes the dissimilarity matrix, the induced configuration, or the resulting clustering structure can be interpreted as having a larger contribution to the distance construction.</p>
-<p>MDS diagnostics are optional. In this first example we request a two-dimensional MDS configuration explicitly with <code>mds = TRUE</code> and <code>dims = 2</code>.</p>
+<p>By default, <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> computes only the distance-based LOVO diagnostics.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lovo_gower_distance_only</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
+<span>  <span class="va">penguins_small</span>,</span>
+<span>  response <span class="op">=</span> <span class="va">species</span>,</span>
+<span>  response_used <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
+<span>  mds <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<p>The result can be summarized as follows.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">lovo_gower_distance_only</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Summary of MDistLOVO
+  preset : gower
+  n_obs  : 333
+
+Relative distance:
+  range [0.1003, 0.2916], mean 0.1667
+
+Top by relative distance:
+# A tibble: 5 × 3
+  variable          variable_type relative_distance
+  &lt;chr&gt;             &lt;chr&gt;                     &lt;dbl&gt;
+1 island            categorical               0.292
+2 sex               categorical               0.277
+3 bill_length_mm    numeric                   0.123
+4 bill_depth_mm     numeric                   0.107
+5 flipper_length_mm numeric                   0.102</code></pre>
+</div>
+</div>
+<p>MDS-based diagnostics can be obtained with <code>mds = TRUE</code> and <code>dims = 2</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
@@ -125,7 +159,7 @@
 </div>
 <p>The result can be summarized as follows.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">lovo_gower</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Summary of MDistLOVO
@@ -148,7 +182,7 @@ Top by relative distance:
 </div>
 <p>The main results are stored in the <code>$results</code> field.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="va">results</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">kableExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span>format <span class="op">=</span> <span class="st">"html"</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">kableExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
@@ -276,35 +310,35 @@ Top by relative distance:
 </section><section class="level2" data-number="4"><h2 data-number="4" id="visualising-variable-contributions">
 <span class="header-section-number">4</span> Visualising variable contributions<a class="anchor" aria-label="anchor" href="#visualising-variable-contributions"></a>
 </h2>
-<p>The relative contribution of each variable can be visualized with <code>autoplot()</code>.</p>
+<p>The relative contribution of each variable can be visualized with <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-9-1.png" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Other metrics can be visualized by changing the <code>metric</code> argument. For example, <code>ac_importance</code> displays the alienation coefficient.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"ac_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-8-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-10-1.png" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>The congruence coefficient can also be displayed. Since this is an agreement measure, smaller values indicate that removing the variable produces a larger change in the induced configuration.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"cc_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-9-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-11-1.png" width="672"></p>
 </figure>
 </div>
 </div>
@@ -316,7 +350,7 @@ Top by relative distance:
 <p>To compute clustering-based diagnostics, the number of clusters must be supplied through <code>cluster_k</code>. The clustering methods are controlled by <code>cluster_methods</code>. Available options are <code>"pam"</code>, <code>"hclust"</code>, and <code>"spectral"</code>.</p>
 <p>In the following example, we compute clustering-based diagnostics with three clusters.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
@@ -351,7 +385,7 @@ Top by relative distance:
 </div>
 <p>The corresponding results include ARI-based diagnostics for each clustering method.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="va">results</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    <span class="va">variable</span>,</span>
@@ -489,33 +523,33 @@ Top by relative distance:
 </div>
 <p>For example, the PAM-based importance can be visualized as follows.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"pam_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-13-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-15-1.png" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>The same diagnostic can be inspected for hierarchical clustering.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"hclust_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-14-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-16-1.png" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Or for spectral clustering.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"spectral_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-15-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-17-1.png" width="672"></p>
 </figure>
 </div>
 </div>
@@ -526,7 +560,7 @@ Top by relative distance:
 </h2>
 <p>When <code>response_used = FALSE</code>, the response column is removed before computing distances. When <code>response_used = TRUE</code>, the response can be used by response-aware distance specifications, but it is still not treated as a predictor in the leave-one-variable-out loop.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
@@ -554,7 +588,7 @@ Top by relative distance:
 </div>
 <p>The response-aware diagnostics can be inspected in the same way.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_response</span><span class="op">$</span><span class="va">results</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">kableExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span>format <span class="op">=</span> <span class="st">"html"</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">kableExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
@@ -616,11 +650,11 @@ Top by relative distance:
 </div>
 <p>For example, the relative-distance contribution can be visualized as follows.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_response</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-18-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-20-1.png" width="672"></p>
 </figure>
 </div>
 </div>
@@ -632,7 +666,7 @@ Top by relative distance:
 <p>Instead of running <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> separately for each specification, the user supplies a named list of methods. Each element of the list contains arguments passed to <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code>, such as <code>preset</code>, <code>method_cat</code>, <code>method_num</code>, and <code>commensurable</code>.</p>
 <p>For each distance specification, <code><a href="../reference/compare_lovo_mdist.html">compare_lovo_mdist()</a></code> computes the full distance, recomputes the leave-one-variable-out distances, extracts the diagnostics, and combines the results into a single <code>MDistLOVOCompare</code> object.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_compare</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_lovo_mdist.html">compare_lovo_mdist</a></span><span class="op">(</span></span>
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="st">"species"</span>,</span>
@@ -676,7 +710,7 @@ Top variables within each method:
 </div>
 <p>The combined results are stored in the <code>$results</code> field. The table contains one row for each combination of distance specification and left-out variable.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_compare</span><span class="op">$</span><span class="va">results</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    <span class="va">method</span>,</span>
@@ -869,7 +903,7 @@ Top variables within each method:
 </div>
 <p>The summary reports the range and average of the main LOVO diagnostics within each distance specification.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">lovo_compare</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Summary of MDistLOVOCompare
@@ -886,20 +920,20 @@ Top variables within each method:
 # ℹ 4 more variables: mds_mean &lt;dbl&gt;, ac_min &lt;dbl&gt;, ac_max &lt;dbl&gt;, ac_mean &lt;dbl&gt;</code></pre>
 </div>
 </div>
-<p>The comparison object also has an <code>autoplot()</code> method. This makes it possible to compare the contribution profiles induced by different distance specifications.</p>
+<p>The comparison object also has an <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> method. This makes it possible to compare the contribution profiles induced by different distance specifications.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_compare</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-22-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-24-1.png" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>A comparison can also include clustering-based diagnostics by passing <code>cluster_k</code> and, optionally, <code>cluster_methods</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_compare_cluster</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_lovo_mdist.html">compare_lovo_mdist</a></span><span class="op">(</span></span>
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="st">"species"</span>,</span>
@@ -944,7 +978,7 @@ Top variables within each method:
 </div>
 <p>The resulting object includes the ARI-based diagnostics for the selected clustering methods.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_compare_cluster</span><span class="op">$</span><span class="va">results</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    <span class="va">method</span>,</span>
@@ -1117,11 +1151,11 @@ Top variables within each method:
 </div>
 <p>For example, the following plot compares PAM-based cluster importance across the selected distance specifications.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_compare_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"pam_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-25-1.png" width="672"></p>
+<figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-27-1.png" width="672"></p>
 </figure>
 </div>
 </div>

@@ -114,7 +114,7 @@ The results are combined across methods and returned as an
 `MDistLOVOCompare` object, which supports
 [`print()`](https://rdrr.io/r/base/print.html),
 [`summary()`](https://rdrr.io/r/base/summary.html), and
-[`ggplot2::autoplot()`](https://rdrr.io/pkg/ggplot2/man/autoplot.html).
+[`ggplot2::autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
 
 ## See also
 

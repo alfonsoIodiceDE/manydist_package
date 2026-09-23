@@ -41,7 +41,29 @@ The function first computes the full dissimilarity matrix using all predictors. 
 
 Variables whose removal strongly changes the dissimilarity matrix, the induced configuration, or the resulting clustering structure can be interpreted as having a larger contribution to the distance construction.
 
-MDS diagnostics are optional. In this first example we request a two-dimensional MDS configuration explicitly with `mds = TRUE` and `dims = 2`.
+By default,
+`lovo_mdist()` computes only the distance-based LOVO diagnostics.
+
+```{r}
+lovo_gower_distance_only <- lovo_mdist(
+  penguins_small,
+  response = species,
+  response_used = FALSE,
+  preset = "gower",
+  mds = FALSE
+)
+
+
+```
+
+The result can be summarized as follows.
+
+```{r}
+summary(lovo_gower_distance_only)
+```
+
+
+MDS-based diagnostics can be obtained with `mds = TRUE` and `dims = 2`.
 
 ```{r}
 lovo_gower <- lovo_mdist(

@@ -161,13 +161,13 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
 #>   successful     : 3
 #>   failed         : 0
 #>   comparisons    : 3
-#>
+#> 
 #> Pairwise diagnostic summary:
 #> # A tibble: 4 × 4
 #>   metric              min median   max
 #>   <chr>             <dbl>  <dbl> <dbl>
-#> 1 mad               1.27   5.66  5.66
-#> 2 relative_distance 0.210  1.78  1.78
+#> 1 mad               1.27   5.66  5.66 
+#> 2 relative_distance 0.210  1.78  1.78 
 #> 3 mds_congruence    0.961  0.982 0.990
 #> 4 alienation        0.141  0.189 0.278
 

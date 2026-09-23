@@ -2,6 +2,22 @@
 
 ## manydist 0.5.2
 
+### Diagnostics
+
+- Changed MDS-based diagnostics in
+  [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
+  and
+  [`compare_lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/compare_lovo_mdist.md)
+  to be opt-in. Set `mds = TRUE` to compute congruence and alienation
+  diagnostics; `dims = 2` remains the default MDS dimensionality when
+  MDS is requested. Distance-based LOVO diagnostics remain available by
+  default, and clustering diagnostics remain controlled by `cluster_k`.
+- Added compact [`print()`](https://rdrr.io/r/base/print.html) and
+  [`summary()`](https://rdrr.io/r/base/summary.html) methods for
+  `MDistBenchmark` objects. The full benchmark remains available as a
+  tibble, while interactive output now emphasizes run status, failures,
+  and pairwise diagnostic ranges.
+
 ### Distance construction
 
 - Added the `"u_dep_bw"` preset for association-aware distances with

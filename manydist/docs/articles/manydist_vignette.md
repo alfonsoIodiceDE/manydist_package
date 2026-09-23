@@ -947,8 +947,7 @@ bench_small |>
      8 component custom    matching   std        TRUE          TRUE  <NA>
      9 component custom    tvd        robust     FALSE         TRUE  <NA>
     10 component custom    tvd        robust     TRUE          TRUE  <NA>
-    11 component custom    tvd        std        FALSE         TRUE  <NA>
-    12 component custom    tvd        std        TRUE          TRUE  <NA> 
+    # ℹ 2 more rows
 
 The `ok` column reports whether the distance computation completed
 successfully. Failed specifications are kept in the output, with the
@@ -1040,7 +1039,7 @@ lovo_gower
 
     MDistLOVO object
       preset : gower
-      dims   : 2
+      MDS diagnostics : not computed
       n_obs  : 333
       response used : FALSE
       top vars:
@@ -1062,9 +1061,7 @@ summary(lovo_gower)
 
     Summary of MDistLOVO
       preset : gower
-      dims   : 2
       n_obs  : 333
-      response used : FALSE
 
     Relative distance:
       range [0.1003, 0.2916], mean 0.1667
@@ -1111,7 +1108,7 @@ lovo_response
 
     MDistLOVO object
       preset : u_dep
-      dims   : 2
+      MDS diagnostics : not computed
       n_obs  : 333
       response used : TRUE
       top vars:

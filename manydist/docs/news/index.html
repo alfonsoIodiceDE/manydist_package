@@ -35,6 +35,11 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.2" id="manydist-052">manydist 0.5.2<a class="anchor" aria-label="anchor" href="#manydist-052"></a></h2>
 <div class="section level3">
+<h3 id="diagnostics-0-5-2">Diagnostics<a class="anchor" aria-label="anchor" href="#diagnostics-0-5-2"></a></h3>
+<ul><li>Changed MDS-based diagnostics in <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> and <code><a href="../reference/compare_lovo_mdist.html">compare_lovo_mdist()</a></code> to be opt-in. Set <code>mds = TRUE</code> to compute congruence and alienation diagnostics; <code>dims = 2</code> remains the default MDS dimensionality when MDS is requested. Distance-based LOVO diagnostics remain available by default, and clustering diagnostics remain controlled by <code>cluster_k</code>.</li>
+<li>Added compact <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> methods for <code>MDistBenchmark</code> objects. The full benchmark remains available as a tibble, while interactive output now emphasizes run status, failures, and pairwise diagnostic ranges.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="distance-construction-0-5-2">Distance construction<a class="anchor" aria-label="anchor" href="#distance-construction-0-5-2"></a></h3>
 <ul><li><p>Added the <code>"u_dep_bw"</code> preset for association-aware distances with block-wise numerical commensurability. The preset computes Manhattan distances on whitened principal-component scores and scales the complete numerical block so that its mean over distinct training pairs equals the number of original numerical variables. It retains the response-aware categorical construction used by <code>"u_dep"</code>.</p></li>
 <li><p><code>"u_dep_bw"</code> supports principal-component selection through <code>ncomp</code> or <code>threshold</code>. For new observations, the PCA transformation and numerical block scaling estimated from the training data are reused.</p></li>

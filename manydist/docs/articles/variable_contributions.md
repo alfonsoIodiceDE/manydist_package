@@ -35,9 +35,46 @@ induced configuration, or the resulting clustering structure can be
 interpreted as having a larger contribution to the distance
 construction.
 
-MDS diagnostics are optional. In this first example we request a
-two-dimensional MDS configuration explicitly with `mds = TRUE` and
-`dims = 2`.
+By default,
+[`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
+computes only the distance-based LOVO diagnostics.
+
+``` r
+
+lovo_gower_distance_only <- lovo_mdist(
+  penguins_small,
+  response = species,
+  response_used = FALSE,
+  preset = "gower",
+  mds = FALSE
+)
+```
+
+The result can be summarized as follows.
+
+``` r
+
+summary(lovo_gower_distance_only)
+```
+
+    Summary of MDistLOVO
+      preset : gower
+      n_obs  : 333
+
+    Relative distance:
+      range [0.1003, 0.2916], mean 0.1667
+
+    Top by relative distance:
+    # A tibble: 5 × 3
+      variable          variable_type relative_distance
+      <chr>             <chr>                     <dbl>
+    1 island            categorical               0.292
+    2 sex               categorical               0.277
+    3 bill_length_mm    numeric                   0.123
+    4 bill_depth_mm     numeric                   0.107
+    5 flipper_length_mm numeric                   0.102
+
+MDS-based diagnostics can be obtained with `mds = TRUE` and `dims = 2`.
 
 ``` r
 
@@ -137,14 +174,14 @@ distance matrix.
 ## 4 Visualising variable contributions
 
 The relative contribution of each variable can be visualized with
-`autoplot()`.
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
 
 ``` r
 
 lovo_gower$autoplot(metric = "relative_distance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-7-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-9-1.png)
 
 Other metrics can be visualized by changing the `metric` argument. For
 example, `ac_importance` displays the alienation coefficient.
@@ -154,7 +191,7 @@ example, `ac_importance` displays the alienation coefficient.
 lovo_gower$autoplot(metric = "ac_importance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-8-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-10-1.png)
 
 The congruence coefficient can also be displayed. Since this is an
 agreement measure, smaller values indicate that removing the variable
@@ -165,7 +202,7 @@ produces a larger change in the induced configuration.
 lovo_gower$autoplot(metric = "cc_importance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-9-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-11-1.png)
 
 ## 5 Clustering-based LOVO diagnostics
 
@@ -270,7 +307,7 @@ For example, the PAM-based importance can be visualized as follows.
 lovo_gower_cluster$autoplot(metric = "pam_importance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-13-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-15-1.png)
 
 The same diagnostic can be inspected for hierarchical clustering.
 
@@ -279,7 +316,7 @@ The same diagnostic can be inspected for hierarchical clustering.
 lovo_gower_cluster$autoplot(metric = "hclust_importance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-14-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-16-1.png)
 
 Or for spectral clustering.
 
@@ -288,7 +325,7 @@ Or for spectral clustering.
 lovo_gower_cluster$autoplot(metric = "spectral_importance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-15-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-17-1.png)
 
 The three cluster-based diagnostics need not rank variables in exactly
 the same way. A variable may be important for the partition induced by
@@ -356,7 +393,7 @@ follows.
 lovo_response$autoplot(metric = "relative_distance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-18-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-20-1.png)
 
 ## 7 Comparing LOVO diagnostics across distance specifications
 
@@ -483,16 +520,17 @@ summary(lovo_compare)
     3 custom_matc…  1.000   1.00     1.00     0.167   0.167    0.167   0.966   0.995
     # ℹ 4 more variables: mds_mean <dbl>, ac_min <dbl>, ac_max <dbl>, ac_mean <dbl>
 
-The comparison object also has an `autoplot()` method. This makes it
-possible to compare the contribution profiles induced by different
-distance specifications.
+The comparison object also has an
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+method. This makes it possible to compare the contribution profiles
+induced by different distance specifications.
 
 ``` r
 
 lovo_compare$autoplot(metric = "relative_distance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-22-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-24-1.png)
 
 A comparison can also include clustering-based diagnostics by passing
 `cluster_k` and, optionally, `cluster_methods`.
@@ -588,7 +626,7 @@ across the selected distance specifications.
 lovo_compare_cluster$autoplot(metric = "pam_importance")
 ```
 
-![](variable_contributions_files/figure-html/unnamed-chunk-25-1.png)
+![](variable_contributions_files/figure-html/unnamed-chunk-27-1.png)
 
 The comparison is useful because variable contributions are not absolute
 properties of the data alone. They also depend on the distance
