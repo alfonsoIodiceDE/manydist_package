@@ -2336,7 +2336,7 @@ distance-based learning.
 ## Computational details {.unnumbered}
 
 The results in this article were obtained using \proglang{R} 4.5.2 with
-\pkg{manydist} 0.5.1, \pkg{tidymodels} 1.4.1, \pkg{dplyr} 1.2.0 and \pkg{palmerpenguins} 0.1.1.
+\pkg{manydist} 0.5.2, \pkg{tidymodels} 1.4.1, \pkg{dplyr} 1.2.0 and \pkg{palmerpenguins} 0.1.1.
 \proglang{R} itself and all packages used are available from CRAN at
 \url{https://CRAN.R-project.org/}. The development version of \pkg{manydist}
 and its documentation are hosted at
