@@ -55,6 +55,7 @@ the full one.</p>
 <span>  <span class="va">x</span>,</span>
 <span>  response <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
+<span>  mds <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dims <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  keep_dist <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  cluster_k <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -88,9 +89,15 @@ in the leave-one-variable-out loop.</p></dd>
 `method_cat`, `method_num`, `commensurable`, or `interaction`.</p></dd>
 
 
+<dt id="arg-mds">mds<a class="anchor" aria-label="anchor" href="#arg-mds"></a></dt>
+<dd><p>Logical. If `TRUE`, compute classical multidimensional scaling
+diagnostics for the full and leave-one-variable-out dissimilarities. The
+default is `FALSE`.</p></dd>
+
+
 <dt id="arg-dims">dims<a class="anchor" aria-label="anchor" href="#arg-dims"></a></dt>
 <dd><p>Integer. Number of dimensions used by classical
-multidimensional scaling when computing congruence-based diagnostics.</p></dd>
+multidimensional scaling when `mds = TRUE`. Ignored when `mds = FALSE`.</p></dd>
 
 
 <dt id="arg-keep-dist">keep_dist<a class="anchor" aria-label="anchor" href="#arg-keep-dist"></a></dt>
@@ -143,19 +150,19 @@ column is removed before computing distances.</p></dd>
     <p>`lovo_mdist()` is useful for assessing how strongly each predictor
 contributes to a distance-based representation. A predictor is considered
 influential when removing it produces a large change in the dissimilarity
-matrix, the multidimensional scaling configuration, or an optional
-clustering partition.</p>
+matrix or an optional downstream representation, such as a multidimensional
+scaling configuration or clustering partition.</p>
 
 <p>The returned object contains several LOVO diagnostics. The main distance
 contribution is measured by the mean absolute difference between the full
 dissimilarity matrix and each leave-one-variable-out matrix
 (`mad_importance`). The normalized version is stored as
 `relative_distance`.</p>
-<p>The function also compares classical multidimensional scaling
-configurations computed from the full and leave-one-variable-out
-dissimilarities. These diagnostics are stored as `mds_congruence`
-/ `cc_importance` and `ac_importance`, the latter corresponding to an
-alienation coefficient.</p>
+<p>If `mds = TRUE`, the function also compares classical multidimensional
+scaling configurations computed from the full and leave-one-variable-out
+dissimilarities. These diagnostics are stored as `mds_congruence` /
+`cc_importance` and `ac_importance`, the latter corresponding to an
+alienation coefficient. They are omitted when `mds = FALSE`.</p>
 <p>If `cluster_k` is supplied, the function additionally computes clustering
 partitions from the full and leave-one-variable-out dissimilarities and
 compares them using the adjusted Rand index. The corresponding importance
@@ -174,14 +181,14 @@ clustering methods.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"palmerpenguins"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"penguins"</span>, package <span class="op">=</span> <span class="st">"palmerpenguins"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="fu">palmerpenguins</span><span class="fu">::</span><span class="va"><a href="https://allisonhorst.github.io/palmerpenguins/reference/penguins.html" class="external-link">penguins</a></span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="fu">palmerpenguins</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/palmerpenguins/man/penguins.html" class="external-link">penguins</a></span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/select.html" class="external-link">select</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="va">species</span>, <span class="va">bill_length_mm</span>, <span class="va">bill_depth_mm</span>, <span class="va">flipper_length_mm</span>,</span></span>
 <span class="r-in"><span>      <span class="va">body_mass_g</span>, <span class="va">island</span>, <span class="va">sex</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/tidyr/man/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># LOVO diagnostics for a Gower distance</span></span></span>
+<span class="r-in"><span>  <span class="co"># Distance-based LOVO diagnostics for a Gower distance</span></span></span>
 <span class="r-in"><span>  <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">lovo_mdist</span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="va">penguins_small</span>,</span></span>
 <span class="r-in"><span>    preset <span class="op">=</span> <span class="st">"gower"</span>,</span></span>
@@ -193,14 +200,12 @@ clustering methods.</p>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Plot the relative distance contribution of each predictor</span></span></span>
-<span class="r-in"><span>  <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span>, reorder <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">p</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Summary of MDistLOVO</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   preset : gower </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   dims   : 2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   n_obs  : 333 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   response used : FALSE </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Relative distance:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   range [0.1003, 0.2916], mean 0.1667</span>

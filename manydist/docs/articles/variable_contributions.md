@@ -35,13 +35,19 @@ induced configuration, or the resulting clustering structure can be
 interpreted as having a larger contribution to the distance
 construction.
 
+MDS diagnostics are optional. In this first example we request a
+two-dimensional MDS configuration explicitly with `mds = TRUE` and
+`dims = 2`.
+
 ``` r
 
 lovo_gower <- lovo_mdist(
   penguins_small,
   response = species,
   response_used = FALSE,
-  preset = "gower"
+  preset = "gower",
+  mds = TRUE,
+  dims = 2
 )
 
 lovo_gower
@@ -49,7 +55,7 @@ lovo_gower
 
     MDistLOVO object
       preset : gower
-      dims   : 2
+      MDS diagnostics : 2 dimensions
       n_obs  : 333
       response used : FALSE
       top vars:
@@ -71,9 +77,7 @@ summary(lovo_gower)
 
     Summary of MDistLOVO
       preset : gower
-      dims   : 2
       n_obs  : 333
-      response used : FALSE
 
     Relative distance:
       range [0.1003, 0.2916], mean 0.1667
@@ -110,8 +114,9 @@ lovo_gower$results |>
 
 The output of
 [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
-contains several diagnostics, each capturing a different aspect of the
-change induced by removing a variable.
+always contains distance-based diagnostics. Because MDS was requested
+above, it also contains configuration-based diagnostics, each capturing
+a different aspect of the change induced by removing a variable.
 
 The main diagnostics can be interpreted as follows.
 
@@ -132,14 +137,11 @@ distance matrix.
 ## 4 Visualising variable contributions
 
 The relative contribution of each variable can be visualized with
-[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
+`autoplot()`.
 
 ``` r
 
-lovo_gower$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
+lovo_gower$autoplot(metric = "relative_distance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-7-1.png)
@@ -149,10 +151,7 @@ example, `ac_importance` displays the alienation coefficient.
 
 ``` r
 
-lovo_gower$autoplot(
-  metric = "ac_importance",
-  reorder = TRUE
-)
+lovo_gower$autoplot(metric = "ac_importance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-8-1.png)
@@ -163,10 +162,7 @@ produces a larger change in the induced configuration.
 
 ``` r
 
-lovo_gower$autoplot(
-  metric = "cc_importance",
-  reorder = TRUE
-)
+lovo_gower$autoplot(metric = "cc_importance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-9-1.png)
@@ -201,7 +197,7 @@ lovo_gower_cluster
 
     MDistLOVO object
       preset : gower
-      dims   : 2
+      MDS diagnostics : not computed
       n_obs  : 333
       response used : FALSE
       cluster_k : 3
@@ -271,10 +267,7 @@ For example, the PAM-based importance can be visualized as follows.
 
 ``` r
 
-lovo_gower_cluster$autoplot(
-  metric = "pam_importance",
-  reorder = TRUE
-)
+lovo_gower_cluster$autoplot(metric = "pam_importance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-13-1.png)
@@ -283,10 +276,7 @@ The same diagnostic can be inspected for hierarchical clustering.
 
 ``` r
 
-lovo_gower_cluster$autoplot(
-  metric = "hclust_importance",
-  reorder = TRUE
-)
+lovo_gower_cluster$autoplot(metric = "hclust_importance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-14-1.png)
@@ -295,10 +285,7 @@ Or for spectral clustering.
 
 ``` r
 
-lovo_gower_cluster$autoplot(
-  metric = "spectral_importance",
-  reorder = TRUE
-)
+lovo_gower_cluster$autoplot(metric = "spectral_importance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-15-1.png)
@@ -330,7 +317,7 @@ lovo_response
 
     MDistLOVO object
       preset : u_dep
-      dims   : 2
+      MDS diagnostics : not computed
       n_obs  : 333
       response used : TRUE
       top vars:
@@ -352,24 +339,21 @@ lovo_response$results |>
   kableExtra::kable_styling(full_width = FALSE)
 ```
 
-| variable | variable_type | mad_importance | cc_importance | mds_congruence | ac_importance | mad_normalized | relative_distance |
-|:---|:---|---:|---:|---:|---:|---:|---:|
-| island | categorical | 1.000 | 0.979 | 0.979 | 0.205 | 0.166 | 0.166 |
-| bill_length_mm | numeric | 1.005 | 0.995 | 0.995 | 0.100 | 0.167 | 0.167 |
-| bill_depth_mm | numeric | 1.003 | 0.979 | 0.979 | 0.203 | 0.167 | 0.167 |
-| flipper_length_mm | numeric | 1.001 | 0.998 | 0.998 | 0.058 | 0.167 | 0.167 |
-| body_mass_g | numeric | 1.003 | 0.991 | 0.991 | 0.136 | 0.167 | 0.167 |
-| sex | categorical | 1.000 | 0.924 | 0.924 | 0.383 | 0.166 | 0.166 |
+| variable | variable_type | mad_importance | mad_normalized | relative_distance |
+|:---|:---|---:|---:|---:|
+| island | categorical | 1.000 | 0.166 | 0.166 |
+| bill_length_mm | numeric | 1.005 | 0.167 | 0.167 |
+| bill_depth_mm | numeric | 1.003 | 0.167 | 0.167 |
+| flipper_length_mm | numeric | 1.001 | 0.167 | 0.167 |
+| body_mass_g | numeric | 1.003 | 0.167 | 0.167 |
+| sex | categorical | 1.000 | 0.166 | 0.166 |
 
 For example, the relative-distance contribution can be visualized as
 follows.
 
 ``` r
 
-lovo_response$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
+lovo_response$autoplot(metric = "relative_distance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-18-1.png)
@@ -400,6 +384,8 @@ lovo_compare <- compare_lovo_mdist(
   penguins_small,
   response = "species",
   response_used = FALSE,
+  mds = TRUE,
+  dims = 2,
   methods = list(
     gower = list(preset = "gower"),
     u_indep = list(preset = "u_indep"),
@@ -417,7 +403,7 @@ lovo_compare
 
     MDistLOVOCompare object
       methods: gower, u_indep, custom_matching
-      dims   : 2
+      MDS diagnostics : 2 dimensions
       n_obs  : 333
       rows   : 18
 
@@ -486,7 +472,7 @@ summary(lovo_compare)
 
     Summary of MDistLOVOCompare
       methods: gower, u_indep, custom_matching
-      dims   : 2
+      MDS diagnostics : 2 dimensions
       n_obs  : 333
 
     # A tibble: 3 × 13
@@ -497,17 +483,13 @@ summary(lovo_compare)
     3 custom_matc…  1.000   1.00     1.00     0.167   0.167    0.167   0.966   0.995
     # ℹ 4 more variables: mds_mean <dbl>, ac_min <dbl>, ac_max <dbl>, ac_mean <dbl>
 
-The comparison object also has an
-[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
-method. This makes it possible to compare the contribution profiles
-induced by different distance specifications.
+The comparison object also has an `autoplot()` method. This makes it
+possible to compare the contribution profiles induced by different
+distance specifications.
 
 ``` r
 
-lovo_compare$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
+lovo_compare$autoplot(metric = "relative_distance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-22-1.png)
@@ -540,7 +522,7 @@ lovo_compare_cluster
 
     MDistLOVOCompare object
       methods: gower, u_indep, custom_matching
-      dims   : 2
+      MDS diagnostics : not computed
       n_obs  : 333
       rows   : 18
 
@@ -603,10 +585,7 @@ across the selected distance specifications.
 
 ``` r
 
-lovo_compare_cluster$autoplot(
-  metric = "pam_importance",
-  reorder = TRUE
-)
+lovo_compare_cluster$autoplot(metric = "pam_importance")
 ```
 
 ![](variable_contributions_files/figure-html/unnamed-chunk-25-1.png)

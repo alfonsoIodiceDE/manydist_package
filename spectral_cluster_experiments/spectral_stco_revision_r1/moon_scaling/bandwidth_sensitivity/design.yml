@@ -1,0 +1,31 @@
+schema_version: 1
+analysis_id: sim3-rss26-moon-gaussian-bandwidth-smoke-v1
+status: exploratory_smoke_not_confirmatory
+description: >-
+  Versioned Gaussian-bandwidth sensitivity sidecar for the Simulation 3
+  moon-scaling smoke. The parent smoke and its artifacts remain unchanged.
+
+parent:
+  analysis_id: sim3-rss26-moon-scaling-v1
+  design_md5: 71a554b19e6992d773b93972e49268cd
+  interaction_state: signal
+
+bandwidth:
+  affinity: gaussian
+  base_rule: median_positive_pairwise_dissimilarity
+  primary_multiplier: 1.0
+  multipliers: [0.5, 1.0, 2.0]
+  apply_to: all_distance_methods
+
+execution:
+  smoke_replicates: 1
+  existing_output_policy: skip_without_overwrite
+  require_clean_manydist_R: true
+
+interpretation:
+  primary_analysis_unchanged: true
+  purpose: >-
+    Check whether the primary Gaussian-affinity comparison is qualitatively
+    stable under a narrower and a broader global bandwidth. This is not a
+    bandwidth-selection exercise.
+

@@ -27,6 +27,73 @@ test_that("benchmark_mdist retains its tibble interface", {
 
   selected <- dplyr::select(result, preset, ok)
   expect_equal(names(selected), c("preset", "ok"))
+  expect_output(print(selected), "preset")
+
+  reordered <- dplyr::arrange(result, dplyr::desc(.data$preset))
+  expect_output(print(reordered), "spec_type")
+})
+
+test_that("benchmark printing is compact and reports failures", {
+  successful <- benchmark_specs("gower") |>
+    dplyr::mutate(label = "Gower")
+  failed <- successful |>
+    dplyr::mutate(
+      label = "Invalid preset",
+      preset = "not_a_preset"
+    )
+
+  result <- benchmark_mdist(
+    benchmark_example(),
+    specs = dplyr::bind_rows(successful, failed)
+  )
+
+  output <- capture.output(print(result))
+
+  expect_true(any(grepl("MDistBenchmark", output, fixed = TRUE)))
+  expect_true(any(grepl("specifications : 2", output, fixed = TRUE)))
+  expect_true(any(grepl("successful     : 1", output, fixed = TRUE)))
+  expect_true(any(grepl("failed         : 1", output, fixed = TRUE)))
+  expect_true(any(grepl("Methods:", output, fixed = TRUE)))
+  expect_true(any(grepl("Failures:", output, fixed = TRUE)))
+  expect_true(any(grepl("Invalid preset", output, fixed = TRUE)))
+  expect_true(any(grepl("benchmark_comparisons", output, fixed = TRUE)))
+})
+
+test_that("benchmark summary reports compact pairwise metric ranges", {
+  result <- benchmark_mdist(
+    benchmark_example(),
+    specs = benchmark_specs(c("gower", "u_indep", "u_dep"))
+  )
+
+  metric_summary <- NULL
+  expect_output(
+    metric_summary <- summary(result),
+    "Pairwise diagnostic summary",
+    fixed = TRUE
+  )
+
+  expect_s3_class(metric_summary, "tbl_df")
+  expect_equal(
+    metric_summary$metric,
+    c("mad", "relative_distance", "mds_congruence", "alienation")
+  )
+  expect_equal(names(metric_summary), c("metric", "min", "median", "max"))
+  expect_true(all(is.finite(unlist(metric_summary[c("min", "median", "max")]))))
+})
+
+test_that("benchmark summary handles fewer than two successful methods", {
+  result <- benchmark_mdist(
+    benchmark_example(),
+    specs = benchmark_specs("gower")
+  )
+
+  metric_summary <- NULL
+  expect_output(
+    metric_summary <- summary(result),
+    "No pairwise diagnostics are available",
+    fixed = TRUE
+  )
+  expect_equal(nrow(metric_summary), 0L)
 })
 
 test_that("pairwise metrics are zero or one for identical specifications", {
@@ -81,6 +148,14 @@ test_that("cluster_k controls optional pairwise ARI diagnostics", {
 
   expect_true("ari_pam" %in% names(comparisons))
   expect_equal(comparisons$ari_pam, 1)
+
+  cluster_summary <- NULL
+  expect_output(
+    cluster_summary <- summary(with_clusters),
+    "Pairwise diagnostic summary",
+    fixed = TRUE
+  )
+  expect_true("ari_pam" %in% cluster_summary$metric)
 })
 
 test_that("benchmark clustering arguments are validated", {

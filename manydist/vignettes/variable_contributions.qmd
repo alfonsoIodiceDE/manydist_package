@@ -41,12 +41,16 @@ The function first computes the full dissimilarity matrix using all predictors. 
 
 Variables whose removal strongly changes the dissimilarity matrix, the induced configuration, or the resulting clustering structure can be interpreted as having a larger contribution to the distance construction.
 
+MDS diagnostics are optional. In this first example we request a two-dimensional MDS configuration explicitly with `mds = TRUE` and `dims = 2`.
+
 ```{r}
 lovo_gower <- lovo_mdist(
   penguins_small,
   response = species,
   response_used = FALSE,
-  preset = "gower"
+  preset = "gower",
+  mds = TRUE,
+  dims = 2
 )
 
 lovo_gower
@@ -68,7 +72,7 @@ lovo_gower$results |>
 
 ## Interpreting the output
 
-The output of `lovo_mdist()` contains several diagnostics, each capturing a different aspect of the change induced by removing a variable.
+The output of `lovo_mdist()` always contains distance-based diagnostics. Because MDS was requested above, it also contains configuration-based diagnostics, each capturing a different aspect of the change induced by removing a variable.
 
 The main diagnostics can be interpreted as follows.
 
@@ -110,28 +114,19 @@ The metrics are complementary. A variable may have a large effect on the pairwis
 The relative contribution of each variable can be visualized with `autoplot()`.
 
 ```{r}
-lovo_gower$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
+lovo_gower$autoplot(metric = "relative_distance")
 ```
 
 Other metrics can be visualized by changing the `metric` argument. For example, `ac_importance` displays the alienation coefficient.
 
 ```{r}
-lovo_gower$autoplot(
-  metric = "ac_importance",
-  reorder = TRUE
-)
+lovo_gower$autoplot(metric = "ac_importance")
 ```
 
 The congruence coefficient can also be displayed. Since this is an agreement measure, smaller values indicate that removing the variable produces a larger change in the induced configuration.
 
 ```{r}
-lovo_gower$autoplot(
-  metric = "cc_importance",
-  reorder = TRUE
-)
+lovo_gower$autoplot(metric = "cc_importance")
 ```
 
 ## Clustering-based LOVO diagnostics
@@ -214,28 +209,19 @@ cluster_metric_description |>
 For example, the PAM-based importance can be visualized as follows.
 
 ```{r}
-lovo_gower_cluster$autoplot(
-  metric = "pam_importance",
-  reorder = TRUE
-)
+lovo_gower_cluster$autoplot(metric = "pam_importance")
 ```
 
 The same diagnostic can be inspected for hierarchical clustering.
 
 ```{r}
-lovo_gower_cluster$autoplot(
-  metric = "hclust_importance",
-  reorder = TRUE
-)
+lovo_gower_cluster$autoplot(metric = "hclust_importance")
 ```
 
 Or for spectral clustering.
 
 ```{r}
-lovo_gower_cluster$autoplot(
-  metric = "spectral_importance",
-  reorder = TRUE
-)
+lovo_gower_cluster$autoplot(metric = "spectral_importance")
 ```
 
 The three cluster-based diagnostics need not rank variables in exactly the same way. A variable may be important for the partition induced by one clustering method and less important for another. This makes clustering-based LOVO diagnostics useful for assessing whether variable contributions are stable across clustering algorithms.
@@ -266,10 +252,7 @@ lovo_response$results |>
 For example, the relative-distance contribution can be visualized as follows.
 
 ```{r}
-lovo_response$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
+lovo_response$autoplot(metric = "relative_distance")
 ```
 
 ## Comparing LOVO diagnostics across distance specifications
@@ -285,6 +268,8 @@ lovo_compare <- compare_lovo_mdist(
   penguins_small,
   response = "species",
   response_used = FALSE,
+  mds = TRUE,
+  dims = 2,
   methods = list(
     gower = list(preset = "gower"),
     u_indep = list(preset = "u_indep"),
@@ -326,10 +311,7 @@ summary(lovo_compare)
 The comparison object also has an `autoplot()` method. This makes it possible to compare the contribution profiles induced by different distance specifications.
 
 ```{r}
-lovo_compare$autoplot(
-  metric = "relative_distance",
-  reorder = TRUE
-)
+lovo_compare$autoplot(metric = "relative_distance")
 ```
 
 A comparison can also include clustering-based diagnostics by passing `cluster_k` and, optionally, `cluster_methods`.
@@ -375,10 +357,7 @@ lovo_compare_cluster$results |>
 For example, the following plot compares PAM-based cluster importance across the selected distance specifications.
 
 ```{r}
-lovo_compare_cluster$autoplot(
-  metric = "pam_importance",
-  reorder = TRUE
-)
+lovo_compare_cluster$autoplot(metric = "pam_importance")
 ```
 
 The comparison is useful because variable contributions are not absolute properties of the data alone. They also depend on the distance specification. A variable that is highly influential under one distance may have a smaller contribution under another specification, especially when the two distances encode different assumptions about scaling, variable type, commensurability, or association.

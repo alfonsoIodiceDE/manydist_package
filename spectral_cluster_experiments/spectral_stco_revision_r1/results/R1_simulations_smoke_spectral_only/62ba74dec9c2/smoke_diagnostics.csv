@@ -1,0 +1,6 @@
+"task_key","experiment","condition","state","replicate","data_seed","n","p_numeric","q_categorical","active_count","exact_baseline_recovery","baseline_gated_partition_ARI","interaction_alignment_ratio","interaction_added_mean","final_distance_mean","gated_distance_seconds"
+"Simulation_1__reference__signal__rep001","Simulation_1","reference","signal",1,26200100,360,2,2,1,FALSE,0.531637280627087,NA,1.23297435153904,3.44284850132695,4.608
+"Simulation_1__reference__null__rep001","Simulation_1","reference","null",1,26200100,360,2,2,0,TRUE,1,NA,0,2.2098741497879,4.11
+"Simulation_2__n500__interaction__rep001","Simulation_2","n500","interaction",1,26300100,500,6,4,2,FALSE,0.33397728598219,3.79388016066462,1.34592608768657,6.65557784210517,17.812
+"Simulation_3__npg120_profile0-35__aligned__rep001","Simulation_3","npg120_profile0.35","aligned",1,26400100,360,12,24,2,FALSE,0.375455713147144,1.85733036940628,1.81354555074543,17.8092553463058,55.095
+"Simulation_3__npg120_profile0-35__decoupled__rep001","Simulation_3","npg120_profile0.35","decoupled",1,26400100,360,12,24,0,TRUE,1,NA,0,15.9957097955604,51.623

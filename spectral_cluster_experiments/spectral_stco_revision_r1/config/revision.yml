@@ -1,0 +1,51 @@
+schema_version: 1
+analysis_id: scmix-r1-pilot
+
+manydist:
+  version: "0.5.2"
+  source_commit: "ab27241f1a0846bb13087f804e23fd52746d1578"
+  note: "Load/install manydist from this commit before a frozen run. Runtime provenance is stored in every distance result."
+
+distance:
+  numerical:
+    preset: custom
+    method_num: pc_scores
+    commensurable: false
+    ncomp: p_numeric
+  categorical:
+    method_cat: tvd
+    base: pure_package_custom_no_interaction
+    interaction: knn_prior_corrected_balanced_accuracy
+    component_range: "raw level deltas in [0, 1]"
+    interaction_gate:
+      method: joint_label_permutation_max
+      permutations: 99
+      alpha: 0.01
+      permutation_unit: complete_categorical_row
+  weighting:
+    gamma_default: 1.0
+    gamma_sensitivity: "explicit values in [0, 1] are permitted; primary setting is 1"
+    active_aggregation: "mean over multiplicity-gated active categorical variables"
+    scale: "mean distinct-pair numerical dissimilarity"
+    final: "package_baseline + gamma * mean(D_num) * active_average(D_int)"
+    zero_rule: "when no interaction is detected, the augmented distance equals the no-interaction distance exactly"
+    no_interaction_ablation: "pure manydist custom baseline, nested at gamma=0 or when every gate is zero"
+  defaults:
+    prop_nn: 0.10
+    score: ba
+    decision: prior_corrected
+
+pilot:
+  prop_nn_grid: [0.05, 0.10, 0.20]
+  n_per_moon_default: 90
+  n_per_moon_constraint: "divisible by 9"
+  moon_band_counts: "equal thirds within each moon"
+  nuisance_balance: "exact within each moon-by-band cell"
+  clustering_seeds: "paired across methods and prop_nn values"
+  submitted_normalized_diagnostic: "category-pair mean normalization from submitted text; not the revised method"
+
+reproducibility:
+  missing_values: error
+  ordered_factors: error
+  stochastic_seed: "must be set by each experiment runner"
+  output_rule: "never overwrite historical data/ or data_old/ artifacts"

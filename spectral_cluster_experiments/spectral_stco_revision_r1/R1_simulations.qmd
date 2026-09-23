@@ -1,0 +1,1757 @@
+---
+title: "Revised simulations for spectral clustering of mixed data"
+subtitle: "Reproducible supplementary material for the first revision"
+author: "Supplementary simulation code"
+date: last-modified
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+    code-tools: true
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: false
+---
+
+This document defines the complete revised synthetic-data study.  The three
+experiments are presented in their intended manuscript order:
+
+1. a controlled nonlinear interaction experiment with a matched null;
+2. the code-faithful reconstruction of the original cross-type experiment;
+3. a paired multilevel structured-block experiment.
+
+The first code chunk contains the quantities that are expected to be edited
+when changing the design.  The remaining chunks should normally remain
+unchanged.  Task artifacts are configuration-hashed and are never overwritten
+by an ordinary re-render.
+
+# Analysis parameters
+
+```{r}
+#| label: analysis-parameters
+#| echo: true
+
+analysis_parameters <- list(
+  analysis_version = "R1-synthetic-v1",
+
+  execution = list(
+    # Change to TRUE only when results should actually be produced.
+    run_experiments = FALSE,
+    # Select any subset without changing the statistical configuration or
+    # result directory. Completed experiments are collected together.
+    experiments = c("Simulation_1", "Simulation_2", "Simulation_3"),
+    # `replicates` defines the final study. `replicates_to_run` selects the
+    # current batch and may be changed between renders without changing the
+    # result directory. Existing task artifacts are skipped automatically.
+    replicates = 20L,
+    replicates_to_run = 1:20,
+    workers = 1L,
+    show_progress = TRUE,
+    output_directory = "results/R1_simulations",
+    seed_stride = 100L,
+    cluster_seed_offset = 11L
+  ),
+
+  distance = list(
+    preset = "custom",
+    method_num = "pc_scores",
+    method_cat = "tvd",
+    commensurable = FALSE,
+    interaction = FALSE,
+    gamma = 1,
+    prop_nn = 0.10,
+    score = "ba",
+    decision = "prior_corrected",
+    gate_permutations = 499L,
+    gate_alpha = 0.01,
+    gate_seed_offset = 31L,
+    # Ahmad--Dey (2007) used five equal-width intervals unless stated
+    # otherwise when computing numerical attribute significance.
+    ahmad_dey_bins = 5L
+  ),
+
+  neighbour_sensitivity = list(
+    # The confirmatory analysis uses prop_nn = 0.10 above. This targeted
+    # grid addresses the reviewers' request without repeating every external
+    # comparator at every neighbour proportion.
+    enabled = TRUE,
+    proportions = c(0.02, 0.05, 0.10, 0.20),
+    experiment_1_configuration = "reference",
+    experiment_2_sample_size = 500L,
+    experiment_3_n_per_group = 120L,
+    experiment_3_profile_strength = 0.35
+  ),
+
+  spectral = list(
+    affinity = "global_gaussian",
+    primary_bandwidth_multiplier = 1,
+    sensitivity_bandwidth_multipliers = c(0.5, 1, 2),
+    kmeans_nstart = 100L,
+    kmeans_iter_max = 100L,
+    kmeans_algorithm = "Hartigan-Wong"
+  ),
+
+  methods = c(
+    Gated_active_average_SC = TRUE,
+    Package_no_interaction_SC = TRUE,
+    Gower_SC = TRUE,
+    Modified_Gower_SC = TRUE,
+    Euclidean_onehot_SC = TRUE,
+    Ahmad_Dey_SC = TRUE,
+    # Optional robustness comparator; it was not requested by the reviewers.
+    DKSS_SC = FALSE
+  ),
+
+  experiment_1 = list(
+    label = "Controlled nonlinear interaction and matched null",
+    seed_base = 26100000L,
+    n_per_moon = 180L,
+    moon_noise_sd = 0.08,
+    sensor_noise_sd = 0.02,
+    band_probabilities = c(A = 0.10, B = 0.45, C = 0.45),
+    p_numeric_max = 10L,
+    q_categorical_max = 5L,
+    configurations = data.frame(
+      configuration = c(
+        "reference", "numeric_medium", "numeric_high",
+        "categorical_high", "joint_high"
+      ),
+      p_numeric = c(2L, 6L, 10L, 2L, 10L),
+      q_categorical = c(2L, 2L, 2L, 5L, 5L),
+      stringsAsFactors = FALSE
+    ),
+    interaction_states = c("signal", "null"),
+    bandwidth_configuration = "reference"
+  ),
+
+  experiment_2 = list(
+    label = "Original cross-type simulation reconstructed from executable code",
+    seed_base = 26200000L,
+    sample_sizes = c(500L, 1000L),
+    p_numeric = 6L,
+    q_categorical = 4L,
+    bandwidth_sample_size = 500L
+  ),
+
+  experiment_3 = list(
+    label = "Paired multilevel structured blocks",
+    seed_base = 26300000L,
+    primary_n_per_group = 120L,
+    sample_sizes_per_group = c(120L, 240L),
+    primary_profile_strength = 0.35,
+    profile_strengths = c(0.20, 0.35, 0.50),
+    p_numeric = 12L,
+    categorical_levels = rep(c(2L, 3L, 4L), 4L),
+    numeric_loading = 0.72,
+    numeric_mean_scale = 0.65,
+    categorical_model = "nominal_association_blocks",
+    categorical_copy_probability = 0.85,
+    arms = c("aligned", "decoupled")
+  )
+)
+```
+
+Setting `run_experiments = FALSE` makes an ordinary render safe: it constructs
+the task plan and reads any artifacts already present, but does not launch
+simulation jobs.  To produce the results, change that single value to `TRUE`.
+The `workers` value controls task-level parallelism.
+The `execution$experiments` vector controls only which missing task artifacts
+are produced by a render. It is deliberately excluded from the configuration
+hash, so Simulation 1, 2, and 3 can be run separately and accumulated in the
+same result directory. Collection and summary chunks always inspect the full
+three-experiment plan.
+
+Likewise, `execution$replicates` defines the final 20-replicate study, whereas
+`execution$replicates_to_run` selects only the current batch. The default first
+batch is `1:5`; subsequent renders can use `6:10`, `11:15`, and `16:20`, or
+cumulative selections such as `1:10`. The batch selector is excluded from the
+configuration hash, and every existing task artifact is skipped, so all
+batches accumulate safely in the same result directory and the summaries
+report all completed replicates.
+
+With `execution$show_progress = TRUE`, an execution render reports the number
+of selected, previously completed, and remaining task artifacts. With one
+worker, the progress bar advances after every task; with multiple workers, it
+advances after each parallel wave. The bar counts tasks rather than estimated
+clock time because scenarios have different computational costs.
+
+The primary neighbour proportion is fixed in advance at
+`distance$prop_nn = 0.10`. The targeted sensitivity analysis evaluates
+`neighbour_sensitivity$proportions` only for the gated method and only in the
+representative conditions declared above. For categorical levels $a$ and
+$b$, the realized neighbourhood size is
+
+$$
+k_{ab}=\max\{1,\lfloor \pi_{nn}(m_{ab}-1)\rfloor\},
+$$
+
+where $m_{ab}$ is the number of observations whose category is $a$ or
+$b$. Thus the same proportion adapts to the available sample size for each
+level pair rather than imposing a common fixed number of neighbours.
+
+# Reproducible setup
+
+```{r}
+#| label: setup
+#| include: true
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+input_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) "")
+if (!length(input_file) || is.na(input_file[[1L]]) || !nzchar(input_file[[1L]])) {
+  input_file <- file.path(
+    getwd(),
+    "spectral_cluster_experiments", "spectral_stco_revision_r1",
+    "R1_simulations.qmd"
+  )
+}
+input_file <- input_file[[1L]]
+input_file <- normalizePath(input_file, mustWork = TRUE)
+revision_directory <- dirname(input_file)
+repository_root <- dirname(dirname(revision_directory))
+full_directory <- file.path(revision_directory, "full")
+moon_directory <- file.path(revision_directory, "moon_scaling")
+structured_directory <- file.path(revision_directory, "structured_blocks_pilot")
+
+required_packages <- c("devtools", "digest", "knitr", "mclust", "mvtnorm", "yaml")
+missing_packages <- required_packages[!vapply(
+  required_packages, requireNamespace, logical(1), quietly = TRUE
+)]
+if (length(missing_packages)) {
+  stop("Missing required packages: ", paste(missing_packages, collapse = ", "))
+}
+
+devtools::load_all(file.path(repository_root, "manydist"), quiet = TRUE)
+
+source_files <- c(
+  bridge = file.path(revision_directory, "R", "manydist_bridge.R"),
+  gate_helpers = file.path(revision_directory, "R", "distance_r1.R"),
+  full_scenarios = file.path(full_directory, "R", "scenarios.R"),
+  full_engine = file.path(full_directory, "R", "engine.R"),
+  moon_generator = file.path(moon_directory, "R", "generator.R"),
+  gated_distance = file.path(moon_directory, "R", "gated_distance.R"),
+  structured_generator = file.path(structured_directory, "R", "generator.R")
+)
+invisible(lapply(source_files, source))
+
+source_hashes <- unname(tools::md5sum(source_files))
+names(source_hashes) <- names(source_files)
+
+# Runtime choices do not define a new statistical analysis.
+analysis_contract <- analysis_parameters
+analysis_contract$execution$run_experiments <- NULL
+analysis_contract$execution$experiments <- NULL
+analysis_contract$execution$replicates_to_run <- NULL
+analysis_contract$execution$workers <- NULL
+analysis_contract$execution$show_progress <- NULL
+analysis_contract$execution$output_directory <- NULL
+configuration_tag <- substr(
+  digest::digest(
+    list(parameters = analysis_contract, source_hashes = source_hashes),
+    algo = "xxhash64"
+  ),
+  1L,
+  12L
+)
+
+result_directory <- file.path(
+  revision_directory,
+  analysis_parameters$execution$output_directory,
+  configuration_tag
+)
+
+kmeans_specification <- list(
+  nstart = analysis_parameters$spectral$kmeans_nstart,
+  iter_max = analysis_parameters$spectral$kmeans_iter_max,
+  algorithm = analysis_parameters$spectral$kmeans_algorithm
+)
+```
+
+The analysis uses the local `manydist` source tree.  The following checksums
+identify every sourced implementation file.
+
+```{r}
+#| label: source-manifest
+
+knitr::kable(data.frame(
+  component = names(source_files),
+  file = unname(source_files),
+  md5 = source_hashes,
+  row.names = NULL
+))
+```
+
+# Common distance and clustering construction
+
+The package baseline is
+
+```{r}
+#| label: baseline-specification
+#| eval: false
+
+manydist::mdist(
+  x = data,
+  preset = "custom",
+  method_num = "pc_scores",
+  method_cat = "tvd",
+  commensurable = FALSE,
+  interaction = FALSE,
+  ncomp = number_of_numeric_variables
+)
+```
+
+For active gate set $A$, the paper-specific extension is
+
+$$
+D_{\mathrm{R1}}
+=D_{\mathrm{base}}
++\gamma\,\overline D_{\mathrm{num}}
+  \left\{|A|^{-1}\sum_{j\in A}D_{\mathrm{int},j}\right\}.
+$$
+
+If $A$ is empty, the returned matrix is bit-for-bit identical to the package
+baseline.  All spectral methods use the Ng--Jordan--Weiss normalized spectral
+construction with a global Gaussian affinity.  The primary bandwidth is the
+median positive off-diagonal distance.
+
+The synthetic study deliberately holds the clustering algorithm fixed.  Every
+enabled method supplies a pairwise dissimilarity to the same spectral routine.
+Centroid-based algorithms such as k-prototypes and KAMILA are therefore not
+mixed into the primary simulation tables; if reported elsewhere, they are
+labelled separately as algorithm-level benchmarks.
+
+The Ahmad--Dey comparator uses the pairwise dissimilarity in Equation (3.3.1)
+of [Ahmad and Dey (2007)](https://doi.org/10.1016/j.datak.2007.03.016), rather
+than their k-means-type optimization.  Numerical variables are min--max
+normalized and divided into five equal-width intervals solely to estimate
+their association-based significance weights.  Categorical level distances
+are the average total-variation distances between conditional profiles over
+the remaining categorical variables and discretized numerical variables.  The
+resulting pairwise matrix is then clustered by the same spectral routine used
+for every other method.  This preserves the shared TVD building block while
+isolating differences in numerical representation, weighting, and the gated
+cross-type augmentation.
+
+```{r}
+#| label: common-functions
+
+r1_sanitize_id <- function(x) {
+  gsub("[^A-Za-z0-9_-]+", "-", as.character(x))
+}
+
+r1_global_gaussian <- function(distance, multiplier = 1) {
+  distance <- full_validate_distance(distance)
+  positive <- distance[upper.tri(distance) & distance > 0]
+  if (!length(positive)) stop("Distance has no positive off-diagonal values.")
+  sigma <- as.numeric(multiplier) * stats::median(positive)
+  if (!is.finite(sigma) || sigma <= 0) stop("Invalid Gaussian bandwidth.")
+  affinity <- exp(-(distance^2) / (2 * sigma^2))
+  diag(affinity) <- 0
+  list(matrix = affinity, sigma = sigma)
+}
+
+r1_cluster_distance <- function(distance, truth, seed, bandwidth_multiplier = 1) {
+  affinity <- r1_global_gaussian(distance, bandwidth_multiplier)
+  fit <- full_spectral_cluster(
+    affinity$matrix,
+    k = nlevels(droplevels(factor(truth))),
+    seed = seed,
+    kmeans_specification = kmeans_specification
+  )
+  list(
+    cluster = fit$cluster,
+    ARI = mclust::adjustedRandIndex(fit$cluster, truth),
+    sigma = affinity$sigma,
+    objective = fit$objective,
+    iterations = fit$iterations,
+    ifault = fit$ifault
+  )
+}
+
+r1_alignment_ratio <- function(distance, partition) {
+  distance <- full_validate_distance(distance)
+  upper <- upper.tri(distance)
+  same <- outer(partition, partition, `==`)[upper]
+  values <- distance[upper]
+  within <- mean(values[same])
+  between <- mean(values[!same])
+  if (within > 0) between / within else NA_real_
+}
+
+r1_enabled <- function(method) {
+  isTRUE(unname(analysis_parameters$methods[[method]]))
+}
+
+r1_equal_width_factor <- function(x, bins) {
+  x <- as.numeric(x)
+  observed <- range(x, finite = TRUE)
+  if (!all(is.finite(observed)) || observed[[1L]] == observed[[2L]]) {
+    return(factor(rep("constant", length(x))))
+  }
+  factor(cut(
+    x,
+    breaks = seq(observed[[1L]], observed[[2L]], length.out = bins + 1L),
+    include.lowest = TRUE,
+    ordered_result = FALSE
+  ))
+}
+
+r1_minmax_scale <- function(x) {
+  x <- as.numeric(x)
+  observed <- range(x, finite = TRUE)
+  if (!all(is.finite(observed)) || observed[[1L]] == observed[[2L]]) {
+    return(rep(0, length(x)))
+  }
+  (x - observed[[1L]]) / (observed[[2L]] - observed[[1L]])
+}
+
+# Pairwise form of Ahmad and Dey (2007), Equation (3.3.1).  The categorical
+# level dissimilarities are total-variation distances between conditional
+# profiles. `manydist` computes those profiles and level deltas; this wrapper
+# adds the paper's five-bin numerical significance weights and squared
+# pairwise aggregation before passing the result to spectral clustering.
+r1_ahmad_dey_distance <- function(data, bins = 5L) {
+  bins <- as.integer(bins)
+  if (!is.finite(bins) || bins < 2L) stop("`bins` must be at least two.")
+
+  numeric_columns <- vapply(data, is.numeric, logical(1))
+  categorical_columns <- vapply(data, is.factor, logical(1))
+  numeric_data <- data[, numeric_columns, drop = FALSE]
+  categorical_data <- data[, categorical_columns, drop = FALSE]
+
+  discretized_numeric <- lapply(numeric_data, r1_equal_width_factor, bins = bins)
+  names(discretized_numeric) <- names(numeric_data)
+  discrete_profiles <- data.frame(
+    categorical_data,
+    discretized_numeric,
+    check.names = FALSE
+  )
+  discrete_profiles[] <- lapply(discrete_profiles, function(x) {
+    droplevels(factor(x))
+  })
+
+  if (!ncol(discrete_profiles)) {
+    stop("Ahmad--Dey distance requires at least one input variable.")
+  }
+  if (ncol(discrete_profiles) == 1L) {
+    stop("Ahmad--Dey conditional profiles require at least two variables.")
+  }
+
+  delta_fit <- manydist:::cat_delta(
+    discrete_profiles,
+    method_cat = "tvd"
+  )
+  delta <- as.matrix(delta_fit$tvd)
+  level_counts <- vapply(discrete_profiles, nlevels, integer(1))
+  stops <- cumsum(level_counts)
+  starts <- c(1L, head(stops, -1L) + 1L)
+  positions <- Map(seq.int, starts, stops)
+
+  n <- nrow(data)
+  categorical_distance <- matrix(0, n, n)
+  if (ncol(categorical_data)) {
+    for (column_index in seq_len(ncol(categorical_data))) {
+      levels_index <- positions[[column_index]]
+      observed_index <- as.integer(discrete_profiles[[column_index]])
+      contribution <- delta[levels_index, levels_index, drop = FALSE][
+        observed_index,
+        observed_index,
+        drop = FALSE
+      ]
+      categorical_distance <- categorical_distance + contribution^2
+    }
+  }
+
+  numeric_distance <- matrix(0, n, n)
+  numeric_weights <- numeric(0)
+  if (ncol(numeric_data)) {
+    numeric_profile_index <- ncol(categorical_data) + seq_len(ncol(numeric_data))
+    numeric_weights <- vapply(numeric_profile_index, function(column_index) {
+      block <- delta[
+        positions[[column_index]],
+        positions[[column_index]],
+        drop = FALSE
+      ]
+      if (nrow(block) < 2L) 0 else mean(block[upper.tri(block)])
+    }, numeric(1))
+    scaled_numeric <- as.data.frame(lapply(numeric_data, r1_minmax_scale))
+    weighted_numeric <- sweep(
+      as.matrix(scaled_numeric),
+      2L,
+      numeric_weights,
+      `*`
+    )
+    numeric_distance <- as.matrix(stats::dist(weighted_numeric))^2
+  }
+
+  distance <- numeric_distance + categorical_distance
+  diag(distance) <- 0
+  attributes(distance)$numeric_weights <- numeric_weights
+  full_validate_distance(distance, "Ahmad--Dey")
+}
+```
+
+# Deterministic task plan
+
+Signal/null states in Experiment 1 and aligned/decoupled arms in Experiment 3
+use the same data seed.  This makes their comparisons paired rather than
+comparisons of unrelated Monte Carlo samples.
+
+```{r}
+#| label: build-task-plan
+
+r1_build_task_plan <- function(parameters) {
+  replicates <- seq_len(as.integer(parameters$execution$replicates))
+  stride <- as.integer(parameters$execution$seed_stride)
+  neighbour_sensitivity <- parameters$neighbour_sensitivity
+  tasks <- list()
+  task_index <- 0L
+
+  experiment_1 <- parameters$experiment_1
+  for (configuration_index in seq_len(nrow(experiment_1$configurations))) {
+    configuration <- experiment_1$configurations[configuration_index, , drop = FALSE]
+    for (replicate in replicates) {
+      data_seed <- experiment_1$seed_base +
+        configuration_index * 100000L + replicate * stride
+      for (state in experiment_1$interaction_states) {
+        task_index <- task_index + 1L
+        tasks[[task_index]] <- list(
+          experiment = "Simulation_1",
+          condition = as.character(configuration$configuration),
+          state = state,
+          replicate = replicate,
+          data_seed = data_seed,
+          p_numeric = as.integer(configuration$p_numeric),
+          q_categorical = as.integer(configuration$q_categorical),
+          bandwidth_sensitive = identical(
+            as.character(configuration$configuration),
+            experiment_1$bandwidth_configuration
+          ),
+          neighbour_sensitive = isTRUE(neighbour_sensitivity$enabled) &&
+            identical(
+              as.character(configuration$configuration),
+              neighbour_sensitivity$experiment_1_configuration
+            )
+        )
+      }
+    }
+  }
+
+  experiment_2 <- parameters$experiment_2
+  for (size_index in seq_along(experiment_2$sample_sizes)) {
+    n <- as.integer(experiment_2$sample_sizes[[size_index]])
+    for (replicate in replicates) {
+      task_index <- task_index + 1L
+      tasks[[task_index]] <- list(
+        experiment = "Simulation_2",
+        condition = paste0("n", n),
+        state = "interaction",
+        replicate = replicate,
+        data_seed = experiment_2$seed_base +
+          size_index * 100000L + replicate * stride,
+        n = n,
+        bandwidth_sensitive = n == experiment_2$bandwidth_sample_size,
+        neighbour_sensitive = isTRUE(neighbour_sensitivity$enabled) &&
+          n == neighbour_sensitivity$experiment_2_sample_size
+      )
+    }
+  }
+
+  experiment_3 <- parameters$experiment_3
+  condition_grid <- unique(rbind(
+    data.frame(
+      n_per_group = experiment_3$sample_sizes_per_group,
+      profile_strength = experiment_3$primary_profile_strength
+    ),
+    data.frame(
+      n_per_group = experiment_3$primary_n_per_group,
+      profile_strength = experiment_3$profile_strengths
+    )
+  ))
+  rownames(condition_grid) <- NULL
+
+  for (condition_index in seq_len(nrow(condition_grid))) {
+    n_per_group <- as.integer(condition_grid$n_per_group[[condition_index]])
+    profile_strength <- as.numeric(condition_grid$profile_strength[[condition_index]])
+    condition <- paste0(
+      "npg", n_per_group,
+      "_profile", format(profile_strength, nsmall = 2, trim = TRUE)
+    )
+    for (replicate in replicates) {
+      data_seed <- experiment_3$seed_base +
+        condition_index * 100000L + replicate * stride
+      for (arm in experiment_3$arms) {
+        task_index <- task_index + 1L
+        tasks[[task_index]] <- list(
+          experiment = "Simulation_3",
+          condition = condition,
+          state = arm,
+          replicate = replicate,
+          data_seed = data_seed,
+          n_per_group = n_per_group,
+          profile_strength = profile_strength,
+          bandwidth_sensitive = n_per_group == experiment_3$primary_n_per_group &&
+            isTRUE(all.equal(
+              profile_strength,
+              experiment_3$primary_profile_strength
+            )),
+          neighbour_sensitive = isTRUE(neighbour_sensitivity$enabled) &&
+            n_per_group == neighbour_sensitivity$experiment_3_n_per_group &&
+            isTRUE(all.equal(
+              profile_strength,
+              neighbour_sensitivity$experiment_3_profile_strength
+            ))
+        )
+      }
+    }
+  }
+
+  for (index in seq_along(tasks)) {
+    task <- tasks[[index]]
+    task$task_id <- index
+    task$key <- paste(
+      task$experiment,
+      r1_sanitize_id(task$condition),
+      r1_sanitize_id(task$state),
+      sprintf("rep%03d", task$replicate),
+      sep = "__"
+    )
+    tasks[[index]] <- task
+  }
+  tasks
+}
+
+task_plan <- r1_build_task_plan(analysis_parameters)
+valid_experiments <- unique(vapply(
+  task_plan,
+  `[[`,
+  character(1),
+  "experiment"
+))
+selected_experiments <- unique(as.character(
+  analysis_parameters$execution$experiments
+))
+unknown_experiments <- setdiff(selected_experiments, valid_experiments)
+if (!length(selected_experiments) || length(unknown_experiments)) {
+  stop(
+    "`execution$experiments` must be a non-empty subset of: ",
+    paste(valid_experiments, collapse = ", "),
+    if (length(unknown_experiments)) {
+      paste0(". Unknown values: ", paste(unknown_experiments, collapse = ", "))
+    } else {
+      "."
+    },
+    call. = FALSE
+  )
+}
+requested_replicates <- analysis_parameters$execution$replicates_to_run
+if (!is.numeric(requested_replicates) || !length(requested_replicates) ||
+    anyNA(requested_replicates) ||
+    any(requested_replicates != as.integer(requested_replicates)) ||
+    any(requested_replicates < 1L) ||
+    any(requested_replicates > analysis_parameters$execution$replicates)) {
+  stop(
+    "`execution$replicates_to_run` must contain integers between 1 and ",
+    analysis_parameters$execution$replicates,
+    ".",
+    call. = FALSE
+  )
+}
+selected_replicates <- sort(unique(as.integer(requested_replicates)))
+execution_task_plan <- Filter(
+  function(task) {
+    task$experiment %in% selected_experiments &&
+      task$replicate %in% selected_replicates
+  },
+  task_plan
+)
+task_table <- do.call(rbind, lapply(task_plan, function(task) {
+  data.frame(
+    task_id = task$task_id,
+    experiment = task$experiment,
+    condition = task$condition,
+    state = task$state,
+    replicate = task$replicate,
+    data_seed = task$data_seed,
+    bandwidth_sensitive = task$bandwidth_sensitive,
+    neighbour_sensitive = task$neighbour_sensitive,
+    selected_for_execution = task$experiment %in% selected_experiments &&
+      task$replicate %in% selected_replicates,
+    stringsAsFactors = FALSE
+  )
+}))
+
+task_table$planned_tasks <- 1L
+task_table$selected_tasks <- as.integer(task_table$selected_for_execution)
+task_counts <- stats::aggregate(
+  cbind(planned_tasks, selected_tasks) ~ experiment + condition + state,
+  task_table,
+  sum
+)
+knitr::kable(task_counts)
+```
+
+# Data generation
+
+## Simulation 1: nonlinear interaction mechanism
+
+The first experiment extends the interaction-moons example.  Six generating
+groups are the combinations of two moon curves and three arc bands.  Extra
+numerical variables are noisy projections of the same latent geometry; extra
+categorical variables are exactly balanced nuisance factors.  The matched
+null permutes the complete categorical rows, preserving both marginal blocks
+while removing their cross-type alignment.
+
+## Simulation 2: original executable construction
+
+The second experiment follows the historical `simulation xBIG.R` code.  It
+uses six numerical variables, four categorical variables, and three groups
+defined by the coefficient associated with the first two categorical
+variables.  Numerical variables `V3`, `V2`, and `V1` are constructed
+recursively from later numerical coordinates.  The fourth and third
+categorical variables are retained as nuisance variables.
+
+## Simulation 3: multilevel structured blocks
+
+The final experiment has three numerical covariance/loading regimes and three
+nominal association regimes. Its 12 categorical variables consist of four
+binary, four three-level, and four four-level factors. The aligned and
+decoupled arms reuse exactly the same rows within each block; only their
+matching changes.
+
+```{r}
+#| label: generate-task-data
+
+r1_generate_task_data <- function(task) {
+  if (identical(task$experiment, "Simulation_1")) {
+    specification <- analysis_parameters$experiment_1
+    generated <- moon_scaling_generate(
+      seed = task$data_seed,
+      n_per_moon = specification$n_per_moon,
+      p_numeric = task$p_numeric,
+      q_categorical = task$q_categorical,
+      interaction_state = task$state,
+      moon_noise_sd = specification$moon_noise_sd,
+      sensor_noise_sd = specification$sensor_noise_sd,
+      band_probabilities = specification$band_probabilities,
+      p_numeric_max = specification$p_numeric_max,
+      q_categorical_max = specification$q_categorical_max
+    )
+    return(list(
+      x = generated$data,
+      truth = droplevels(factor(generated$truth)),
+      diagnostics = generated$diagnostics
+    ))
+  }
+
+  if (identical(task$experiment, "Simulation_2")) {
+    specification <- analysis_parameters$experiment_2
+    return(full_make_legacy_simulation_2(
+      parameters = list(
+        n = task$n,
+        p_numeric = specification$p_numeric,
+        q_categorical = specification$q_categorical
+      ),
+      seed = task$data_seed
+    ))
+  }
+
+  if (identical(task$experiment, "Simulation_3")) {
+    specification <- analysis_parameters$experiment_3
+    pair <- structured_blocks_make_pair(
+      specification = list(
+        n_per_group = task$n_per_group,
+        p_numeric = specification$p_numeric,
+        categorical_levels = specification$categorical_levels,
+        numeric_loading = specification$numeric_loading,
+        categorical_model = specification$categorical_model,
+        categorical_copy_probability =
+          specification$categorical_copy_probability,
+        categorical_profile_strength = task$profile_strength,
+        numeric_mean_scale = specification$numeric_mean_scale
+      ),
+      seed = task$data_seed
+    )
+    selected <- pair[[task$state]]
+    return(list(
+      x = selected$x,
+      truth = droplevels(factor(selected$truth)),
+      diagnostics = c(
+        list(
+          generator = "structured_multilevel_blocks_v1",
+          arm = selected$arm,
+          categorical_regime_truth_ARI = mclust::adjustedRandIndex(
+            selected$categorical_regime,
+            selected$truth
+          )
+        ),
+        pair$diagnostics
+      )
+    ))
+  }
+
+  stop("Unknown experiment: ", task$experiment, call. = FALSE)
+}
+```
+
+# Production of task-level results
+
+Each task produces one RDS artifact containing the method results, gate
+decisions, estimated-partition diagnostics, generation metadata, source
+hashes, and session provenance.  Existing artifacts under the same
+configuration tag are skipped.
+
+```{r}
+#| label: task-runner-functions
+
+r1_method_labels <- c(
+  Gated_active_average_SC = "Gated active average",
+  Package_no_interaction_SC = "Package no interaction",
+  Gower_SC = "Gower",
+  Modified_Gower_SC = "Modified Gower",
+  Euclidean_onehot_SC = "Euclidean one-hot",
+  Ahmad_Dey_SC = "Ahmad--Dey distance",
+  DKSS_SC = "DKSS"
+)
+
+r1_task_file <- function(task) {
+  file.path(result_directory, paste0(task$key, ".rds"))
+}
+
+r1_distance_methods <- function(data, gated_fit) {
+  methods <- list()
+  errors <- list()
+  seconds <- numeric()
+
+  add_distance <- function(name, expression) {
+    started <- proc.time()[[3L]]
+    fitted <- tryCatch(
+      list(value = full_validate_distance(force(expression), name), error = NA_character_),
+      error = function(e) list(value = NULL, error = conditionMessage(e))
+    )
+    methods[[name]] <<- fitted$value
+    errors[[name]] <<- fitted$error
+    seconds[[name]] <<- proc.time()[[3L]] - started
+  }
+
+  if (r1_enabled("Gated_active_average_SC")) {
+    add_distance("Gated_active_average_SC", gated_fit$distance)
+  }
+  if (r1_enabled("Package_no_interaction_SC")) {
+    add_distance(
+      "Package_no_interaction_SC",
+      gated_fit$distance_no_interaction
+    )
+  }
+  if (r1_enabled("Gower_SC")) {
+    add_distance(
+      "Gower_SC",
+      as.matrix(manydist::mdist(data, preset = "gower")$distance)
+    )
+  }
+  if (r1_enabled("Modified_Gower_SC")) {
+    add_distance(
+      "Modified_Gower_SC",
+      as.matrix(manydist::mdist(data, preset = "mod_gower")$distance)
+    )
+  }
+  if (r1_enabled("Euclidean_onehot_SC")) {
+    add_distance(
+      "Euclidean_onehot_SC",
+      as.matrix(manydist::mdist(data, preset = "euclidean")$distance)
+    )
+  }
+  if (r1_enabled("Ahmad_Dey_SC")) {
+    add_distance(
+      "Ahmad_Dey_SC",
+      r1_ahmad_dey_distance(
+        data,
+        bins = analysis_parameters$distance$ahmad_dey_bins
+      )
+    )
+  }
+  if (r1_enabled("DKSS_SC")) {
+    add_distance(
+      "DKSS_SC",
+      as.matrix(manydist::mdist(data, preset = "dkss")$distance)
+    )
+  }
+
+  list(distances = methods, errors = errors, seconds = seconds)
+}
+
+r1_result_row <- function(task, method, bandwidth_multiplier, score = NULL,
+                          distance_seconds = NA_real_, clustering_seconds = NA_real_,
+                          error = NA_character_) {
+  data.frame(
+    task_key = task$key,
+    experiment = task$experiment,
+    condition = task$condition,
+    state = task$state,
+    replicate = task$replicate,
+    data_seed = task$data_seed,
+    method = method,
+    method_label = unname(r1_method_labels[[method]]),
+    bandwidth_multiplier = bandwidth_multiplier,
+    ARI = if (is.null(score)) NA_real_ else score$ARI,
+    affinity_sigma = if (is.null(score)) NA_real_ else score$sigma,
+    objective = if (is.null(score)) NA_real_ else score$objective,
+    iterations = if (is.null(score)) NA_integer_ else score$iterations,
+    ifault = if (is.null(score)) NA_integer_ else score$ifault,
+    distance_seconds = distance_seconds,
+    clustering_seconds = clustering_seconds,
+    error = error,
+    stringsAsFactors = FALSE
+  )
+}
+
+r1_pairwise_k_values <- function(data, prop_nn) {
+  categorical <- data[vapply(data, is.factor, logical(1))]
+  values <- unlist(lapply(categorical, function(labels) {
+    pairwise_k <- .scmix_pairwise_k(labels, prop_nn)
+    pairwise_k[upper.tri(pairwise_k)]
+  }), use.names = FALSE)
+  as.integer(values[is.finite(values)])
+}
+
+r1_upper_correlation <- function(candidate, reference) {
+  candidate_values <- candidate[upper.tri(candidate)]
+  reference_values <- reference[upper.tri(reference)]
+  if (isTRUE(all.equal(candidate_values, reference_values, tolerance = 1e-12))) {
+    return(1)
+  }
+  if (!length(candidate_values) ||
+      stats::sd(candidate_values) <= sqrt(.Machine$double.eps) ||
+      stats::sd(reference_values) <= sqrt(.Machine$double.eps)) {
+    return(NA_real_)
+  }
+  stats::cor(candidate_values, reference_values)
+}
+
+r1_relative_frobenius <- function(candidate, reference) {
+  denominator <- norm(reference, type = "F")
+  numerator <- norm(candidate - reference, type = "F")
+  if (denominator <= sqrt(.Machine$double.eps)) {
+    return(if (numerator <= sqrt(.Machine$double.eps)) 0 else Inf)
+  }
+  numerator / denominator
+}
+
+r1_gate_jaccard <- function(candidate, reference) {
+  candidate_active <- names(candidate)[candidate]
+  reference_active <- names(reference)[reference]
+  active_union <- union(candidate_active, reference_active)
+  if (!length(active_union)) return(1)
+  length(intersect(candidate_active, reference_active)) / length(active_union)
+}
+
+r1_run_neighbour_sensitivity <- function(
+    task,
+    data,
+    truth,
+    primary_fit,
+    primary_partition,
+    primary_fit_seconds
+) {
+  specification <- analysis_parameters$neighbour_sensitivity
+  empty <- list(results = data.frame(), gates = data.frame())
+  if (!isTRUE(specification$enabled) || !isTRUE(task$neighbour_sensitive)) {
+    return(empty)
+  }
+
+  distance_specification <- analysis_parameters$distance
+  primary_prop <- distance_specification$prop_nn
+  proportions <- sort(unique(c(specification$proportions, primary_prop)))
+  cluster_seed <- task$data_seed +
+    analysis_parameters$execution$cluster_seed_offset
+  gate_seed <- task$data_seed + distance_specification$gate_seed_offset
+
+  fits <- vector("list", length(proportions))
+  partitions <- vector("list", length(proportions))
+  fit_seconds <- rep(NA_real_, length(proportions))
+  errors <- rep(NA_character_, length(proportions))
+
+  for (index in seq_along(proportions)) {
+    prop_nn <- proportions[[index]]
+    is_primary <- isTRUE(all.equal(prop_nn, primary_prop))
+
+    if (is_primary) {
+      fitted <- list(value = primary_fit, error = NA_character_)
+      fit_seconds[[index]] <- primary_fit_seconds
+    } else {
+      started <- proc.time()[[3L]]
+      fitted <- tryCatch(
+        list(
+          value = scmix_gated_active_distance(
+            data = data,
+            gamma = distance_specification$gamma,
+            prop_nn = prop_nn,
+            score = distance_specification$score,
+            decision = distance_specification$decision,
+            gate_permutations = distance_specification$gate_permutations,
+            gate_alpha = distance_specification$gate_alpha,
+            # The common seed gives every proportion the same permutations.
+            gate_seed = gate_seed
+          ),
+          error = NA_character_
+        ),
+        error = function(e) list(value = NULL, error = conditionMessage(e))
+      )
+      fit_seconds[[index]] <- proc.time()[[3L]] - started
+    }
+
+    fits[[index]] <- fitted$value
+    errors[[index]] <- fitted$error
+    if (is.null(fitted$value)) next
+
+    if (is_primary && !is.null(primary_partition)) {
+      partitions[[index]] <- primary_partition
+    } else {
+      clustered <- tryCatch(
+        r1_cluster_distance(
+          fitted$value$distance,
+          truth,
+          cluster_seed,
+          bandwidth_multiplier =
+            analysis_parameters$spectral$primary_bandwidth_multiplier
+        ),
+        error = function(e) e
+      )
+      if (inherits(clustered, "error")) {
+        errors[[index]] <- conditionMessage(clustered)
+      } else {
+        partitions[[index]] <- clustered$cluster
+      }
+    }
+  }
+
+  primary_index <- which(vapply(
+    proportions,
+    function(value) isTRUE(all.equal(value, primary_prop)),
+    logical(1)
+  ))[[1L]]
+  reference_fit <- fits[[primary_index]]
+  reference_partition <- partitions[[primary_index]]
+
+  result_rows <- vector("list", length(proportions))
+  gate_rows <- list()
+  gate_index <- 0L
+
+  for (index in seq_along(proportions)) {
+    prop_nn <- proportions[[index]]
+    fit <- fits[[index]]
+    partition <- partitions[[index]]
+    k_values <- r1_pairwise_k_values(data, prop_nn)
+
+    result_rows[[index]] <- data.frame(
+      task_key = task$key,
+      experiment = task$experiment,
+      condition = task$condition,
+      state = task$state,
+      replicate = task$replicate,
+      data_seed = task$data_seed,
+      prop_nn = prop_nn,
+      primary_prop = isTRUE(all.equal(prop_nn, primary_prop)),
+      realized_k_min = if (length(k_values)) min(k_values) else NA_integer_,
+      realized_k_median = if (length(k_values)) stats::median(k_values) else NA_real_,
+      realized_k_max = if (length(k_values)) max(k_values) else NA_integer_,
+      ARI = if (is.null(partition)) NA_real_ else
+        mclust::adjustedRandIndex(partition, truth),
+      active_count = if (is.null(fit)) NA_integer_ else
+        fit$diagnostics$active_count,
+      exact_baseline_recovery = if (is.null(fit)) NA else
+        identical(fit$distance, fit$distance_no_interaction),
+      gate_jaccard_to_primary = if (is.null(fit)) NA_real_ else
+        r1_gate_jaccard(fit$gate$detected, reference_fit$gate$detected),
+      partition_ARI_to_primary = if (
+        is.null(partition) || is.null(reference_partition)
+      ) NA_real_ else mclust::adjustedRandIndex(partition, reference_partition),
+      interaction_correlation_to_primary = if (is.null(fit)) NA_real_ else
+        r1_upper_correlation(
+          fit$components$interaction_active_average,
+          reference_fit$components$interaction_active_average
+        ),
+      interaction_relative_difference_to_primary = if (is.null(fit)) NA_real_ else
+        r1_relative_frobenius(
+          fit$components$interaction_active_average,
+          reference_fit$components$interaction_active_average
+        ),
+      final_distance_correlation_to_primary = if (is.null(fit)) NA_real_ else
+        r1_upper_correlation(fit$distance, reference_fit$distance),
+      final_distance_relative_difference_to_primary = if (is.null(fit)) NA_real_ else
+        r1_relative_frobenius(fit$distance, reference_fit$distance),
+      distance_seconds = fit_seconds[[index]],
+      error = errors[[index]],
+      stringsAsFactors = FALSE
+    )
+
+    if (!is.null(fit)) {
+      gate_index <- gate_index + 1L
+      gate_rows[[gate_index]] <- data.frame(
+        task_key = task$key,
+        experiment = task$experiment,
+        condition = task$condition,
+        state = task$state,
+        replicate = task$replicate,
+        prop_nn = prop_nn,
+        variable = names(fit$gate$detected),
+        detected = unname(fit$gate$detected),
+        adjusted_p_value = unname(fit$gate$p_value),
+        statistic = unname(fit$gate$statistic),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  list(
+    results = do.call(rbind, result_rows),
+    gates = if (length(gate_rows)) do.call(rbind, gate_rows) else data.frame()
+  )
+}
+
+r1_run_task <- function(task) {
+  output_file <- r1_task_file(task)
+  if (file.exists(output_file)) return(output_file)
+  dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
+
+  started_at <- Sys.time()
+  generated <- r1_generate_task_data(task)
+  data <- generated$x
+  truth <- droplevels(factor(generated$truth))
+  distance_specification <- analysis_parameters$distance
+
+  gated_started <- proc.time()[[3L]]
+  gated_fit <- scmix_gated_active_distance(
+    data = data,
+    gamma = distance_specification$gamma,
+    prop_nn = distance_specification$prop_nn,
+    score = distance_specification$score,
+    decision = distance_specification$decision,
+    gate_permutations = distance_specification$gate_permutations,
+    gate_alpha = distance_specification$gate_alpha,
+    gate_seed = task$data_seed + distance_specification$gate_seed_offset
+  )
+  gated_seconds <- proc.time()[[3L]] - gated_started
+
+  constructed <- r1_distance_methods(data, gated_fit)
+  bandwidths <- if (isTRUE(task$bandwidth_sensitive)) {
+    analysis_parameters$spectral$sensitivity_bandwidth_multipliers
+  } else {
+    analysis_parameters$spectral$primary_bandwidth_multiplier
+  }
+
+  rows <- list()
+  partitions <- list()
+  row_index <- 0L
+  cluster_seed <- task$data_seed +
+    analysis_parameters$execution$cluster_seed_offset
+
+  for (method in names(constructed$distances)) {
+    distance <- constructed$distances[[method]]
+    for (bandwidth in bandwidths) {
+      clustering_started <- proc.time()[[3L]]
+      fitted <- tryCatch(
+        list(
+          value = r1_cluster_distance(
+            distance,
+            truth,
+            cluster_seed,
+            bandwidth_multiplier = bandwidth
+          ),
+          error = NA_character_
+        ),
+        error = function(e) list(value = NULL, error = conditionMessage(e))
+      )
+      clustering_seconds <- proc.time()[[3L]] - clustering_started
+      row_index <- row_index + 1L
+      rows[[row_index]] <- r1_result_row(
+        task,
+        method,
+        bandwidth,
+        score = fitted$value,
+        distance_seconds = constructed$seconds[[method]],
+        clustering_seconds = clustering_seconds,
+        error = fitted$error
+      )
+      if (isTRUE(all.equal(
+        bandwidth,
+        analysis_parameters$spectral$primary_bandwidth_multiplier
+      )) && !is.null(fitted$value)) {
+        partitions[[method]] <- fitted$value$cluster
+      }
+    }
+  }
+
+  failed_distances <- names(constructed$errors)[vapply(
+    constructed$errors,
+    function(error) length(error) && !is.na(error),
+    logical(1)
+  )]
+  for (method in failed_distances) {
+    row_index <- row_index + 1L
+    rows[[row_index]] <- r1_result_row(
+      task,
+      method,
+      analysis_parameters$spectral$primary_bandwidth_multiplier,
+      distance_seconds = constructed$seconds[[method]],
+      error = constructed$errors[[method]]
+    )
+  }
+
+  exact_baseline_recovery <- identical(
+    gated_fit$distance,
+    gated_fit$distance_no_interaction
+  )
+  baseline_gated_partition_ARI <- if (
+    all(c("Gated_active_average_SC", "Package_no_interaction_SC") %in%
+        names(partitions))
+  ) {
+    mclust::adjustedRandIndex(
+      partitions$Gated_active_average_SC,
+      partitions$Package_no_interaction_SC
+    )
+  } else {
+    NA_real_
+  }
+  interaction_alignment <- if (
+    gated_fit$diagnostics$active_count > 0 &&
+      "Gated_active_average_SC" %in% names(partitions)
+  ) {
+    r1_alignment_ratio(
+      gated_fit$components$interaction_active_average,
+      partitions$Gated_active_average_SC
+    )
+  } else {
+    NA_real_
+  }
+
+  gate_table <- data.frame(
+    variable = names(gated_fit$gate$detected),
+    detected = unname(gated_fit$gate$detected),
+    adjusted_p_value = unname(gated_fit$gate$p_value),
+    statistic = unname(gated_fit$gate$statistic),
+    stringsAsFactors = FALSE
+  )
+
+  neighbour_sensitivity <- r1_run_neighbour_sensitivity(
+    task = task,
+    data = data,
+    truth = truth,
+    primary_fit = gated_fit,
+    primary_partition = partitions[["Gated_active_average_SC"]],
+    primary_fit_seconds = gated_seconds
+  )
+
+  artifact <- list(
+    schema_version = 1L,
+    analysis_version = analysis_parameters$analysis_version,
+    configuration_tag = configuration_tag,
+    task = task,
+    generator_diagnostics = generated$diagnostics,
+    results = do.call(rbind, rows),
+    gate = gate_table,
+    neighbour_sensitivity = neighbour_sensitivity$results,
+    neighbour_sensitivity_gates = neighbour_sensitivity$gates,
+    diagnostics = data.frame(
+      task_key = task$key,
+      experiment = task$experiment,
+      condition = task$condition,
+      state = task$state,
+      replicate = task$replicate,
+      data_seed = task$data_seed,
+      n = nrow(data),
+      p_numeric = sum(vapply(data, is.numeric, logical(1))),
+      q_categorical = sum(vapply(data, is.factor, logical(1))),
+      active_count = gated_fit$diagnostics$active_count,
+      exact_baseline_recovery = exact_baseline_recovery,
+      baseline_gated_partition_ARI = baseline_gated_partition_ARI,
+      interaction_alignment_ratio = interaction_alignment,
+      interaction_added_mean = gated_fit$diagnostics$added_mean_distinct,
+      final_distance_mean = gated_fit$diagnostics$final_mean_distinct,
+      gated_distance_seconds = gated_seconds,
+      stringsAsFactors = FALSE
+    ),
+    source_hashes = source_hashes,
+    qmd_md5 = unname(tools::md5sum(input_file)),
+    manydist_version = as.character(utils::packageVersion("manydist")),
+    started_at = format(started_at, tz = "UTC", usetz = TRUE),
+    finished_at = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    session_info = capture.output(utils::sessionInfo())
+  )
+
+  temporary_file <- tempfile("R1-task-", tmpdir = dirname(output_file), fileext = ".rds")
+  saveRDS(artifact, temporary_file, version = 3L)
+  if (file.exists(output_file)) {
+    unlink(temporary_file)
+    return(output_file)
+  }
+  if (!file.rename(temporary_file, output_file)) {
+    unlink(temporary_file)
+    stop("Could not atomically save task artifact: ", output_file)
+  }
+  output_file
+}
+```
+
+## Optional execution
+
+```{r}
+#| label: execute-tasks
+
+if (isTRUE(analysis_parameters$execution$run_experiments)) {
+  workers <- max(1L, as.integer(analysis_parameters$execution$workers))
+  if (.Platform$OS.type == "windows" && workers > 1L) {
+    warning("Falling back to one worker on Windows in this document.")
+    workers <- 1L
+  }
+
+  selected_complete <- vapply(
+    execution_task_plan,
+    function(task) file.exists(r1_task_file(task)),
+    logical(1)
+  )
+  remaining_task_plan <- execution_task_plan[!selected_complete]
+  cat(
+    "Selected tasks: ", length(execution_task_plan),
+    "; already complete: ", sum(selected_complete),
+    "; remaining: ", length(remaining_task_plan), ".\n",
+    sep = ""
+  )
+
+  r1_execute_with_progress <- function(tasks, workers, show_progress) {
+    if (!length(tasks)) return(character())
+
+    progress_bar <- if (isTRUE(show_progress)) {
+      utils::txtProgressBar(
+        min = 0L,
+        max = length(tasks),
+        initial = 0L,
+        style = 3L,
+        file = stderr()
+      )
+    } else {
+      NULL
+    }
+    on.exit({
+      if (!is.null(progress_bar)) close(progress_bar)
+    }, add = TRUE)
+
+    produced <- vector("list", length(tasks))
+    completed <- 0L
+
+    if (workers == 1L) {
+      for (index in seq_along(tasks)) {
+        produced[[index]] <- r1_run_task(tasks[[index]])
+        completed <- completed + 1L
+        if (!is.null(progress_bar)) {
+          utils::setTxtProgressBar(progress_bar, completed)
+        }
+      }
+    } else {
+      # Wave-based scheduling provides reliable progress without adding a
+      # package dependency. Task durations differ, so updates occur whenever
+      # all tasks in the current wave have finished.
+      waves <- split(
+        seq_along(tasks),
+        ceiling(seq_along(tasks) / workers)
+      )
+      for (wave in waves) {
+        wave_results <- parallel::mclapply(
+          tasks[wave],
+          r1_run_task,
+          mc.cores = min(workers, length(wave)),
+          mc.preschedule = FALSE
+        )
+        failed <- vapply(wave_results, inherits, logical(1), "try-error")
+        if (any(failed)) {
+          stop(as.character(wave_results[[which(failed)[[1L]]]]), call. = FALSE)
+        }
+        produced[wave] <- wave_results
+        completed <- completed + length(wave)
+        if (!is.null(progress_bar)) {
+          utils::setTxtProgressBar(progress_bar, completed)
+        }
+      }
+    }
+
+    unlist(produced, use.names = FALSE)
+  }
+
+  produced_files <- r1_execute_with_progress(
+    remaining_task_plan,
+    workers = workers,
+    show_progress = analysis_parameters$execution$show_progress
+  )
+  invisible(produced_files)
+} else {
+  cat(
+    "Simulation execution is disabled. Set `run_experiments = TRUE` in the ",
+    "first code chunk to produce missing task artifacts for: ",
+    paste(selected_experiments, collapse = ", "),
+    "; replicates: ",
+    paste(selected_replicates, collapse = ", "),
+    ".\n",
+    sep = ""
+  )
+}
+```
+
+# Collection and paper-ready summaries
+
+```{r}
+#| label: collect-results
+
+available_files <- vapply(task_plan, r1_task_file, character(1))
+available_files <- available_files[file.exists(available_files)]
+artifacts <- lapply(available_files, readRDS)
+
+results <- if (length(artifacts)) {
+  do.call(rbind, lapply(artifacts, `[[`, "results"))
+} else {
+  data.frame()
+}
+diagnostics <- if (length(artifacts)) {
+  do.call(rbind, lapply(artifacts, `[[`, "diagnostics"))
+} else {
+  data.frame()
+}
+gate_results <- if (length(artifacts)) {
+  do.call(rbind, lapply(artifacts, function(artifact) {
+    cbind(
+      artifact$gate,
+      task_key = artifact$task$key,
+      experiment = artifact$task$experiment,
+      condition = artifact$task$condition,
+      state = artifact$task$state,
+      replicate = artifact$task$replicate,
+      stringsAsFactors = FALSE
+    )
+  }))
+} else {
+  data.frame()
+}
+
+neighbour_sensitivity_tables <- Filter(
+  function(table) is.data.frame(table) && nrow(table),
+  lapply(artifacts, `[[`, "neighbour_sensitivity")
+)
+neighbour_sensitivity_results <- if (length(neighbour_sensitivity_tables)) {
+  do.call(rbind, neighbour_sensitivity_tables)
+} else {
+  data.frame()
+}
+
+neighbour_sensitivity_gate_tables <- Filter(
+  function(table) is.data.frame(table) && nrow(table),
+  lapply(artifacts, `[[`, "neighbour_sensitivity_gates")
+)
+neighbour_sensitivity_gates <- if (length(neighbour_sensitivity_gate_tables)) {
+  do.call(rbind, neighbour_sensitivity_gate_tables)
+} else {
+  data.frame()
+}
+
+completion <- data.frame(
+  configuration_tag = configuration_tag,
+  selected_experiments = paste(selected_experiments, collapse = ", "),
+  selected_replicates = paste(selected_replicates, collapse = ", "),
+  planned_tasks = length(task_plan),
+  selected_tasks = length(execution_task_plan),
+  completed_tasks = length(artifacts),
+  completed_selected_tasks = sum(vapply(
+    execution_task_plan,
+    function(task) file.exists(r1_task_file(task)),
+    logical(1)
+  )),
+  completion_fraction = length(artifacts) / length(task_plan),
+  selected_completion_fraction = sum(vapply(
+    execution_task_plan,
+    function(task) file.exists(r1_task_file(task)),
+    logical(1)
+  )) / length(execution_task_plan)
+)
+knitr::kable(completion, digits = 3)
+```
+
+The following tables are populated automatically once artifacts exist under
+the current configuration tag.
+
+## Primary ARI summaries
+
+```{r}
+#| label: primary-ari-summary
+
+if (!nrow(results)) {
+  cat("No result artifacts are available for this configuration.\n")
+} else {
+  primary <- results[
+    is.na(results$bandwidth_multiplier) |
+      abs(results$bandwidth_multiplier -
+            analysis_parameters$spectral$primary_bandwidth_multiplier) < 1e-12,
+    , drop = FALSE
+  ]
+  successful <- primary[is.na(primary$error) & is.finite(primary$ARI), , drop = FALSE]
+  ari_summary <- stats::aggregate(
+    ARI ~ experiment + condition + state + method_label,
+    successful,
+    function(values) c(
+      mean = mean(values),
+      sd = stats::sd(values),
+      q025 = stats::quantile(values, 0.025),
+      q975 = stats::quantile(values, 0.975),
+      n = length(values)
+    )
+  )
+  ari_summary <- data.frame(
+    ari_summary[c("experiment", "condition", "state", "method_label")],
+    ari_summary$ARI,
+    row.names = NULL,
+    check.names = FALSE
+  )
+  knitr::kable(ari_summary, digits = 3)
+}
+```
+
+## Paired contribution of the interaction term
+
+```{r}
+#| label: paired-interaction-contrast
+
+if (!nrow(results)) {
+  cat("No paired contrasts are available yet.\n")
+} else {
+  primary_pair <- results[
+    results$method %in% c(
+      "Gated_active_average_SC",
+      "Package_no_interaction_SC"
+    ) &
+      !is.na(results$bandwidth_multiplier) &
+      abs(results$bandwidth_multiplier - 1) < 1e-12 &
+      is.na(results$error),
+    c("experiment", "condition", "state", "replicate", "method", "ARI")
+  ]
+  paired <- reshape(
+    primary_pair,
+    idvar = c("experiment", "condition", "state", "replicate"),
+    timevar = "method",
+    direction = "wide"
+  )
+  paired$gated_minus_baseline <-
+    paired$ARI.Gated_active_average_SC -
+    paired$ARI.Package_no_interaction_SC
+  paired_summary <- stats::aggregate(
+    gated_minus_baseline ~ experiment + condition + state,
+    paired,
+    function(values) c(
+      mean = mean(values),
+      sd = stats::sd(values),
+      positive_fraction = mean(values > 0),
+      zero_fraction = mean(values == 0),
+      n = length(values)
+    )
+  )
+  paired_summary <- data.frame(
+    paired_summary[c("experiment", "condition", "state")],
+    paired_summary$gated_minus_baseline,
+    row.names = NULL,
+    check.names = FALSE
+  )
+  knitr::kable(paired_summary, digits = 3)
+}
+```
+
+## Gate activation, exact nesting, and post-hoc alignment
+
+```{r}
+#| label: gate-summary
+
+if (!nrow(diagnostics)) {
+  cat("No gate diagnostics are available yet.\n")
+} else {
+  gate_groups <- diagnostics[c("experiment", "condition", "state")]
+  gate_summary_parts <- lapply(
+    c(
+      "active_count",
+      "exact_baseline_recovery",
+      "baseline_gated_partition_ARI",
+      "interaction_alignment_ratio"
+    ),
+    function(variable) {
+      part <- stats::aggregate(
+        diagnostics[[variable]],
+        gate_groups,
+        function(values) mean(values, na.rm = TRUE)
+      )
+      names(part)[[ncol(part)]] <- variable
+      part
+    }
+  )
+  gate_summary <- Reduce(
+    function(left, right) merge(
+      left,
+      right,
+      by = c("experiment", "condition", "state"),
+      all = TRUE,
+      sort = FALSE
+    ),
+    gate_summary_parts
+  )
+  gate_summary$interaction_alignment_ratio[
+    is.nan(gate_summary$interaction_alignment_ratio)
+  ] <- NA_real_
+  names(gate_summary)[names(gate_summary) == "exact_baseline_recovery"] <-
+    "exact_nesting_fraction"
+  knitr::kable(gate_summary, digits = 3)
+}
+```
+
+The alignment statistic is descriptive.  It measures whether the active
+interaction distance is larger between than within the identified gated
+clusters.  It is not used to select interactions, tune `gamma`, or claim
+recovery of an unknown external truth.
+
+## Global-bandwidth sensitivity
+
+```{r}
+#| label: bandwidth-summary
+
+if (!nrow(results)) {
+  cat("No bandwidth results are available yet.\n")
+} else {
+  bandwidth_results <- results[
+    !is.na(results$bandwidth_multiplier) & is.na(results$error),
+    , drop = FALSE
+  ]
+  bandwidth_summary <- stats::aggregate(
+    ARI ~ experiment + condition + state + method_label + bandwidth_multiplier,
+    bandwidth_results,
+    function(values) c(mean = mean(values), sd = stats::sd(values), n = length(values))
+  )
+  bandwidth_summary <- data.frame(
+    bandwidth_summary[
+      c("experiment", "condition", "state", "method_label", "bandwidth_multiplier")
+    ],
+    bandwidth_summary$ARI,
+    row.names = NULL,
+    check.names = FALSE
+  )
+  knitr::kable(bandwidth_summary, digits = 3)
+}
+```
+
+## Nearest-neighbour proportion sensitivity
+
+The primary analysis fixes $\pi_{nn}=0.10$ before examining the results.
+The sensitivity grid is evaluated on the same generated datasets, with the
+same clustering seed and the same sequence of label permutations at every
+neighbour proportion. It is therefore a paired robustness analysis rather
+than a tuning exercise. External competitors are not recomputed because
+their distances do not depend on $\pi_{nn}$.
+
+```{r}
+#| label: neighbour-proportion-summary
+
+r1_mean_na <- function(values) {
+  if (all(is.na(values))) NA_real_ else mean(values, na.rm = TRUE)
+}
+
+if (!nrow(neighbour_sensitivity_results)) {
+  cat("No nearest-neighbour sensitivity results are available yet.\n")
+} else {
+  neighbour_summary <- stats::aggregate(
+    cbind(
+      realized_k_min,
+      realized_k_median,
+      realized_k_max,
+      ARI,
+      active_count,
+      exact_baseline_recovery,
+      gate_jaccard_to_primary,
+      partition_ARI_to_primary,
+      interaction_correlation_to_primary,
+      interaction_relative_difference_to_primary,
+      final_distance_correlation_to_primary,
+      final_distance_relative_difference_to_primary
+    ) ~ experiment + condition + state + prop_nn,
+    neighbour_sensitivity_results,
+    r1_mean_na,
+    na.action = stats::na.pass
+  )
+  knitr::kable(neighbour_summary, digits = 3)
+}
+```
+
+The realized $k_{ab}$ columns make the proportion interpretable for each
+sample-size and category-frequency regime. Gate Jaccard similarity, the
+interaction-distance comparison, and partition ARI are all relative to the
+pre-specified 10% analysis. Exact agreement is not required; the purpose is
+to establish whether the substantive interaction findings and clustering
+conclusions persist over a reasonable local-neighbourhood range.
+
+```{r}
+#| label: neighbour-proportion-gates
+
+if (!nrow(neighbour_sensitivity_gates)) {
+  cat("No nearest-neighbour gate results are available yet.\n")
+} else {
+  neighbour_gate_summary <- stats::aggregate(
+    cbind(detected, adjusted_p_value, statistic) ~
+      experiment + condition + state + prop_nn + variable,
+    neighbour_sensitivity_gates,
+    r1_mean_na,
+    na.action = stats::na.pass
+  )
+  names(neighbour_gate_summary)[
+    names(neighbour_gate_summary) == "detected"
+  ] <- "detection_fraction"
+  knitr::kable(neighbour_gate_summary, digits = 3)
+}
+```
+
+## Method failures
+
+```{r}
+#| label: method-failures
+
+if (!nrow(results) || !any(!is.na(results$error))) {
+  cat("No method failures are recorded for the available artifacts.\n")
+} else {
+  failures <- unique(results[
+    !is.na(results$error),
+    c("experiment", "condition", "state", "replicate", "method", "error")
+  ])
+  knitr::kable(failures)
+}
+```
+
+# Interpretation map for the revised manuscript
+
+The experiments answer complementary questions.
+
+- **Simulation 1** is the mechanism study.  It asks whether the active-average
+  construction helps when the cross-type signal defines the groups and
+  whether it nests exactly in the matched null.
+- **Simulation 2** preserves continuity with the submitted work by rerunning
+  the historical executable generator under the revised distance.
+- **Simulation 3** introduces correlated numerical variables and associated
+  multilevel nominal variables.  Its paired decoupling distinguishes methods
+  that exploit genuine block alignment from methods that indiscriminately
+  overweight the categorical block.
+
+The confirmatory estimand is the paired ARI difference between the gated
+method and its pure-package no-interaction baseline.  Comparisons with external
+methods remain important, but the proposed construction is not claimed to
+dominate every competitor in every data-generating mechanism.
+
+# Session information
+
+```{r}
+#| label: session-information
+
+sessionInfo()
+```

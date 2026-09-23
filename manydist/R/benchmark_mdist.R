@@ -278,7 +278,10 @@
 #' }
 #'
 #' Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
-#' [ggplot2::autoplot()] to draw an annotated triangular heatmap.
+#' [ggplot2::autoplot()] to draw an annotated triangular heatmap. The default
+#' print method displays a compact run overview; use `tibble::as_tibble()` to
+#' inspect the complete underlying table. `summary()` returns minimum, median,
+#' and maximum values for each available pairwise diagnostic.
 #'
 #' @details
 #' Preset specifications use the `preset` column and ignore `method_cat`,
@@ -325,8 +328,8 @@
 #'     specs = specs
 #'   )
 #'
-#'   res |>
-#'     dplyr::select(spec_type, preset, ok, error)
+#'   res
+#'   summary(res)
 #'
 #'   benchmark_comparisons(res)
 #'   ggplot2::autoplot(res, metric = "relative_distance")
@@ -505,6 +508,146 @@ benchmark_mdist <- function(
   class(out) <- c("MDistBenchmark", class(out))
 
   out
+}
+
+#' @export
+print.MDistBenchmark <- function(x, ..., n = 10L, width = NULL) {
+  labels <- attr(x, "method_labels")
+  required <- c(
+    "spec_type", "preset", "method_cat", "method_num", "commensurable",
+    "result", "ok", "error"
+  )
+
+  # Let tibble handle objects transformed with select/filter or other verbs
+  # that no longer contain the complete benchmark result.
+  complete <- all(required %in% names(x)) && length(labels) == nrow(x)
+  unchanged <- complete && identical(labels, .benchmark_method_labels(x))
+
+  if (!unchanged) {
+    return(print(tibble::as_tibble(x), ..., n = n, width = width))
+  }
+
+  comparisons <- attr(x, "comparisons")
+  n_comparisons <- if (is.data.frame(comparisons)) nrow(comparisons) else 0L
+  n_successful <- sum(x$ok, na.rm = TRUE)
+  n_failed <- sum(!x$ok, na.rm = TRUE)
+
+  params <- attr(x, "benchmark_parameters")
+  clustering <- if (is.null(params$cluster_k)) {
+    "not requested"
+  } else {
+    paste0(
+      paste(toupper(params$cluster_methods), collapse = ", "),
+      " (k = ", params$cluster_k, ")"
+    )
+  }
+
+  cat("MDistBenchmark\n")
+  cat("  specifications : ", nrow(x), "\n", sep = "")
+  cat("  successful     : ", n_successful, "\n", sep = "")
+  cat("  failed         : ", n_failed, "\n", sep = "")
+  cat("  comparisons    : ", n_comparisons, "\n", sep = "")
+  cat("  clustering     : ", clustering, "\n\n", sep = "")
+
+  methods <- tibble::tibble(
+    id = seq_len(nrow(x)),
+    method = labels,
+    type = x$spec_type,
+    status = ifelse(x$ok, "successful", "failed")
+  )
+
+  cat("Methods:\n")
+  print(methods, ..., n = n, width = width)
+
+  if (n_failed > 0L) {
+    failed <- which(!x$ok)
+    failures <- tibble::tibble(
+      id = failed,
+      method = labels[failed],
+      error = x$error[failed]
+    )
+
+    cat("\nFailures:\n")
+    print(failures, ..., n = n, width = width)
+  }
+
+  cat(
+    "\nUse `tibble::as_tibble(x)` for the full run table and ",
+    "`benchmark_comparisons(x)` for pairwise diagnostics.\n",
+    sep = ""
+  )
+
+  invisible(x)
+}
+
+#' @export
+summary.MDistBenchmark <- function(object, ...) {
+  comparisons <- benchmark_comparisons(object)
+  metric_cols <- c(
+    intersect(
+      c("mad", "relative_distance", "mds_congruence", "alienation"),
+      names(comparisons)
+    ),
+    grep("^ari_", names(comparisons), value = TRUE)
+  )
+
+  if (nrow(comparisons) == 0L || length(metric_cols) == 0L) {
+    out <- tibble::tibble(
+      metric = character(),
+      min = double(),
+      median = double(),
+      max = double()
+    )
+  } else {
+    finite_values <- lapply(
+      metric_cols,
+      function(metric) {
+        values <- comparisons[[metric]]
+        values[is.finite(values)]
+      }
+    )
+
+    finite_stat <- function(values, fun) {
+      if (length(values) == 0L) NA_real_ else fun(values)
+    }
+
+    out <- tibble::tibble(
+      metric = metric_cols,
+      min = vapply(
+        finite_values,
+        finite_stat,
+        numeric(1),
+        fun = min
+      ),
+      median = vapply(
+        finite_values,
+        finite_stat,
+        numeric(1),
+        fun = stats::median
+      ),
+      max = vapply(
+        finite_values,
+        finite_stat,
+        numeric(1),
+        fun = max
+      )
+    )
+  }
+
+  cat("Summary of MDistBenchmark\n")
+  cat("  specifications : ", nrow(object), "\n", sep = "")
+  cat("  successful     : ", sum(object$ok, na.rm = TRUE), "\n", sep = "")
+  cat("  failed         : ", sum(!object$ok, na.rm = TRUE), "\n", sep = "")
+  cat("  comparisons    : ", nrow(comparisons), "\n\n", sep = "")
+
+  if (nrow(out) == 0L) {
+    cat("No pairwise diagnostics are available.\n")
+  } else {
+    cat("Pairwise diagnostic summary:\n")
+    print(out, ...)
+  }
+
+  invisible(out)
 }
 
 #' Extract pairwise distance benchmark comparisons

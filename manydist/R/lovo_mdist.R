@@ -34,6 +34,7 @@ MDistLOVO <- R6::R6Class(
   public = list(
     results         = NULL,
     base_mds        = NULL,
+    mds             = NULL,
     dims            = NULL,
     preset          = NULL,
     params          = NULL,
@@ -45,7 +46,8 @@ MDistLOVO <- R6::R6Class(
     hclust_method   = NULL,
     response_used   = NULL,
 
-    initialize = function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
+    initialize = function(x, response = NULL, ..., mds = FALSE, dims = 2,
+                          keep_dist = FALSE,
                           cluster_k = NULL,
                           cluster_methods = "pam",
                           hclust_method = "complete",
@@ -65,6 +67,10 @@ MDistLOVO <- R6::R6Class(
 
       if (!is.logical(response_used) || length(response_used) != 1L || is.na(response_used)) {
         stop("response_used must be a single TRUE/FALSE value.")
+      }
+
+      if (!is.logical(mds) || length(mds) != 1L || is.na(mds)) {
+        stop("mds must be a single TRUE/FALSE value.")
       }
 
       if (!is.null(cluster_k)) {
@@ -133,19 +139,30 @@ MDistLOVO <- R6::R6Class(
       )
       full_mat <- md_full$to_dist() |> as.matrix()
       self$n_obs <- nrow(full_mat)
-      self$dims  <- dims
+      self$mds <- mds
+      self$dims <- NULL
 
       self$cluster_k       <- cluster_k
       self$cluster_methods <- cluster_methods
       self$hclust_method   <- hclust_method
 
-      if (nrow(full_mat) != ncol(full_mat)) {
-        stop("cmdscale() needs a square distance. Avoid validate_x here or handle train-only MDS.")
-      }
+      if (isTRUE(mds)) {
+        if (nrow(full_mat) != ncol(full_mat)) {
+          stop("MDS diagnostics require a square distance matrix.")
+        }
 
-      max_dims <- nrow(full_mat) - 1
-      if (dims > max_dims) {
-        stop(sprintf("dims must be <= %d.", max_dims))
+        if (!is.numeric(dims) || length(dims) != 1L || is.na(dims) ||
+            !is.finite(dims) || dims < 1 || dims != floor(dims)) {
+          stop("dims must be a single positive integer when mds = TRUE.")
+        }
+
+        max_dims <- nrow(full_mat) - 1L
+        if (dims > max_dims) {
+          stop(sprintf("dims must be <= %d.", max_dims))
+        }
+
+        dims <- as.integer(dims)
+        self$dims <- dims
       }
 
       full_partitions <- list()
@@ -184,10 +201,13 @@ MDistLOVO <- R6::R6Class(
           )
         }
       }
-
-
-
-      self$base_mds <- stats::cmdscale(full_mat, eig = TRUE, k = dims)$points[, 1:dims, drop = FALSE]
+      if (isTRUE(mds)) {
+        self$base_mds <- stats::cmdscale(
+          full_mat,
+          eig = TRUE,
+          k = dims
+        )$points[, seq_len(dims), drop = FALSE]
+      }
 
       if (keep_dist) {
         self$full_dist <- full_mat
@@ -257,23 +277,37 @@ MDistLOVO <- R6::R6Class(
 
       mad <- vapply(loo_list, function(m) mean(abs(full_mat - m)), numeric(1))
 
-      cc <- vapply(loo_list, function(m) {
-        pts <- stats::cmdscale(m, eig = TRUE, k = dims)$points[, 1:dims, drop = FALSE]
-        congruence_coeff(self$base_mds, pts)
-      }, numeric(1))
-
-      ac <- sqrt(1 - cc^2)
-
       res <- tibble::tibble(
-        variable          = vars,
-        variable_type     = unname(var_types[vars]),
-        mad_importance    = mad,
-        cc_importance     = cc,
-        mds_congruence    = cc,
-        ac_importance     = ac,
-        mad_normalized    = mad / sum(mad),
-        relative_distance = mad / sum(mad)
+        variable       = vars,
+        variable_type  = unname(var_types[vars]),
+        mad_importance = mad
       )
+
+      if (isTRUE(mds)) {
+        cc <- vapply(loo_list, function(m) {
+          pts <- stats::cmdscale(
+            m,
+            eig = TRUE,
+            k = dims
+          )$points[, seq_len(dims), drop = FALSE]
+          congruence_coeff(self$base_mds, pts)
+        }, numeric(1))
+
+        ac <- sqrt(pmax(0, 1 - cc^2))
+
+        res <- res |>
+          dplyr::mutate(
+            cc_importance  = cc,
+            mds_congruence = cc,
+            ac_importance  = ac
+          )
+      }
+
+      res <- res |>
+        dplyr::mutate(
+          mad_normalized    = mad / sum(mad),
+          relative_distance = mad / sum(mad)
+        )
 
       if (!is.null(cluster_k)) {
         if ("pam" %in% cluster_methods) {
@@ -306,7 +340,11 @@ MDistLOVO <- R6::R6Class(
     print = function(...) {
       cat("MDistLOVO object\n")
       cat("  preset :", self$preset, "\n")
-      cat("  dims   :", self$dims, "\n")
+      if (isTRUE(self$mds)) {
+        cat("  MDS diagnostics :", self$dims, "dimensions\n")
+      } else {
+        cat("  MDS diagnostics : not computed\n")
+      }
       cat("  n_obs  :", self$n_obs, "\n")
       cat("  response used :", self$response_used, "\n")
 
@@ -370,9 +408,7 @@ MDistLOVO <- R6::R6Class(
     summary = function(...) {
       cat("Summary of MDistLOVO\n")
       cat("  preset :", self$preset, "\n")
-      cat("  dims   :", self$dims, "\n")
       cat("  n_obs  :", self$n_obs, "\n")
-      cat("  response used :", self$response_used, "\n")
 
       if (!is.null(self$cluster_k)) {
         cat("  cluster_k :", self$cluster_k, "\n")
@@ -456,6 +492,16 @@ MDistLOVO <- R6::R6Class(
         dplyr::mutate(method = self$preset %||% "lovo")
 
       if (!(metric %in% names(df))) {
+        if (metric %in% c("mds_congruence", "cc_importance", "ac_importance") &&
+            !isTRUE(self$mds)) {
+          stop(
+            sprintf(
+              "Metric '%s' is unavailable because MDS diagnostics were not computed. Re-run with `mds = TRUE`.",
+              metric
+            ),
+            call. = FALSE
+          )
+        }
         stop(sprintf("Metric '%s' not found in results.", metric))
       }
 
@@ -632,8 +678,8 @@ MDistLOVO <- R6::R6Class(
 #' `lovo_mdist()` is useful for assessing how strongly each predictor
 #' contributes to a distance-based representation. A predictor is considered
 #' influential when removing it produces a large change in the dissimilarity
-#' matrix, the multidimensional scaling configuration, or an optional
-#' clustering partition.
+#' matrix or an optional downstream representation, such as a multidimensional
+#' scaling configuration or clustering partition.
 #'
 #' @param x A data frame or object coercible to a tibble. Rows are observations
 #'   and columns are variables used to compute the dissimilarity.
@@ -644,8 +690,11 @@ MDistLOVO <- R6::R6Class(
 #'   in the leave-one-variable-out loop.
 #' @param ... Additional arguments passed to [mdist()], such as `preset`,
 #'   `method_cat`, `method_num`, `commensurable`, or `interaction`.
+#' @param mds Logical. If `TRUE`, compute classical multidimensional scaling
+#'   diagnostics for the full and leave-one-variable-out dissimilarities. The
+#'   default is `FALSE`.
 #' @param dims Integer. Number of dimensions used by classical
-#'   multidimensional scaling when computing congruence-based diagnostics.
+#'   multidimensional scaling when `mds = TRUE`. Ignored when `mds = FALSE`.
 #' @param keep_dist Logical. If `TRUE`, store the full dissimilarity matrix and
 #'   all leave-one-variable-out dissimilarity matrices in the returned object.
 #' @param cluster_k Optional integer. Number of clusters used when computing
@@ -672,11 +721,11 @@ MDistLOVO <- R6::R6Class(
 #' (`mad_importance`). The normalized version is stored as
 #' `relative_distance`.
 #'
-#' The function also compares classical multidimensional scaling
-#' configurations computed from the full and leave-one-variable-out
-#' dissimilarities. These diagnostics are stored as `mds_congruence`
-#' / `cc_importance` and `ac_importance`, the latter corresponding to an
-#' alienation coefficient.
+#' If `mds = TRUE`, the function also compares classical multidimensional
+#' scaling configurations computed from the full and leave-one-variable-out
+#' dissimilarities. These diagnostics are stored as `mds_congruence` /
+#' `cc_importance` and `ac_importance`, the latter corresponding to an
+#' alienation coefficient. They are omitted when `mds = FALSE`.
 #'
 #' If `cluster_k` is supplied, the function additionally computes clustering
 #' partitions from the full and leave-one-variable-out dissimilarities and
@@ -704,7 +753,7 @@ MDistLOVO <- R6::R6Class(
 #'     ) |>
 #'     tidyr::drop_na()
 #'
-#'   # LOVO diagnostics for a Gower distance
+#'   # Distance-based LOVO diagnostics for a Gower distance
 #'   res <- lovo_mdist(
 #'     penguins_small,
 #'     preset = "gower",
@@ -716,18 +765,25 @@ MDistLOVO <- R6::R6Class(
 #'   summary(res)
 #'
 #'   # Plot the relative distance contribution of each predictor
-#'   p <- res$autoplot(metric = "relative_distance", reorder = TRUE)
+#'   p <- res$autoplot(metric = "relative_distance")
 #'   p
 #' }
 #'
 #' @export
-lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
+lovo_mdist <- function(x, response = NULL, ..., mds = FALSE, dims = 2,
+                       keep_dist = FALSE,
                        cluster_k = NULL,
                        cluster_methods = c("pam", "hclust", "spectral"),
                        hclust_method = "average",
                        spectral_sigma = NULL,
                        spectral_nstart = 50,
                        response_used = TRUE) {
+
+  dims_supplied <- !missing(dims)
+
+  if (identical(mds, FALSE) && dims_supplied) {
+    warning("`dims` is ignored when `mds = FALSE`.", call. = FALSE)
+  }
 
   response_name <- NULL
   response_quo <- rlang::enquo(response)
@@ -746,6 +802,7 @@ lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
     x = x,
     response = response_name,
     ...,
+    mds = mds,
     dims = dims,
     keep_dist = keep_dist,
     cluster_k = cluster_k,
@@ -756,4 +813,3 @@ lovo_mdist <- function(x, response = NULL, ..., dims = 2, keep_dist = FALSE,
     response_used = response_used
   )
 }
-

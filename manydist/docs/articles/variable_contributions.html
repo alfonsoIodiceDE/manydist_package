@@ -93,20 +93,23 @@
 <p><code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> computes leave-one-variable-out diagnostics for assessing variable contributions to a distance construction.</p>
 <p>The function first computes the full dissimilarity matrix using all predictors. Then, one predictor at a time, it removes a variable, recomputes the dissimilarity matrix, and compares the reduced dissimilarity with the full one.</p>
 <p>Variables whose removal strongly changes the dissimilarity matrix, the induced configuration, or the resulting clustering structure can be interpreted as having a larger contribution to the distance construction.</p>
+<p>MDS diagnostics are optional. In this first example we request a two-dimensional MDS configuration explicitly with <code>mds = TRUE</code> and <code>dims = 2</code>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lovo_gower</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lovo_mdist.html">lovo_mdist</a></span><span class="op">(</span></span>
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
 <span>  response_used <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  preset <span class="op">=</span> <span class="st">"gower"</span></span>
+<span>  preset <span class="op">=</span> <span class="st">"gower"</span>,</span>
+<span>  mds <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  dims <span class="op">=</span> <span class="fl">2</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">lovo_gower</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVO object
   preset : gower
-  dims   : 2
+  MDS diagnostics : 2 dimensions
   n_obs  : 333
   response used : FALSE
   top vars:
@@ -127,9 +130,7 @@
 <div class="cell-output cell-output-stdout">
 <pre><code>Summary of MDistLOVO
   preset : gower
-  dims   : 2
   n_obs  : 333
-  response used : FALSE
 
 Relative distance:
   range [0.1003, 0.2916], mean 0.1667
@@ -231,7 +232,7 @@ Top by relative distance:
 </section><section class="level2" data-number="3"><h2 data-number="3" id="interpreting-the-output">
 <span class="header-section-number">3</span> Interpreting the output<a class="anchor" aria-label="anchor" href="#interpreting-the-output"></a>
 </h2>
-<p>The output of <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> contains several diagnostics, each capturing a different aspect of the change induced by removing a variable.</p>
+<p>The output of <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> always contains distance-based diagnostics. Because MDS was requested above, it also contains configuration-based diagnostics, each capturing a different aspect of the change induced by removing a variable.</p>
 <p>The main diagnostics can be interpreted as follows.</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -275,13 +276,10 @@ Top by relative distance:
 </section><section class="level2" data-number="4"><h2 data-number="4" id="visualising-variable-contributions">
 <span class="header-section-number">4</span> Visualising variable contributions<a class="anchor" aria-label="anchor" href="#visualising-variable-contributions"></a>
 </h2>
-<p>The relative contribution of each variable can be visualized with <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code>.</p>
+<p>The relative contribution of each variable can be visualized with <code>autoplot()</code>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"relative_distance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
@@ -292,10 +290,7 @@ Top by relative distance:
 <p>Other metrics can be visualized by changing the <code>metric</code> argument. For example, <code>ac_importance</code> displays the alienation coefficient.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"ac_importance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"ac_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-8-1.png" width="672"></p>
@@ -306,10 +301,7 @@ Top by relative distance:
 <p>The congruence coefficient can also be displayed. Since this is an agreement measure, smaller values indicate that removing the variable produces a larger change in the induced configuration.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"cc_importance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_gower</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"cc_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-9-1.png" width="672"></p>
@@ -338,7 +330,7 @@ Top by relative distance:
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVO object
   preset : gower
-  dims   : 2
+  MDS diagnostics : not computed
   n_obs  : 333
   response used : FALSE
   cluster_k : 3
@@ -498,10 +490,7 @@ Top by relative distance:
 <p>For example, the PAM-based importance can be visualized as follows.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"pam_importance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"pam_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-13-1.png" width="672"></p>
@@ -512,10 +501,7 @@ Top by relative distance:
 <p>The same diagnostic can be inspected for hierarchical clustering.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"hclust_importance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"hclust_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-14-1.png" width="672"></p>
@@ -526,10 +512,7 @@ Top by relative distance:
 <p>Or for spectral clustering.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"spectral_importance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_gower_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"spectral_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-15-1.png" width="672"></p>
@@ -555,7 +538,7 @@ Top by relative distance:
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVO object
   preset : u_dep
-  dims   : 2
+  MDS diagnostics : not computed
   n_obs  : 333
   response used : TRUE
   top vars:
@@ -581,9 +564,6 @@ Top by relative distance:
 <th style="text-align: left;" data-quarto-table-cell-role="th">variable</th>
 <th style="text-align: left;" data-quarto-table-cell-role="th">variable_type</th>
 <th style="text-align: right;" data-quarto-table-cell-role="th">mad_importance</th>
-<th style="text-align: right;" data-quarto-table-cell-role="th">cc_importance</th>
-<th style="text-align: right;" data-quarto-table-cell-role="th">mds_congruence</th>
-<th style="text-align: right;" data-quarto-table-cell-role="th">ac_importance</th>
 <th style="text-align: right;" data-quarto-table-cell-role="th">mad_normalized</th>
 <th style="text-align: right;" data-quarto-table-cell-role="th">relative_distance</th>
 </tr></thead>
@@ -592,9 +572,6 @@ Top by relative distance:
 <td style="text-align: left;">island</td>
 <td style="text-align: left;">categorical</td>
 <td style="text-align: right;">1.000</td>
-<td style="text-align: right;">0.979</td>
-<td style="text-align: right;">0.979</td>
-<td style="text-align: right;">0.205</td>
 <td style="text-align: right;">0.166</td>
 <td style="text-align: right;">0.166</td>
 </tr>
@@ -602,9 +579,6 @@ Top by relative distance:
 <td style="text-align: left;">bill_length_mm</td>
 <td style="text-align: left;">numeric</td>
 <td style="text-align: right;">1.005</td>
-<td style="text-align: right;">0.995</td>
-<td style="text-align: right;">0.995</td>
-<td style="text-align: right;">0.100</td>
 <td style="text-align: right;">0.167</td>
 <td style="text-align: right;">0.167</td>
 </tr>
@@ -612,9 +586,6 @@ Top by relative distance:
 <td style="text-align: left;">bill_depth_mm</td>
 <td style="text-align: left;">numeric</td>
 <td style="text-align: right;">1.003</td>
-<td style="text-align: right;">0.979</td>
-<td style="text-align: right;">0.979</td>
-<td style="text-align: right;">0.203</td>
 <td style="text-align: right;">0.167</td>
 <td style="text-align: right;">0.167</td>
 </tr>
@@ -622,9 +593,6 @@ Top by relative distance:
 <td style="text-align: left;">flipper_length_mm</td>
 <td style="text-align: left;">numeric</td>
 <td style="text-align: right;">1.001</td>
-<td style="text-align: right;">0.998</td>
-<td style="text-align: right;">0.998</td>
-<td style="text-align: right;">0.058</td>
 <td style="text-align: right;">0.167</td>
 <td style="text-align: right;">0.167</td>
 </tr>
@@ -632,9 +600,6 @@ Top by relative distance:
 <td style="text-align: left;">body_mass_g</td>
 <td style="text-align: left;">numeric</td>
 <td style="text-align: right;">1.003</td>
-<td style="text-align: right;">0.991</td>
-<td style="text-align: right;">0.991</td>
-<td style="text-align: right;">0.136</td>
 <td style="text-align: right;">0.167</td>
 <td style="text-align: right;">0.167</td>
 </tr>
@@ -642,9 +607,6 @@ Top by relative distance:
 <td style="text-align: left;">sex</td>
 <td style="text-align: left;">categorical</td>
 <td style="text-align: right;">1.000</td>
-<td style="text-align: right;">0.924</td>
-<td style="text-align: right;">0.924</td>
-<td style="text-align: right;">0.383</td>
 <td style="text-align: right;">0.166</td>
 <td style="text-align: right;">0.166</td>
 </tr>
@@ -655,10 +617,7 @@ Top by relative distance:
 <p>For example, the relative-distance contribution can be visualized as follows.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_response</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"relative_distance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_response</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-18-1.png" width="672"></p>
@@ -678,6 +637,8 @@ Top by relative distance:
 <span>  <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="st">"species"</span>,</span>
 <span>  response_used <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  mds <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  dims <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    gower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>preset <span class="op">=</span> <span class="st">"gower"</span><span class="op">)</span>,</span>
 <span>    u_indep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>preset <span class="op">=</span> <span class="st">"u_indep"</span><span class="op">)</span>,</span>
@@ -694,7 +655,7 @@ Top by relative distance:
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVOCompare object
   methods: gower, u_indep, custom_matching
-  dims   : 2
+  MDS diagnostics : 2 dimensions
   n_obs  : 333
   rows   : 18
 
@@ -913,7 +874,7 @@ Top variables within each method:
 <div class="cell-output cell-output-stdout">
 <pre><code>Summary of MDistLOVOCompare
   methods: gower, u_indep, custom_matching
-  dims   : 2
+  MDS diagnostics : 2 dimensions
   n_obs  : 333
 
 # A tibble: 3 × 13
@@ -925,13 +886,10 @@ Top variables within each method:
 # ℹ 4 more variables: mds_mean &lt;dbl&gt;, ac_min &lt;dbl&gt;, ac_max &lt;dbl&gt;, ac_mean &lt;dbl&gt;</code></pre>
 </div>
 </div>
-<p>The comparison object also has an <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> method. This makes it possible to compare the contribution profiles induced by different distance specifications.</p>
+<p>The comparison object also has an <code>autoplot()</code> method. This makes it possible to compare the contribution profiles induced by different distance specifications.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_compare</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"relative_distance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_compare</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-22-1.png" width="672"></p>
@@ -964,7 +922,7 @@ Top variables within each method:
 <div class="cell-output cell-output-stdout">
 <pre><code>MDistLOVOCompare object
   methods: gower, u_indep, custom_matching
-  dims   : 2
+  MDS diagnostics : not computed
   n_obs  : 333
   rows   : 18
 
@@ -1160,10 +1118,7 @@ Top variables within each method:
 <p>For example, the following plot compares PAM-based cluster importance across the selected distance specifications.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lovo_compare_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span></span>
-<span>  metric <span class="op">=</span> <span class="st">"pam_importance"</span>,</span>
-<span>  reorder <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">lovo_compare_cluster</span><span class="op">$</span><span class="fu">autoplot</span><span class="op">(</span>metric <span class="op">=</span> <span class="st">"pam_importance"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="variable_contributions_files/figure-html/unnamed-chunk-25-1.png" width="672"></p>

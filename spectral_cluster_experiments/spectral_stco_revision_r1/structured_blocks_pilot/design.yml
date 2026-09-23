@@ -1,0 +1,46 @@
+schema_version: 1
+analysis_id: scmix-r1-structured-blocks-pilot
+status: pilot
+
+data:
+  n_per_group: 120
+  p_numeric: 12
+  categorical_levels: [2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3, 4]
+  numeric_loading: 0.72
+  categorical_model: nominal_association_blocks
+  categorical_copy_probability: 0.85
+  categorical_profile_strength: 0.35
+  numeric_mean_scale: 0.65
+  arms: [aligned, decoupled]
+  seeds: [26092501, 26092601, 26092701, 26092801, 26092901]
+
+distance:
+  preset: custom
+  method_num: pc_scores
+  method_cat: tvd
+  commensurable: false
+  interaction: false
+  prop_nn: 0.10
+  score: ba
+  decision: prior_corrected
+  gamma: 1.00
+  gate:
+    permutations: 199
+    alpha: 0.01
+    seed_offset: 31
+
+spectral:
+  affinity: gaussian
+  scale: median_positive_off_diagonal_distance
+  cluster_seed_offset: 11
+  kmeans:
+    nstart: 100
+    iter_max: 100
+    algorithm: Hartigan-Wong
+
+methods:
+  - Gated_active_average_SC
+  - Package_no_interaction_SC
+  - Gower_SC
+  - Modified_Gower_SC
+  - Euclidean_onehot_SC

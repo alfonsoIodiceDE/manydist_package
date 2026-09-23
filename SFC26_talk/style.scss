@@ -302,12 +302,12 @@
 
 /* Compact the generated bibliography so it stays within the slide canvas. */
 .reveal section#main-references .csl-bib-body {
-  font-size: 0.9em;
-  line-height: 1.22;
+  font-size: 1.1em;
+  line-height: 1.25;
 }
 
 .reveal section#main-references .csl-entry {
-  margin-bottom: 0.35em;
+  margin-bottom: 0.38em;
 }
 
 
@@ -464,6 +464,21 @@
   max-width: 85px !important;
   height: auto !important;
   opacity: 0.9;
+}
+
+/* Display the CARME wordmark from the official conference banner. */
+.reveal .carme-logo-crop {
+  height: 54px;
+  overflow: hidden;
+  margin: 0 auto 0.45em;
+}
+
+.reveal .carme-logo-crop img {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  margin: 0 !important;
 }
 
 .reveal .code-large pre code {

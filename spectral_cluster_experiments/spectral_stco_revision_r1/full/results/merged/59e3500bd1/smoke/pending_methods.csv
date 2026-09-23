@@ -1,0 +1,4 @@
+"method","label","dependency_status","blocker"
+"Ahmad_Dey","Ahmad-Dey mixed-data clustering","pending","No verified implementation is installed; kmed is absent and the exact algorithm/settings must be audited."
+"KAMILA","KAMILA","pending","The kamila package is not installed and its restart/initialization contract has not been verified."
+"Mixed_model_based","Gaussian-multinomial model-based mixed clustering","pending","A defensible implementation and model-selection rule have not yet been selected."

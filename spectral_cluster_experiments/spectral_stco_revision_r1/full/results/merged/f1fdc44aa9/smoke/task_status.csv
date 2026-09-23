@@ -1,0 +1,5 @@
+"task_id","scenario","replicate","status","elapsed_seconds","warning_count","warnings","error","output_file"
+1,"corrected_marginal_overlap",1,"complete",10.7135369777679,0,"",NA,"/Users/Alfo/Library/CloudStorage/Dropbox/gitgub_repos/manydist_package/spectral_cluster_experiments/revision_r1/full/results/smoke/f1fdc44aa9/smoke-task-00001.rds"
+251,"nonlinear_interaction",1,"complete",9.23319697380066,0,"",NA,"/Users/Alfo/Library/CloudStorage/Dropbox/gitgub_repos/manydist_package/spectral_cluster_experiments/revision_r1/full/results/smoke/f1fdc44aa9/smoke-task-00251.rds"
+301,"null_interaction",1,"complete",7.41187000274658,0,"",NA,"/Users/Alfo/Library/CloudStorage/Dropbox/gitgub_repos/manydist_package/spectral_cluster_experiments/revision_r1/full/results/smoke/f1fdc44aa9/smoke-task-00301.rds"
+851,"pi_nn_sensitivity",1,"complete",7.1352801322937,0,"",NA,"/Users/Alfo/Library/CloudStorage/Dropbox/gitgub_repos/manydist_package/spectral_cluster_experiments/revision_r1/full/results/smoke/f1fdc44aa9/smoke-task-00851.rds"

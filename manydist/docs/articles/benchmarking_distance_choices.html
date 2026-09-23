@@ -206,29 +206,30 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span>  specs <span class="op">=</span> <span class="va">candidate_specs</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">distance_benchmark</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">spec_type</span>,</span>
-<span>    <span class="va">preset</span>,</span>
-<span>    <span class="va">method_cat</span>,</span>
-<span>    <span class="va">method_num</span>,</span>
-<span>    <span class="va">commensurable</span>,</span>
-<span>    <span class="va">ok</span>,</span>
-<span>    <span class="va">error</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
+<span><span class="va">distance_benchmark</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 7
-  spec_type preset    method_cat method_num commensurable ok    error
-  &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;lgl&gt; &lt;chr&gt;
-1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
-2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
-3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
-4 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA            TRUE  &lt;NA&gt;
-5 component custom    matching   std        FALSE         TRUE  &lt;NA&gt;
-6 component custom    matching   std        TRUE          TRUE  &lt;NA&gt; </code></pre>
+<pre><code>MDistBenchmark
+  specifications : 6
+  successful     : 6
+  failed         : 0
+  comparisons    : 15
+  clustering     : not requested
+
+Methods:
+# A tibble: 6 × 4
+     id method                         type      status
+  &lt;int&gt; &lt;chr&gt;                          &lt;chr&gt;     &lt;chr&gt;
+1     1 Euclidean                      preset    successful
+2     2 Gower                          preset    successful
+3     3 Hennig--Liao                   preset    successful
+4     4 Unbiased independent           preset    successful
+5     5 Matching + z scores            component successful
+6     6 Matching + z scores (weighted) component successful
+
+Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)` for pairwise diagnostics.</code></pre>
 </div>
 </div>
-<p>The returned <code>MDistBenchmark</code> object remains a tibble and adds three columns:</p>
+<p>The compact print method reports how many specifications succeeded, how many failed, and how many pairwise comparisons are available. It also displays a short labeled method table. The returned <code>MDistBenchmark</code> object remains a tibble and adds three columns:</p>
 <ul>
 <li>
 <code>result</code> contains the <code>MDist</code> object, or the captured error;</li>
@@ -287,8 +288,29 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 {\operatorname{mean}(|d_a|)+\operatorname{mean}(|d_b|)}.
 </annotation></semantics></math></p>
 <p>It is zero for identical distances and does not depend on how many specifications are included in the benchmark.</p>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> provides a compact overview of the range of each available pairwise diagnostic.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">distance_benchmark</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Summary of MDistBenchmark
+  specifications : 6
+  successful     : 6
+  failed         : 0
+  comparisons    : 15
+
+Pairwise diagnostic summary:
+# A tibble: 4 × 4
+  metric              min median   max
+  &lt;chr&gt;             &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+1 mad               0      2.58  5.66
+2 relative_distance 0      0.636 1.78
+3 mds_congruence    0.961  0.990 1
+4 alienation        0      0.141 0.278</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pairwise_diagnostics</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">distance_benchmark</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">pairwise_diagnostics</span> <span class="op">|&gt;</span></span>
@@ -327,7 +349,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </ul>
 <ul class="nav nav-tabs" id="NA" role="tablist"><li role="presentation" class="nav-item"><button data-bs-toggle="tab" data-bs-target="#NA" id="NA-tab" type="button" role="tab" aria-controls="NA" aria-selected="true" class="active nav-link">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
 <span>  <span class="va">distance_benchmark</span>,</span>
 <span>  metric <span class="op">=</span> <span class="st">"relative_distance"</span>,</span>
@@ -345,7 +367,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 
 <div id="tabset-1-2">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
 <span>  <span class="va">distance_benchmark</span>,</span>
 <span>  metric <span class="op">=</span> <span class="st">"alienation"</span>,</span>
@@ -366,7 +388,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </h2>
 <p>Supplying <code>cluster_k</code> asks the benchmark to cluster every successful distance. The same value of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math> and the same clustering method are used within each pairwise comparison. Available methods are <code>"pam"</code>, <code>"hclust"</code>, and <code>"spectral"</code>. If <code>cluster_k</code> is omitted or <code>NULL</code>, this potentially expensive step is skipped.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2026</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">clustering_benchmark</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
@@ -404,7 +426,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </div>
 <p>The adjusted Rand indices compare two unsupervised partitions; the penguin species labels are not used. An ARI of one indicates identical assignments, whereas smaller values indicate greater sensitivity to the distance specification.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
 <span>  <span class="va">clustering_benchmark</span>,</span>
 <span>  metric <span class="op">=</span> <span class="st">"ari"</span>,</span>
@@ -422,7 +444,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </h2>
 <p>Some specifications can use a response when constructing the dissimilarity. They can be listed with <code>mode = "response_aware_only"</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">response_specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
 <span>  mode <span class="op">=</span> <span class="st">"response_aware_only"</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -443,7 +465,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </div>
 <p>When the response is supplied to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>, it is used only by response-aware components and is not treated as an ordinary predictor.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">response_benchmark</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
@@ -460,7 +482,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 2 u_dep_bw TRUE  &lt;NA&gt;
 3 u_mix    TRUE  &lt;NA&gt; </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">response_benchmark</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 3 × 8
@@ -479,7 +501,7 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </h2>
 <p>The same workflow can be expanded by filtering the full specification table, as in the unevaluated example below. Keep in mind that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>M</mi><annotation encoding="application/x-tex">M</annotation></semantics></math> successful specifications produce <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo stretchy="false" form="prefix">(</mo><mi>M</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">M(M-1)/2</annotation></semantics></math> pairwise rows, and clustering adds one fitted partition for every distance and clustering-method combination.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">larger_specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
 <span>  mode <span class="op">=</span> <span class="st">"full"</span>,</span>
 <span>  method_cat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"matching"</span>, <span class="st">"tvd"</span><span class="op">)</span>,</span>
