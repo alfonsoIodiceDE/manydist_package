@@ -1,0 +1,390 @@
+schema_version: 1
+analysis_id: scmix-r1-full-enriched
+status: core_launch_ready_pending_external_comparators
+description: >-
+  Enriched simulation study for the first Statistics & Computing revision.
+  Every task is one scenario cell and replicate evaluated under the declared
+  method group and the pre-specified global Gaussian affinity.
+
+manydist:
+  version: "0.5.2"
+  source_commit: "ab27241f1a0846bb13087f804e23fd52746d1578"
+  strict_provenance: true
+
+distance:
+  numerical:
+    preset: custom
+    method_num: pc_scores
+    commensurable: false
+    retained_pc_rule: all_numeric_components
+  categorical:
+    method_cat: tvd
+    base: pure_package_custom_no_interaction
+    interaction: knn_prior_corrected_balanced_accuracy_raw
+    composition: package_baseline_plus_gamma_times_numeric_mean_times_active_interaction_average
+    active_component_rule: mean_over_multiplicity_gated_active_variables
+    no_active_gate_rule: exact_package_baseline
+    interaction_gate:
+      method: permutation_max
+      permutations: 99
+      alpha: 0.01
+      seed_offset: 31
+      permutation_unit: complete_categorical_row
+      multiplicity_control: maximum_over_all_variables_and_category_pairs
+  defaults:
+    prop_nn: 0.10
+    gamma: 1.00
+    score: ba
+    decision: prior_corrected
+
+spectral:
+  known_k: true
+  embedding_dimension: number_of_true_clusters
+  kmeans:
+    nstart: 100
+    iter_max: 100
+    algorithm: Hartigan-Wong
+    selection: minimum_within_cluster_sum_of_squares
+  affinities:
+    gaussian:
+      enabled: true
+      role: primary
+      scale: median_positive_off_diagonal_distance
+    selftune:
+      enabled: false
+      role: exploratory_only_not_confirmatory
+      neighbor_rank: 7
+
+execution:
+  replicates_default: 50
+  expected_task_count: 1650
+  data_seed_base: 26091801
+  scenario_seed_stride: 100000
+  replicate_seed_stride: 100
+  cluster_seed_offsets:
+    gaussian: 11
+    selftune: 12
+    kprototypes: 21
+  method_failure_policy: record_and_continue
+  existing_task_policy: skip_without_overwrite
+  smoke:
+    'n': 90
+    n_per_moon: 18
+    output_subdirectory: smoke
+
+outputs:
+  task_directory: results/tasks
+  smoke_directory: results/smoke
+  merged_directory: results/merged
+  historical_directories_never_written:
+    - ../data
+    - ../data_old
+
+methods:
+  Gated_active_average_SC:
+    label: "Gated active-average interaction (spectral clustering)"
+    engine: r1_interaction_distance
+    enabled: true
+    groups: [core, sensitivity]
+  Package_no_interaction_SC:
+    label: "Pure manydist custom no-interaction baseline (spectral clustering)"
+    engine: r1_no_interaction_distance
+    enabled: true
+    groups: [core, sensitivity]
+  Legacy_u_dep_interaction_SC:
+    label: "Legacy u_dep interaction implementation (spectral clustering)"
+    engine: legacy_u_dep_interaction_distance
+    enabled: false
+    groups: [core]
+    role: diagnostic_ablation
+    dependency_status: intentionally_disabled
+    blocker: "Superseded package interaction path is excluded from the agreed revised method comparison."
+  Gower_SC:
+    label: "Gower dissimilarity (spectral clustering)"
+    engine: manydist_gower_distance
+    enabled: true
+    groups: [core]
+  Euclidean_onehot_SC:
+    label: "Standardized Euclidean one-hot dissimilarity (spectral clustering)"
+    engine: manydist_euclidean_distance
+    enabled: true
+    groups: [core]
+  Modified_Gower_SC:
+    label: "Feature-weighted modified Gower dissimilarity (spectral clustering)"
+    engine: manydist_modified_gower_distance
+    enabled: true
+    groups: [core]
+  DKSS_SC:
+    label: "DKSS dependency-aware dissimilarity (spectral clustering)"
+    engine: manydist_dkss_distance
+    enabled: true
+    groups: [core]
+    dependency_status: verified_locally
+  KPrototypes:
+    label: "k-prototypes"
+    engine: clustMixType_kprototypes
+    enabled: true
+    groups: [core]
+    dependency_status: verified_locally
+  Ahmad_Dey:
+    label: "Ahmad-Dey mixed-data clustering"
+    engine: pending
+    enabled: false
+    groups: [core]
+    dependency_status: pending
+    blocker: "No verified implementation is installed; kmed is absent and the exact algorithm/settings must be audited."
+  KAMILA:
+    label: "KAMILA"
+    engine: pending
+    enabled: false
+    groups: [core]
+    dependency_status: pending
+    blocker: "The kamila package is not installed and its restart/initialization contract has not been verified."
+  Mixed_model_based:
+    label: "Gaussian-multinomial model-based mixed clustering"
+    engine: pending
+    enabled: false
+    groups: [core]
+    dependency_status: pending
+    blocker: "A defensible implementation and model-selection rule have not yet been selected."
+
+scenarios:
+  corrected_marginal_overlap:
+    enabled: true
+    generator: controlled_overlap
+    method_group: core
+    purpose: "Valid shared-covariance Gaussian mixture with analytically controlled adjacent pair overlap."
+    fixed:
+      'n': 300
+      k: 3
+      p_numeric_signal: 6
+      p_numeric_noise: 0
+      q_categorical_signal: 4
+      q_categorical_noise: 0
+      categorical_accuracy: 0.60
+      family: gaussian
+      ar1_rho: 0.50
+    grid:
+      adjacent_overlap: [0.10, 0.25, 0.40]
+
+  sample_size_robustness:
+    enabled: true
+    generator: controlled_overlap
+    method_group: core
+    purpose: "One larger-n robustness cell at the medium controlled-overlap setting."
+    fixed:
+      'n': 600
+      k: 3
+      p_numeric_signal: 6
+      p_numeric_noise: 0
+      q_categorical_signal: 4
+      q_categorical_noise: 0
+      categorical_accuracy: 0.60
+      family: gaussian
+      ar1_rho: 0.50
+      adjacent_overlap: 0.25
+    grid: {}
+
+  non_gaussian:
+    enabled: true
+    generator: controlled_overlap
+    method_group: core
+    purpose: "Same valid marginal design under covariance-matched heavy-tailed continuous signal."
+    fixed:
+      'n': 300
+      k: 3
+      p_numeric_signal: 6
+      p_numeric_noise: 0
+      q_categorical_signal: 4
+      q_categorical_noise: 0
+      categorical_accuracy: 0.60
+      adjacent_overlap: 0.15
+      ar1_rho: 0.50
+      family: student_t3
+    grid: {}
+
+  nonlinear_interaction:
+    enabled: true
+    generator: moons
+    method_group: core
+    purpose: "Non-convex clusters defined jointly by moon membership and a categorical arc band."
+    fixed:
+      n_per_moon: 180
+      interaction_state: 'signal'
+      categorical_contamination: 0.00
+      q_categorical_noise: 0
+      moon_noise_sd: 0.080
+    grid: {}
+
+  null_interaction:
+    enabled: true
+    generator: moons
+    method_group: core
+    purpose: "Matched non-convex null in which categorical bands are balanced independently of continuous position."
+    fixed:
+      n_per_moon: 180
+      interaction_state: 'null'
+      categorical_contamination: 0.00
+      q_categorical_noise: 0
+      moon_noise_sd: 0.080
+    grid: {}
+
+  irrelevant_numeric:
+    enabled: true
+    generator: controlled_overlap
+    method_group: core
+    purpose: "Measure degradation from irrelevant numerical variables under fixed signal."
+    fixed:
+      'n': 300
+      k: 3
+      p_numeric_signal: 6
+      q_categorical_signal: 4
+      q_categorical_noise: 0
+      categorical_accuracy: 0.60
+      adjacent_overlap: 0.15
+      family: gaussian
+      ar1_rho: 0.50
+    grid:
+      p_numeric_noise: [0, 5, 10]
+
+  irrelevant_categorical:
+    enabled: true
+    generator: controlled_overlap
+    method_group: core
+    purpose: "Measure degradation from irrelevant nominal variables under fixed signal."
+    fixed:
+      'n': 300
+      k: 3
+      p_numeric_signal: 6
+      p_numeric_noise: 0
+      q_categorical_signal: 4
+      categorical_accuracy: 0.60
+      adjacent_overlap: 0.15
+      family: gaussian
+      ar1_rho: 0.50
+    grid:
+      q_categorical_noise: [0, 5, 10]
+
+  categorical_contamination:
+    enabled: true
+    generator: moons
+    method_group: core
+    purpose: "Robustness when observed signal categories violate the designed cross-type relation."
+    fixed:
+      n_per_moon: 180
+      interaction_state: 'signal'
+      q_categorical_noise: 0
+      moon_noise_sd: 0.080
+    grid:
+      categorical_contamination: [0.00, 0.05, 0.10, 0.20]
+
+  pi_nn_sensitivity:
+    enabled: true
+    generator: moons
+    method_group: sensitivity
+    purpose: "Pre-specified nearest-neighbour sensitivity under signal and matched null."
+    fixed:
+      n_per_moon: 180
+      categorical_contamination: 0.00
+      q_categorical_noise: 0
+      moon_noise_sd: 0.080
+    grid:
+      interaction_state: ['signal', 'null']
+    within_task_grid:
+      prop_nn: [0.02, 0.05, 0.10, 0.20]
+
+  gamma_sensitivity:
+    enabled: true
+    generator: moons
+    method_group: sensitivity
+    purpose: "Pre-specified interaction-weight sensitivity under signal and matched null."
+    fixed:
+      n_per_moon: 180
+      categorical_contamination: 0.00
+      q_categorical_noise: 0
+      moon_noise_sd: 0.080
+      prop_nn: 0.10
+    grid:
+      interaction_state: ['signal', 'null']
+    within_task_grid:
+      gamma: [0.00, 0.25, 0.50, 0.75, 1.00]
+
+  numeric_block_weight_sensitivity:
+    enabled: true
+    generator: moons
+    method_group: sensitivity
+    purpose: "One-factor sensitivity to the relative numerical-block contribution under signal and null."
+    fixed:
+      n_per_moon: 180
+      categorical_contamination: 0.00
+      q_categorical_noise: 0
+      moon_noise_sd: 0.080
+      prop_nn: 0.10
+    grid:
+      interaction_state: ['signal', 'null']
+    within_task_grid:
+      numeric_block_weight: [0.50, 1.00, 2.00]
+
+  submitted_sim1_balanced:
+    enabled: true
+    generator: submitted_simulation_1
+    method_group: core
+    purpose: "Continuity rerun of submitted Simulation 1 with equal numbers of numerical and categorical variables."
+    fixed:
+      k: 3
+      p_numeric_signal: 15
+      p_numeric_noise: 0
+      q_categorical: 15
+    grid:
+      'n': [1000, 2000]
+
+  submitted_sim1_categorical_dominant:
+    enabled: true
+    generator: submitted_simulation_1
+    method_group: core
+    purpose: "Continuity rerun of submitted Simulation 1 with more categorical than numerical variables."
+    fixed:
+      k: 3
+      p_numeric_signal: 10
+      p_numeric_noise: 0
+      q_categorical: 20
+    grid:
+      'n': [1000, 2000]
+
+  submitted_sim1_numeric_dominant:
+    enabled: true
+    generator: submitted_simulation_1
+    method_group: core
+    purpose: "Continuity rerun of submitted Simulation 1 with more numerical than categorical variables."
+    fixed:
+      k: 3
+      p_numeric_signal: 20
+      p_numeric_noise: 0
+      q_categorical: 10
+    grid:
+      'n': [1000, 2000]
+
+  submitted_sim1_numeric_noise:
+    enabled: true
+    generator: submitted_simulation_1
+    method_group: core
+    purpose: "Continuity rerun of submitted Simulation 1 with five independent uniform numerical noise variables."
+    fixed:
+      k: 3
+      p_numeric_signal: 15
+      p_numeric_noise: 5
+      q_categorical: 15
+    grid:
+      'n': [1000, 2000]
+
+  submitted_sim2_interaction:
+    enabled: true
+    generator: submitted_simulation_2
+    method_group: core
+    purpose: "Continuity rerun of the submitted cross-type interaction simulation, following the manuscript specification."
+    fixed:
+      k: 3
+      p_numeric: 6
+      q_categorical: 3
+    grid:
+      'n': [500, 1000]

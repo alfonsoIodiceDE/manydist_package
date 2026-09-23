@@ -93,7 +93,11 @@ contains the supplied specifications together with:
   Error message for failed runs, \`NA\` otherwise.
 
 Use \[benchmark_comparisons()\] to obtain the pairwise diagnostics and
-\[ggplot2::autoplot()\] to draw an annotated triangular heatmap.
+\[ggplot2::autoplot()\] to draw an annotated triangular heatmap. The
+default print method displays a compact run overview; use
+\`tibble::as_tibble()\` to inspect the complete underlying table.
+\`summary()\` returns minimum, median, and maximum values for each
+available pairwise diagnostic.
 
 ## Details
 
@@ -145,12 +149,26 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     specs = specs
   )
 
-  res |>
-    dplyr::select(spec_type, preset, ok, error)
+  res
+  summary(res)
 
   benchmark_comparisons(res)
   ggplot2::autoplot(res, metric = "relative_distance")
 }
 #> Warning: For method(s) 'matching', category dissimilarities do not depend on conditional profiles; `response` was therefore ignored.
+#> Summary of MDistBenchmark
+#>   specifications : 3
+#>   successful     : 3
+#>   failed         : 0
+#>   comparisons    : 3
+#>
+#> Pairwise diagnostic summary:
+#> # A tibble: 4 × 4
+#>   metric              min median   max
+#>   <chr>             <dbl>  <dbl> <dbl>
+#> 1 mad               1.27   5.66  5.66
+#> 2 relative_distance 0.210  1.78  1.78
+#> 3 mds_congruence    0.961  0.982 0.990
+#> 4 alienation        0.141  0.189 0.278
 
 ```

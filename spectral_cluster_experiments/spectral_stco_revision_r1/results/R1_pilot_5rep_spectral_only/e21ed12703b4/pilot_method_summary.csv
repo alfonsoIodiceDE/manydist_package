@@ -1,0 +1,31 @@
+"experiment","condition","state","method","method_label","mean","sd","min","max","n"
+"Simulation_3","npg120_profile0.35","aligned","Ahmad_Dey_SC","Ahmad--Dey distance",0.377285667713931,0.0507326484283557,0.290089056505202,0.41892902653349,5
+"Simulation_3","npg120_profile0.35","decoupled","Ahmad_Dey_SC","Ahmad--Dey distance",-0.001362750325002,0.00206861298131989,-0.00420073492442826,0.000731265976994654,5
+"Simulation_2","n500","interaction","Ahmad_Dey_SC","Ahmad--Dey distance",0.377244291524387,0.0148338689633109,0.358318776745231,0.390313146765889,5
+"Simulation_1","reference","null","Ahmad_Dey_SC","Ahmad--Dey distance",0.364647314864872,0.191159783253301,0.0783442308157888,0.609010990267749,5
+"Simulation_1","reference","signal","Ahmad_Dey_SC","Ahmad--Dey distance",0.801421914369057,0,0.801421914369057,0.801421914369057,5
+"Simulation_3","npg120_profile0.35","aligned","Euclidean_onehot_SC","Euclidean one-hot",0.458925628301301,0.0248785016530684,0.424971035454781,0.491395705973133,5
+"Simulation_3","npg120_profile0.35","decoupled","Euclidean_onehot_SC","Euclidean one-hot",-0.00195454466895981,0.00116684804308935,-0.0033660455937158,-0.000724597480658714,5
+"Simulation_2","n500","interaction","Euclidean_onehot_SC","Euclidean one-hot",0.283977453165793,0.0402811984524332,0.241928035060348,0.349926958608572,5
+"Simulation_1","reference","null","Euclidean_onehot_SC","Euclidean one-hot",0.00107672626971429,0.00329336253319148,-0.00280243524593865,0.0037607925709489,5
+"Simulation_1","reference","signal","Euclidean_onehot_SC","Euclidean one-hot",0.597170169148658,0.0799094916192933,0.509633706911344,0.6555278106402,5
+"Simulation_3","npg120_profile0.35","aligned","Gated_active_average_SC","Gated active average",0.38924488752484,0.139853171489217,0.230543854070392,0.497697486770185,5
+"Simulation_3","npg120_profile0.35","decoupled","Gated_active_average_SC","Gated active average",0.307249496149983,0.0744960152009905,0.184444791564517,0.379592871591467,5
+"Simulation_2","n500","interaction","Gated_active_average_SC","Gated active average",0.754229298186246,0.115024065971773,0.614598450024314,0.857785148030803,5
+"Simulation_1","reference","null","Gated_active_average_SC","Gated active average",0.482763467699117,0.022110968984918,0.463395526732482,0.519804665256139,5
+"Simulation_1","reference","signal","Gated_active_average_SC","Gated active average",0.882862931987691,0.03118056293553,0.843957138237551,0.917341768493267,5
+"Simulation_3","npg120_profile0.35","aligned","Gower_SC","Gower",0.38516579886841,0.0428773907866042,0.338362854307857,0.438440821423279,5
+"Simulation_3","npg120_profile0.35","decoupled","Gower_SC","Gower",-0.00179350833508892,0.0010039903643112,-0.00294265306987507,-0.0002753561935288,5
+"Simulation_2","n500","interaction","Gower_SC","Gower",0.25796203369736,0.0130806194185829,0.242341568092663,0.276288011746861,5
+"Simulation_1","reference","null","Gower_SC","Gower",-0.000627753790193822,0.00415626332827212,-0.00554527672165286,0.0037607925709489,5
+"Simulation_1","reference","signal","Gower_SC","Gower",0.564142347706318,0.204344107275448,0.19860049597079,0.6555278106402,5
+"Simulation_3","npg120_profile0.35","aligned","Modified_Gower_SC","Modified Gower",0.367925712401546,0.0432277015282928,0.309391652804066,0.426871347922434,5
+"Simulation_3","npg120_profile0.35","decoupled","Modified_Gower_SC","Modified Gower",-0.000874506908901458,0.00115629635424042,-0.00239880823243006,0.000140620628366364,5
+"Simulation_2","n500","interaction","Modified_Gower_SC","Modified Gower",0.707050761627708,0.0472930492423989,0.659227202968858,0.778341678755817,5
+"Simulation_1","reference","null","Modified_Gower_SC","Modified Gower",0.507324637396063,0.00897248981568767,0.495120168470895,0.519803868907569,5
+"Simulation_1","reference","signal","Modified_Gower_SC","Modified Gower",0.624722033199851,0.0875356781999255,0.489007123464869,0.722973253367182,5
+"Simulation_3","npg120_profile0.35","aligned","Package_no_interaction_SC","Package no interaction",0.357205546306176,0.0852505922766703,0.223577300854528,0.460615556620875,5
+"Simulation_3","npg120_profile0.35","decoupled","Package_no_interaction_SC","Package no interaction",0.307249496149983,0.0744960152009905,0.184444791564517,0.379592871591467,5
+"Simulation_2","n500","interaction","Package_no_interaction_SC","Package no interaction",0.252232354725239,0.0113606562907196,0.23520333604427,0.266003352110107,5
+"Simulation_1","reference","null","Package_no_interaction_SC","Package no interaction",0.482763467699117,0.022110968984918,0.463395526732482,0.519804665256139,5
+"Simulation_1","reference","signal","Package_no_interaction_SC","Package no interaction",0.482763467699117,0.022110968984918,0.463395526732482,0.519804665256139,5

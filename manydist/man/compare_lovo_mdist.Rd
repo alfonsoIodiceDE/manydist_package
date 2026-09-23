@@ -7,6 +7,7 @@
 compare_lovo_mdist(
   x,
   methods,
+  mds = FALSE,
   dims = 2,
   keep_dist = FALSE,
   .progress = FALSE,
@@ -35,8 +36,11 @@ methods = list(
 )
 }}
 
+\item{mds}{Logical. If `TRUE`, compute MDS-based congruence and alienation
+diagnostics for every distance specification. The default is `FALSE`.}
+
 \item{dims}{Number of dimensions used for the MDS configuration when
-computing congruence-based diagnostics.}
+`mds = TRUE`. Ignored when `mds = FALSE`.}
 
 \item{keep_dist}{Logical; if \code{TRUE}, distance matrices from the
 LOVO computations are retained. This increases memory usage.}
@@ -56,7 +60,8 @@ An object of class \code{MDistLOVOCompare} containing:
 \describe{
 \item{results}{A tibble with one row per method-variable combination.}
 \item{methods}{The list of distance specifications used.}
-\item{dims}{Number of MDS dimensions used.}
+\item{mds}{Whether MDS diagnostics were computed.}
+\item{dims}{Number of MDS dimensions used, or `NULL` when `mds = FALSE`.}
 \item{n_obs}{Number of observations in the dataset.}
 }
 }
@@ -70,9 +75,8 @@ For each distance specification, the function:
 \enumerate{
 \item Computes the full mixed-type distance using \code{mdist()}.
 \item Recomputes the distance repeatedly leaving out one variable at a time.
-\item Measures the impact of each variable using metrics such as
-mean absolute deviation (MAD), congruence-based diagnostics, and,
-when requested, clustering-based agreement measures.
+\item Measures the impact of each variable using mean absolute deviation
+(MAD) and, when requested, MDS- or clustering-based diagnostics.
 }
 
 The results are combined across methods and returned as an

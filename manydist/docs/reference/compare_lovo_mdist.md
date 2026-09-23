@@ -9,6 +9,7 @@ across multiple distance definitions supported by `manydist`.
 compare_lovo_mdist(
   x,
   methods,
+  mds = FALSE,
   dims = 2,
   keep_dist = FALSE,
   .progress = FALSE,
@@ -42,10 +43,16 @@ compare_lovo_mdist(
         )
       )
 
+- mds:
+
+  Logical. If \`TRUE\`, compute MDS-based congruence and alienation
+  diagnostics for every distance specification. The default is
+  \`FALSE\`.
+
 - dims:
 
-  Number of dimensions used for the MDS configuration when computing
-  congruence-based diagnostics.
+  Number of dimensions used for the MDS configuration when \`mds =
+  TRUE\`. Ignored when \`mds = FALSE\`.
 
 - keep_dist:
 
@@ -78,9 +85,13 @@ An object of class `MDistLOVOCompare` containing:
 
   The list of distance specifications used.
 
+- mds:
+
+  Whether MDS diagnostics were computed.
+
 - dims:
 
-  Number of MDS dimensions used.
+  Number of MDS dimensions used, or \`NULL\` when \`mds = FALSE\`.
 
 - n_obs:
 
@@ -96,15 +107,14 @@ For each distance specification, the function:
 2.  Recomputes the distance repeatedly leaving out one variable at a
     time.
 
-3.  Measures the impact of each variable using metrics such as mean
-    absolute deviation (MAD), congruence-based diagnostics, and, when
-    requested, clustering-based agreement measures.
+3.  Measures the impact of each variable using mean absolute deviation
+    (MAD) and, when requested, MDS- or clustering-based diagnostics.
 
 The results are combined across methods and returned as an
 `MDistLOVOCompare` object, which supports
 [`print()`](https://rdrr.io/r/base/print.html),
 [`summary()`](https://rdrr.io/r/base/summary.html), and
-[`ggplot2::autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
+[`ggplot2::autoplot()`](https://rdrr.io/pkg/ggplot2/man/autoplot.html).
 
 ## See also
 

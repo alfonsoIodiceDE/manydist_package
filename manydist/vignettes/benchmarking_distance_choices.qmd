@@ -136,19 +136,13 @@ distance_benchmark <- benchmark_mdist(
   specs = candidate_specs
 )
 
-distance_benchmark |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable,
-    ok,
-    error
-  )
+distance_benchmark
 ```
 
-The returned `MDistBenchmark` object remains a tibble and adds three columns:
+The compact print method reports how many specifications succeeded, how many
+failed, and how many pairwise comparisons are available. It also displays a
+short labeled method table. The returned `MDistBenchmark` object remains a
+tibble and adds three columns:
 
 - `result` contains the `MDist` object, or the captured error;
 - `ok` indicates whether computation succeeded;
@@ -201,6 +195,15 @@ $$
 
 It is zero for identical distances and does not depend on how many
 specifications are included in the benchmark.
+
+`summary()` provides a compact overview of the range of each available
+pairwise diagnostic.
+
+```{r}
+#| label: summarize-pairwise-diagnostics
+
+summary(distance_benchmark)
+```
 
 ```{r}
 #| label: inspect-pairwise-diagnostics

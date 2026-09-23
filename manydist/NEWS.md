@@ -1,5 +1,17 @@
 # manydist 0.5.2
 
+## Diagnostics
+
+- Changed MDS-based diagnostics in `lovo_mdist()` and
+  `compare_lovo_mdist()` to be opt-in. Set `mds = TRUE` to compute
+  congruence and alienation diagnostics; `dims = 2` remains the default MDS
+  dimensionality when MDS is requested. Distance-based LOVO diagnostics remain
+  available by default, and clustering diagnostics remain controlled by
+  `cluster_k`.
+- Added compact `print()` and `summary()` methods for `MDistBenchmark`
+  objects. The full benchmark remains available as a tibble, while interactive
+  output now emphasizes run status, failures, and pairwise diagnostic ranges.
+
 ## Distance construction
 
 - Added the `"u_dep_bw"` preset for association-aware distances with block-wise

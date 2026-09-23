@@ -2450,9 +2450,9 @@ The `Carseats` data are used to predict whether sales are high.
 ![](figures/manydist_logo.png){width=35%}
 :::
 
-:::{.fragment .centered}
-### from distance construction to reproducible learning workflows
-:::
+<!-- :::{.fragment .centered} -->
+<!-- ### from distance construction to reproducible learning workflows -->
+<!-- ::: -->
 
 ## Building distance-based pipelines
 
@@ -3672,11 +3672,84 @@ Understand what a chosen distance emphasizes or suppresses, and how that choice 
 :::
 
 
+## CARME 2027 in Corfu {style="font-size:0.88em;"}
+
+### Correspondence Analysis and Related Methods
+
+::: {.columns}
+
+::: {.column width="34%"}
+
+::: {.carme-logo-crop}
+![](figures/carme_banner.png){fig-alt="CARME 2027 logo"}
+:::
+
+::: {.callout-important appearance="simple" icon=false}
+## June 22–25, 2027
+
+**Ionian University**<br>
+Corfu, Greece
+:::
+
+The tenth international CARME conference brings together work on correspondence analysis, categorical data, visualization, clustering, and related methods.
+
+:::
+
+::: {.column width="64%"}
+
+::: {.callout-tip appearance="simple" icon=false}
+## Invited speakers
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+**Mikael Börjesson**<br>
+Uppsala University
+
+**Paul Eilers**<br>
+Erasmus University Medical Center
+
+**Patrick J. F. Groenen**<br>
+Erasmus School of Economics
+
+:::
+
+::: {.column width="50%"}
+
+**Trevor Hastie**<br>
+Stanford University
+
+**Heungsun Hwang**<br>
+McGill University
+
+**Ndèye Niang**<br>
+CNAM Paris
+
+:::
+
+:::
+
+:::
+
+:::
+
+:::
+
+::: {.centered style="margin-top:0.35em;font-size:0.78em;"}
+[carme2027corfu.wixsite.com/conference](https://carme2027corfu.wixsite.com/conference)
+:::
+
+::: {.notes}
+Conference dates, venue, and invited-speaker list checked on September 15, 2026, from the [official CARME 2027 website](https://carme2027corfu.wixsite.com/conference) and its [Invited Speakers page](https://carme2027corfu.wixsite.com/conference/invited-speakers).
+:::
+
+
 ## Contact and slides
 
 ::: {.columns}
 
-::: {.column width="45%"}
+::: {.column width="36%"}
 
 
 ### Contact
@@ -3691,13 +3764,24 @@ Alfonso Iodice D'Enza
 
 :::
 
-::: {.column width="55%"}
-### scan to open the package website
+::: {.column width="32%"}
+### Package website
 
-[![](figures/manydist_qr.png){width=60% fig-align="center"}](https://alfonsoiodicede.github.io/manydist_package/)
+[![](figures/manydist_qr.png){width=90% fig-align="center" fig-alt="QR code for the manydist package website"}](https://alfonsoiodicede.github.io/manydist_package/)
 
 ::: {.centered}
-[Package website](https://alfonsoiodicede.github.io/manydist_package/)
+[Open package website](https://alfonsoiodicede.github.io/manydist_package/)
+:::
+
+:::
+
+::: {.column width="32%"}
+### Slides
+
+[![](figures/sfc26_slides_qr.png){width=100% fig-align="center" fig-alt="QR code for the SFC26 presentation slides"}](https://alfonsoiodicede.github.io/sfc26_talk.html#/title-slide)
+
+::: {.centered}
+[Open slides](https://alfonsoiodicede.github.io/sfc26_talk.html#/title-slide)
 :::
 
 :::

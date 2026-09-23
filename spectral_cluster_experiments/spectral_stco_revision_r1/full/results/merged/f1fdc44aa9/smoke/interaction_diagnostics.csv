@@ -1,0 +1,17 @@
+"task_id","variable","prop_nn","rho","numeric_block_weight","tvd_level_mean","interaction_level_mean","tvd_observation_mean","interaction_observation_mean_raw","interaction_observation_mean_gated","interaction_gate_statistic","interaction_gate_p_value","interaction_detected","scenario","replicate","setting_id","param_adjacent_overlap","param_ar1_rho","param_categorical_accuracy","param_categorical_contamination","param_family","param_interaction_state","param_k","param_moon_noise_sd","param_n","param_n_per_moon","param_p_numeric_noise","param_p_numeric_signal","param_q_categorical_noise","param_q_categorical_signal"
+1,"C_signal_1",0.1,0.25,1,0.229659278046375,0.122136799556154,0.152476071577195,0.0853932584269663,0,0.170880557977332,0.65,FALSE,"corrected_marginal_overlap",1,1,"0.1","0.5","0.6",NA,"gaussian",NA,"3",NA,"90",NA,"0","6","0","4"
+1,"C_signal_2",0.1,0.25,1,0.186962824893859,0.0749197473335404,0.117270079067832,0.052434456928839,0,0.121621621621621,0.86,FALSE,"corrected_marginal_overlap",1,1,"0.1","0.5","0.6",NA,"gaussian",NA,"3",NA,"90",NA,"0","6","0","4"
+1,"C_signal_3",0.1,0.25,1,0.19885789240628,0.139935333483721,0.133083645443196,0.0938826466916355,0,0.324009324009324,0.11,FALSE,"corrected_marginal_overlap",1,1,"0.1","0.5","0.6",NA,"gaussian",NA,"3",NA,"90",NA,"0","6","0","4"
+1,"C_signal_4",0.1,0.25,1,0.17825311942959,0.0784313725490196,0.114856429463171,0.0439450686641697,0,0.200534759358289,0.51,FALSE,"corrected_marginal_overlap",1,1,"0.1","0.5","0.6",NA,"gaussian",NA,"3",NA,"90",NA,"0","6","0","4"
+251,"band",0.1,0.5,1,0,0.916666666666667,0,0.628571428571428,0.628571428571428,0.916666666666667,0.01,TRUE,"nonlinear_interaction",1,1,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+251,"nuisance",0.1,0.5,1,0,0,0,0,0,0,1,FALSE,"nonlinear_interaction",1,1,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+301,"band",0.1,0.5,1,0,0.0555555555555556,0,0.0380952380952381,0,0.166666666666667,0.77,FALSE,"null_interaction",1,1,NA,NA,NA,"0",NA,"null",NA,"0.08",NA,"18",NA,NA,"0",NA
+301,"nuisance",0.1,0.5,1,0,0.111111111111111,0,0.0761904761904763,0,0.333333333333333,0.48,FALSE,"null_interaction",1,1,NA,NA,NA,"0",NA,"null",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"band",0.02,0.5,1,0,0.972222222222222,0,0.666666666666667,0.666666666666667,1,0.01,TRUE,"pi_nn_sensitivity",1,1,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"nuisance",0.02,0.5,1,0,0,0,0,0,0,1,FALSE,"pi_nn_sensitivity",1,1,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"band",0.05,0.5,1,0,0.972222222222222,0,0.666666666666667,0.666666666666667,1,0.01,TRUE,"pi_nn_sensitivity",1,2,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"nuisance",0.05,0.5,1,0,0,0,0,0,0,1,FALSE,"pi_nn_sensitivity",1,2,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"band",0.1,0.5,1,0,1,0,0.685714285714286,0.685714285714286,1,0.01,TRUE,"pi_nn_sensitivity",1,3,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"nuisance",0.1,0.5,1,0,0,0,0,0,0,1,FALSE,"pi_nn_sensitivity",1,3,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"band",0.2,0.5,1,0,0.972222222222222,0,0.666666666666667,0.666666666666667,1,0.01,TRUE,"pi_nn_sensitivity",1,4,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA
+851,"nuisance",0.2,0.5,1,0,0,0,0,0,0,1,FALSE,"pi_nn_sensitivity",1,4,NA,NA,NA,"0",NA,"signal",NA,"0.08",NA,"18",NA,NA,"0",NA

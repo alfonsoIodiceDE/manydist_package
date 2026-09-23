@@ -164,30 +164,33 @@ distance_benchmark <- benchmark_mdist(
   specs = candidate_specs
 )
 
-distance_benchmark |>
-  dplyr::select(
-    spec_type,
-    preset,
-    method_cat,
-    method_num,
-    commensurable,
-    ok,
-    error
-  )
+distance_benchmark
 ```
 
-    # A tibble: 6 × 7
-      spec_type preset    method_cat method_num commensurable ok    error
-      <chr>     <chr>     <chr>      <chr>      <lgl>         <lgl> <chr>
-    1 preset    euclidean <NA>       <NA>       NA            TRUE  <NA>
-    2 preset    gower     <NA>       <NA>       NA            TRUE  <NA>
-    3 preset    hl        <NA>       <NA>       NA            TRUE  <NA>
-    4 preset    u_indep   <NA>       <NA>       NA            TRUE  <NA>
-    5 component custom    matching   std        FALSE         TRUE  <NA>
-    6 component custom    matching   std        TRUE          TRUE  <NA> 
+    MDistBenchmark
+      specifications : 6
+      successful     : 6
+      failed         : 0
+      comparisons    : 15
+      clustering     : not requested
 
-The returned `MDistBenchmark` object remains a tibble and adds three
-columns:
+    Methods:
+    # A tibble: 6 × 4
+         id method                         type      status
+      <int> <chr>                          <chr>     <chr>
+    1     1 Euclidean                      preset    successful
+    2     2 Gower                          preset    successful
+    3     3 Hennig--Liao                   preset    successful
+    4     4 Unbiased independent           preset    successful
+    5     5 Matching + z scores            component successful
+    6     6 Matching + z scores (weighted) component successful
+
+    Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)` for pairwise diagnostics.
+
+The compact print method reports how many specifications succeeded, how
+many failed, and how many pairwise comparisons are available. It also
+displays a short labeled method table. The returned `MDistBenchmark`
+object remains a tibble and adds three columns:
 
 - `result` contains the `MDist` object, or the captured error;
 - `ok` indicates whether computation succeeded;
@@ -249,6 +252,29 @@ The symmetric relative distance is
 
 It is zero for identical distances and does not depend on how many
 specifications are included in the benchmark.
+
+[`summary()`](https://rdrr.io/r/base/summary.html) provides a compact
+overview of the range of each available pairwise diagnostic.
+
+``` r
+
+summary(distance_benchmark)
+```
+
+    Summary of MDistBenchmark
+      specifications : 6
+      successful     : 6
+      failed         : 0
+      comparisons    : 15
+
+    Pairwise diagnostic summary:
+    # A tibble: 4 × 4
+      metric              min median   max
+      <chr>             <dbl>  <dbl> <dbl>
+    1 mad               0      2.58  5.66
+    2 relative_distance 0      0.636 1.78
+    3 mds_congruence    0.961  0.990 1
+    4 alienation        0      0.141 0.278
 
 ``` r
 

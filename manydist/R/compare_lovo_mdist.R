@@ -5,20 +5,27 @@ MDistLOVOCompare <- R6::R6Class(
   public = list(
     results = NULL,
     methods = NULL,
+    mds     = NULL,
     dims    = NULL,
     n_obs   = NULL,
 
-    initialize = function(results, methods, dims = 2, n_obs = NA_integer_) {
+    initialize = function(results, methods, mds = FALSE, dims = 2,
+                          n_obs = NA_integer_) {
       self$results <- tibble::as_tibble(results)
       self$methods <- methods
-      self$dims    <- dims
+      self$mds     <- mds
+      self$dims    <- if (isTRUE(mds)) dims else NULL
       self$n_obs   <- n_obs
     },
 
     print = function(...) {
       cat("MDistLOVOCompare object\n")
       cat("  methods:", paste(names(self$methods), collapse = ", "), "\n")
-      cat("  dims   :", self$dims, "\n")
+      if (isTRUE(self$mds)) {
+        cat("  MDS diagnostics :", self$dims, "dimensions\n")
+      } else {
+        cat("  MDS diagnostics : not computed\n")
+      }
       cat("  n_obs  :", self$n_obs, "\n")
       cat("  rows   :", nrow(self$results), "\n\n")
 
@@ -80,16 +87,35 @@ MDistLOVOCompare <- R6::R6Class(
           rel_min  = min(dplyr::coalesce(.data$relative_distance, .data$mad_normalized), na.rm = TRUE),
           rel_max  = max(dplyr::coalesce(.data$relative_distance, .data$mad_normalized), na.rm = TRUE),
           rel_mean = mean(dplyr::coalesce(.data$relative_distance, .data$mad_normalized), na.rm = TRUE),
-
-          mds_min  = min(dplyr::coalesce(.data$mds_congruence, .data$cc_importance), na.rm = TRUE),
-          mds_max  = max(dplyr::coalesce(.data$mds_congruence, .data$cc_importance), na.rm = TRUE),
-          mds_mean = mean(dplyr::coalesce(.data$mds_congruence, .data$cc_importance), na.rm = TRUE),
-
-          ac_min   = min(ac_importance, na.rm = TRUE),
-          ac_max   = max(ac_importance, na.rm = TRUE),
-          ac_mean  = mean(ac_importance, na.rm = TRUE),
           .groups = "drop"
         )
+
+      mds_metric <- if ("mds_congruence" %in% names(r)) {
+        "mds_congruence"
+      } else if ("cc_importance" %in% names(r)) {
+        "cc_importance"
+      } else {
+        NULL
+      }
+
+      if (!is.null(mds_metric) && "ac_importance" %in% names(r) &&
+          !all(is.na(r[[mds_metric]]))) {
+        out <- out |>
+          dplyr::left_join(
+            r |>
+              dplyr::group_by(method) |>
+              dplyr::summarise(
+                mds_min  = min(.data[[mds_metric]], na.rm = TRUE),
+                mds_max  = max(.data[[mds_metric]], na.rm = TRUE),
+                mds_mean = mean(.data[[mds_metric]], na.rm = TRUE),
+                ac_min   = min(ac_importance, na.rm = TRUE),
+                ac_max   = max(ac_importance, na.rm = TRUE),
+                ac_mean  = mean(ac_importance, na.rm = TRUE),
+                .groups = "drop"
+              ),
+            by = "method"
+          )
+      }
 
       if ("ari_pam" %in% names(r) && !all(is.na(r$ari_pam))) {
         out <- out |>
@@ -147,7 +173,11 @@ MDistLOVOCompare <- R6::R6Class(
 
       cat("Summary of MDistLOVOCompare\n")
       cat("  methods:", paste(names(self$methods), collapse = ", "), "\n")
-      cat("  dims   :", self$dims, "\n")
+      if (isTRUE(self$mds)) {
+        cat("  MDS diagnostics :", self$dims, "dimensions\n")
+      } else {
+        cat("  MDS diagnostics : not computed\n")
+      }
       cat("  n_obs  :", self$n_obs, "\n\n")
       print(out, n = nrow(out))
       invisible(out)
@@ -181,6 +211,16 @@ MDistLOVOCompare <- R6::R6Class(
       df <- self$results
 
       if (!(metric %in% names(df))) {
+        if (metric %in% c("mds_congruence", "cc_importance", "ac_importance") &&
+            !isTRUE(self$mds)) {
+          stop(
+            sprintf(
+              "Metric '%s' is unavailable because MDS diagnostics were not computed. Re-run with `mds = TRUE`.",
+              metric
+            ),
+            call. = FALSE
+          )
+        }
         stop(sprintf("Metric '%s' not found in results.", metric))
       }
 
@@ -361,9 +401,8 @@ MDistLOVOCompare <- R6::R6Class(
 #' \enumerate{
 #' \item Computes the full mixed-type distance using \code{mdist()}.
 #' \item Recomputes the distance repeatedly leaving out one variable at a time.
-#' \item Measures the impact of each variable using metrics such as
-#' mean absolute deviation (MAD), congruence-based diagnostics, and,
-#' when requested, clustering-based agreement measures.
+#' \item Measures the impact of each variable using mean absolute deviation
+#' (MAD) and, when requested, MDS- or clustering-based diagnostics.
 #' }
 #'
 #' The results are combined across methods and returned as an
@@ -391,8 +430,11 @@ MDistLOVOCompare <- R6::R6Class(
 #' )
 #' }
 #'
+#' @param mds Logical. If `TRUE`, compute MDS-based congruence and alienation
+#' diagnostics for every distance specification. The default is `FALSE`.
+#'
 #' @param dims Number of dimensions used for the MDS configuration when
-#' computing congruence-based diagnostics.
+#' `mds = TRUE`. Ignored when `mds = FALSE`.
 #'
 #' @param keep_dist Logical; if \code{TRUE}, distance matrices from the
 #' LOVO computations are retained. This increases memory usage.
@@ -411,7 +453,8 @@ MDistLOVOCompare <- R6::R6Class(
 #' \describe{
 #' \item{results}{A tibble with one row per method-variable combination.}
 #' \item{methods}{The list of distance specifications used.}
-#' \item{dims}{Number of MDS dimensions used.}
+#' \item{mds}{Whether MDS diagnostics were computed.}
+#' \item{dims}{Number of MDS dimensions used, or `NULL` when `mds = FALSE`.}
 #' \item{n_obs}{Number of observations in the dataset.}
 #' }
 #'
@@ -444,12 +487,23 @@ MDistLOVOCompare <- R6::R6Class(
 #' @export
 compare_lovo_mdist <- function(x,
                                methods,
+                               mds = FALSE,
                                dims = 2,
                                keep_dist = FALSE,
                                .progress = FALSE,
                                ...) {
+  dims_supplied <- !missing(dims)
+
   if (!is.list(methods) || is.null(names(methods)) || any(names(methods) == "")) {
     stop("`methods` must be a named list.")
+  }
+
+  if (!is.logical(mds) || length(mds) != 1L || is.na(mds)) {
+    stop("mds must be a single TRUE/FALSE value.")
+  }
+
+  if (!mds && dims_supplied) {
+    warning("`dims` is ignored when `mds = FALSE`.", call. = FALSE)
   }
 
   x <- tibble::as_tibble(x)
@@ -469,7 +523,8 @@ compare_lovo_mdist <- function(x,
     }
 
     args <- c(
-      list(x = x, dims = dims, keep_dist = keep_dist),
+      list(x = x, mds = mds, keep_dist = keep_dist),
+      if (isTRUE(mds)) list(dims = dims) else list(),
       list(...),
       method_args
     )
@@ -487,6 +542,7 @@ compare_lovo_mdist <- function(x,
   MDistLOVOCompare$new(
     results = res,
     methods = methods,
+    mds = mds,
     dims = dims,
     n_obs = nrow(x)
   )

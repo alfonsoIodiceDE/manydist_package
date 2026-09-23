@@ -130,7 +130,10 @@ step in spectral clustering.</p></dd>
 
 
 </dl><p>Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
-[ggplot2::autoplot()] to draw an annotated triangular heatmap.</p>
+[ggplot2::autoplot()] to draw an annotated triangular heatmap. The default
+print method displays a compact run overview; use `tibble::as_tibble()` to
+inspect the complete underlying table. `summary()` returns minimum, median,
+and maximum values for each available pairwise diagnostic.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -165,12 +168,12 @@ columns are included in the comparisons.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"palmerpenguins"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"penguins"</span>, package <span class="op">=</span> <span class="st">"palmerpenguins"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="fu">palmerpenguins</span><span class="fu">::</span><span class="va"><a href="https://allisonhorst.github.io/palmerpenguins/reference/penguins.html" class="external-link">penguins</a></span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">penguins_small</span> <span class="op">&lt;-</span> <span class="fu">palmerpenguins</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/palmerpenguins/man/penguins.html" class="external-link">penguins</a></span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/select.html" class="external-link">select</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="va">species</span>, <span class="va">bill_length_mm</span>, <span class="va">bill_depth_mm</span>, <span class="va">flipper_length_mm</span>,</span></span>
 <span class="r-in"><span>      <span class="va">body_mass_g</span>, <span class="va">island</span>, <span class="va">sex</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/tidyr/man/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    mode <span class="op">=</span> <span class="st">"presets_only"</span>,</span></span>
@@ -183,13 +186,27 @@ columns are included in the comparisons.</p>
 <span class="r-in"><span>    specs <span class="op">=</span> <span class="va">specs</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">res</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">spec_type</span>, <span class="va">preset</span>, <span class="va">ok</span>, <span class="va">error</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">res</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">res</span>, metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">res</span>, metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>For method(s) 'matching', category dissimilarities do not depend on conditional profiles; `response` was therefore ignored.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Summary of MDistBenchmark</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   specifications : 3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   successful     : 3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   failed         : 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   comparisons    : 3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise diagnostic summary:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   metric              min median   max</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> mad               1.27   5.66  5.66 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> relative_distance 0.210  1.78  1.78 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> mds_congruence    0.961  0.982 0.990</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> alienation        0.141  0.189 0.278</span>
 <span class="r-plt img"><img src="benchmark_mdist-1.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

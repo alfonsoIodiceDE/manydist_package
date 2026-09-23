@@ -13,6 +13,7 @@ lovo_mdist(
   x,
   response = NULL,
   ...,
+  mds = FALSE,
   dims = 2,
   keep_dist = FALSE,
   cluster_k = NULL,
@@ -44,10 +45,16 @@ lovo_mdist(
   Additional arguments passed to \[mdist()\], such as \`preset\`,
   \`method_cat\`, \`method_num\`, \`commensurable\`, or \`interaction\`.
 
+- mds:
+
+  Logical. If \`TRUE\`, compute classical multidimensional scaling
+  diagnostics for the full and leave-one-variable-out dissimilarities.
+  The default is \`FALSE\`.
+
 - dims:
 
   Integer. Number of dimensions used by classical multidimensional
-  scaling when computing congruence-based diagnostics.
+  scaling when \`mds = TRUE\`. Ignored when \`mds = FALSE\`.
 
 - keep_dist:
 
@@ -100,8 +107,8 @@ object also has print, summary, and autoplot methods.
 \`lovo_mdist()\` is useful for assessing how strongly each predictor
 contributes to a distance-based representation. A predictor is
 considered influential when removing it produces a large change in the
-dissimilarity matrix, the multidimensional scaling configuration, or an
-optional clustering partition.
+dissimilarity matrix or an optional downstream representation, such as a
+multidimensional scaling configuration or clustering partition.
 
 The returned object contains several LOVO diagnostics. The main distance
 contribution is measured by the mean absolute difference between the
@@ -109,11 +116,11 @@ full dissimilarity matrix and each leave-one-variable-out matrix
 (\`mad_importance\`). The normalized version is stored as
 \`relative_distance\`.
 
-The function also compares classical multidimensional scaling
-configurations computed from the full and leave-one-variable-out
+If \`mds = TRUE\`, the function also compares classical multidimensional
+scaling configurations computed from the full and leave-one-variable-out
 dissimilarities. These diagnostics are stored as \`mds_congruence\` /
 \`cc_importance\` and \`ac_importance\`, the latter corresponding to an
-alienation coefficient.
+alienation coefficient. They are omitted when \`mds = FALSE\`.
 
 If \`cluster_k\` is supplied, the function additionally computes
 clustering partitions from the full and leave-one-variable-out
@@ -141,7 +148,7 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     ) |>
     tidyr::drop_na()
 
-  # LOVO diagnostics for a Gower distance
+  # Distance-based LOVO diagnostics for a Gower distance
   res <- lovo_mdist(
     penguins_small,
     preset = "gower",
@@ -153,14 +160,12 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
   summary(res)
 
   # Plot the relative distance contribution of each predictor
-  p <- res$autoplot(metric = "relative_distance", reorder = TRUE)
+  p <- res$autoplot(metric = "relative_distance")
   p
 }
 #> Summary of MDistLOVO
 #>   preset : gower 
-#>   dims   : 2 
 #>   n_obs  : 333 
-#>   response used : FALSE 
 #> 
 #> Relative distance:
 #>   range [0.1003, 0.2916], mean 0.1667

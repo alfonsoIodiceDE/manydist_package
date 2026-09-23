@@ -1,0 +1,6 @@
+"experiment","condition","state","mean","sd","positive_fraction","zero_fraction","min","max","n"
+"Simulation_3","npg120_profile0.35","aligned",0.0876298003975484,0.0949989554231904,1,0,0.015183439833577,0.237117506870427,5
+"Simulation_3","npg120_profile0.35","decoupled",0,0,0,1,0,0,5
+"Simulation_2","n500","interaction",0.501996943461007,0.123609451534949,1,0,0.356937179402196,0.608187543628831,5
+"Simulation_1","reference","null",0,0,0,1,0,0,5
+"Simulation_1","reference","signal",0.400099464288574,0.0458368271450524,1,0,0.324152472981412,0.442352840735388,5

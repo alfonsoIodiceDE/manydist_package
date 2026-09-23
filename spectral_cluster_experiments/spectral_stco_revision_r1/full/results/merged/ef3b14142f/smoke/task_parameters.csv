@@ -1,0 +1,2 @@
+"task_id","param_adjacent_overlap","param_ar1_rho","param_categorical_accuracy","param_family","param_k","param_n","param_p_numeric_noise","param_p_numeric_signal","param_q_categorical_noise","param_q_categorical_signal"
+1,"0.1","0.5","0.6","gaussian","3","90","0","6","0","4"

@@ -1,0 +1,6 @@
+"experiment","condition","state","replicate","n","ARI","sigma","distance_seconds","symmetric","zero_diagonal"
+"Simulation_1","reference","signal",1,360,0.801421914369057,0.145175907873617,0.443,TRUE,TRUE
+"Simulation_1","reference","null",1,360,0.609010990267749,0.0210261872733189,0.231,TRUE,TRUE
+"Simulation_2","n500","interaction",1,500,0.389585795145947,0.0627722512270358,0.0440000000000005,TRUE,TRUE
+"Simulation_3","npg120_profile0.35","aligned",1,360,0.41892902653349,0.533051133948521,0.119999999999999,TRUE,TRUE
+"Simulation_3","npg120_profile0.35","decoupled",1,360,-0.00210500608791248,0.485745084349324,0.0750000000000002,TRUE,TRUE

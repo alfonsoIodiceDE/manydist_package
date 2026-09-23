@@ -1,0 +1,101 @@
+schema_version: 1
+analysis_id: sim3-rss26-moon-scaling-v1
+status: exploratory_smoke_not_confirmatory
+description: >-
+  Higher-dimensional mechanism study derived from the RSS26 interaction-moons
+  demonstration. The original demo and the frozen R1 full manifest are not
+  modified by this suite.
+
+manydist:
+  version: "0.5.2"
+  source_commit: "ab27241f1a0846bb13087f804e23fd52746d1578"
+
+generator:
+  n_per_moon: 180
+  moon_noise_sd: 0.08
+  sensor_noise_sd: 0.02
+  band_probabilities: [0.10, 0.45, 0.45]
+  p_numeric_max: 10
+  q_categorical_max: 5
+  configurations:
+    reference:
+      p_numeric: 2
+      q_categorical: 2
+    numeric_medium:
+      p_numeric: 6
+      q_categorical: 2
+    numeric_high:
+      p_numeric: 10
+      q_categorical: 2
+    categorical_high:
+      p_numeric: 2
+      q_categorical: 5
+    joint_high:
+      p_numeric: 10
+      q_categorical: 5
+  interaction_states: [signal, 'null']
+
+distance:
+  baseline:
+    engine: manydist_mdist
+    preset: custom
+    method_num: pc_scores
+    method_cat: tvd
+    commensurable: false
+    interaction: false
+    ncomp: all_numeric_components
+  gated_extension:
+    engine: package_delta_plus_paper_gate
+    gamma: 1.0
+    aggregation: active_component_average
+    prop_nn: 0.10
+    score: ba
+    decision: prior_corrected
+    gate:
+      method: joint_categorical_row_permutation_max
+      permutations: 99
+      alpha: 0.01
+      seed_offset: 31
+  competitors:
+    gower:
+      preset: gower
+    modified_gower:
+      preset: mod_gower
+    standardized_euclidean_onehot:
+      preset: euclidean
+      historical_label: naive
+
+spectral:
+  known_k: 6
+  kmeans:
+    nstart: 100
+    iter_max: 100
+    algorithm: Hartigan-Wong
+  affinities:
+    gaussian:
+      role: primary
+    selftune:
+      role: robustness
+      neighbor_rank: 7
+
+execution:
+  smoke_replicates: 1
+  confirmatory_replicates: null
+  data_seed_base: 26092100
+  replicate_seed_stride: 100
+  cluster_seed_offsets:
+    gaussian: 11
+    selftune: 12
+  existing_output_policy: skip_without_overwrite
+
+interpretation:
+  primary_estimand: paired_ARI_gated_minus_package_baseline
+  required_diagnostics:
+    - signal_gate_power
+    - nuisance_family_false_selection
+    - exact_null_equality_when_no_gate_opens
+    - added_interaction_to_numeric_mean_ratio
+    - elapsed_time
+  caveat: >-
+    This is a transparent interaction-mechanism positive control, not evidence
+    that the gated method must outperform every mixed-data method universally.

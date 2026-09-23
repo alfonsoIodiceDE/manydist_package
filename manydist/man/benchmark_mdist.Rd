@@ -60,7 +60,10 @@ An object of class `"MDistBenchmark"`, which is also a tibble. It
 }
 
 Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
-[ggplot2::autoplot()] to draw an annotated triangular heatmap.
+[ggplot2::autoplot()] to draw an annotated triangular heatmap. The default
+print method displays a compact run overview; use `tibble::as_tibble()` to
+inspect the complete underlying table. `summary()` returns minimum, median,
+and maximum values for each available pairwise diagnostic.
 }
 \description{
 Applies [mdist()] repeatedly over a tibble of distance-method
@@ -119,8 +122,8 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     specs = specs
   )
 
-  res |>
-    dplyr::select(spec_type, preset, ok, error)
+  res
+  summary(res)
 
   benchmark_comparisons(res)
   ggplot2::autoplot(res, metric = "relative_distance")
