@@ -2554,38 +2554,2064 @@ final_res |>
 
 :::
 
-## Wrap-up
+# 05 · Examples and practical insights
 
-Increasing awareness works in two directions.
+## UCI Bank Marketing Dataset
 
-::: {.fragment}
-::: {.callout-important appearance="simple" icon=false}
-## Distances must be data-aware
+![](figures/manydist_logo.png){.slide-logo-small}
 
-Construct distances that reflect the structure of the data they are applied to, including variable types, associations, and interactions.
-:::
-:::
-
-&nbsp;
-
-::: {.fragment}
 ::: {.callout-tip appearance="simple" icon=false}
-## Practitioners must be distance-aware
+## Applied question
 
-Understand what a chosen distance emphasizes or suppresses, and how that choice shapes downstream results.
+Can we identify distinct **customer profiles** from stable customer characteristics?
 :::
+
+| Variable | Type | Description |
+|---|---|---|
+| `age` | Numeric | Age in years |
+| `job` | Categorical | Occupation |
+| `marital` | Categorical | Marital status |
+| `education` | Categorical | Education level |
+| `default` | Binary | Credit currently in default |
+| `balance` | Numeric | Average yearly account balance (€) |
+| `housing` | Binary | Has a housing/mortgage loan |
+| `loan` | Binary | Has a personal loan |
+| `y` | Binary | Subscribed to a term deposit; **external only** |
+
+
+```{r}
+#| label: bank-distance-lab-setup
+#| include: false
+#| cache: true
+#| warning: false
+#| message: false
+
+
+# ================================================================
+# DATA PREPARATION
+# ================================================================
+
+bank_td <- tempfile("bank_")
+dir.create(bank_td)
+
+bank_url <-
+  "https://archive.ics.uci.edu/static/public/222/bank+marketing.zip"
+
+bank_outer_zip <-
+  file.path(bank_td, "bank_marketing.zip")
+
+download.file(
+  bank_url,
+  destfile = bank_outer_zip,
+  mode = "wb",
+  quiet = TRUE
+)
+
+unzip(
+  bank_outer_zip,
+  exdir = bank_td
+)
+
+bank_inner_zip <- list.files(
+  bank_td,
+  pattern = "^bank\\.zip$",
+  recursive = TRUE,
+  full.names = TRUE
+)[1]
+
+unzip(
+  bank_inner_zip,
+  exdir = bank_td
+)
+
+bank_raw <- readr::read_delim(
+  file.path(
+    bank_td,
+    "bank-full.csv"
+  ),
+  delim = ";",
+  show_col_types = FALSE
+)
+
+bank <- bank_raw |>
+  dplyr::select(
+    age,
+    job,
+    marital,
+    education,
+    default,
+    balance,
+    housing,
+    loan,
+    y
+  ) |>
+  dplyr::mutate(
+    dplyr::across(
+      c(
+        job,
+        marital,
+        education,
+        default,
+        housing,
+        loan
+      ),
+      ~ factor(
+        ifelse(
+          .x == "unknown",
+          "not_reported",
+          .x
+        )
+      )
+    ),
+    y = factor(
+      y,
+      levels = c("yes", "no")
+    )
+  )
+
+
+set.seed(2026)
+
+bank_demo <- bank |>
+  dplyr::slice_sample(
+    n = 1500
+  )
+
+bank_x <- bank_demo |>
+  dplyr::select(-y)
+
+bank_y <- bank_demo$y
+
+
+
+# ================================================================
+# CANDIDATE DISTANCE CONSTRUCTIONS
+# ================================================================
+
+bank_distance_specs <- tibble::tribble(
+
+  ~Distance, ~Preset, ~Interpretation,
+
+  "Gower",
+  "gower",
+  "range-normalized Manhattan + simple matching",
+
+  "u_indep",
+  "u_indep",
+  "standard-deviation scaling + simple matching (commensurable)",
+
+  "Hennig-Liao",
+  "hl",
+  "standard-deviation scaling + Hennig--Liao indicator scaling",
+
+  "u_mix",
+  "u_mix",
+  "standard-deviation scaling + total variation distance (commensurable)"
+)
+
+
+bank_presets <- stats::setNames(
+  bank_distance_specs$Preset,
+  bank_distance_specs$Distance
+)
+
+
+bank_methods <- purrr::map(
+  bank_presets,
+  ~ list(
+    preset = .x
+  )
+)
+
+
+bank_D_list <- purrr::map(
+  bank_presets,
+  ~ mdist(
+    bank_x,
+    preset = .x
+  )
+)
+
+
+# Explore possible k only as a diagnostic
+bank_k_grid <- 2:8
+
+# Fixed throughout all cross-method comparisons
+bank_k_working <- 6
+
+
+bank_pam_from_D <- function(
+    D,
+    k
+) {
+
+  cluster::pam(
+    x = D$to_dist(),
+    k = k,
+    diss = TRUE
+  )
+}
+
+
+
+# ================================================================
+# ASW ACROSS k
+# ================================================================
+
+bank_sil_by_k <- function(
+    D,
+    distance_name
+) {
+
+  purrr::map_dfr(
+    bank_k_grid,
+
+    function(k) {
+
+      fit <- bank_pam_from_D(
+        D,
+        k
+      )
+
+      tibble::tibble(
+        distance = distance_name,
+        k = k,
+        ASW =
+          fit$silinfo$avg.width
+      )
+    }
+  )
+}
+
+
+bank_asw_all <- purrr::imap_dfr(
+  bank_D_list,
+  bank_sil_by_k
+)
+
+
+bank_best_k <- bank_asw_all |>
+  dplyr::group_by(
+    distance
+  ) |>
+  dplyr::slice_max(
+    ASW,
+    n = 1,
+    with_ties = FALSE
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::arrange(
+    dplyr::desc(ASW)
+  )
+
+
+bank_asw_plot <- bank_asw_all |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = k,
+      y = ASW,
+      linetype = distance,
+      group = distance
+    )
+  ) +
+  ggplot2::geom_line(
+    linewidth = .8
+  ) +
+  ggplot2::geom_point(
+    size = 2.4
+  ) +
+  ggplot2::geom_vline(
+    xintercept = bank_k_working,
+    linetype = 3,
+    colour = "grey50"
+  ) +
+  ggplot2::scale_x_continuous(
+    breaks = bank_k_grid
+  ) +
+  ggplot2::labs(
+    x = "Number of clusters",
+    y = "Average silhouette width",
+    linetype = "Distance",
+    title =
+      "Different distances suggest different clustering structure"
+  ) +
+  ggplot2::theme_minimal(
+    base_size = 16
+  )
+
+
+
+# ================================================================
+# PAM WITH COMMON k = 6 FOR ALL DISTANCES
+# ================================================================
+
+bank_k6_fits <- purrr::imap(
+  bank_D_list,
+
+  function(
+      D,
+      distance_name
+  ) {
+
+    bank_pam_from_D(
+      D,
+      k = bank_k_working
+    )
+  }
+)
+
+
+# Give every category a globally unique name.
+# This also makes the MCA category labels unambiguous.
+
+bank_k6_partitions <- purrr::imap(
+  bank_k6_fits,
+
+  function(
+      fit,
+      distance_name
+  ) {
+
+    factor(
+      paste0(
+        distance_name,
+        "__C",
+        fit$clustering
+      )
+    )
+  }
+)
+
+
+bank_memberships <- tibble::as_tibble(
+  bank_k6_partitions,
+  .name_repair = "minimal"
+)
+
+names(bank_memberships) <-
+  names(bank_D_list)
+
+
+
+# ================================================================
+# GOWER k = 6: ONE SOLUTION IN DETAIL
+# ================================================================
+
+bank_D_gower <-
+  bank_D_list[["Gower"]]
+
+bank_pam_gower <-
+  bank_k6_fits[["Gower"]]
+
+bank_cl_gower <-
+  factor(
+    bank_pam_gower$clustering
+  )
+
+
+bank_sil_obj_gower <-
+  cluster::silhouette(
+    as.integer(
+      bank_cl_gower
+    ),
+    bank_D_gower$to_dist()
+  )
+
+
+bank_sil_df <-
+  as.data.frame(
+    bank_sil_obj_gower
+  ) |>
+  tibble::as_tibble() |>
+  dplyr::transmute(
+    observation =
+      dplyr::row_number(),
+
+    cluster =
+      factor(cluster),
+
+    silhouette_width =
+      sil_width
+  )
+
+
+bank_clusters <- bank_demo |>
+  dplyr::mutate(
+    cluster =
+      bank_cl_gower,
+
+    silhouette_width =
+      bank_sil_df$silhouette_width
+  )
+
+
+
+# ================================================================
+# GOWER CLUSTER PROFILES
+# ================================================================
+
+bank_dominant_level <- function(
+    data,
+    var
+) {
+
+  var <- rlang::enquo(var)
+
+  data |>
+    dplyr::count(
+      cluster,
+      !!var
+    ) |>
+    dplyr::group_by(
+      cluster
+    ) |>
+    dplyr::mutate(
+      proportion =
+        n / sum(n)
+    ) |>
+    dplyr::slice_max(
+      proportion,
+      n = 1,
+      with_ties = FALSE
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::transmute(
+      cluster,
+      level =
+        as.character(!!var),
+      proportion
+    )
+}
+
+
+bank_top_jobs <- bank_clusters |>
+  dplyr::count(
+    cluster,
+    job
+  ) |>
+  dplyr::group_by(
+    cluster
+  ) |>
+  dplyr::mutate(
+    proportion =
+      n / sum(n)
+  ) |>
+  dplyr::slice_max(
+    proportion,
+    n = 2,
+    with_ties = FALSE
+  ) |>
+  dplyr::arrange(
+    cluster,
+    dplyr::desc(
+      proportion
+    )
+  ) |>
+  dplyr::mutate(
+    label = paste0(
+      job,
+      " (",
+      scales::percent(
+        proportion,
+        accuracy = 1
+      ),
+      ")"
+    )
+  ) |>
+  dplyr::summarise(
+    main_jobs =
+      paste(
+        label,
+        collapse = "; "
+      ),
+    .groups = "drop"
+  )
+
+
+bank_cluster_profiles <-
+  bank_clusters |>
+  dplyr::group_by(
+    cluster
+  ) |>
+  dplyr::summarise(
+    n =
+      dplyr::n(),
+
+    mean_age =
+      mean(age),
+
+    mean_balance =
+      mean(balance),
+
+    subscribed =
+      mean(y == "yes"),
+
+    mean_silhouette =
+      mean(
+        silhouette_width
+      ),
+
+    .groups = "drop"
+  ) |>
+
+  dplyr::left_join(
+    bank_dominant_level(
+      bank_clusters,
+      housing
+    ) |>
+      dplyr::rename(
+        housing = level,
+        housing_prop = proportion
+      ),
+    by = "cluster"
+  ) |>
+
+  dplyr::left_join(
+    bank_dominant_level(
+      bank_clusters,
+      marital
+    ) |>
+      dplyr::rename(
+        marital = level,
+        marital_prop = proportion
+      ),
+    by = "cluster"
+  ) |>
+
+  dplyr::left_join(
+    bank_dominant_level(
+      bank_clusters,
+      education
+    ) |>
+      dplyr::rename(
+        education = level,
+        education_prop = proportion
+      ),
+    by = "cluster"
+  ) |>
+
+  dplyr::left_join(
+    bank_top_jobs,
+    by = "cluster"
+  )
+
+
+bank_profile_table <-
+  bank_cluster_profiles |>
+  dplyr::mutate(
+
+    mean_age =
+      round(
+        mean_age,
+        1
+      ),
+
+    mean_balance =
+      round(
+        mean_balance,
+        0
+      ),
+
+    subscribed =
+      scales::percent(
+        subscribed,
+        accuracy = 0.1
+      ),
+
+    housing =
+      paste0(
+        housing,
+        " (",
+        scales::percent(
+          housing_prop,
+          accuracy = 1
+        ),
+        ")"
+      ),
+
+    marital =
+      paste0(
+        marital,
+        " (",
+        scales::percent(
+          marital_prop,
+          accuracy = 1
+        ),
+        ")"
+      ),
+
+    education =
+      paste0(
+        education,
+        " (",
+        scales::percent(
+          education_prop,
+          accuracy = 1
+        ),
+        ")"
+      )
+  ) |>
+
+  dplyr::select(
+    cluster,
+    n,
+    mean_age,
+    mean_balance,
+    housing,
+    marital,
+    education,
+    main_jobs,
+    subscribed
+  )
+
+
+
+# ================================================================
+# LOVO ACROSS DISTANCES
+#
+# PAM and k = 6 held fixed
+# ================================================================
+
+set.seed(2026)
+
+bank_lovo_compare <-
+  compare_lovo_mdist(
+    x = bank_x,
+    methods =
+      bank_methods,
+    dims = 2,
+    cluster_k =
+      bank_k_working,
+    cluster_methods =
+      "pam"
+  )
+
+
+bank_lovo_distance_plot <-
+  autoplot(
+    bank_lovo_compare,
+    metric =
+      "relative_distance"
+  ) +
+  ggplot2::labs(
+    title =
+      "Which variables shape the distance representation?",
+    y =
+      "Relative distance change"
+  ) +
+  ggplot2::theme_minimal(
+    base_size = 16
+  )
+
+
+bank_lovo_pam_plot <-
+  autoplot(
+    bank_lovo_compare,
+    metric =
+      "pam_importance"
+  ) +
+  ggplot2::labs(
+    title =
+      "Which variables change the PAM partition?",
+    y =
+      "PAM importance = 1 - ARI"
+  ) +
+  ggplot2::theme_minimal(
+    base_size = 16
+  )
+
+
+
+# ================================================================
+# BENCHMARK COMPLETE DISTANCE CONSTRUCTIONS
+#
+# PAM and k = 6 held fixed
+# ================================================================
+
+bank_benchmark_specs <-
+  all_dist_method_specs(
+    mode =
+      "presets_only",
+    preset =
+      unname(
+        bank_presets
+      )
+  )
+
+
+set.seed(2026)
+
+bank_benchmark <-
+  benchmark_mdist(
+    x = bank_x,
+    specs =
+      bank_benchmark_specs,
+    dims = 2,
+    cluster_k =
+      bank_k_working,
+    cluster_methods =
+      "pam"
+  )
+
+
+bank_benchmark_pam_plot <-
+  autoplot(
+    bank_benchmark,
+    metric =
+      "ari_pam",
+    digits = 2
+  ) +
+  ggplot2::labs(
+    title =
+      "Do the distances produce the same PAM partition?"
+  )
+
+
+
+# ================================================================
+# LONG REPRESENTATION OF COMMON-k CLUSTER MEMBERSHIPS
+# ================================================================
+
+bank_membership_long <-
+  bank_memberships |>
+  dplyr::mutate(
+    id =
+      dplyr::row_number()
+  ) |>
+  tidyr::pivot_longer(
+    cols = -id,
+    names_to = "distance",
+    values_to = "cluster"
+  ) |>
+  dplyr::mutate(
+    cluster =
+      as.character(cluster),
+
+    cluster_short =
+      stringr::str_extract(
+        cluster,
+        "C[0-9]+$"
+      )
+  )
+
+
+
+# ================================================================
+# MULTIPLE CORRESPONDENCE ANALYSIS
+#
+# Four categorical variables:
+# cluster membership under each distance.
+#
+# Every method uses PAM with k = 6.
+# ================================================================
+
+bank_mca <-
+  FactoMineR::MCA(
+    as.data.frame(
+      bank_memberships
+    ),
+    graph = FALSE,
+    ncp = 5
+  )
+
+
+bank_mca_categories <-
+  as.data.frame(
+    bank_mca$var$coord[
+      ,
+      1:2,
+      drop = FALSE
+    ]
+  ) |>
+  tibble::rownames_to_column(
+    "category"
+  ) |>
+  tibble::as_tibble() |>
+  dplyr::rename(
+    Dim1 = `Dim 1`,
+    Dim2 = `Dim 2`
+  ) |>
+  dplyr::mutate(
+
+    distance =
+      sub(
+        "__C[0-9]+$",
+        "",
+        category
+      ),
+
+    cluster =
+      stringr::str_extract(
+        category,
+        "C[0-9]+$"
+      ),
+
+    label =
+      paste0(
+        distance,
+        ": ",
+        cluster
+      )
+  )
+
+
+bank_mca_dim1 <-
+  bank_mca$eig[1, 2]
+
+bank_mca_dim2 <-
+  bank_mca$eig[2, 2]
+
+
+
+# ================================================================
+# MCA CATEGORY SIZES
+# ================================================================
+
+bank_mca_category_sizes <-
+  bank_membership_long |>
+  dplyr::count(
+    distance,
+    cluster_short,
+    name = "n"
+  )
+
+
+bank_mca_categories_display <-
+  bank_mca_categories |>
+  dplyr::left_join(
+    bank_mca_category_sizes,
+    by = c(
+      "distance",
+      "cluster" =
+        "cluster_short"
+    )
+  )
+
+
+# A small cluster can have a very large MCA coordinate.
+# It remains part of the MCA, but we use reasonably sized clusters
+# to determine the plotting window.
+
+bank_mca_main_categories <-
+  bank_mca_categories_display |>
+  dplyr::filter(
+    n >= 30
+  )
+
+
+bank_mca_xlim <-
+  range(
+    bank_mca_main_categories$Dim1,
+    na.rm = TRUE
+  )
+
+bank_mca_ylim <-
+  range(
+    bank_mca_main_categories$Dim2,
+    na.rm = TRUE
+  )
+
+
+bank_mca_xpad <-
+  max(
+    diff(bank_mca_xlim) * .12,
+    .10
+  )
+
+bank_mca_ypad <-
+  max(
+    diff(bank_mca_ylim) * .12,
+    .10
+  )
+
+
+bank_mca_plot_clean <-
+  ggplot2::ggplot(
+    bank_mca_categories_display,
+    ggplot2::aes(
+      x = Dim1,
+      y = Dim2,
+      colour = distance,
+      size = n
+    )
+  ) +
+
+  ggplot2::geom_hline(
+    yintercept = 0,
+    colour = "grey80",
+    linewidth = .35
+  ) +
+
+  ggplot2::geom_vline(
+    xintercept = 0,
+    colour = "grey80",
+    linewidth = .35
+  ) +
+
+  ggplot2::geom_point(
+    alpha = .9
+  ) +
+
+  ggrepel::geom_text_repel(
+    ggplot2::aes(
+      label = label
+    ),
+    size = 4.1,
+    box.padding = .4,
+    point.padding = .25,
+    min.segment.length = 0,
+    max.overlaps = Inf,
+    show.legend = FALSE
+  ) +
+
+  ggplot2::coord_cartesian(
+    xlim = c(
+      bank_mca_xlim[1] -
+        bank_mca_xpad,
+
+      bank_mca_xlim[2] +
+        bank_mca_xpad
+    ),
+
+    ylim = c(
+      bank_mca_ylim[1] -
+        bank_mca_ypad,
+
+      bank_mca_ylim[2] +
+        bank_mca_ypad
+    )
+  ) +
+
+  ggplot2::scale_size_continuous(
+    range = c(3, 7),
+    name = "Cluster size"
+  ) +
+
+  ggplot2::labs(
+    x = sprintf(
+      "Dimension 1 (%.1f%%)",
+      bank_mca_dim1
+    ),
+
+    y = sprintf(
+      "Dimension 2 (%.1f%%)",
+      bank_mca_dim2
+    ),
+
+    colour =
+      "Distance",
+
+    title =
+      "Correspondence among clustering solutions"
+
+  ) +
+
+  ggplot2::theme_minimal(
+    base_size = 17
+  ) +
+
+  ggplot2::theme(
+    panel.grid.minor =
+      ggplot2::element_blank(),
+
+    legend.position =
+      "right"
+  )
+
+
+
+# ================================================================
+# CLUSTER SETS FOR JACCARD COMPARISONS
+# ================================================================
+
+bank_cluster_sets <-
+  bank_membership_long |>
+  dplyr::group_by(
+    distance,
+    cluster
+  ) |>
+  dplyr::summarise(
+    members =
+      list(id),
+
+    n =
+      dplyr::n(),
+
+    .groups =
+      "drop"
+  )
+
+
+bank_sets_1 <-
+  bank_cluster_sets |>
+  dplyr::rename(
+    distance1 = distance,
+    cluster1 = cluster,
+    members1 = members,
+    n1 = n
+  )
+
+
+bank_sets_2 <-
+  bank_cluster_sets |>
+  dplyr::rename(
+    distance2 = distance,
+    cluster2 = cluster,
+    members2 = members,
+    n2 = n
+  )
+
+
+bank_cluster_pairs <-
+  dplyr::cross_join(
+    bank_sets_1,
+    bank_sets_2
+  ) |>
+
+  dplyr::filter(
+    distance1 <
+      distance2
+  ) |>
+
+  dplyr::rowwise() |>
+
+  dplyr::mutate(
+
+    intersection =
+      length(
+        intersect(
+          members1,
+          members2
+        )
+      ),
+
+    union =
+      length(
+        union(
+          members1,
+          members2
+        )
+      ),
+
+    jaccard =
+      intersection /
+      union,
+
+    overlap1 =
+      intersection /
+      n1,
+
+    overlap2 =
+      intersection /
+      n2
+  ) |>
+
+  dplyr::ungroup() |>
+
+  dplyr::mutate(
+
+    label1 =
+      paste0(
+        distance1,
+        ": ",
+        stringr::str_extract(
+          cluster1,
+          "C[0-9]+$"
+        )
+      ),
+
+    label2 =
+      paste0(
+        distance2,
+        ": ",
+        stringr::str_extract(
+          cluster2,
+          "C[0-9]+$"
+        )
+      )
+  )
+
+
+
+# ================================================================
+# MUTUAL BEST MATCHES
+#
+# Cluster B is the best match for A AND
+# cluster A is the best match for B.
+# ================================================================
+
+bank_best_for_cluster1 <-
+  bank_cluster_pairs |>
+
+  dplyr::group_by(
+    distance1,
+    cluster1,
+    distance2
+  ) |>
+
+  dplyr::slice_max(
+    jaccard,
+    n = 1,
+    with_ties = FALSE
+  ) |>
+
+  dplyr::ungroup() |>
+
+  dplyr::select(
+    distance1,
+    cluster1,
+    distance2,
+    cluster2
+  )
+
+
+bank_best_for_cluster2 <-
+  bank_cluster_pairs |>
+
+  dplyr::group_by(
+    distance1,
+    distance2,
+    cluster2
+  ) |>
+
+  dplyr::slice_max(
+    jaccard,
+    n = 1,
+    with_ties = FALSE
+  ) |>
+
+  dplyr::ungroup() |>
+
+  dplyr::select(
+    distance1,
+    cluster1,
+    distance2,
+    cluster2
+  )
+
+
+bank_mutual_ids <-
+  dplyr::inner_join(
+    bank_best_for_cluster1,
+    bank_best_for_cluster2,
+    by = c(
+      "distance1",
+      "cluster1",
+      "distance2",
+      "cluster2"
+    )
+  )
+
+
+bank_mutual_matches <-
+  bank_cluster_pairs |>
+
+  dplyr::semi_join(
+    bank_mutual_ids,
+    by = c(
+      "distance1",
+      "cluster1",
+      "distance2",
+      "cluster2"
+    )
+  ) |>
+
+  dplyr::arrange(
+    dplyr::desc(
+      jaccard
+    )
+  )
+
+
+bank_top_cluster_matches <-
+  bank_mutual_matches |>
+  dplyr::slice_head(
+    n = 10
+  )
+
+
+
+# ================================================================
+# JACCARD PLOT
+# ================================================================
+
+bank_match_plot_data <-
+  bank_mutual_matches |>
+
+  dplyr::filter(
+    jaccard >= .30
+  ) |>
+
+  dplyr::arrange(
+    dplyr::desc(
+      jaccard
+    )
+  ) |>
+
+  dplyr::slice_head(
+    n = 12
+  ) |>
+
+  dplyr::mutate(
+
+    comparison =
+      paste0(
+        label1,
+        "  ↔  ",
+        label2
+      ),
+
+    comparison =
+      forcats::fct_reorder(
+        comparison,
+        jaccard
+      )
+  )
+
+
+bank_jaccard_plot <-
+  ggplot2::ggplot(
+    bank_match_plot_data,
+    ggplot2::aes(
+      x = jaccard,
+      y = comparison
+    )
+  ) +
+
+  ggplot2::geom_segment(
+    ggplot2::aes(
+      x = 0,
+      xend = jaccard,
+      yend = comparison
+    ),
+    linewidth = 1,
+    colour = "grey75"
+  ) +
+
+  ggplot2::geom_point(
+    size = 4
+  ) +
+
+  ggplot2::geom_text(
+    ggplot2::aes(
+      label =
+        sprintf(
+          "%.2f",
+          jaccard
+        )
+    ),
+    hjust = -.35,
+    size = 4.1
+  ) +
+
+  ggplot2::scale_x_continuous(
+    limits = c(
+      0,
+      1.06
+    ),
+    breaks =
+      seq(
+        0,
+        1,
+        .2
+      )
+  ) +
+
+  ggplot2::labs(
+    x =
+      "Jaccard overlap",
+
+    y = NULL,
+
+    title =
+      "Strongest cross-method cluster correspondences",
+
+    subtitle =
+      "PAM and k = 6 fixed; only the distance construction changes"
+  ) +
+
+  ggplot2::theme_minimal(
+    base_size = 17
+  ) +
+
+  ggplot2::theme(
+    panel.grid.major.y =
+      ggplot2::element_blank(),
+
+    panel.grid.minor =
+      ggplot2::element_blank()
+  )
+
+
+
+# ================================================================
+# PROFILE THE SHARED CORES OF MATCHING CLUSTERS
+# ================================================================
+
+bank_profile_shared_cluster <- function(
+    distance1,
+    cluster1,
+    distance2,
+    cluster2
+) {
+
+  ids1 <-
+    bank_membership_long |>
+    dplyr::filter(
+      distance ==
+        distance1,
+
+      cluster ==
+        cluster1
+    ) |>
+    dplyr::pull(id)
+
+
+  ids2 <-
+    bank_membership_long |>
+    dplyr::filter(
+      distance ==
+        distance2,
+
+      cluster ==
+        cluster2
+    ) |>
+    dplyr::pull(id)
+
+
+  shared_ids <-
+    intersect(
+      ids1,
+      ids2
+    )
+
+
+  x <-
+    bank_demo[
+      shared_ids,
+      ,
+      drop = FALSE
+    ]
+
+
+  dominant <- function(z) {
+
+    tab <-
+      sort(
+        table(z),
+        decreasing = TRUE
+      )
+
+    paste0(
+      names(tab)[1],
+      " (",
+      scales::percent(
+        as.numeric(
+          tab[1]
+        ) /
+          sum(tab),
+        accuracy = 1
+      ),
+      ")"
+    )
+  }
+
+
+  tibble::tibble(
+
+    `Cluster 1` =
+      paste0(
+        distance1,
+        ": ",
+        stringr::str_extract(
+          cluster1,
+          "C[0-9]+$"
+        )
+      ),
+
+    `Cluster 2` =
+      paste0(
+        distance2,
+        ": ",
+        stringr::str_extract(
+          cluster2,
+          "C[0-9]+$"
+        )
+      ),
+
+    `Shared n` =
+      length(
+        shared_ids
+      ),
+
+    `Mean age` =
+      round(
+        mean(
+          x$age
+        ),
+        1
+      ),
+
+    `Mean balance` =
+      round(
+        mean(
+          x$balance
+        ),
+        0
+      ),
+
+    Housing =
+      dominant(
+        x$housing
+      ),
+
+    Marital =
+      dominant(
+        x$marital
+      ),
+
+    Education =
+      dominant(
+        x$education
+      ),
+
+    `Main job` =
+      dominant(
+        x$job
+      ),
+
+    `Term-deposit uptake` =
+      scales::percent(
+        mean(
+          x$y ==
+            "yes"
+        ),
+        accuracy = .1
+      )
+  )
+}
+
+
+bank_shared_profiles <-
+  bank_top_cluster_matches |>
+
+  dplyr::slice_head(
+    n = 6
+  ) |>
+
+  dplyr::mutate(
+    profile =
+      purrr::pmap(
+        list(
+          distance1,
+          cluster1,
+          distance2,
+          cluster2
+        ),
+        bank_profile_shared_cluster
+      )
+  ) |>
+
+  dplyr::select(
+    profile
+  ) |>
+
+  tidyr::unnest(
+    profile
+  )
+
+
+
+# ================================================================
+# EXTERNAL PROFILING
+#
+# All methods again use k = 6.
+# ================================================================
+
+bank_association_with_y <- function(
+    D,
+    distance_name,
+    k = bank_k_working
+) {
+
+  fit <-
+    bank_pam_from_D(
+      D,
+      k
+    )
+
+
+  cl <- factor(
+    fit$clustering
+  )
+
+
+  tab <- table(
+    cl,
+    bank_y
+  )
+
+
+  chi <- suppressWarnings(
+    stats::chisq.test(
+      tab,
+      correct = FALSE
+    )
+  )
+
+
+  cramers_v <- sqrt(
+
+    as.numeric(
+      chi$statistic
+    ) /
+
+      (
+        sum(tab) *
+
+          min(
+            nrow(tab) - 1,
+            ncol(tab) - 1
+          )
+      )
+  )
+
+
+  tibble::tibble(
+
+    distance =
+      distance_name,
+
+    k = k,
+
+    ASW =
+      fit$silinfo$avg.width,
+
+    cramers_v =
+      cramers_v,
+
+    min_subscribed =
+      min(
+        tapply(
+          bank_y == "yes",
+          cl,
+          mean
+        )
+      ),
+
+    max_subscribed =
+      max(
+        tapply(
+          bank_y == "yes",
+          cl,
+          mean
+        )
+      )
+  )
+}
+
+
+bank_external_summary <-
+  purrr::imap_dfr(
+    bank_D_list,
+    bank_association_with_y
+  ) |>
+
+  dplyr::mutate(
+
+    ASW =
+      round(
+        ASW,
+        3
+      ),
+
+    cramers_v =
+      round(
+        cramers_v,
+        3
+      ),
+
+    min_subscribed =
+      scales::percent(
+        min_subscribed,
+        accuracy = .1
+      ),
+
+    max_subscribed =
+      scales::percent(
+        max_subscribed,
+        accuracy = .1
+      )
+  )
+
+
+bank_y_rates <-
+  bank_clusters |>
+
+  dplyr::group_by(
+    cluster
+  ) |>
+
+  dplyr::summarise(
+
+    n =
+      dplyr::n(),
+
+    subscribed =
+      mean(
+        y ==
+          "yes"
+      ),
+
+    .groups =
+      "drop"
+  )
+
+
+bank_y_plot <-
+  bank_y_rates |>
+
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = cluster,
+      y = subscribed
+    )
+  ) +
+
+  ggplot2::geom_col(
+    fill = "#2A9D8F",
+    alpha = .85
+  ) +
+
+  ggplot2::scale_y_continuous(
+    labels =
+      scales::percent
+  ) +
+
+  ggplot2::labs(
+    x =
+      "Gower + PAM cluster",
+
+    y =
+      "Term-deposit uptake",
+
+    title =
+      "External profiling of the Gower solution"
+  ) +
+
+  ggplot2::theme_minimal(
+    base_size = 16
+  )
+```
+
+
+## Choice of candidate distances
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.callout-important appearance="simple" icon=false}
+## Objective
+
+Are conclusions stable across defensible definitions of similarity?
+:::
+
+```{r}
+#| echo: false
+
+bank_distance_specs |>
+  dplyr::select(
+    Distance,
+    Preset,
+    Interpretation
+  ) |>
+  knitr::kable(
+    format = "html"
+  ) |>
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 20
+  )
+```
+
+
+## First check: what cluster structure is suggested?
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="62%"}
+
+```{r}
+#| echo: false
+#| fig-height: 4.8
+#| fig-width: 8
+
+bank_asw_plot
+```
+
+:::
+
+::: {.column width="38%"}
+
+```{r}
+#| echo: false
+
+bank_best_k |>
+  dplyr::mutate(
+    ASW =
+      round(
+        ASW,
+        3
+      )
+  ) |>
+  knitr::kable(
+    format = "html",
+    col.names = c(
+      "Distance",
+      "Best k",
+      "ASW"
+    )
+  ) |>
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 18
+  )
+```
+
+::: {.callout-note appearance="simple" icon=false}
+Within \(k=2,\ldots,8\), different distance constructions may favour different values of \(k\).
+
+For the remainder of the comparison, however, we deliberately fix **\(k=6\)** for every method.
+:::
+
+:::
+
+:::
+
+
+## Controlled comparison: hold \(k\) fixed
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.callout-important appearance="simple" icon=false}
+## What stays constant?
+
+**same 1,500 customers + same variables + same PAM algorithm + \(k=6\)**
 :::
 
 &nbsp;
 
-::: {.fragment}
+::: {.callout-tip appearance="simple" icon=false}
+## What changes?
+
+Only the **definition of dissimilarity**.
+
+This isolates the consequences of distance construction for the resulting geometry and partition.
+:::
+
+
+## LOVO across distances
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| echo: false
+#| fig-height: 5.3
+#| fig-width: 9
+
+bank_lovo_distance_plot
+```
+
+::: {.callout-tip appearance="simple" icon=false}
+If a variable is removed, how much does the **distance representation** change?
+:::
+
+
+## LOVO across distances
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| echo: false
+#| fig-height: 5.3
+#| fig-width: 9
+
+bank_lovo_pam_plot
+```
+
+::: {.callout-important appearance="simple" icon=false}
+This asks a different question: if a variable is removed, how much does the **PAM partition** change?
+:::
+
+
+## Benchmarking the distance constructions
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| echo: false
+#| fig-height: 5.2
+#| fig-width: 8.2
+
+bank_benchmark_pam_plot$layers[[2]]$aes_params$colour <-
+  "white"
+
+bank_benchmark_pam_plot +
+  ggplot2::scale_fill_gradient(
+    low = "#008CFF",
+    high = "#E76F51",
+    name = "Adjusted Rand Index"
+  )
+```
+
 ::: {.callout-note appearance="simple" icon=false}
-## A package makes this practical
+All solutions use **PAM with \(k=6\)**.
 
-**manydist** makes distance construction easy to use in learning pipelines. During resampling, `step_mdist()` fits the transformation on each analysis fold and applies it to the assessment fold, helping avoid data leakage.
-:::
+Therefore, disagreement in ARI reflects changes in cluster membership induced by the distance construction.
 :::
 
+## One solution in detail: ordinary Gower + PAM
+
+```{r}
+#| echo: false
+
+bank_profile_table |>
+
+  knitr::kable(
+
+    format = "html",
+
+    col.names = c(
+      "Cluster",
+      "n",
+      "Age",
+      "Balance",
+      "Housing",
+      "Marital",
+      "Education",
+      "Main jobs",
+      "Subscribed (%)"
+    )
+  ) |>
+
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 16
+  )
+```
+
+::: {.callout-tip appearance="simple" icon=false}
+This table gives a substantive interpretation of **one** of the four \(k=6\) solutions.
+
+The previous analyses tell us which parts of that segmentation are sensitive—or robust—to changing the distance definition.
+:::
+
+
+## External profiling: term-deposit uptake
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.columns}
+
+::: {.column width="56%"}
+
+```{r}
+#| echo: false
+#| fig-height: 4.5
+#| fig-width: 7.2
+
+bank_y_plot
+```
+
+:::
+
+::: {.column width="44%"}
+
+```{r}
+#| echo: false
+
+bank_external_summary |>
+
+  knitr::kable(
+
+    format = "html",
+
+    col.names = c(
+      "Distance",
+      "k",
+      "ASW",
+      "Cramér's V",
+      "Min subscribed",
+      "Max subscribed"
+    )
+  ) |>
+
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 15
+  )
+```
+
+::: {.callout-note appearance="simple" icon=false}
+`y` was **not used** to construct any distance or clustering solution.
+
+All methods again use \(k=6\), so these are comparable external descriptions of the four partitions.
+:::
+
+:::
+
+:::
+
+
+
+
+## MCA of the clustering solutions
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| echo: false
+#| fig-height: 5.6
+#| fig-width: 9.5
+
+bank_mca_plot_clean
+```
+
+<!-- Each point represents **one cluster from one distance construction**. -->
+
+::: {.callout-tip appearance="simple" icon=false}
+Clusters that lie close in the MCA representation tend to have similar patterns of customer membership.
+:::
+
+
+## Which customer groups persist?
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| echo: false
+#| fig-height: 5.7
+#| fig-width: 10
+
+bank_jaccard_plot
+```
+
+::: {.callout-important appearance="simple" icon=false}
+Which clusters obtained under different distance definitions actually contain the same customers?
+:::
+
+
+## Strongest cross-method cluster correspondences
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+```{r}
+#| echo: false
+
+bank_top_cluster_matches |>
+
+  dplyr::slice_head(
+    n = 8
+  ) |>
+
+  dplyr::transmute(
+
+    `Cluster 1` =
+      label1,
+
+    `Cluster 2` =
+      label2,
+
+    n1 = n1,
+
+    n2 = n2,
+
+    Shared =
+      intersection,
+
+    Jaccard =
+      round(
+        jaccard,
+        2
+      ),
+
+    `% of cluster 1` =
+      scales::percent(
+        overlap1,
+        accuracy = 1
+      ),
+
+    `% of cluster 2` =
+      scales::percent(
+        overlap2,
+        accuracy = 1
+      )
+  ) |>
+
+  knitr::kable(
+    format = "html"
+  ) |>
+
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 15
+  )
+```
+
+::: {.callout-note appearance="simple" icon=false}
+Jaccard measures **symmetric overlap**.
+
+The final two columns show how much of each cluster is recovered by its corresponding cluster under the alternative distance.
+:::
+
+
+## What do the recurring customer groups look like?
+
+```{r}
+#| echo: false
+
+bank_shared_profiles |>
+
+  dplyr::slice_head(
+    n = 6
+  ) |>
+
+  knitr::kable(
+    format = "html"
+  ) |>
+
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    font_size = 16
+  )
+```
+
+::: {.callout-tip appearance="simple" icon=false}
+These profiles describe the **shared core of customers** assigned together under two different distance constructions.
+
+They reveal substantive customer groups that persist when the definition of similarity changes.
+:::
+
+## Practical insight from the application
+
+![](figures/manydist_logo.png){.slide-logo-small}
+
+::: {.callout-important appearance="simple" icon=false}
+## Not: default distance → clustering → interpretation
+
+A clustering result inherits the assumptions of the distance construction.
+:::
+
+::: {.callout-tip appearance="simple" icon=false}
+## Instead: distance-aware experimentation
+
+**define plausible distances → inspect variable behaviour → compare representations → compare partitions → identify recurring groups → interpret**
+:::
+
+::: {.callout-note appearance="simple" icon=false}
+With `manydist`, distance choice becomes something we can **investigate** rather than something we silently inherit from a default.
+:::
 
 
 ## Main references {.smaller}
