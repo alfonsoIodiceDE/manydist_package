@@ -78,6 +78,10 @@ Connecting distance choices to downstream results
 :::
 :::
 
+::: {.notes}
+This is the outline of the seminar, I will start providing some methodological context and then I will illustrate the main features of the manydist package, and eventually Angelos will show some examples and share some toughts on why you would want to use the package
+:::
+
 # 01 · Setting the scene
 
 ## Learning from mixed-type data
@@ -137,7 +141,10 @@ Nearest-neighbour classification and nearest-neighbour averaging for regression
 
 :::
 
-
+::: {.notes}
+sometimes working with dissimilarities is convenient, some other times is a necessity.
+Distances are convenient when they provide a common interface between tabular data and different learning methods. They become necessary when observations can only be compared pairwise, rather than represented meaningfully as vectors.
+:::
 
 ## Desirable properties^[@vdv_jcgs]
 
@@ -156,8 +163,9 @@ $$
 
 - **Manhattan** distance satisfies the additivity property; the **Euclidean** distance does not
 
-
-
+::: {.notes}
+willing to have a distance setup as general and convenient as possible we considered two properties
+:::
 
 ## Desirable properties^[@vdv_jcgs]
 
@@ -180,9 +188,9 @@ $$
 where $c$ is some constant. 
 :::
 
-
-
-
+::: {.notes}
+in essence we don't want a variable be dominating the overall distance just because of its nature or characteristics
+:::
 ## Mixed-data setup
 
 ::: {.callout-tip appearance="simple" icon=false}
@@ -587,6 +595,9 @@ $$
 
 - in the framework, setting ${\Delta}_j$ determines the categorical distance measure of choice (independent- or association-based)
 
+::: {.notes}
+to go beyond 'it is the same or is different' , the diagonal blocks of the delta matrix contain pairwise dissimilarities  of categories, and such dissimilarities are computed with or without taking into accont associations between categorical variables.
+::: 
 
 ## **association-based** distance
 
@@ -1293,7 +1304,7 @@ all.equal(
 )
 ```
 
-**03 · Distance diagnostics**
+# 03 · Distance diagnostics
 
 ## No one-size-fits-all distance
 
@@ -1573,7 +1584,7 @@ wdi_benchmark <- benchmark_mdist(
 ## Inspecting the result
 
 - `summary(wdi_benchmark)`
-- `benchmark_comparisons(wdi_benchmark)`
+
 - `autoplot(wdi_benchmark, metric = "relative_distance")`
 :::
 
