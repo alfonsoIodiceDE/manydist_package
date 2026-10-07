@@ -78,9 +78,9 @@ Connecting distance choices to downstream results
 :::
 :::
 
-::: {.notes}
-This is the outline of the seminar, I will start providing some methodological context and then I will illustrate the main features of the manydist package, and eventually Angelos will show some examples and share some toughts on why you would want to use the package
-:::
+<!-- ::: {.notes} -->
+<!-- This is the outline of the seminar, I will start providing some methodological context and then I will illustrate the main features of the manydist package, and eventually Angelos will show some examples and share some toughts on why you would want to use the package -->
+<!-- ::: -->
 
 # 01 · Setting the scene
 
@@ -141,10 +141,10 @@ Nearest-neighbour classification and nearest-neighbour averaging for regression
 
 :::
 
-::: {.notes}
-sometimes working with dissimilarities is convenient, some other times is a necessity.
-Distances are convenient when they provide a common interface between tabular data and different learning methods. They become necessary when observations can only be compared pairwise, rather than represented meaningfully as vectors.
-:::
+<!-- ::: {.notes} -->
+<!-- sometimes working with dissimilarities is convenient, some other times is a necessity. -->
+<!-- Distances are convenient when they provide a common interface between tabular data and different learning methods. They become necessary when observations can only be compared pairwise, rather than represented meaningfully as vectors. -->
+<!-- ::: -->
 
 ## Desirable properties^[@vdv_jcgs]
 
@@ -163,9 +163,9 @@ $$
 
 - **Manhattan** distance satisfies the additivity property; the **Euclidean** distance does not
 
-::: {.notes}
-willing to have a distance setup as general and convenient as possible we considered two properties
-:::
+<!-- ::: {.notes} -->
+<!-- willing to have a distance setup as general and convenient as possible we considered two properties -->
+<!-- ::: -->
 
 ## Desirable properties^[@vdv_jcgs]
 
@@ -188,9 +188,9 @@ $$
 where $c$ is some constant. 
 :::
 
-::: {.notes}
-in essence we don't want a variable be dominating the overall distance just because of its nature or characteristics
-:::
+<!-- ::: {.notes} -->
+<!-- in essence we don't want a variable be dominating the overall distance just because of its nature or characteristics -->
+<!-- ::: -->
 ## Mixed-data setup
 
 ::: {.callout-tip appearance="simple" icon=false}
@@ -595,9 +595,9 @@ $$
 
 - in the framework, setting ${\Delta}_j$ determines the categorical distance measure of choice (independent- or association-based)
 
-::: {.notes}
-to go beyond 'it is the same or is different' , the diagonal blocks of the delta matrix contain pairwise dissimilarities  of categories, and such dissimilarities are computed with or without taking into accont associations between categorical variables.
-::: 
+<!-- ::: {.notes} -->
+<!-- to go beyond 'it is the same or is different' , the diagonal blocks of the delta matrix contain pairwise dissimilarities  of categories, and such dissimilarities are computed with or without taking into accont associations between categorical variables. -->
+<!-- :::  -->
 
 ## **association-based** distance
 
@@ -4715,8 +4715,11 @@ Conference dates, venue, and invited-speaker list checked on September 15, 2026,
 
 ### Contact
 
-Alfonso Iodice D'Enza  
+**Alfonso Iodice D'Enza**<br>
 [iodicede@unina.it](mailto:iodicede@unina.it)
+
+**Angelos Markos**<br>
+[amarkos@eled.duth.gr](mailto:amarkos@eled.duth.gr)
 
 ### GitHub Pages
 
@@ -4725,7 +4728,7 @@ Alfonso Iodice D'Enza
 
 :::
 
-::: {.column width="60%"}
+::: {.column width="32%"}
 ### Package website
 
 [![](figures/manydist_qr.png){width=90% fig-align="center" fig-alt="QR code for the manydist package website"}](https://alfonsoiodicede.github.io/manydist_package/)
@@ -4736,207 +4739,218 @@ Alfonso Iodice D'Enza
 
 :::
 
+::: {.column width="32%"}
+### Slides
 
-:::
+[![](figures/muvisu26_slides_qr.png){width=90% fig-align="center" fig-alt="QR code for the MuViSU presentation slides"}](https://alfonsoiodicede.github.io/manydist_at_Muvisu_26_talk.html)
 
-
-# back-up
-
-
-## From diagnostics to downstream learning
-
-LOVO always shows how variables affect the distance matrix; optional extensions track changes in MDS geometry or clustering partitions.
-
-&nbsp;
-
-But we also want to know whether distance biases affect a downstream learning task.
-
-::: {.callout-important appearance="simple" icon=false}
-## Clustering experiment
-
-Use each distance matrix as input to PAM and evaluate how well the resulting partition recovers the known cluster structure.
-:::
-
-## Clustering experiment
-
-::: {.callout-note appearance="simple" icon=false}
-## Data generation
-
-- \(n = 200\) observations from \(4\) equal-sized clusters
-- data generated with `genRandomClust`
-- each dataset contains \(8\) numerical and \(8\) categorical variables
-- categorical variables are obtained by discretizing numerical variables into \(9\) categories
-- scenarios vary the number of signal and noise variables within each type
-- \(100\) datasets are generated for each scenario
-:::
-
-::: {.callout-tip appearance="simple" icon=false}
-## Evaluation
-
-For each mixed-data distance, PAM is applied to the dissimilarity matrix with \(K = 4\).  
-Recovery of the true cluster labels is measured using the adjusted Rand index.
-:::
-
-
-## PAM-based clustering results
-
-![](figures/fig4.png){width=82%, fig-align="center"}
-
-:::{.fragment}
-- `hl` performs well when categorical variables are noise, but poorly when numerical variables are noise
-- `gower` tends to show the opposite pattern
-- `u_mix` and `u_dep`  are comparatively stable in the mixed signal/noise scenarios
-:::
-
-
-# Response-aware extensions
-
-## Response-aware distances for KNN
-
-KNN is usually described as a lazy learner:
-
-- store the training data;
-- compute distances from a new observation to the training observations;
-- predict from the responses of the nearest neighbours.
-
-::: {.callout-note appearance="simple" icon=false}
-## Reframing KNN
-
-The distance is not just a preprocessing choice.  
-It determines the neighbourhoods used for classification or regression.
-:::
-
-:::{.fragment .centered}
-### in supervised learning, the response can help define these neighbourhoods
-:::
-
-
-## Response-aware mixed distance
-
-For mixed-type predictors, use a supervised distance with two components:
-
-$$
-D_{i\ell}
-=
-D^{(n)}\!\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)
-+
-D^{(c)}\!\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right).
-$$
-
-::: {.columns}
-::: {.column width="50%"}
-
-::: {.callout-note appearance="simple" icon=false}
-## Numerical part
-
-Use discriminant information from $y$  
-to weight numerical differences.
+::: {.centered}
+[Open slides](https://alfonsoiodicede.github.io/manydist_at_Muvisu_26_talk.html)
 :::
 
 :::
 
-::: {.column width="50%"}
-
-::: {.callout-tip appearance="simple" icon=false}
-## Categorical part
-
-Use the association between categories and $y$  
-to define category dissimilarities.
-:::
 
 :::
-:::
 
 
-## Numerical part: discriminant weighting^[@hastie1995dann]
-
-For continuous predictors, use the response to weight directions or variables.
-
-::: {.callout-note appearance="simple" icon=false}
-## Single-variable discriminant weighting
-
-For numerical variable $j$, define the Fisher score
-
-$$
-\omega_j = \frac{B_j}{W_j},
-$$
-
-where $B_j$ and $W_j$ are the between- and within-group variances.
-:::
-
-Then a supervised Manhattan-type distance is
-
-$$
-D^{(n)}\!\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right)
-=
-\sum_{j=1}^{Q_n}
-\sqrt{\omega_j}
-\left|x_{ij}^{(n)}-x_{\ell j}^{(n)}\right|.
-$$
-
-## Categorical part: supervised TVD
-
-For categorical predictors, compare categories through their response profiles.
-
-Let ${\bf Z}_y$ be the indicator matrix of the response.  
-The supervised profile matrix is
-
-$$
-{\bf R}_s
-=
-{\bf P}_d^{-1}
-{\bf Z}^{\sf T}{\bf Z}_y.
-$$
-
-The supervised category dissimilarity is
-
-$$
-\delta_s^j(a,b)
-=
-\frac{1}{2}
-\sum_{\ell=1}^{q_y}
-\left|
-{\bf r}_{a\ell}^{j y}
--
-{\bf r}_{b\ell}^{j y}
-\right|.
-$$
-
-:::{.fragment .centered}
-### categories are close if they show similar response distributions
-:::
+<!-- # back-up -->
 
 
-## Response-aware KNN: Carseats example
+<!-- ## From diagnostics to downstream learning -->
 
-::: {.callout-note appearance="simple" icon=false}
-## Data
+<!-- LOVO always shows how variables affect the distance matrix; optional extensions track changes in MDS geometry or clustering partitions. -->
 
-The `Carseats` data are used to predict whether sales are high.
+<!-- &nbsp; -->
 
-- 7 numerical predictors
-- 3 categorical predictors
-- categorical predictors with 2 or 3 categories
-- binary response: high vs. low sales
-:::
+<!-- But we also want to know whether distance biases affect a downstream learning task. -->
 
-::: {.callout-tip appearance="simple" icon=false}
-## Compared distances
+<!-- ::: {.callout-important appearance="simple" icon=false} -->
+<!-- ## Clustering experiment -->
 
-- `gower`: robust Manhattan + matching
-- `naive`: Euclidean on scaled numerical variables and dummies
-- `sup`: supervised numerical weighting + supervised TVD
-- `sup_add`: additive supervised version
-- `supf`: full supervised version
-:::
+<!-- Use each distance matrix as input to PAM and evaluate how well the resulting partition recovers the known cluster structure. -->
+<!-- ::: -->
+
+<!-- ## Clustering experiment -->
+
+<!-- ::: {.callout-note appearance="simple" icon=false} -->
+<!-- ## Data generation -->
+
+<!-- - \(n = 200\) observations from \(4\) equal-sized clusters -->
+<!-- - data generated with `genRandomClust` -->
+<!-- - each dataset contains \(8\) numerical and \(8\) categorical variables -->
+<!-- - categorical variables are obtained by discretizing numerical variables into \(9\) categories -->
+<!-- - scenarios vary the number of signal and noise variables within each type -->
+<!-- - \(100\) datasets are generated for each scenario -->
+<!-- ::: -->
+
+<!-- ::: {.callout-tip appearance="simple" icon=false} -->
+<!-- ## Evaluation -->
+
+<!-- For each mixed-data distance, PAM is applied to the dissimilarity matrix with \(K = 4\).   -->
+<!-- Recovery of the true cluster labels is measured using the adjusted Rand index. -->
+<!-- ::: -->
 
 
-## Response-aware KNN: Carseats results
+<!-- ## PAM-based clustering results -->
 
-![](figures/supervised_knn_cars.png){width=82%, fig-align="center"}
+<!-- ![](figures/fig4.png){width=82%, fig-align="center"} -->
 
-:::{.fragment}
-- response-aware distances improve nearest-neighbour classification accuracy
-- `sup`, `sup_add`, and `supf` are clearly above `gower` and `naive`
-- the response helps define neighbourhoods that better reflect the class structure
-:::
+<!-- :::{.fragment} -->
+<!-- - `hl` performs well when categorical variables are noise, but poorly when numerical variables are noise -->
+<!-- - `gower` tends to show the opposite pattern -->
+<!-- - `u_mix` and `u_dep`  are comparatively stable in the mixed signal/noise scenarios -->
+<!-- ::: -->
+
+
+<!-- # Response-aware extensions -->
+
+<!-- ## Response-aware distances for KNN -->
+
+<!-- KNN is usually described as a lazy learner: -->
+
+<!-- - store the training data; -->
+<!-- - compute distances from a new observation to the training observations; -->
+<!-- - predict from the responses of the nearest neighbours. -->
+
+<!-- ::: {.callout-note appearance="simple" icon=false} -->
+<!-- ## Reframing KNN -->
+
+<!-- The distance is not just a preprocessing choice.   -->
+<!-- It determines the neighbourhoods used for classification or regression. -->
+<!-- ::: -->
+
+<!-- :::{.fragment .centered} -->
+<!-- ### in supervised learning, the response can help define these neighbourhoods -->
+<!-- ::: -->
+
+
+<!-- ## Response-aware mixed distance -->
+
+<!-- For mixed-type predictors, use a supervised distance with two components: -->
+
+<!-- $$ -->
+<!-- D_{i\ell} -->
+<!-- = -->
+<!-- D^{(n)}\!\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right) -->
+<!-- + -->
+<!-- D^{(c)}\!\left({\bf x}_i^{(c)},{\bf x}_\ell^{(c)}\right). -->
+<!-- $$ -->
+
+<!-- ::: {.columns} -->
+<!-- ::: {.column width="50%"} -->
+
+<!-- ::: {.callout-note appearance="simple" icon=false} -->
+<!-- ## Numerical part -->
+
+<!-- Use discriminant information from $y$   -->
+<!-- to weight numerical differences. -->
+<!-- ::: -->
+
+<!-- ::: -->
+
+<!-- ::: {.column width="50%"} -->
+
+<!-- ::: {.callout-tip appearance="simple" icon=false} -->
+<!-- ## Categorical part -->
+
+<!-- Use the association between categories and $y$   -->
+<!-- to define category dissimilarities. -->
+<!-- ::: -->
+
+<!-- ::: -->
+<!-- ::: -->
+
+
+<!-- ## Numerical part: discriminant weighting^[@hastie1995dann] -->
+
+<!-- For continuous predictors, use the response to weight directions or variables. -->
+
+<!-- ::: {.callout-note appearance="simple" icon=false} -->
+<!-- ## Single-variable discriminant weighting -->
+
+<!-- For numerical variable $j$, define the Fisher score -->
+
+<!-- $$ -->
+<!-- \omega_j = \frac{B_j}{W_j}, -->
+<!-- $$ -->
+
+<!-- where $B_j$ and $W_j$ are the between- and within-group variances. -->
+<!-- ::: -->
+
+<!-- Then a supervised Manhattan-type distance is -->
+
+<!-- $$ -->
+<!-- D^{(n)}\!\left({\bf x}_i^{(n)},{\bf x}_\ell^{(n)}\right) -->
+<!-- = -->
+<!-- \sum_{j=1}^{Q_n} -->
+<!-- \sqrt{\omega_j} -->
+<!-- \left|x_{ij}^{(n)}-x_{\ell j}^{(n)}\right|. -->
+<!-- $$ -->
+
+<!-- ## Categorical part: supervised TVD -->
+
+<!-- For categorical predictors, compare categories through their response profiles. -->
+
+<!-- Let ${\bf Z}_y$ be the indicator matrix of the response.   -->
+<!-- The supervised profile matrix is -->
+
+<!-- $$ -->
+<!-- {\bf R}_s -->
+<!-- = -->
+<!-- {\bf P}_d^{-1} -->
+<!-- {\bf Z}^{\sf T}{\bf Z}_y. -->
+<!-- $$ -->
+
+<!-- The supervised category dissimilarity is -->
+
+<!-- $$ -->
+<!-- \delta_s^j(a,b) -->
+<!-- = -->
+<!-- \frac{1}{2} -->
+<!-- \sum_{\ell=1}^{q_y} -->
+<!-- \left| -->
+<!-- {\bf r}_{a\ell}^{j y} -->
+<!-- - -->
+<!-- {\bf r}_{b\ell}^{j y} -->
+<!-- \right|. -->
+<!-- $$ -->
+
+<!-- :::{.fragment .centered} -->
+<!-- ### categories are close if they show similar response distributions -->
+<!-- ::: -->
+
+
+<!-- ## Response-aware KNN: Carseats example -->
+
+<!-- ::: {.callout-note appearance="simple" icon=false} -->
+<!-- ## Data -->
+
+<!-- The `Carseats` data are used to predict whether sales are high. -->
+
+<!-- - 7 numerical predictors -->
+<!-- - 3 categorical predictors -->
+<!-- - categorical predictors with 2 or 3 categories -->
+<!-- - binary response: high vs. low sales -->
+<!-- ::: -->
+
+<!-- ::: {.callout-tip appearance="simple" icon=false} -->
+<!-- ## Compared distances -->
+
+<!-- - `gower`: robust Manhattan + matching -->
+<!-- - `naive`: Euclidean on scaled numerical variables and dummies -->
+<!-- - `sup`: supervised numerical weighting + supervised TVD -->
+<!-- - `sup_add`: additive supervised version -->
+<!-- - `supf`: full supervised version -->
+<!-- ::: -->
+
+
+<!-- ## Response-aware KNN: Carseats results -->
+
+<!-- ![](figures/supervised_knn_cars.png){width=82%, fig-align="center"} -->
+
+<!-- :::{.fragment} -->
+<!-- - response-aware distances improve nearest-neighbour classification accuracy -->
+<!-- - `sup`, `sup_add`, and `supf` are clearly above `gower` and `naive` -->
+<!-- - the response helps define neighbourhoods that better reflect the class structure -->
+<!-- ::: -->

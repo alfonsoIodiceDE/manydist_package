@@ -1,0 +1,9 @@
+"dataset","method","external_ARI"
+"Star","D_m",0.932751904889563
+"Star","D_mint",0.829260611563796
+"Palmer_penguins","D_m",0.669428531946101
+"Palmer_penguins","D_mint",0.539932348078567
+"SAheart","D_m",0.0770944493163748
+"SAheart","D_mint",0.127315990028539
+"Dermatology","D_m",0.680618049605295
+"Dermatology","D_mint",0.665923827564345

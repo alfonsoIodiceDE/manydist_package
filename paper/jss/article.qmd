@@ -1578,221 +1578,221 @@ neighbor_grid <- tibble::tibble(
 )
 ```
 
-### Why the distance must be refitted during resampling
+<!-- ### Why the distance must be refitted during resampling -->
 
-The practical consequence of treating distance construction as a fitted preprocessing operation can be demonstrated in the supervised task. @tbl-refitting-leakage compares the same five-neighbour classifier under two cross-validation procedures for three commensurable specifications. In the first, a single distance is fitted on the complete training set and then subset by resample. In the second, the distance is fitted separately within each analysis set and then applied to the corresponding assessment set. The voting rule and resamples are otherwise identical, so the comparison isolates the effect of fitting the distance before rather than within resampling.
+<!-- The practical consequence of treating distance construction as a fitted preprocessing operation can be demonstrated in the supervised task. @tbl-refitting-leakage compares the same five-neighbour classifier under two cross-validation procedures for three commensurable specifications. In the first, a single distance is fitted on the complete training set and then subset by resample. In the second, the distance is fitted separately within each analysis set and then applied to the corresponding assessment set. The voting rule and resamples are otherwise identical, so the comparison isolates the effect of fitting the distance before rather than within resampling. -->
 
-The intended workflow can be written directly with `step_mdist()`:
+<!-- The intended workflow can be written directly with `step_mdist()`: -->
 
-```{r}
-#| label: show-honest-arm
-#| eval: false
+<!-- ```{r} -->
+<!-- #| label: show-honest-arm -->
+<!-- #| eval: false -->
 
-honest_cv <- function(preset, k) {
-  workflows::workflow() |>
-    workflows::add_recipe(
-      recipes::recipe(income ~ ., data = wdi_train) |>
-        step_mdist(
-          recipes::all_predictors(),
-          preset = preset,
-          output = "distance_to_training"
-        )
-    ) |>
-    workflows::add_model(
-      nearest_neighbor_dist(mode = "classification", neighbors = k) |>
-        parsnip::set_engine("manydist")
-    ) |>
-    tune::fit_resamples(
-      resamples = wdi_folds,
-      metrics = yardstick::metric_set(yardstick::bal_accuracy)
-    ) |>
-    tune::collect_metrics(summarize = FALSE) |>
-    dplyr::filter(.metric == "bal_accuracy") |>
-    dplyr::pull(.estimate)
-}
-```
+<!-- honest_cv <- function(preset, k) { -->
+<!--   workflows::workflow() |> -->
+<!--     workflows::add_recipe( -->
+<!--       recipes::recipe(income ~ ., data = wdi_train) |> -->
+<!--         step_mdist( -->
+<!--           recipes::all_predictors(), -->
+<!--           preset = preset, -->
+<!--           output = "distance_to_training" -->
+<!--         ) -->
+<!--     ) |> -->
+<!--     workflows::add_model( -->
+<!--       nearest_neighbor_dist(mode = "classification", neighbors = k) |> -->
+<!--         parsnip::set_engine("manydist") -->
+<!--     ) |> -->
+<!--     tune::fit_resamples( -->
+<!--       resamples = wdi_folds, -->
+<!--       metrics = yardstick::metric_set(yardstick::bal_accuracy) -->
+<!--     ) |> -->
+<!--     tune::collect_metrics(summarize = FALSE) |> -->
+<!--     dplyr::filter(.metric == "bal_accuracy") |> -->
+<!--     dplyr::pull(.estimate) -->
+<!-- } -->
+<!-- ``` -->
 
-The following code reproduces both procedures explicitly so that their difference can be quantified.
+<!-- The following code reproduces both procedures explicitly so that their difference can be quantified. -->
 
-```{r}
-#| label: compare-refitting-leakage
-#| cache: true
-#| echo: false
+<!-- ```{r} -->
+<!-- #| label: compare-refitting-leakage -->
+<!-- #| cache: true -->
+<!-- #| echo: false -->
 
-response_aware_presets <- c("u_dep", "u_mix")
-leakage_presets <- c("u_indep", "u_mix", "u_dep")
+<!-- response_aware_presets <- c("u_dep", "u_mix") -->
+<!-- leakage_presets <- c("u_indep", "u_mix", "u_dep") -->
 
-knn_vote <- function(d_block, train_y, k) {
-  apply(d_block, 1, function(row) {
-    nn <- order(row)[seq_len(k)]
-    names(sort(table(train_y[nn]), decreasing = TRUE))[1]
-  })
-}
+<!-- knn_vote <- function(d_block, train_y, k) { -->
+<!--   apply(d_block, 1, function(row) { -->
+<!--     nn <- order(row)[seq_len(k)] -->
+<!--     names(sort(table(train_y[nn]), decreasing = TRUE))[1] -->
+<!--   }) -->
+<!-- } -->
 
-fit_mdist <- function(data, preset, new_data = NULL) {
-  args <- if (preset %in% response_aware_presets) {
-    list(data, response = quote(income))
-  } else {
-    list(dplyr::select(data, -income))
-  }
-  args$preset <- preset
-  if (!is.null(new_data)) {
-    args$new_data <- new_data
-  }
-  do.call(mdist, args)
-}
+<!-- fit_mdist <- function(data, preset, new_data = NULL) { -->
+<!--   args <- if (preset %in% response_aware_presets) { -->
+<!--     list(data, response = quote(income)) -->
+<!--   } else { -->
+<!--     list(dplyr::select(data, -income)) -->
+<!--   } -->
+<!--   args$preset <- preset -->
+<!--   if (!is.null(new_data)) { -->
+<!--     args$new_data <- new_data -->
+<!--   } -->
+<!--   do.call(mdist, args) -->
+<!-- } -->
 
-fold_accuracy <- function(d_block, train_y, truth, k) {
-  pred <- knn_vote(d_block, train_y, k)
-  yardstick::bal_accuracy_vec(
-    truth = truth,
-    estimate = factor(pred, levels = levels(wdi_train$income))
-  )
-}
+<!-- fold_accuracy <- function(d_block, train_y, truth, k) { -->
+<!--   pred <- knn_vote(d_block, train_y, k) -->
+<!--   yardstick::bal_accuracy_vec( -->
+<!--     truth = truth, -->
+<!--     estimate = factor(pred, levels = levels(wdi_train$income)) -->
+<!--   ) -->
+<!-- } -->
 
-leaky_cv <- function(preset, k) {
-  m_all <- as.matrix(fit_mdist(wdi_train, preset)$to_dist())
+<!-- leaky_cv <- function(preset, k) { -->
+<!--   m_all <- as.matrix(fit_mdist(wdi_train, preset)$to_dist()) -->
 
-  purrr::map_dbl(wdi_folds$splits, function(split) {
-    fit_id <- split$in_id
-    out_id <- rsample::complement(split)
-    fold_accuracy(
-      m_all[out_id, fit_id, drop = FALSE],
-      wdi_train$income[fit_id],
-      wdi_train$income[out_id],
-      k
-    )
-  })
-}
+<!--   purrr::map_dbl(wdi_folds$splits, function(split) { -->
+<!--     fit_id <- split$in_id -->
+<!--     out_id <- rsample::complement(split) -->
+<!--     fold_accuracy( -->
+<!--       m_all[out_id, fit_id, drop = FALSE], -->
+<!--       wdi_train$income[fit_id], -->
+<!--       wdi_train$income[out_id], -->
+<!--       k -->
+<!--     ) -->
+<!--   }) -->
+<!-- } -->
 
-honest_cv <- function(preset, k) {
-  purrr::map_dbl(wdi_folds$splits, function(split) {
-    fit_data <- rsample::analysis(split)
-    out_data <- rsample::assessment(split)
+<!-- honest_cv <- function(preset, k) { -->
+<!--   purrr::map_dbl(wdi_folds$splits, function(split) { -->
+<!--     fit_data <- rsample::analysis(split) -->
+<!--     out_data <- rsample::assessment(split) -->
 
-    d_block <- unclass(
-      fit_mdist(
-        fit_data,
-        preset,
-        new_data = dplyr::select(out_data, -income)
-      )$distance
-    )
+<!--     d_block <- unclass( -->
+<!--       fit_mdist( -->
+<!--         fit_data, -->
+<!--         preset, -->
+<!--         new_data = dplyr::select(out_data, -income) -->
+<!--       )$distance -->
+<!--     ) -->
 
-    stopifnot(
-      nrow(d_block) == nrow(out_data),
-      ncol(d_block) == nrow(fit_data)
-    )
+<!--     stopifnot( -->
+<!--       nrow(d_block) == nrow(out_data), -->
+<!--       ncol(d_block) == nrow(fit_data) -->
+<!--     ) -->
 
-    fold_accuracy(
-      d_block,
-      fit_data$income,
-      out_data$income,
-      k
-    )
-  })
-}
+<!--     fold_accuracy( -->
+<!--       d_block, -->
+<!--       fit_data$income, -->
+<!--       out_data$income, -->
+<!--       k -->
+<!--     ) -->
+<!--   }) -->
+<!-- } -->
 
-set.seed(2026)
+<!-- set.seed(2026) -->
 
-leakage_comparison <- tibble::tibble(preset = leakage_presets) |>
-  dplyr::mutate(
-    leaky = purrr::map(preset, leaky_cv, k = 5L),
-    honest = purrr::map(preset, honest_cv, k = 5L),
-    single_matrix = purrr::map_dbl(leaky, mean),
-    refit_per_fold = purrr::map_dbl(honest, mean),
-    optimism = single_matrix - refit_per_fold,
-    paired_se = purrr::map2_dbl(
-      leaky,
-      honest,
-      ~ stats::sd(.x - .y) / sqrt(length(.x))
-    )
-  )
-```
+<!-- leakage_comparison <- tibble::tibble(preset = leakage_presets) |> -->
+<!--   dplyr::mutate( -->
+<!--     leaky = purrr::map(preset, leaky_cv, k = 5L), -->
+<!--     honest = purrr::map(preset, honest_cv, k = 5L), -->
+<!--     single_matrix = purrr::map_dbl(leaky, mean), -->
+<!--     refit_per_fold = purrr::map_dbl(honest, mean), -->
+<!--     optimism = single_matrix - refit_per_fold, -->
+<!--     paired_se = purrr::map2_dbl( -->
+<!--       leaky, -->
+<!--       honest, -->
+<!--       ~ stats::sd(.x - .y) / sqrt(length(.x)) -->
+<!--     ) -->
+<!--   ) -->
+<!-- ``` -->
 
-```{=latex}
-\Needspace{8\baselineskip}
-```
+<!-- ```{=latex} -->
+<!-- \Needspace{8\baselineskip} -->
+<!-- ``` -->
 
-```{r}
-#| label: tbl-refitting-leakage
-#| tbl-cap: "Cross-validated balanced accuracy for WDI income classification with five neighbours, computing the distance once on the training set against refitting it on each analysis set. The standard error is that of the paired fold-wise differences."
-#| echo: false
+<!-- ```{r} -->
+<!-- #| label: tbl-refitting-leakage -->
+<!-- #| tbl-cap: "Cross-validated balanced accuracy for WDI income classification with five neighbours, computing the distance once on the training set against refitting it on each analysis set. The standard error is that of the paired fold-wise differences." -->
+<!-- #| echo: false -->
 
-knitr::kable(
-  leakage_comparison |>
-    dplyr::transmute(
-      Distance = unname(distance_labels[preset]),
-      `Single matrix` = single_matrix,
-      `Refit per fold` = refit_per_fold,
-      Optimism = optimism,
-      `Paired SE` = paired_se
-    ),
-  digits = 3
-)
-```
+<!-- knitr::kable( -->
+<!--   leakage_comparison |> -->
+<!--     dplyr::transmute( -->
+<!--       Distance = unname(distance_labels[preset]), -->
+<!--       `Single matrix` = single_matrix, -->
+<!--       `Refit per fold` = refit_per_fold, -->
+<!--       Optimism = optimism, -->
+<!--       `Paired SE` = paired_se -->
+<!--     ), -->
+<!--   digits = 3 -->
+<!-- ) -->
+<!-- ``` -->
 
-In this example, the single-matrix procedure gives higher cross-validated balanced accuracy for all three specifications, although most differences are small relative to the fold-to-fold variability. The gap is largest for `u_dep`, whose fitted preprocessing includes a principal-component rotation. The point of the example is not the magnitude for this particular data set, but that the distance contains estimated quantities and therefore belongs inside the resampling procedure.
+<!-- In this example, the single-matrix procedure gives higher cross-validated balanced accuracy for all three specifications, although most differences are small relative to the fold-to-fold variability. The gap is largest for `u_dep`, whose fitted preprocessing includes a principal-component rotation. The point of the example is not the magnitude for this particular data set, but that the distance contains estimated quantities and therefore belongs inside the resampling procedure. -->
 
-The same issue can affect comparisons among candidate distances. @tbl-refitting-leakage-grid repeats the two procedures across the neighbourhood grid and records the rank of each specification under each approach.
+<!-- The same issue can affect comparisons among candidate distances. @tbl-refitting-leakage-grid repeats the two procedures across the neighbourhood grid and records the rank of each specification under each approach. -->
 
-```{r}
-#| label: compare-refitting-leakage-grid
-#| cache: true
-#| warning: false
-#| echo: false
+<!-- ```{r} -->
+<!-- #| label: compare-refitting-leakage-grid -->
+<!-- #| cache: true -->
+<!-- #| warning: false -->
+<!-- #| echo: false -->
 
-set.seed(2026)
+<!-- set.seed(2026) -->
 
-leakage_grid <- tidyr::expand_grid(
-  preset = leakage_presets,
-  k = neighbor_grid$neighbors
-) |>
-  dplyr::mutate(
-    single_matrix = purrr::map2_dbl(preset, k, ~ mean(leaky_cv(.x, .y))),
-    refit_per_fold = purrr::map2_dbl(preset, k, ~ mean(honest_cv(.x, .y)))
-  ) |>
-  dplyr::group_by(k) |>
-  dplyr::mutate(
-    leaky_rank = rank(-single_matrix),
-    honest_rank = rank(-refit_per_fold)
-  ) |>
-  dplyr::ungroup()
-```
+<!-- leakage_grid <- tidyr::expand_grid( -->
+<!--   preset = leakage_presets, -->
+<!--   k = neighbor_grid$neighbors -->
+<!-- ) |> -->
+<!--   dplyr::mutate( -->
+<!--     single_matrix = purrr::map2_dbl(preset, k, ~ mean(leaky_cv(.x, .y))), -->
+<!--     refit_per_fold = purrr::map2_dbl(preset, k, ~ mean(honest_cv(.x, .y))) -->
+<!--   ) |> -->
+<!--   dplyr::group_by(k) |> -->
+<!--   dplyr::mutate( -->
+<!--     leaky_rank = rank(-single_matrix), -->
+<!--     honest_rank = rank(-refit_per_fold) -->
+<!--   ) |> -->
+<!--   dplyr::ungroup() -->
+<!-- ``` -->
 
-```{=latex}
-\Needspace{10\baselineskip}
-```
+<!-- ```{=latex} -->
+<!-- \Needspace{10\baselineskip} -->
+<!-- ``` -->
 
-```{r}
-#| label: tbl-refitting-leakage-grid
-#| tbl-cap: "Rank of each specification by cross-validated balanced accuracy at every neighbourhood size, under a single training-partition distance and under fold-wise refitting. The two approaches agree except at one and five neighbours."
-#| echo: false
+<!-- ```{r} -->
+<!-- #| label: tbl-refitting-leakage-grid -->
+<!-- #| tbl-cap: "Rank of each specification by cross-validated balanced accuracy at every neighbourhood size, under a single training-partition distance and under fold-wise refitting. The two approaches agree except at one and five neighbours." -->
+<!-- #| echo: false -->
 
-leakage_grid |>
-  dplyr::mutate(Distance = unname(distance_labels[preset])) |>
-  dplyr::select(Distance, k, leaky_rank, honest_rank) |>
-  tidyr::pivot_longer(
-    c(leaky_rank, honest_rank),
-    names_to = "Approach",
-    values_to = "rank"
-  ) |>
-  dplyr::mutate(
-    Approach = dplyr::if_else(
-      Approach == "leaky_rank",
-      "Single matrix",
-      "Refit per fold"
-    )
-  ) |>
-  tidyr::pivot_wider(
-    names_from = Distance,
-    values_from = rank
-  ) |>
-  dplyr::arrange(k, dplyr::desc(Approach)) |>
-  dplyr::rename(Neighbours = k) |>
-  knitr::kable()
-```
+<!-- leakage_grid |> -->
+<!--   dplyr::mutate(Distance = unname(distance_labels[preset])) |> -->
+<!--   dplyr::select(Distance, k, leaky_rank, honest_rank) |> -->
+<!--   tidyr::pivot_longer( -->
+<!--     c(leaky_rank, honest_rank), -->
+<!--     names_to = "Approach", -->
+<!--     values_to = "rank" -->
+<!--   ) |> -->
+<!--   dplyr::mutate( -->
+<!--     Approach = dplyr::if_else( -->
+<!--       Approach == "leaky_rank", -->
+<!--       "Single matrix", -->
+<!--       "Refit per fold" -->
+<!--     ) -->
+<!--   ) |> -->
+<!--   tidyr::pivot_wider( -->
+<!--     names_from = Distance, -->
+<!--     values_from = rank -->
+<!--   ) |> -->
+<!--   dplyr::arrange(k, dplyr::desc(Approach)) |> -->
+<!--   dplyr::rename(Neighbours = k) |> -->
+<!--   knitr::kable() -->
+<!-- ``` -->
 
-The two procedures rank the three specifications identically at four of the six neighbourhood sizes. They differ at one neighbour, where the leading two exchange places, and at five neighbours, where `u_dep` moves from first to last. Neither difference occurs at the neighbourhood size selected by any of the three specifications in this example. With five folds and 133 training countries, the comparison is illustrative; its purpose is to show that fixing an estimated distance before resampling can change both estimated performance and comparisons among candidate specifications.
+<!-- The two procedures rank the three specifications identically at four of the six neighbourhood sizes. They differ at one neighbour, where the leading two exchange places, and at five neighbours, where `u_dep` moves from first to last. Neither difference occurs at the neighbourhood size selected by any of the three specifications in this example. With five folds and 133 training countries, the comparison is illustrative; its purpose is to show that fixing an estimated distance before resampling can change both estimated performance and comparisons among candidate specifications. -->
 
 ### Country clustering
 

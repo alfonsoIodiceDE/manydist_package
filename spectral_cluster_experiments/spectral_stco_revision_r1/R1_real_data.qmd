@@ -1,0 +1,1802 @@
+---
+title: "Revised real-data evaluation for spectral clustering of mixed data"
+subtitle: "Reproducible supplementary analysis for the first revision"
+author: "Supplementary real-data code"
+date: last-modified
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+    code-tools: true
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: false
+---
+
+This document defines the revised real-data evaluation.  It directly addresses
+the reviewers' requests for a broader set of applications, a consolidated
+dataset-by-method comparison, fully specified optimization settings, and a
+separate assessment of whether the interaction term changes the empirical
+partition.  Class labels are removed before clustering and are used only to set
+the known number of clusters and to compute the adjusted Rand index (ARI).
+For the South African Heart case study, the labels are additionally
+used in a separate supervised diagnostic that compares a main-effects
+classifier with a classifier containing numerical--categorical interactions.
+Neither classifier contributes to the dissimilarities, the interaction gate,
+or the clustering solution.
+
+# Analysis parameters
+
+```{r}
+#| label: analysis-parameters
+
+analysis_parameters <- list(
+  analysis_version = "R1-real-v1",
+
+  execution = list(
+    # A normal render is read-only. Change this to TRUE to produce missing
+    # dataset artifacts.
+    run_experiments = FALSE,
+    datasets = c(
+      "Star", "Automobile", "Australian_credit", "Palmer_penguins",
+      "Statlog_heart", "SAheart"
+    ),
+    # UCI source files are cached locally only when this switch is TRUE.
+    allow_download = FALSE,
+    output_directory = "results/R1_real_data",
+    raw_data_directory = "data/real_data",
+    seed_base = 27100000L,
+    show_progress = TRUE
+  ),
+
+  preprocessing = list(
+    numeric_missing = "median",
+    categorical_missing = "explicit_Missing_level",
+    standardize_numeric = TRUE,
+    missing_level = "Missing"
+  ),
+
+  distance = list(
+    preset = "custom",
+    method_num = "pc_scores",
+    method_cat = "tvd",
+    commensurable = FALSE,
+    interaction = FALSE,
+    gamma = 1,
+    prop_nn = 0.10,
+    score = "ba",
+    decision = "prior_corrected",
+    gate_permutations = 499L,
+    gate_alpha = 0.01,
+    gate_seed_offset = 31L,
+    ahmad_dey_bins = 5L
+  ),
+
+  neighbour_sensitivity = list(
+    enabled = TRUE,
+    proportions = c(0.02, 0.05, 0.10, 0.20)
+  ),
+
+  spectral = list(
+    embedding_dimension = "known number of classes K",
+    affinity = "global Gaussian",
+    bandwidth = "median positive off-diagonal dissimilarity",
+    kmeans_nstart = 100L,
+    kmeans_iter_max = 100L,
+    kmeans_algorithm = "Hartigan-Wong"
+  ),
+
+  algorithm_benchmarks = list(
+    kprototypes = list(
+      package = "clustMixType",
+      nstart = 100L,
+      iter_max = 100L,
+      type = "huang",
+      lambda = NULL
+    ),
+    kamila = list(
+      package = "kamila",
+      num_init = 100L,
+      max_iter = 100L,
+      con_init_method = "runif",
+      cat_bw = 0.025
+    )
+  ),
+
+  methods = c(
+    D_mint = TRUE,
+    D_m = TRUE,
+    Gower = TRUE,
+    Modified_Gower = TRUE,
+    Euclidean_onehot = TRUE,
+    Ahmad_Dey = TRUE,
+    Kprototypes = TRUE,
+    KAMILA = TRUE
+  ),
+
+  sources = list(
+    Automobile = "https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data",
+    Australian_credit = "https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/australian/australian.dat",
+    Statlog_heart = "https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/heart/heart.dat"
+  )
+)
+```
+
+The two stochastic competitors are each fitted **once per dataset**, with 100
+internal initializations.  The reported ARI is the ARI of the solution selected
+by the algorithm, not an average of ARIs from separate clustering runs.  This
+implements the reviewers' requested distinction between repeated independent
+runs and internal random starts.
+
+# Reproducible setup
+
+```{r}
+#| label: setup
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+input_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) "")
+if (!length(input_file) || is.na(input_file[[1L]]) || !nzchar(input_file[[1L]])) {
+  local_candidate <- file.path(getwd(), "R1_real_data.qmd")
+  input_file <- if (file.exists(local_candidate)) local_candidate else file.path(
+    getwd(), "spectral_cluster_experiments", "spectral_stco_revision_r1",
+    "R1_real_data.qmd"
+  )
+}
+input_file <- normalizePath(input_file[[1L]], mustWork = TRUE)
+revision_directory <- dirname(input_file)
+repository_root <- dirname(dirname(revision_directory))
+full_directory <- file.path(revision_directory, "full")
+moon_directory <- file.path(revision_directory, "moon_scaling")
+
+required_packages <- c("devtools", "digest", "knitr", "mclust", "nnet")
+missing_packages <- required_packages[!vapply(
+  required_packages, requireNamespace, logical(1), quietly = TRUE
+)]
+if (length(missing_packages)) {
+  stop("Missing required packages: ", paste(missing_packages, collapse = ", "))
+}
+
+devtools::load_all(file.path(repository_root, "manydist"), quiet = TRUE)
+
+source_files <- c(
+  bridge = file.path(revision_directory, "R", "manydist_bridge.R"),
+  gate_helpers = file.path(revision_directory, "R", "distance_r1.R"),
+  spectral_engine = file.path(full_directory, "R", "engine.R"),
+  gated_distance = file.path(moon_directory, "R", "gated_distance.R")
+)
+invisible(lapply(source_files, source))
+
+source_hashes <- unname(tools::md5sum(source_files))
+names(source_hashes) <- names(source_files)
+qmd_md5 <- unname(tools::md5sum(input_file))
+
+# Runtime switches do not define a different statistical analysis.
+analysis_contract <- analysis_parameters
+analysis_contract$execution$run_experiments <- NULL
+analysis_contract$execution$datasets <- NULL
+analysis_contract$execution$allow_download <- NULL
+analysis_contract$execution$show_progress <- NULL
+analysis_contract$execution$output_directory <- NULL
+analysis_contract$execution$raw_data_directory <- NULL
+
+configuration_tag <- substr(
+  digest::digest(
+    list(
+      parameters = analysis_contract,
+      source_hashes = source_hashes
+    ),
+    algo = "xxhash64"
+  ),
+  1L, 12L
+)
+
+result_directory <- file.path(
+  revision_directory,
+  analysis_parameters$execution$output_directory,
+  configuration_tag
+)
+raw_data_directory <- file.path(
+  revision_directory,
+  analysis_parameters$execution$raw_data_directory
+)
+
+kmeans_specification <- list(
+  nstart = analysis_parameters$spectral$kmeans_nstart,
+  iter_max = analysis_parameters$spectral$kmeans_iter_max,
+  algorithm = analysis_parameters$spectral$kmeans_algorithm
+)
+
+classification_specification <- list(
+  dataset = "SAheart",
+  folds = 10L,
+  repeats = 5L,
+  maxit = 1000L,
+  max_weights = 10000L,
+  seed_offset = 707L,
+  interaction_terms = "ldl:famhist",
+  comparison = paste(
+    "main effects versus the LDL-by-family-history interaction, motivated",
+    "by the clinical interpretation of family history as an effect modifier"
+  )
+)
+
+saheart_source <- "https://hastie.su.domains/ElemStatLearn/datasets/SAheart.data"
+```
+
+The analysis loads the local `manydist` source tree.  These checksums identify
+the exact distance and clustering implementations used by the document.
+
+```{r}
+#| label: source-manifest
+
+knitr::kable(data.frame(
+  component = names(source_files),
+  file = unname(source_files),
+  md5 = source_hashes,
+  row.names = NULL
+))
+```
+
+# Frozen dataset registry
+
+The registry below records the empirical role of every variable before any
+method is fitted.  Labels never enter a dissimilarity or an algorithm-level
+benchmark.  Continuous missing values are median-imputed, categorical missing
+values receive an explicit `Missing` level, constant predictors are removed,
+and continuous predictors are standardized.  The same completed analysis frame
+is supplied to all methods.
+
+```{r}
+#| label: dataset-registry
+
+dataset_registry <- data.frame(
+  dataset = c(
+    "Star", "Automobile", "Australian_credit", "Palmer_penguins",
+    "Statlog_heart", "SAheart"
+  ),
+  display_name = c(
+    "Star", "Automobile", "Australian Credit Approval", "Palmer Penguins",
+    "Statlog Heart", "South African Heart"
+  ),
+  source = c(
+    "FPDclustering::Star (CRAN copy of the Kaggle Star data)",
+    analysis_parameters$sources$Automobile,
+    analysis_parameters$sources$Australian_credit,
+    "palmerpenguins::penguins",
+    analysis_parameters$sources$Statlog_heart,
+    saheart_source
+  ),
+  label = c(
+    "Type (Red and Brown Dwarf merged)",
+    "symboling (-2 merged with -1)",
+    "credit approval class",
+    "species",
+    "presence of heart disease",
+    "coronary heart disease"
+  ),
+  design_note = c(
+    "Four physical measurements; colour and spectral class",
+    "Engine location excluded because only three cars have rear engines",
+    "Six continuous and eight nominal predictors",
+    "Year excluded; four morphometric and two nominal predictors",
+    "Six continuous and six nominal predictors; ordered slope excluded",
+    paste(
+      "Eight numerical cardiovascular risk factors and family history;",
+      "LDL-by-family-history is the supervised interaction diagnostic"
+    )
+  ),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(dataset_registry)
+```
+
+South African Heart contains one categorical predictor, family-history
+status.  Conditional TVD requires another categorical variable against which
+to form conditional profiles; with a single categorical predictor,
+`manydist` therefore uses matching dissimilarity for that baseline block.  The
+case study is included specifically to examine the numerical--categorical
+interaction, whose construction and multiplicity gate are unchanged.
+
+## Data acquisition and dataset-specific roles
+
+```{r}
+#| label: dataset-loaders
+
+r1rd_normalize_name <- function(x) {
+  gsub("[^a-z0-9]+", "_", tolower(x))
+}
+
+r1rd_package_data <- function(package, object) {
+  if (!requireNamespace(package, quietly = TRUE)) {
+    stop("Dataset `", object, "` requires package `", package, "`.")
+  }
+  environment <- new.env(parent = emptyenv())
+  suppressWarnings(utils::data(list = object, package = package, envir = environment))
+  if (!exists(object, envir = environment, inherits = FALSE)) {
+    stop("Could not load `", package, "::", object, "`.")
+  }
+  get(object, envir = environment, inherits = FALSE)
+}
+
+r1rd_cached_source <- function(dataset, extension = "dat", url = NULL) {
+  dir.create(raw_data_directory, recursive = TRUE, showWarnings = FALSE)
+  destination <- file.path(raw_data_directory, paste0(dataset, ".", extension))
+  if (file.exists(destination)) return(destination)
+  if (!isTRUE(analysis_parameters$execution$allow_download)) {
+    stop(
+      "Missing cached source for `", dataset, "`: ", destination,
+      ". Set execution$allow_download = TRUE for the first execution render."
+    )
+  }
+  url <- url %||% analysis_parameters$sources[[dataset]]
+  if (is.null(url) || !nzchar(url)) {
+    stop("No download URL is registered for `", dataset, "`.")
+  }
+  status <- utils::download.file(url, destination, mode = "wb", quiet = FALSE)
+  if (!identical(status, 0L) || !file.exists(destination)) {
+    stop("Download failed for `", dataset, "` from ", url, ".")
+  }
+  destination
+}
+
+r1rd_column <- function(data, candidates, dataset) {
+  normalized <- r1rd_normalize_name(names(data))
+  candidate_names <- r1rd_normalize_name(candidates)
+  match_index <- match(candidate_names, normalized, nomatch = 0L)
+  match_index <- match_index[match_index > 0L]
+  if (!length(match_index)) {
+    stop(
+      "None of the expected columns for `", dataset, "` were found: ",
+      paste(candidates, collapse = ", "), ". Observed names: ",
+      paste(names(data), collapse = ", ")
+    )
+  }
+  names(data)[match_index[[1L]]]
+}
+
+r1rd_load_star <- function() {
+  raw <- as.data.frame(r1rd_package_data("FPDclustering", "Star"))
+  names(raw) <- r1rd_normalize_name(names(raw))
+  selected <- c(
+    k = r1rd_column(raw, c("K", "temperature"), "Star"),
+    lum = r1rd_column(raw, c("Lum", "luminosity"), "Star"),
+    rad = r1rd_column(raw, c("Rad", "radius"), "Star"),
+    mag = r1rd_column(raw, c("Mag", "absolute_magnitude"), "Star"),
+    col = r1rd_column(raw, c("Col", "color", "colour"), "Star"),
+    spect = r1rd_column(raw, c("Spect", "spectral_class"), "Star"),
+    type = r1rd_column(raw, c("Type", "star_type"), "Star")
+  )
+  raw <- raw[unname(selected)]
+  names(raw) <- names(selected)
+  truth <- as.character(raw$type)
+  numeric_truth <- suppressWarnings(as.integer(truth))
+  if (all(!is.na(numeric_truth)) && all(numeric_truth %in% 0:5)) {
+    truth[numeric_truth %in% c(0L, 1L)] <- "Red_or_Brown_Dwarf"
+  } else {
+    dwarf <- grepl("red.*dwarf|brown.*dwarf", truth, ignore.case = TRUE)
+    truth[dwarf] <- "Red_or_Brown_Dwarf"
+  }
+  list(
+    x = data.frame(
+      K = as.numeric(raw$k), Lum = as.numeric(raw$lum),
+      Rad = as.numeric(raw$rad), Mag = as.numeric(raw$mag),
+      Col = factor(raw$col), Spect = factor(raw$spect),
+      check.names = FALSE
+    ),
+    truth = droplevels(factor(truth)),
+    provenance = list(package = "FPDclustering", object = "Star")
+  )
+}
+
+r1rd_load_automobile <- function() {
+  path <- r1rd_cached_source("Automobile")
+  column_names <- c(
+    "symboling", "normalized_losses", "make", "fuel_type", "aspiration",
+    "num_doors", "body_style", "drive_wheels", "engine_location",
+    "wheel_base", "length", "width", "height", "curb_weight",
+    "engine_type", "num_cylinders", "engine_size", "fuel_system", "bore",
+    "stroke", "compression_ratio", "horsepower", "peak_rpm", "city_mpg",
+    "highway_mpg", "price"
+  )
+  raw <- utils::read.csv(
+    path, header = FALSE, col.names = column_names, na.strings = "?",
+    stringsAsFactors = FALSE, strip.white = TRUE
+  )
+  numeric_names <- c(
+    "normalized_losses", "wheel_base", "length", "width", "height",
+    "curb_weight", "engine_size", "bore", "stroke", "compression_ratio",
+    "horsepower", "peak_rpm", "city_mpg", "highway_mpg", "price"
+  )
+  categorical_names <- c(
+    "make", "fuel_type", "aspiration", "num_doors", "body_style",
+    "drive_wheels", "engine_type", "num_cylinders", "fuel_system"
+  )
+  raw[numeric_names] <- lapply(raw[numeric_names], as.numeric)
+  raw[categorical_names] <- lapply(raw[categorical_names], factor)
+  truth <- as.character(raw$symboling)
+  truth[truth == "-2"] <- "-1"
+  list(
+    x = raw[c(numeric_names, categorical_names)],
+    truth = droplevels(factor(truth)),
+    provenance = list(url = analysis_parameters$sources$Automobile, file = path)
+  )
+}
+
+r1rd_load_australian <- function() {
+  path <- r1rd_cached_source("Australian_credit")
+  raw <- utils::read.table(path, header = FALSE, stringsAsFactors = FALSE)
+  if (ncol(raw) != 15L) stop("Australian Credit source must contain 15 columns.")
+  names(raw) <- paste0("A", seq_len(15L))
+  categorical_index <- c(1L, 4L, 5L, 6L, 8L, 9L, 11L, 12L)
+  numeric_index <- c(2L, 3L, 7L, 10L, 13L, 14L)
+  raw[categorical_index] <- lapply(raw[categorical_index], factor)
+  raw[numeric_index] <- lapply(raw[numeric_index], as.numeric)
+  list(
+    x = raw[c(numeric_index, categorical_index)],
+    truth = droplevels(factor(raw[[15L]])),
+    provenance = list(url = analysis_parameters$sources$Australian_credit, file = path)
+  )
+}
+
+r1rd_load_penguins <- function() {
+  if (!requireNamespace("palmerpenguins", quietly = TRUE)) {
+    stop("Dataset `Palmer_penguins` requires package `palmerpenguins`.")
+  }
+  raw <- as.data.frame(palmerpenguins::penguins)
+  list(
+    x = data.frame(
+      bill_length_mm = raw$bill_length_mm,
+      bill_depth_mm = raw$bill_depth_mm,
+      flipper_length_mm = raw$flipper_length_mm,
+      body_mass_g = raw$body_mass_g,
+      island = factor(raw$island),
+      sex = factor(raw$sex),
+      check.names = FALSE
+    ),
+    truth = droplevels(factor(raw$species)),
+    provenance = list(package = "palmerpenguins", object = "penguins")
+  )
+}
+
+r1rd_load_heart <- function() {
+  path <- r1rd_cached_source("Statlog_heart")
+  raw <- utils::read.table(path, header = FALSE, stringsAsFactors = FALSE)
+  if (ncol(raw) != 14L) stop("Statlog Heart source must contain 14 columns.")
+  names(raw) <- paste0("V", seq_len(14L))
+  numeric_index <- c(1L, 4L, 5L, 8L, 10L, 12L)
+  categorical_index <- c(2L, 3L, 6L, 7L, 9L, 13L)
+  raw[numeric_index] <- lapply(raw[numeric_index], as.numeric)
+  raw[categorical_index] <- lapply(raw[categorical_index], factor)
+  list(
+    x = raw[c(numeric_index, categorical_index)],
+    truth = droplevels(factor(raw[[14L]])),
+    provenance = list(url = analysis_parameters$sources$Statlog_heart, file = path)
+  )
+}
+
+r1rd_load_saheart <- function() {
+  path <- r1rd_cached_source("SAheart", extension = "csv", url = saheart_source)
+  raw <- utils::read.csv(path, stringsAsFactors = FALSE, strip.white = TRUE)
+  required <- c(
+    "sbp", "tobacco", "ldl", "adiposity", "famhist", "typea",
+    "obesity", "alcohol", "age", "chd"
+  )
+  if (!all(required %in% names(raw))) {
+    stop("South African Heart source does not contain the expected columns.")
+  }
+  numeric_names <- c(
+    "sbp", "tobacco", "ldl", "adiposity", "typea", "obesity",
+    "alcohol", "age"
+  )
+  raw[numeric_names] <- lapply(raw[numeric_names], as.numeric)
+  list(
+    x = data.frame(
+      raw[numeric_names], famhist = factor(raw$famhist), check.names = FALSE
+    ),
+    truth = droplevels(factor(raw$chd)),
+    provenance = list(
+      url = saheart_source,
+      source = "Hastie, Tibshirani, and Friedman, Elements of Statistical Learning",
+      file = path
+    )
+  )
+}
+
+r1rd_load_dataset <- function(dataset) {
+  switch(
+    dataset,
+    Star = r1rd_load_star(),
+    Automobile = r1rd_load_automobile(),
+    Australian_credit = r1rd_load_australian(),
+    Palmer_penguins = r1rd_load_penguins(),
+    Statlog_heart = r1rd_load_heart(),
+    SAheart = r1rd_load_saheart(),
+    stop("Unknown dataset: ", dataset)
+  )
+}
+```
+
+## Shared preprocessing
+
+```{r}
+#| label: preprocessing
+
+r1rd_prepare_data <- function(loaded, dataset) {
+  x <- as.data.frame(loaded$x, check.names = FALSE)
+  truth <- droplevels(factor(loaded$truth))
+  if (nrow(x) != length(truth)) stop("Predictors and labels have different lengths.")
+
+  keep <- !is.na(truth)
+  x <- x[keep, , drop = FALSE]
+  truth <- droplevels(truth[keep])
+
+  numeric_names <- names(x)[vapply(x, is.numeric, logical(1))]
+  categorical_names <- names(x)[vapply(
+    x, function(value) is.factor(value) || is.character(value), logical(1)
+  )]
+  if (length(c(numeric_names, categorical_names)) != ncol(x)) {
+    stop("Every predictor must be numerical or nominal categorical in `", dataset, "`.")
+  }
+
+  numeric_missing <- integer(length(numeric_names))
+  names(numeric_missing) <- numeric_names
+  for (name in numeric_names) {
+    value <- as.numeric(x[[name]])
+    missing <- !is.finite(value)
+    numeric_missing[[name]] <- sum(missing)
+    median_value <- stats::median(value[!missing], na.rm = TRUE)
+    if (!is.finite(median_value)) stop("All values are missing in `", name, "`.")
+    value[missing] <- median_value
+    x[[name]] <- value
+  }
+
+  categorical_missing <- integer(length(categorical_names))
+  names(categorical_missing) <- categorical_names
+  for (name in categorical_names) {
+    value <- as.character(x[[name]])
+    missing <- is.na(value) | !nzchar(trimws(value))
+    categorical_missing[[name]] <- sum(missing)
+    value[missing] <- analysis_parameters$preprocessing$missing_level
+    x[[name]] <- droplevels(factor(value))
+  }
+
+  constant <- names(x)[vapply(x, function(value) {
+    length(unique(value)) < 2L
+  }, logical(1))]
+  if (length(constant)) x <- x[setdiff(names(x), constant)]
+
+  numeric_names <- names(x)[vapply(x, is.numeric, logical(1))]
+  categorical_names <- names(x)[vapply(x, is.factor, logical(1))]
+  if (!length(numeric_names) || !length(categorical_names)) {
+    stop("`", dataset, "` must retain numerical and categorical predictors.")
+  }
+
+  if (isTRUE(analysis_parameters$preprocessing$standardize_numeric)) {
+    x[numeric_names] <- lapply(x[numeric_names], function(value) {
+      scaled <- as.numeric(scale(value))
+      if (any(!is.finite(scaled))) stop("Numerical standardization failed.")
+      scaled
+    })
+  }
+  x[categorical_names] <- lapply(x[categorical_names], droplevels)
+
+  list(
+    x = x,
+    truth = truth,
+    provenance = loaded$provenance,
+    preprocessing = list(
+      numeric_missing = numeric_missing,
+      categorical_missing = categorical_missing,
+      removed_constant_predictors = constant
+    )
+  )
+}
+```
+
+# Common dissimilarity and clustering functions
+
+All six pairwise dissimilarities are passed to the same normalized spectral
+clustering routine.  The Gaussian bandwidth is the median of the positive
+off-diagonal dissimilarities, and the row-normalized spectral embedding has
+dimension $K$, the known number of reference classes.  Its final k-means step
+uses 100 internal starts and at most 100 iterations.
+
+```{r}
+#| label: common-functions
+
+r1rd_global_gaussian <- function(distance) {
+  distance <- full_validate_distance(distance)
+  positive <- distance[upper.tri(distance) & distance > 0]
+  if (!length(positive)) stop("Distance has no positive off-diagonal entries.")
+  sigma <- stats::median(positive)
+  if (!is.finite(sigma) || sigma <= 0) stop("Invalid Gaussian bandwidth.")
+  affinity <- exp(-(distance^2) / (2 * sigma^2))
+  diag(affinity) <- 0
+  list(matrix = affinity, sigma = sigma)
+}
+
+r1rd_cluster_distance <- function(distance, truth, seed) {
+  affinity <- r1rd_global_gaussian(distance)
+  fit <- full_spectral_cluster(
+    affinity$matrix,
+    k = nlevels(truth),
+    seed = seed,
+    kmeans_specification = kmeans_specification
+  )
+  list(
+    cluster = fit$cluster,
+    ARI = mclust::adjustedRandIndex(fit$cluster, truth),
+    objective = fit$objective,
+    iterations = fit$iterations,
+    sigma = affinity$sigma
+  )
+}
+
+r1rd_alignment_ratio <- function(distance, partition) {
+  distance <- full_validate_distance(distance)
+  upper <- upper.tri(distance)
+  same <- outer(partition, partition, `==`)[upper]
+  values <- distance[upper]
+  within <- mean(values[same])
+  between <- mean(values[!same])
+  if (is.finite(within) && within > 0) between / within else NA_real_
+}
+
+r1rd_distance_spearman <- function(first, second) {
+  first <- full_validate_distance(first)
+  second <- full_validate_distance(second)
+  if (!identical(dim(first), dim(second))) {
+    stop("Distance matrices must have identical dimensions.")
+  }
+  upper <- upper.tri(first)
+  if (!stats::sd(first[upper]) || !stats::sd(second[upper])) return(NA_real_)
+  suppressWarnings(stats::cor(
+    first[upper], second[upper], method = "spearman"
+  ))
+}
+
+r1rd_knn_overlap <- function(first, second, proportion) {
+  first <- full_validate_distance(first)
+  second <- full_validate_distance(second)
+  if (!identical(dim(first), dim(second))) {
+    stop("Distance matrices must have identical dimensions.")
+  }
+  n <- nrow(first)
+  k <- max(1L, min(n - 1L, ceiling(proportion * (n - 1L))))
+  overlap <- vapply(seq_len(n), function(index) {
+    first_order <- order(first[index, ], na.last = NA)
+    second_order <- order(second[index, ], na.last = NA)
+    first_neighbours <- head(first_order[first_order != index], k)
+    second_neighbours <- head(second_order[second_order != index], k)
+    length(intersect(first_neighbours, second_neighbours)) / k
+  }, numeric(1))
+  mean(overlap)
+}
+
+r1rd_stratified_folds <- function(truth, folds, seed) {
+  truth <- droplevels(factor(truth))
+  if (folds < 2L || folds > min(table(truth))) {
+    stop("Invalid number of stratified folds.")
+  }
+  set.seed(seed)
+  assignment <- integer(length(truth))
+  for (level in levels(truth)) {
+    index <- which(truth == level)
+    assignment[index] <- sample(rep(seq_len(folds), length.out = length(index)))
+  }
+  assignment
+}
+
+r1rd_classification_metrics <- function(truth, predicted, probabilities) {
+  truth <- droplevels(factor(truth))
+  predicted <- factor(predicted, levels = levels(truth))
+  confusion <- table(truth, predicted)
+  recall <- diag(confusion) / rowSums(confusion)
+  precision <- diag(confusion) / colSums(confusion)
+  f1 <- 2 * precision * recall / (precision + recall)
+  f1[!is.finite(f1)] <- 0
+
+  probabilities <- as.matrix(probabilities)
+  probabilities <- probabilities[, levels(truth), drop = FALSE]
+  observed_probability <- probabilities[cbind(
+    seq_along(truth), match(truth, levels(truth))
+  )]
+  observed_probability <- pmax(pmin(observed_probability, 1 - 1e-15), 1e-15)
+  c(
+    accuracy = mean(predicted == truth),
+    balanced_accuracy = mean(recall),
+    macro_F1 = mean(f1),
+    log_loss = -mean(log(observed_probability))
+  )
+}
+
+r1rd_run_classification_diagnostic <- function(data, truth, seed) {
+  numeric_names <- names(data)[vapply(data, is.numeric, logical(1))]
+  categorical_names <- names(data)[vapply(data, is.factor, logical(1))]
+  if (!length(numeric_names) || !length(categorical_names)) {
+    stop("The classification diagnostic requires both predictor types.")
+  }
+
+  model_data <- data
+  model_data$.truth <- droplevels(factor(truth))
+  main_formula <- stats::reformulate(names(data), response = ".truth")
+  interaction_terms <- classification_specification$interaction_terms %||%
+    as.vector(outer(numeric_names, categorical_names, paste, sep = ":"))
+  unknown_interaction_variables <- setdiff(
+    unique(unlist(strsplit(interaction_terms, ":", fixed = TRUE))),
+    names(data)
+  )
+  if (length(unknown_interaction_variables)) {
+    stop(
+      "Unknown variables in the supervised interaction specification: ",
+      paste(unknown_interaction_variables, collapse = ", ")
+    )
+  }
+  interaction_formula <- stats::reformulate(
+    c(names(data), interaction_terms), response = ".truth"
+  )
+
+  fit_model <- function(formula, training_data) {
+    nnet::multinom(
+      formula,
+      data = training_data,
+      trace = FALSE,
+      maxit = classification_specification$maxit,
+      MaxNWts = classification_specification$max_weights
+    )
+  }
+
+  repeat_rows <- list()
+  row_index <- 0L
+  classes <- levels(model_data$.truth)
+  model_formulas <- list(
+    main_effects = main_formula,
+    numeric_categorical_interactions = interaction_formula
+  )
+
+  for (repeat_index in seq_len(classification_specification$repeats)) {
+    fold <- r1rd_stratified_folds(
+      model_data$.truth,
+      classification_specification$folds,
+      seed + repeat_index
+    )
+    for (model_name in names(model_formulas)) {
+      predicted <- rep(NA_character_, nrow(model_data))
+      probabilities <- matrix(
+        NA_real_, nrow(model_data), length(classes),
+        dimnames = list(NULL, classes)
+      )
+      for (fold_index in seq_len(classification_specification$folds)) {
+        test <- fold == fold_index
+        fit <- fit_model(model_formulas[[model_name]], model_data[!test, ])
+        fold_probability <- stats::predict(
+          fit, newdata = model_data[test, , drop = FALSE], type = "probs"
+        )
+        if (is.null(dim(fold_probability))) {
+          fold_probability <- cbind(
+            1 - fold_probability, fold_probability
+          )
+          colnames(fold_probability) <- classes
+        } else {
+          fold_probability <- as.matrix(fold_probability)
+        }
+        probabilities[test, colnames(fold_probability)] <- fold_probability
+        predicted[test] <- classes[max.col(fold_probability, ties.method = "first")]
+      }
+      metrics <- r1rd_classification_metrics(
+        model_data$.truth, predicted, probabilities
+      )
+      row_index <- row_index + 1L
+      repeat_rows[[row_index]] <- data.frame(
+        repeat_id = repeat_index,
+        model = model_name,
+        accuracy = unname(metrics[["accuracy"]]),
+        balanced_accuracy = unname(metrics[["balanced_accuracy"]]),
+        macro_F1 = unname(metrics[["macro_F1"]]),
+        log_loss = unname(metrics[["log_loss"]]),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  repeat_results <- do.call(rbind, repeat_rows)
+  performance <- do.call(rbind, lapply(names(model_formulas), function(model_name) {
+    observed <- repeat_results[repeat_results$model == model_name, , drop = FALSE]
+    data.frame(
+      model = model_name,
+      accuracy_mean = mean(observed$accuracy),
+      accuracy_sd = stats::sd(observed$accuracy),
+      balanced_accuracy_mean = mean(observed$balanced_accuracy),
+      balanced_accuracy_sd = stats::sd(observed$balanced_accuracy),
+      macro_F1_mean = mean(observed$macro_F1),
+      macro_F1_sd = stats::sd(observed$macro_F1),
+      log_loss_mean = mean(observed$log_loss),
+      log_loss_sd = stats::sd(observed$log_loss),
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(performance) <- NULL
+
+  full_main <- fit_model(main_formula, model_data)
+  full_interaction <- fit_model(interaction_formula, model_data)
+  main_loglik <- stats::logLik(full_main)
+  interaction_loglik <- stats::logLik(full_interaction)
+  likelihood_ratio <- 2 * (as.numeric(interaction_loglik) - as.numeric(main_loglik))
+  degrees_freedom <- attr(interaction_loglik, "df") - attr(main_loglik, "df")
+  main_performance <- performance[performance$model == "main_effects", ]
+  interaction_performance <- performance[
+    performance$model == "numeric_categorical_interactions", 
+  ]
+  omnibus <- data.frame(
+    main_effects_df = attr(main_loglik, "df"),
+    interaction_model_df = attr(interaction_loglik, "df"),
+    likelihood_ratio = likelihood_ratio,
+    degrees_freedom = degrees_freedom,
+    p_value = stats::pchisq(likelihood_ratio, degrees_freedom, lower.tail = FALSE),
+    accuracy_gain = interaction_performance$accuracy_mean -
+      main_performance$accuracy_mean,
+    balanced_accuracy_gain = interaction_performance$balanced_accuracy_mean -
+      main_performance$balanced_accuracy_mean,
+    macro_F1_gain = interaction_performance$macro_F1_mean -
+      main_performance$macro_F1_mean,
+    log_loss_reduction = main_performance$log_loss_mean -
+      interaction_performance$log_loss_mean,
+    majority_class_accuracy = max(prop.table(table(model_data$.truth))),
+    main_convergence = full_main$convergence,
+    interaction_convergence = full_interaction$convergence,
+    stringsAsFactors = FALSE
+  )
+
+  list(
+    performance = performance,
+    omnibus = omnibus,
+    repeat_results = repeat_results,
+    formulas = list(
+      main_effects = paste(deparse(main_formula), collapse = " "),
+      numeric_categorical_interactions = paste(
+        deparse(interaction_formula), collapse = " "
+      )
+    ),
+    specification = classification_specification
+  )
+}
+
+r1rd_equal_width_factor <- function(x, bins) {
+  observed <- range(x, finite = TRUE)
+  if (!all(is.finite(observed)) || observed[[1L]] == observed[[2L]]) {
+    return(factor(rep("constant", length(x))))
+  }
+  factor(cut(
+    x,
+    breaks = seq(observed[[1L]], observed[[2L]], length.out = bins + 1L),
+    include.lowest = TRUE,
+    ordered_result = FALSE
+  ))
+}
+
+r1rd_minmax_scale <- function(x) {
+  observed <- range(x, finite = TRUE)
+  if (!all(is.finite(observed)) || observed[[1L]] == observed[[2L]]) {
+    return(rep(0, length(x)))
+  }
+  (x - observed[[1L]]) / (observed[[2L]] - observed[[1L]])
+}
+
+# Pairwise form of Ahmad and Dey (2007), Equation (3.3.1), matching the
+# implementation used in R1_simulations.qmd.
+r1rd_ahmad_dey_distance <- function(data, bins = 5L) {
+  bins <- as.integer(bins)
+  numeric_columns <- vapply(data, is.numeric, logical(1))
+  categorical_columns <- vapply(data, is.factor, logical(1))
+  numeric_data <- data[, numeric_columns, drop = FALSE]
+  categorical_data <- data[, categorical_columns, drop = FALSE]
+
+  discretized_numeric <- lapply(
+    numeric_data, r1rd_equal_width_factor, bins = bins
+  )
+  names(discretized_numeric) <- names(numeric_data)
+  discrete_profiles <- data.frame(
+    categorical_data, discretized_numeric, check.names = FALSE
+  )
+  discrete_profiles[] <- lapply(discrete_profiles, function(x) {
+    droplevels(factor(x))
+  })
+  if (ncol(discrete_profiles) < 2L) {
+    stop("Ahmad--Dey conditional profiles require at least two variables.")
+  }
+
+  delta <- as.matrix(manydist:::cat_delta(
+    discrete_profiles, method_cat = "tvd"
+  )$tvd)
+  level_counts <- vapply(discrete_profiles, nlevels, integer(1))
+  stops <- cumsum(level_counts)
+  starts <- c(1L, head(stops, -1L) + 1L)
+  positions <- Map(seq.int, starts, stops)
+
+  n <- nrow(data)
+  categorical_distance <- matrix(0, n, n)
+  for (column_index in seq_len(ncol(categorical_data))) {
+    levels_index <- positions[[column_index]]
+    observed_index <- as.integer(discrete_profiles[[column_index]])
+    contribution <- delta[levels_index, levels_index, drop = FALSE][
+      observed_index, observed_index, drop = FALSE
+    ]
+    categorical_distance <- categorical_distance + contribution^2
+  }
+
+  numeric_distance <- matrix(0, n, n)
+  if (ncol(numeric_data)) {
+    numeric_profile_index <- ncol(categorical_data) + seq_len(ncol(numeric_data))
+    numeric_weights <- vapply(numeric_profile_index, function(column_index) {
+      block <- delta[
+        positions[[column_index]], positions[[column_index]], drop = FALSE
+      ]
+      if (nrow(block) < 2L) 0 else mean(block[upper.tri(block)])
+    }, numeric(1))
+    scaled_numeric <- as.data.frame(lapply(numeric_data, r1rd_minmax_scale))
+    weighted_numeric <- sweep(as.matrix(scaled_numeric), 2L, numeric_weights, `*`)
+    numeric_distance <- as.matrix(stats::dist(weighted_numeric))^2
+  }
+
+  distance <- numeric_distance + categorical_distance
+  diag(distance) <- 0
+  full_validate_distance(distance, "Ahmad--Dey")
+}
+
+# The external Modified Gower port currently drops dimensions internally when
+# exactly one categorical column is present.  This algebraically equivalent
+# wrapper preserves that column as a matrix for the South African Heart case.
+r1rd_modified_gower_single_categorical <- function(data) {
+  numeric_columns <- vapply(data, is.numeric, logical(1))
+  numeric_data <- data[, numeric_columns, drop = FALSE]
+  categorical_data <- data[, !numeric_columns, drop = FALSE]
+  if (ncol(categorical_data) != 1L) {
+    stop("The single-categorical Modified Gower wrapper received another design.")
+  }
+
+  numerical_dispersion <- vapply(numeric_data, function(value) {
+    denominator <- stats::IQR(value)
+    if (!is.finite(denominator) || denominator <= 0) return(0)
+    numerator <- sum(abs(outer(value, value, `-`))[upper.tri(diag(length(value)))])
+    numerator / denominator
+  }, numeric(1))
+  category <- categorical_data[[1L]]
+  categorical_mismatch <- sum(outer(category, category, `!=`)[
+    upper.tri(diag(length(category)))
+  ])
+  categorical_dispersion <- 2 * categorical_mismatch / nlevels(category)
+  self_adaptive_weight <- mean(numerical_dispersion) / categorical_dispersion
+
+  mutual_information_weight <- manydist:::mg_normalized_MI(
+    numeric_data, categorical_data
+  )
+  feature_weight <- c(rep(1, ncol(numeric_data)), self_adaptive_weight) *
+    mutual_information_weight
+  feature_weight[!is.finite(feature_weight)] <- 0
+  if (!any(feature_weight > 0)) {
+    stop("Modified Gower produced no positive feature weights.")
+  }
+  feature_weight <- feature_weight / sum(feature_weight)
+
+  full_validate_distance(
+    as.matrix(manydist:::mg_gower_dist_modify(
+      data.x = data,
+      var.weights = feature_weight,
+      robcb = "iqr",
+      KR.corr = TRUE
+    )),
+    "Modified Gower"
+  )
+}
+
+r1rd_distance_set <- function(data, gated_fit) {
+  categorical_count <- sum(vapply(data, is.factor, logical(1)))
+  list(
+    D_mint = gated_fit$distance,
+    D_m = gated_fit$distance_no_interaction,
+    Gower = as.matrix(manydist::mdist(data, preset = "gower")$distance),
+    Modified_Gower = if (categorical_count == 1L) {
+      r1rd_modified_gower_single_categorical(data)
+    } else {
+      as.matrix(manydist::mdist(data, preset = "mod_gower")$distance)
+    },
+    Euclidean_onehot = as.matrix(
+      manydist::mdist(data, preset = "euclidean")$distance
+    ),
+    Ahmad_Dey = r1rd_ahmad_dey_distance(
+      data, bins = analysis_parameters$distance$ahmad_dey_bins
+    )
+  )
+}
+
+r1rd_run_kprototypes <- function(data, truth, seed) {
+  if (!requireNamespace("clustMixType", quietly = TRUE)) {
+    stop("k-prototypes requires package `clustMixType`.")
+  }
+  specification <- analysis_parameters$algorithm_benchmarks$kprototypes
+  set.seed(seed)
+  fit <- clustMixType::kproto(
+    data,
+    k = nlevels(truth),
+    lambda = specification$lambda,
+    type = specification$type,
+    iter.max = specification$iter_max,
+    nstart = specification$nstart,
+    na.rm = "no",
+    keep.data = FALSE,
+    verbose = FALSE
+  )
+  list(
+    cluster = fit$cluster,
+    ARI = mclust::adjustedRandIndex(fit$cluster, truth),
+    objective = fit$tot.withinss %||% sum(fit$withinss),
+    iterations = fit$iter %||% NA_integer_,
+    lambda = fit$lambda %||% NA_real_
+  )
+}
+
+r1rd_run_kamila <- function(data, truth, seed) {
+  if (!requireNamespace("kamila", quietly = TRUE)) {
+    stop("KAMILA requires package `kamila`.")
+  }
+  specification <- analysis_parameters$algorithm_benchmarks$kamila
+  numeric_data <- data[vapply(data, is.numeric, logical(1))]
+  categorical_data <- data[vapply(data, is.factor, logical(1))]
+  set.seed(seed)
+  fit <- kamila::kamila(
+    conVar = numeric_data,
+    catFactor = categorical_data,
+    numClust = nlevels(truth),
+    numInit = specification$num_init,
+    maxIter = specification$max_iter,
+    conInitMethod = specification$con_init_method,
+    catBw = specification$cat_bw,
+    verbose = FALSE,
+    calcNumClust = "none"
+  )
+  list(
+    cluster = fit$finalMemb,
+    ARI = mclust::adjustedRandIndex(fit$finalMemb, truth),
+    objective = fit$finalObj %||% fit$finalLogLik %||% NA_real_,
+    # `numIter` contains one value for every internal initialization.  The
+    # clustering and objective above describe the single solution selected by
+    # KAMILA, so retain one scalar diagnostic rather than expanding the result
+    # table to `numInit` rows.
+    iterations = if (length(fit$numIter)) {
+      max(as.integer(fit$numIter), na.rm = TRUE)
+    } else {
+      NA_integer_
+    }
+  )
+}
+```
+
+# Dataset-level analysis
+
+```{r}
+#| label: analysis-functions
+
+method_labels <- c(
+  D_mint = "D_mint",
+  D_m = "D_m",
+  Gower = "Gower",
+  Modified_Gower = "Modified Gower",
+  Euclidean_onehot = "Euclidean one-hot",
+  Ahmad_Dey = "Ahmad--Dey",
+  Kprototypes = "k-prototypes",
+  KAMILA = "KAMILA"
+)
+
+r1rd_artifact_file <- function(dataset) {
+  file.path(result_directory, paste0(dataset, ".rds"))
+}
+
+r1rd_result_row <- function(dataset, method, family, fit = NULL, seconds = NA_real_,
+                            error = NA_character_) {
+  data.frame(
+    dataset = dataset,
+    method = method,
+    method_label = unname(method_labels[[method]]),
+    family = family,
+    ARI = if (is.null(fit)) NA_real_ else fit$ARI,
+    objective = if (is.null(fit)) NA_real_ else fit$objective %||% NA_real_,
+    iterations = if (is.null(fit)) NA_integer_ else fit$iterations %||% NA_integer_,
+    elapsed_seconds = seconds,
+    error = error,
+    stringsAsFactors = FALSE
+  )
+}
+
+r1rd_safe_fit <- function(expression) {
+  started <- proc.time()[[3L]]
+  result <- tryCatch(
+    list(value = force(expression), error = NA_character_),
+    error = function(e) list(value = NULL, error = conditionMessage(e))
+  )
+  result$seconds <- proc.time()[[3L]] - started
+  result
+}
+
+r1rd_neighbour_sensitivity <- function(data, truth, dataset, primary_fit,
+                                       primary_partition, seed) {
+  if (!isTRUE(analysis_parameters$neighbour_sensitivity$enabled)) {
+    return(list(results = data.frame(), gates = data.frame()))
+  }
+  proportions <- sort(unique(c(
+    analysis_parameters$neighbour_sensitivity$proportions,
+    analysis_parameters$distance$prop_nn
+  )))
+  result_rows <- list()
+  gate_rows <- list()
+
+  for (index in seq_along(proportions)) {
+    prop_nn <- proportions[[index]]
+    is_primary <- isTRUE(all.equal(prop_nn, analysis_parameters$distance$prop_nn))
+    fit <- if (is_primary) primary_fit else scmix_gated_active_distance(
+      data = data,
+      gamma = analysis_parameters$distance$gamma,
+      prop_nn = prop_nn,
+      score = analysis_parameters$distance$score,
+      decision = analysis_parameters$distance$decision,
+      gate_permutations = analysis_parameters$distance$gate_permutations,
+      gate_alpha = analysis_parameters$distance$gate_alpha,
+      gate_seed = seed + analysis_parameters$distance$gate_seed_offset
+    )
+    partition <- if (is_primary) primary_partition else {
+      r1rd_cluster_distance(fit$distance, truth, seed)$cluster
+    }
+    result_rows[[index]] <- data.frame(
+      dataset = dataset,
+      prop_nn = prop_nn,
+      ARI = mclust::adjustedRandIndex(partition, truth),
+      partition_ARI_vs_primary = mclust::adjustedRandIndex(
+        partition, primary_partition
+      ),
+      active_count = fit$diagnostics$active_count,
+      active_variables = paste(fit$diagnostics$active_names, collapse = ", "),
+      stringsAsFactors = FALSE
+    )
+    gate_rows[[index]] <- data.frame(
+      dataset = dataset,
+      prop_nn = prop_nn,
+      variable = names(fit$gate$detected),
+      detected = unname(fit$gate$detected),
+      multiplicity_adjusted_p_value = unname(fit$gate$p_value),
+      statistic = unname(fit$gate$statistic),
+      stringsAsFactors = FALSE
+    )
+  }
+  list(
+    results = do.call(rbind, result_rows),
+    gates = do.call(rbind, gate_rows)
+  )
+}
+
+r1rd_run_dataset <- function(dataset, dataset_index) {
+  output_file <- r1rd_artifact_file(dataset)
+  if (file.exists(output_file)) return(output_file)
+  dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
+
+  started_at <- Sys.time()
+  seed <- analysis_parameters$execution$seed_base + dataset_index * 1000L
+  prepared <- r1rd_prepare_data(r1rd_load_dataset(dataset), dataset)
+  data <- prepared$x
+  truth <- prepared$truth
+
+  gated_fit <- scmix_gated_active_distance(
+    data = data,
+    gamma = analysis_parameters$distance$gamma,
+    prop_nn = analysis_parameters$distance$prop_nn,
+    score = analysis_parameters$distance$score,
+    decision = analysis_parameters$distance$decision,
+    gate_permutations = analysis_parameters$distance$gate_permutations,
+    gate_alpha = analysis_parameters$distance$gate_alpha,
+    gate_seed = seed + analysis_parameters$distance$gate_seed_offset
+  )
+
+  distances <- r1rd_distance_set(data, gated_fit)
+  result_rows <- list()
+  partitions <- list()
+  row_index <- 0L
+
+  for (method in names(distances)) {
+    if (!isTRUE(analysis_parameters$methods[[method]])) next
+    fitted <- r1rd_safe_fit(r1rd_cluster_distance(distances[[method]], truth, seed))
+    row_index <- row_index + 1L
+    result_rows[[row_index]] <- r1rd_result_row(
+      dataset, method, "spectral dissimilarity", fitted$value,
+      fitted$seconds, fitted$error
+    )
+    if (!is.null(fitted$value)) partitions[[method]] <- fitted$value$cluster
+  }
+
+  if (isTRUE(analysis_parameters$methods[["Kprototypes"]])) {
+    fitted <- r1rd_safe_fit(r1rd_run_kprototypes(data, truth, seed + 101L))
+    row_index <- row_index + 1L
+    result_rows[[row_index]] <- r1rd_result_row(
+      dataset, "Kprototypes", "algorithm benchmark", fitted$value,
+      fitted$seconds, fitted$error
+    )
+    if (!is.null(fitted$value)) partitions$Kprototypes <- fitted$value$cluster
+  }
+  if (isTRUE(analysis_parameters$methods[["KAMILA"]])) {
+    fitted <- r1rd_safe_fit(r1rd_run_kamila(data, truth, seed + 202L))
+    row_index <- row_index + 1L
+    result_rows[[row_index]] <- r1rd_result_row(
+      dataset, "KAMILA", "algorithm benchmark", fitted$value,
+      fitted$seconds, fitted$error
+    )
+    if (!is.null(fitted$value)) partitions$KAMILA <- fitted$value$cluster
+  }
+
+  results <- do.call(rbind, result_rows)
+  primary_partition <- partitions$D_mint
+  baseline_partition <- partitions$D_m
+  if (is.null(primary_partition) || is.null(baseline_partition)) {
+    stop("Both D_mint and D_m must succeed for the interaction diagnostics.")
+  }
+
+  dmint_ari <- results$ARI[results$method == "D_mint"]
+  dm_ari <- results$ARI[results$method == "D_m"]
+  partition_ari <- mclust::adjustedRandIndex(
+    primary_partition, baseline_partition
+  )
+  alignment <- if (gated_fit$diagnostics$active_count > 0L) {
+    r1rd_alignment_ratio(
+      gated_fit$components$interaction_active_average,
+      primary_partition
+    )
+  } else {
+    NA_real_
+  }
+  interaction_baseline_spearman <- interaction_numeric_spearman <-
+    interaction_categorical_spearman <- NA_real_
+  neighbourhood_overlap <- 1
+  if (gated_fit$diagnostics$active_count > 0L) {
+    active_interaction <- gated_fit$components$interaction_active_average
+    interaction_baseline_spearman <- r1rd_distance_spearman(
+      active_interaction, gated_fit$distance_no_interaction
+    )
+    interaction_numeric_spearman <- r1rd_distance_spearman(
+      active_interaction, gated_fit$components$numeric
+    )
+    interaction_categorical_spearman <- r1rd_distance_spearman(
+      active_interaction, gated_fit$components$categorical
+    )
+    neighbourhood_overlap <- r1rd_knn_overlap(
+      gated_fit$distance_no_interaction,
+      gated_fit$distance,
+      analysis_parameters$distance$prop_nn
+    )
+  }
+
+  sensitivity <- r1rd_neighbour_sensitivity(
+    data, truth, dataset, gated_fit, primary_partition, seed
+  )
+  classification <- if (identical(
+    dataset, classification_specification$dataset
+  )) {
+    r1rd_run_classification_diagnostic(
+      data, truth, seed + classification_specification$seed_offset
+    )
+  } else {
+    NULL
+  }
+  gate_table <- data.frame(
+    dataset = dataset,
+    variable = names(gated_fit$gate$detected),
+    detected = unname(gated_fit$gate$detected),
+    multiplicity_adjusted_p_value = unname(gated_fit$gate$p_value),
+    statistic = unname(gated_fit$gate$statistic),
+    stringsAsFactors = FALSE
+  )
+
+  artifact <- list(
+    schema_version = 2L,
+    analysis_version = analysis_parameters$analysis_version,
+    configuration_tag = configuration_tag,
+    dataset = dataset,
+    results = results,
+    gate = gate_table,
+    neighbour_sensitivity = sensitivity$results,
+    neighbour_sensitivity_gates = sensitivity$gates,
+    classification = classification,
+    diagnostics = data.frame(
+      dataset = dataset,
+      n = nrow(data),
+      p_numeric = sum(vapply(data, is.numeric, logical(1))),
+      q_categorical = sum(vapply(data, is.factor, logical(1))),
+      K = nlevels(truth),
+      active_count = gated_fit$diagnostics$active_count,
+      active_variables = paste(gated_fit$diagnostics$active_names, collapse = ", "),
+      ARI_D_mint_minus_D_m = dmint_ari - dm_ari,
+      partition_ARI_D_mint_vs_D_m = partition_ari,
+      partition_changed = is.finite(partition_ari) && partition_ari < 1 - 1e-12,
+      R_align = alignment,
+      interaction_baseline_spearman = interaction_baseline_spearman,
+      interaction_numeric_spearman = interaction_numeric_spearman,
+      interaction_categorical_spearman = interaction_categorical_spearman,
+      neighbourhood_overlap_D_m_vs_D_mint = neighbourhood_overlap,
+      interaction_added_mean = gated_fit$diagnostics$added_mean_distinct,
+      stringsAsFactors = FALSE
+    ),
+    preprocessing = prepared$preprocessing,
+    data_provenance = prepared$provenance,
+    parameters = analysis_parameters,
+    source_hashes = source_hashes,
+    qmd_md5 = qmd_md5,
+    package_versions = vapply(
+      c("manydist", "mclust", "clustMixType", "kamila", "nnet"),
+      function(package) {
+        if (requireNamespace(package, quietly = TRUE)) {
+          as.character(utils::packageVersion(package))
+        } else {
+          NA_character_
+        }
+      },
+      character(1)
+    ),
+    started_at = format(started_at, tz = "UTC", usetz = TRUE),
+    finished_at = format(Sys.time(), tz = "UTC", usetz = TRUE),
+    session_info = capture.output(utils::sessionInfo())
+  )
+
+  temporary_file <- tempfile("R1-real-", tmpdir = dirname(output_file), fileext = ".rds")
+  saveRDS(artifact, temporary_file, version = 3L)
+  if (!file.rename(temporary_file, output_file)) {
+    unlink(temporary_file)
+    stop("Could not atomically save artifact: ", output_file)
+  }
+  output_file
+}
+```
+
+# Optional execution
+
+```{r}
+#| label: execute-datasets
+
+selected_datasets <- intersect(
+  dataset_registry$dataset,
+  analysis_parameters$execution$datasets
+)
+unknown_datasets <- setdiff(
+  analysis_parameters$execution$datasets,
+  dataset_registry$dataset
+)
+if (length(unknown_datasets)) {
+  stop("Unknown selected datasets: ", paste(unknown_datasets, collapse = ", "))
+}
+
+selected_files <- vapply(selected_datasets, r1rd_artifact_file, character(1))
+pending <- selected_datasets[!file.exists(selected_files)]
+
+if (isTRUE(analysis_parameters$execution$run_experiments) && length(pending)) {
+  benchmark_packages <- c("clustMixType", "kamila")
+  missing_benchmarks <- benchmark_packages[!vapply(
+    benchmark_packages, requireNamespace, logical(1), quietly = TRUE
+  )]
+  if (length(missing_benchmarks)) {
+    stop(
+      "Install the enabled benchmark packages before execution: ",
+      paste(missing_benchmarks, collapse = ", ")
+    )
+  }
+  if ("Star" %in% pending && !requireNamespace("FPDclustering", quietly = TRUE)) {
+    stop("Install `FPDclustering` before running the Star analysis.")
+  }
+  if ("Palmer_penguins" %in% pending &&
+      !requireNamespace("palmerpenguins", quietly = TRUE)) {
+    stop("Install `palmerpenguins` before running the Penguins analysis.")
+  }
+
+  for (dataset in pending) {
+    if (isTRUE(analysis_parameters$execution$show_progress)) {
+      message("Running real-data analysis: ", dataset)
+    }
+    r1rd_run_dataset(dataset, match(dataset, dataset_registry$dataset))
+  }
+} else if (!isTRUE(analysis_parameters$execution$run_experiments)) {
+  message(
+    "Safe render: no analyses launched. Completed artifacts: ",
+    sum(file.exists(selected_files)), "/", length(selected_files), "."
+  )
+}
+```
+
+# Consolidated results
+
+```{r}
+#| label: collect-artifacts
+
+all_files <- vapply(dataset_registry$dataset, r1rd_artifact_file, character(1))
+completed_files <- all_files[file.exists(all_files)]
+artifacts <- lapply(completed_files, readRDS)
+
+# Artifacts produced by the first execution of this document stored KAMILA's
+# per-initialization `numIter` vector as repeated, otherwise identical result
+# rows.  Collapse any such rows on collection.  This leaves the fitted
+# clustering and ARI unchanged and makes old and newly produced artifacts obey
+# the intended one-row-per-dataset-and-method reporting contract.
+r1rd_collapse_result_rows <- function(results) {
+  groups <- split(
+    seq_len(nrow(results)),
+    interaction(results$dataset, results$method, drop = TRUE)
+  )
+  rows <- lapply(groups, function(index) {
+    row <- results[index[[1L]], , drop = FALSE]
+    observed_iterations <- results$iterations[index]
+    if (any(is.finite(observed_iterations))) {
+      row$iterations <- max(observed_iterations, na.rm = TRUE)
+    }
+    row
+  })
+  output <- do.call(rbind, rows)
+  rownames(output) <- NULL
+  output
+}
+
+r1rd_bind_rows_fill <- function(rows) {
+  rows <- Filter(function(value) !is.null(value) && nrow(value), rows)
+  if (!length(rows)) return(data.frame())
+  all_names <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(value) {
+    missing_names <- setdiff(all_names, names(value))
+    for (name in missing_names) value[[name]] <- NA
+    value[all_names]
+  })
+  output <- do.call(rbind, rows)
+  rownames(output) <- NULL
+  output
+}
+
+if (length(artifacts)) {
+  result_table <- r1rd_collapse_result_rows(do.call(
+    rbind, lapply(artifacts, `[[`, "results")
+  ))
+  diagnostic_table <- r1rd_bind_rows_fill(lapply(
+    artifacts, `[[`, "diagnostics"
+  ))
+  gate_table <- r1rd_bind_rows_fill(lapply(artifacts, `[[`, "gate"))
+  sensitivity_table <- r1rd_bind_rows_fill(
+    lapply(artifacts, `[[`, "neighbour_sensitivity")
+  )
+  classification_performance_table <- r1rd_bind_rows_fill(lapply(
+    artifacts,
+    function(artifact) {
+      if (is.null(artifact$classification)) return(NULL)
+      data.frame(
+        dataset = artifact$dataset,
+        artifact$classification$performance,
+        check.names = FALSE
+      )
+    }
+  ))
+  classification_test_table <- r1rd_bind_rows_fill(lapply(
+    artifacts,
+    function(artifact) {
+      if (is.null(artifact$classification)) return(NULL)
+      data.frame(
+        dataset = artifact$dataset,
+        artifact$classification$omnibus,
+        check.names = FALSE
+      )
+    }
+  ))
+} else {
+  result_table <- diagnostic_table <- gate_table <- sensitivity_table <-
+    classification_performance_table <- classification_test_table <- data.frame()
+}
+```
+
+## Dataset characteristics
+
+```{r}
+#| label: dataset-characteristics
+
+if (nrow(diagnostic_table)) {
+  characteristics <- diagnostic_table[
+    match(dataset_registry$dataset, diagnostic_table$dataset, nomatch = 0L),
+    c("dataset", "n", "p_numeric", "q_categorical", "K"),
+    drop = FALSE
+  ]
+  characteristics <- merge(
+    dataset_registry[c("dataset", "display_name", "label")],
+    characteristics,
+    by = "dataset",
+    all.x = TRUE,
+    sort = FALSE
+  )
+  knitr::kable(characteristics, row.names = FALSE)
+} else {
+  cat("No dataset artifacts are available yet.")
+}
+```
+
+## Consolidated ARI table
+
+```{r}
+#| label: consolidated-ari
+
+if (nrow(result_table)) {
+  ari_long <- result_table[c("dataset", "method_label", "ARI")]
+  ari_wide <- reshape(
+    ari_long,
+    idvar = "dataset",
+    timevar = "method_label",
+    direction = "wide"
+  )
+  names(ari_wide) <- sub("^ARI\\.", "", names(ari_wide))
+  ari_wide <- ari_wide[match(
+    dataset_registry$dataset, ari_wide$dataset, nomatch = 0L
+  ), , drop = FALSE]
+  desired_columns <- c("dataset", unname(method_labels))
+  ari_wide <- ari_wide[c(
+    intersect(desired_columns, names(ari_wide)),
+    setdiff(names(ari_wide), desired_columns)
+  )]
+  numeric_columns <- vapply(ari_wide, is.numeric, logical(1))
+  ari_wide[numeric_columns] <- lapply(
+    ari_wide[numeric_columns], round, digits = 3L
+  )
+  knitr::kable(ari_wide, row.names = FALSE)
+} else {
+  cat("No ARI results are available yet.")
+}
+```
+
+## Supervised interaction diagnostic
+
+The South African Heart labels are used here only as an external diagnostic.
+A logistic classifier containing main effects is compared with one that also
+allows the effect of LDL cholesterol to vary with family-history status.  This
+clinically interpretable numerical-by-categorical interaction is specified
+independently of the distance construction.  Performance is estimated by repeated
+stratified 10-fold cross-validation.  The likelihood-ratio test assesses the
+added interaction, while the cross-validated differences establish whether
+its contribution generalizes out of sample.  The labels and fitted classifiers
+are not used by the interaction gate or by any clustering method.
+
+```{r}
+#| label: supervised-interaction-performance
+
+if (nrow(classification_performance_table)) {
+  shown <- classification_performance_table
+  model_labels <- c(
+    main_effects = "Main effects",
+    numeric_categorical_interactions = "Main effects + LDL by family history"
+  )
+  shown$model <- unname(model_labels[shown$model])
+  numeric_columns <- vapply(shown, is.numeric, logical(1))
+  shown[numeric_columns] <- lapply(shown[numeric_columns], round, digits = 3L)
+  knitr::kable(shown, row.names = FALSE)
+} else {
+  cat("No supervised interaction diagnostic is available yet.")
+}
+```
+
+```{r}
+#| label: supervised-interaction-test
+
+if (nrow(classification_test_table)) {
+  shown <- classification_test_table
+  shown$p_value <- format.pval(shown$p_value, digits = 3L, eps = 1e-4)
+  numeric_columns <- vapply(shown, is.numeric, logical(1))
+  shown[numeric_columns] <- lapply(shown[numeric_columns], round, digits = 3L)
+  knitr::kable(shown, row.names = FALSE)
+} else {
+  cat("No supervised interaction test is available yet.")
+}
+```
+
+## Targeted-case interpretation
+
+```{r}
+#| label: targeted-case-summary
+#| results: asis
+
+if (nrow(diagnostic_table) && nrow(classification_test_table)) {
+  case_diagnostic <- diagnostic_table[
+    diagnostic_table$dataset == classification_specification$dataset,
+    , drop = FALSE
+  ]
+  case_results <- result_table[
+    result_table$dataset == classification_specification$dataset,
+    c("method", "ARI"), drop = FALSE
+  ]
+  case_test <- classification_test_table[
+    classification_test_table$dataset == classification_specification$dataset,
+    , drop = FALSE
+  ]
+  dm_ari <- case_results$ARI[case_results$method == "D_m"]
+  dmint_ari <- case_results$ARI[case_results$method == "D_mint"]
+  cat(sprintf(
+    paste0(
+      "For South African Heart, the multiplicity-adjusted gate selects family ",
+      "history ($p=%.3f$). Adding its interaction contribution raises ARI from ",
+      "$%.3f$ for $D_m$ to $%.3f$ for $D_{\\mathrm{mint}}$. The resulting ",
+      "interaction dissimilarity has $R_{\\mathrm{align}}=%.2f$, while the ",
+      "mean nearest-neighbour overlap between the two distances is %.2f. ",
+      "The LDL-by-family-history term is supported independently by the ",
+      "classifier likelihood-ratio test ($p=%.4f$) and improves its repeated-",
+      "cross-validation accuracy by %.3f.\n\n"
+    ),
+    min(gate_table$multiplicity_adjusted_p_value[
+      gate_table$dataset == classification_specification$dataset
+    ]),
+    dm_ari,
+    dmint_ari,
+    case_diagnostic$R_align,
+    case_diagnostic$neighbourhood_overlap_D_m_vs_D_mint,
+    case_test$p_value,
+    case_test$accuracy_gain
+  ))
+  cat(paste0(
+    "Because family history is binary and is the only categorical predictor, ",
+    "its observation-level interaction dissimilarity is rank-equivalent to ",
+    "categorical matching. Here the gate supplies a numerical-data-driven ",
+    "justification for reweighting that categorical separation. The case is ",
+    "therefore a targeted illustration of the proposed diagnostics, not an ",
+    "unbiased estimate of the method's average advantage across applications."
+  ))
+} else {
+  cat("The targeted-case artifact is not available yet.")
+}
+```
+
+## Interaction diagnostics
+
+These diagnostics distinguish a positive interaction gate from an empirical
+benefit in the final clustering.  `R_align` is the between-cluster to
+within-cluster mean ratio of the active-average interaction dissimilarity,
+computed using the partition returned by $D_{\mathrm{mint}}$.  The three
+Spearman coefficients compare the active interaction dissimilarity with the
+baseline, numerical, and categorical dissimilarities.  Neighbourhood overlap
+is the mean proportion of the $\lceil\pi_{nn}(n-1)\rceil$ nearest neighbours
+shared by $D_m$ and $D_{\mathrm{mint}}$.  These measures are descriptive: they
+show whether the interaction geometry is coherent with the other blocks and
+whether it changes local geometry without imposing an additional selection
+threshold.
+
+```{r}
+#| label: interaction-diagnostics
+
+if (nrow(diagnostic_table)) {
+  diagnostic_columns <- c(
+    "dataset", "active_count", "active_variables", "ARI_D_mint_minus_D_m",
+    "partition_ARI_D_mint_vs_D_m", "partition_changed", "R_align",
+    "interaction_baseline_spearman", "interaction_numeric_spearman",
+    "interaction_categorical_spearman",
+    "neighbourhood_overlap_D_m_vs_D_mint",
+    "interaction_added_mean"
+  )
+  for (name in setdiff(diagnostic_columns, names(diagnostic_table))) {
+    diagnostic_table[[name]] <- NA
+  }
+  shown <- diagnostic_table[diagnostic_columns]
+  numeric_columns <- vapply(shown, is.numeric, logical(1))
+  shown[numeric_columns] <- lapply(shown[numeric_columns], round, digits = 3L)
+  knitr::kable(shown, row.names = FALSE)
+} else {
+  cat("No interaction diagnostics are available yet.")
+}
+```
+
+```{r}
+#| label: gate-detail
+
+if (nrow(gate_table)) {
+  shown <- gate_table
+  shown$multiplicity_adjusted_p_value <- round(
+    shown$multiplicity_adjusted_p_value, 4L
+  )
+  shown$statistic <- round(shown$statistic, 4L)
+  knitr::kable(shown, row.names = FALSE)
+} else {
+  cat("No gate results are available yet.")
+}
+```
+
+## Neighbour-proportion sensitivity
+
+```{r}
+#| label: neighbour-sensitivity
+
+if (nrow(sensitivity_table)) {
+  shown <- sensitivity_table
+  shown$ARI <- round(shown$ARI, 3L)
+  shown$partition_ARI_vs_primary <- round(
+    shown$partition_ARI_vs_primary, 3L
+  )
+  knitr::kable(shown, row.names = FALSE)
+} else {
+  cat("No neighbour-sensitivity results are available yet.")
+}
+```
+
+## Errors and completion audit
+
+```{r}
+#| label: completion-audit
+
+completion <- data.frame(
+  dataset = dataset_registry$dataset,
+  artifact = unname(all_files),
+  complete = file.exists(all_files),
+  stringsAsFactors = FALSE
+)
+knitr::kable(completion, row.names = FALSE)
+
+if (nrow(result_table)) {
+  failures <- result_table[!is.na(result_table$error), c(
+    "dataset", "method_label", "error"
+  ), drop = FALSE]
+  if (nrow(failures)) {
+    knitr::kable(failures, row.names = FALSE)
+  } else {
+    cat("All enabled methods completed for every available artifact.")
+  }
+}
+```
+
+# Practical interpretation of the interaction term
+
+The gate answers whether a numerical--categorical interaction is detectable;
+it does not by itself establish that the interaction should be added to the
+clustering dissimilarity.  The empirical results are therefore interpreted in
+the following order.
+
+1. If no variable passes the multiplicity-adjusted gate,
+   $D_{\mathrm{mint}}=D_m$ exactly and there is no empirical reason to add an
+   interaction term.
+2. If the active set changes substantially across the pre-specified
+   $\pi_{nn}$ grid, the interaction evidence is regarded as unstable.
+3. If the active set is stable, the partition ARI between $D_m$ and
+   $D_{\mathrm{mint}}$ measures whether the detected interaction has a
+   material effect on the clustering, independently of the external labels.
+4. When reference labels are available for evaluation, the ARI difference
+   establishes whether that material change improves external agreement.
+   Label information is never used by the gate or by either dissimilarity.
+5. In the targeted South African Heart case study, the separate
+   classifier comparison establishes whether numerical--categorical
+   interactions improve supervised discrimination.  High classification
+   performance with modest clustering ARI indicates that the classes are
+   predictable but do not form fully separated unsupervised groups; it does
+   not make the clustering labels part of the distance construction.
+6. A detected but externally unhelpful interaction is reported as substantive
+   structure that is not aligned with the target partition under the chosen
+   clustering procedure. It is not evidence that interactions are universally
+   harmful, just as a favourable result is not evidence that they should
+   always be included.
+
+In applications without external labels, the gate and its neighbourhood
+sensitivity should be supplemented by label-free evidence such as resampling
+stability, changes in the spectral embedding, and established domain
+knowledge.  The interaction term should not be retained solely because the
+gate rejects its null hypothesis.
+
+# Reporting contract for the manuscript
+
+The manuscript table should be copied from the consolidated ARI table only
+after all six completion flags are `TRUE` and the error audit is empty.  The
+text should report the active variables and the $D_{\mathrm{mint}}-D_m$ ARI
+difference for every dataset.  Evidence for an interaction effect requires
+more than a passed gate: the interaction term should also change the partition
+or improve its agreement with the external labels.  A passed gate with
+unchanged or worse ARI is reported as a detected association that did not
+improve that empirical clustering.  For the targeted case study, the
+cross-validated classifier comparison and omnibus interaction test are
+reported alongside ARI to distinguish supervised predictability from
+unsupervised cluster recovery.
+
+```{r}
+#| label: session-information
+
+utils::sessionInfo()
+```

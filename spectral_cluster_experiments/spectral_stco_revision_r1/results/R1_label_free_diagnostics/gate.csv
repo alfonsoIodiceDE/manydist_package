@@ -1,0 +1,7 @@
+"dataset","variable","detected","adjusted_p","statistic"
+"Star","Col",TRUE,0.002,0.918918918918919
+"Star","Spect",TRUE,0.002,1
+"Palmer_penguins","island",TRUE,0.002,0.732142857142857
+"Palmer_penguins","sex",TRUE,0.002,0.831818181818182
+"SAheart","famhist",TRUE,0.002,0.190972222222222
+"Dermatology","family_history",TRUE,0.002,0.606929347826087
