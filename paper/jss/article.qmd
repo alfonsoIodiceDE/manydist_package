@@ -936,9 +936,8 @@ The same display can be requested for raw MAD, MDS congruence or alienation, and
 
 ## Distance-based learning pipelines {#sec-pipelines}
 
-Distance-based methods are often described as if the distance matrix were a fixed input to the analysis. This is appropriate when the distance is fully specified in advance, but not when its construction involves quantities estimated from the data. In \pkg{manydist}, for example, commensurability weights, principal-component rotations, and some categorical dissimilarities are estimated from the observations used to fit the distance. In resampling and prediction, these quantities must therefore be estimated from the data used for fitting and then held fixed when new observations are processed. Otherwise, information from observations reserved for model evaluation can enter the distance construction before that evaluation takes place.
 
-The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow. We begin with a direct nearest-neighbour classifier using precomputed distances, then express the same calculation as a recipe and model workflow. Applications to country clustering and income classification illustrate the pairwise representation needed for clustering and the resampling and tuning of a predictive workflow.
+The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow. We begin with a direct nearest-neighbour classifier using precomputed distances, then express the same calculation as a recipe and model workflow. We then illustrate clustering and classification pipelines using the same real-world dataset.
 
 ### From precomputed distances to a learning workflow
 
