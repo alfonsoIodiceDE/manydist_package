@@ -37,7 +37,9 @@ if(is.null(validate_x)){
     Zs=Z_list,
     by_var_dist = map2(.x=Z_list,.y=delta,
                        ~as.matrix(.x) %*% .y %*% t(as.matrix(.x))),
-    mean_by_var_dist = map_dbl(by_var_dist,~mean(.x)),
+    mean_by_var_dist = map2_dbl(Z_list, delta,
+                               ~.commensurability_denominator(
+                                 .mean_categorical_training_distance(.x, .y))),
     comm_dist = map2(.x=by_var_dist,.y=mean_by_var_dist,
                      ~.x /.y)
     )
@@ -58,7 +60,9 @@ if(is.null(validate_x)){
       by_var_dist = pmap(.l=list(a=Z_list,b=delta,c=validate_Z_list),
                          .f=function(a,b,c){
                            return(as.matrix(c) %*% b %*% t(as.matrix(a)))}),
-      mean_by_var_dist = map_dbl(by_var_dist,~mean(.x)),
+      mean_by_var_dist = map2_dbl(Z_list, delta,
+                                 ~.commensurability_denominator(
+                                   .mean_categorical_training_distance(.x, .y))),
       comm_dist = map2(.x=by_var_dist,.y=mean_by_var_dist,
                        ~.x /.y)
     )

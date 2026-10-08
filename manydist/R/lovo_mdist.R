@@ -543,13 +543,26 @@ MDistLOVO <- R6::R6Class(
             .groups = "drop"
           )
 
+        if ("variable_type" %in% names(df)) {
+          ord_df <- ord_df |>
+            dplyr::left_join(
+              dplyr::distinct(df, variable, variable_type),
+              by = "variable"
+            ) |>
+            dplyr::mutate(
+              type_order = match(variable_type, c("categorical", "numeric"))
+            )
+        } else {
+          ord_df$type_order <- 1L
+        }
+
         if (smaller_is_stronger) {
           ord <- ord_df |>
-            dplyr::arrange(avg_metric) |>
+            dplyr::arrange(type_order, avg_metric) |>
             dplyr::pull(variable)
         } else {
           ord <- ord_df |>
-            dplyr::arrange(dplyr::desc(avg_metric)) |>
+            dplyr::arrange(type_order, dplyr::desc(avg_metric)) |>
             dplyr::pull(variable)
         }
       } else if ("variable_type" %in% names(df)) {
@@ -715,6 +728,11 @@ MDistLOVO <- R6::R6Class(
 #'   column is removed before computing distances.
 #'
 #' @details
+#' In `autoplot()`, `reorder = TRUE` ranks variables by the selected metric
+#' within each variable type, with categorical variables before numerical
+#' variables. This preserves the blue/red background bands. `top_n` selection
+#' remains global; without type information, ordering is global.
+#'
 #' The returned object contains several LOVO diagnostics. The main distance
 #' contribution is measured by the mean absolute difference between the full
 #' dissimilarity matrix and each leave-one-variable-out matrix

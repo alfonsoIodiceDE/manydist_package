@@ -209,7 +209,7 @@ The response-aware presets can be inspected with
 
 ```{r}
 response_aware_presets <- all_dist_method_specs(mode = "response_aware_only") |>
-  dplyr::filter(spec_type == "preset") |>
+  dplyr::filter(preset != "custom") |>
   dplyr::distinct(preset) |>
   dplyr::arrange(preset)
 
@@ -649,7 +649,7 @@ response-aware custom specifications.
 <!--     method_num = c("std", "robust"), -->
 <!--     commensurable = c(TRUE, FALSE) -->
 <!--   ) |> -->
-<!--     dplyr::filter(spec_type == "component") -->
+<!--     dplyr::filter(preset == "custom") -->
 <!-- ) -->
 
 <!-- small_specs -->
@@ -664,7 +664,6 @@ response-aware custom specifications.
 
 <!-- bench_small |> -->
 <!--   dplyr::select( -->
-<!--     spec_type, -->
 <!--     preset, -->
 <!--     method_cat, -->
 <!--     method_num, -->
@@ -686,7 +685,7 @@ response-aware custom specifications.
 <!-- ```{r} -->
 <!-- bench_small |> -->
 <!--   dplyr::filter(ok) |> -->
-<!--   dplyr::select(spec_type, preset, method_cat, method_num, commensurable, result) |> -->
+<!--   dplyr::select(preset, method_cat, method_num, commensurable, result) |> -->
 <!--   dplyr::slice_head(n = 3) -->
 <!-- ``` -->
 
@@ -744,7 +743,6 @@ response-aware custom specifications.
 
 <!-- specs |> -->
 <!--   dplyr::select( -->
-<!--     spec_type, -->
 <!--     preset, -->
 <!--     method_cat, -->
 <!--     method_num, -->
@@ -764,7 +762,6 @@ response-aware custom specifications.
 
 <!-- bench |> -->
 <!--   dplyr::select( -->
-<!--     spec_type, -->
 <!--     preset, -->
 <!--     method_cat, -->
 <!--     method_num, -->

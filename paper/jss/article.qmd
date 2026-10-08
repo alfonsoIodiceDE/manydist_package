@@ -502,495 +502,21 @@ which depends on the number and prevalence of categories and on
 $\bm{\Delta}_k$. For simple matching, for example,
 $\bm{\Delta}_k=\mathbf{1}\mathbf{1}^\top-\mathbf{I}$ and the expected
 contribution reduces to $1-\bm{p}_k^\top\bm{p}_k$, which for equally likely
-categories equals $(q_k-1)/q_k$. \textcolor{blue}{More generally, categorical variables need not have the same expected contribution even when they are measured on the same nominal scale. Differences in their category distributions and in the dissimilarity construction itself can induce unequal contributions; see} @van2024unbiased \textcolor{blue}{for a more detailed treatment. Simple matching provides a particularly transparent example: its expected contribution increases toward one as the number of categories grows, so a matching variable with many levels contributes more than one with few. The weights in @eq-empirical-weights correct these differences in expected contribution and thereby restore commensurability.}
+categories equals $(q_k-1)/q_k$. \textcolor{blue}{More generally, categorical variables need not have the same expected contribution even when they are measured on the same nominal scale. Differences in their category distributions and in the dissimilarity construction itself can induce unequal contributions; see} @van2024unbiased \textcolor{blue}{for a more detailed treatment. Simple matching provides a particularly transparent example: its expected contribution increases toward one as the number of categories grows, so a matching variable with many levels contributes more than one with few. The weights in} @eq-empirical-weights \textcolor{blue}{correct these differences in expected contribution and thereby restore commensurability.}
 
 ### Association-aware distances
 
 Commensurability corrects differences in the magnitude of the
 variable contributions, but it does not account for information
-shared by several variables. \textcolor{blue}{The general formulation in} @eq-mixed-distance} \textcolor{blue}does permit incorporation of
+shared by several variables. \textcolor{blue}{The general formulation in} @eq-mixed-distance \textcolor{blue}{does permit incorporation of
 such associations as a contribution indexed by variable $j$ may depend on the complete
 same-type vectors $\mathbf{x}_i^n,\mathbf{x}_l^n$ or
 $\mathbf{x}_i^c,\mathbf{x}_l^c$ rather than only on the values for variable $j$. We refer to dissimilarities that incorporate this joint multivariate structure as association-aware distances.}
-
-#### Numerical variables (NEW)
 
 For numerical variables, association awareness can be introduced through principal-component scaling, as described in @van2024unbiased. The numerical variables are first transformed to principal-component coordinates, so that the resulting contributions reflect the dependence structure among the original variables. Applying commensurability separately to the transformed coordinates gives each retained component the same expected contribution to the overall distance.
 
 This component-wise scaling may, however, give relatively large influence to principal components that explain little variation in the original data. To accommodate this case, \pkg{manydist} also provides a groupwise commensurability option, in which the numerical block is scaled as a whole rather than equalizing the contribution of each transformed coordinate separately. This preserves the relative importance of the principal components while placing the overall numerical block on a scale comparable with the categorical contribution.
 
-#### Numerical variables (OLD)
-
-```{=latex}
-\begingroup
-\color{assocrevision}
-```
-
-The following is a proposed association-aware construction for numerical
-variables; it does not yet describe the current package implementation. Let
-$\widetilde{\mathbf{X}}$ denote the centered and standardized $I\times Q_n$
-data matrix. Its sample correlation matrix has the eigendecomposition
-
-$$
-\mathbf{R}
-=\frac{1}{I-1}\widetilde{\mathbf{X}}^{\top}
- \widetilde{\mathbf{X}}
-=\mathbf{V}\bm{\Lambda}\mathbf{V}^{\top}.
-$$ {#eq-pc-decomposition}
-
-Let $\mathbf{V}_{\mathcal{D}}=(\mathbf{v}_1,\ldots,\mathbf{v}_{\mathcal{D}})$
-contain the $\mathcal{D}\leq Q_n$ retained eigenvectors associated with
-positive eigenvalues, and let
-$\mathbf{T}_{\mathcal{D}}=\widetilde{\mathbf{X}}\mathbf{V}_{\mathcal{D}}$
-denote the corresponding
-principal-component scores. With
-$\bm{\Lambda}_{\mathcal{D}}=
-\operatorname{diag}(\lambda_1,\ldots,\lambda_{\mathcal{D}})$, the retained scores
-are whitened as
-
-$$
-\mathbf{U}_{\mathcal{D}}
-=\mathbf{T}_{\mathcal{D}}\bm{\Lambda}_{\mathcal{D}}^{-1/2},
-$$ {#eq-pc-whitening}
-
-whose columns are uncorrelated and have unit sample variance. Writing $u_{ih}$
-for its entries, the unscaled whitened Manhattan distance is
-
-$$
-\widetilde d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_i,\mathbf{x}_l)
-=\sum_{h=1}^{\mathcal{D}}|u_{ih}-u_{lh}|.
-$$ {#eq-pc-unscaled}
-
-```{=latex}
-\Needspace{12\baselineskip}
-```
-
-Its mean over distinct ordered pairs is
-
-$$
-m_{\mathrm{num}}^{\mathrm{W}}
-=\frac{1}{I(I-1)}\sum_{r\ne s}
- \widetilde d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_r,\mathbf{x}_s).
-$$ {#eq-pc-block-mean}
-
-The block-scaled numerical distance is then
-
-$$
-d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_i,\mathbf{x}_l)
-=\frac{Q_n}{m_{\mathrm{num}}^{\mathrm{W}}}
- \widetilde d_{\mathrm{num}}^{\mathrm{W}}(\mathbf{x}_i,\mathbf{x}_l).
-$$ {#eq-pc-block-commensurable}
-
-The numerical block therefore has empirical mean $Q_n$, while the individually
-commensurated categorical variables have total mean $Q_c$. This is block-level
-rather than component-level commensurability: the final factor is common to all
-whitened coordinates.
-<!-- Under joint normality their expected contributions are -->
-<!-- $Q_n/\mathcal{D}$ each; outside normality they need not be exactly equal.  -->
-If
-$\mathcal{D}<Q_n$, the target remains $Q_n$ so that dimension reduction does
-not automatically reduce the numerical block's overall weight.
-
-With all components retained, Euclidean distance after whitening is
-Mahalanobis distance. The construction above replaces the Euclidean norm with
-the Manhattan norm and is therefore an association-aware $L_1$ analogue, not
-Mahalanobis distance itself.
-<!-- Zero or near-zero eigenvalues require omission or -->
-<!-- regularization; retaining $\mathcal{D}<Q_n$ components gives a pseudometric on -->
-<!-- the original numerical space. -->
-The construction is illustrated in @fig-independence-association using two
-strongly correlated measurements from the Palmer penguins data
-[@palmerpenguins].
-
-```{r, echo=FALSE}
-#| label: prepare-penguins
-
-penguins <- palmerpenguins::penguins |>
-  dplyr::select(
-    species,
-    bill_length_mm,
-    bill_depth_mm,
-    flipper_length_mm,
-    body_mass_g,
-    island,
-    sex
-  ) |>
-  tidyr::drop_na()
-```
-
-```{r}
-#| label: fig-independence-association
-#| fig-cap: "Scale correction and association awareness. Raw Manhattan distance is dominated by body mass. Individually commensurating the original-coordinate contributions removes the scale difference but retains the correlated axes. The proposed association-aware construction rotates and whitens the standardized data before scaling the complete numerical distance to mean $Q_n=2$."
-#| fig-subcap:
-#|   - "Raw coordinates ($r = 0.87$)."
-#|   - "Commensurable original coordinates."
-#|   - "Block-scaled whitened coordinates."
-#| layout: [[1], [1, 1]]
-#| fig-width: 4.5
-#| fig-height: 2.6
-#| fig-pos: "tbp"
-#| echo: false
-#| warning: false
-
-dependence_data <- penguins |>
-  dplyr::transmute(
-    penguin_id = dplyr::row_number(),
-    flipper_length_mm,
-    body_mass_g,
-    flipper_z = as.numeric(scale(.data$flipper_length_mm)),
-    body_mass_z = as.numeric(scale(.data$body_mass_g))
-  )
-
-standardized_data <- dependence_data |>
-  dplyr::select(.data$flipper_z, .data$body_mass_z) |>
-  as.matrix()
-
-pca_fit <- stats::prcomp(
-  standardized_data,
-  center = FALSE,
-  scale. = FALSE
-)
-
-mean_absolute_pair_distance <- function(x) {
-  pairwise_distances <- abs(outer(x, x, "-"))
-  mean(pairwise_distances[upper.tri(pairwise_distances)])
-}
-
-commensurate_columns <- function(x) {
-  component_means <- apply(x, 2, mean_absolute_pair_distance)
-  sweep(x, MARGIN = 2, STATS = component_means, FUN = "/")
-}
-
-scale_manhattan_block <- function(x, target_mean) {
-  pairwise_distances <- as.matrix(stats::dist(x, method = "manhattan"))
-  block_mean <- mean(pairwise_distances[upper.tri(pairwise_distances)])
-  x * (target_mean / block_mean)
-}
-
-commensurable_original <- commensurate_columns(standardized_data)
-whitened_pc <- sweep(
-  pca_fit$x[, 1:2, drop = FALSE],
-  MARGIN = 2,
-  STATS = pca_fit$sdev[1:2],
-  FUN = "/"
-)
-block_scaled_pc <- scale_manhattan_block(
-  whitened_pc,
-  target_mean = ncol(standardized_data)
-)
-
-dependence_data <- dependence_data |>
-  dplyr::mutate(
-    pc1 = pca_fit$x[, 1],
-    pc2 = pca_fit$x[, 2],
-    flipper_comm = commensurable_original[, 1],
-    body_mass_comm = commensurable_original[, 2],
-    pc1_block = block_scaled_pc[, 1],
-    pc2_block = block_scaled_pc[, 2]
-  )
-
-pc1_targets <- stats::quantile(
-  dependence_data$pc1,
-  probs = c(0.2, 0.8)
-)
-
-selected_ids <- purrr::map_int(pc1_targets, function(target) {
-  dependence_data |>
-    dplyr::mutate(target_distance = abs(.data$pc1 - target)) |>
-    dplyr::slice_min(
-      order_by = .data$target_distance,
-      n = 20,
-      with_ties = FALSE
-    ) |>
-    dplyr::slice_min(
-      order_by = abs(.data$pc2),
-      n = 1,
-      with_ties = FALSE
-    ) |>
-    dplyr::pull(.data$penguin_id)
-})
-
-selected_points <- dependence_data |>
-  dplyr::filter(.data$penguin_id %in% selected_ids) |>
-  dplyr::arrange(.data$flipper_z) |>
-  dplyr::mutate(point = c("A", "B"))
-
-raw_segment <- selected_points |>
-  dplyr::summarise(
-    x = dplyr::first(.data$flipper_length_mm),
-    y = dplyr::first(.data$body_mass_g),
-    xend = dplyr::last(.data$flipper_length_mm),
-    yend = dplyr::last(.data$body_mass_g),
-    distance = abs(.data$xend - .data$x) + abs(.data$yend - .data$y),
-    xmid = (.data$x + .data$xend) / 2,
-    ymid = (.data$y + .data$yend) / 2
-  )
-
-standardized_segment <- selected_points |>
-  dplyr::summarise(
-    x = dplyr::first(.data$flipper_comm),
-    y = dplyr::first(.data$body_mass_comm),
-    xend = dplyr::last(.data$flipper_comm),
-    yend = dplyr::last(.data$body_mass_comm),
-    distance = abs(.data$xend - .data$x) + abs(.data$yend - .data$y),
-    xmid = (.data$x + .data$xend) / 2,
-    ymid = (.data$y + .data$yend) / 2
-  )
-
-association_segment <- selected_points |>
-  dplyr::summarise(
-    x = dplyr::first(.data$pc1_block),
-    y = dplyr::first(.data$pc2_block),
-    xend = dplyr::last(.data$pc1_block),
-    yend = dplyr::last(.data$pc2_block),
-    distance = abs(.data$xend - .data$x) + abs(.data$yend - .data$y),
-    xmid = (.data$x + .data$xend) / 2,
-    ymid = (.data$y + .data$yend) / 2
-  )
-
-manhattan_segments <- function(segment) {
-  tibble::tibble(
-    x = c(segment$x, segment$xend),
-    y = c(segment$y, segment$y),
-    xend = c(segment$xend, segment$xend),
-    yend = c(segment$y, segment$yend)
-  )
-}
-
-raw_components <- manhattan_segments(raw_segment)
-standardized_components <- manhattan_segments(standardized_segment)
-association_components <- manhattan_segments(association_segment)
-
-common_score_max <- ceiling(max(abs(c(
-  commensurable_original,
-  block_scaled_pc
-))))
-common_score_limits <- c(-common_score_max, common_score_max)
-common_score_breaks <- pretty(common_score_limits, n = 7)
-
-distance_plot_theme <- ggplot2::theme_minimal(base_size = 8) +
-  ggplot2::theme(
-    panel.grid.minor = ggplot2::element_blank(),
-    axis.title = ggplot2::element_text(size = 8),
-    axis.text = ggplot2::element_text(size = 7),
-    plot.margin = ggplot2::margin(3, 4, 3, 3)
-  )
-
-raw_plot <- ggplot2::ggplot(
-  dependence_data,
-  ggplot2::aes(x = .data$flipper_length_mm, y = .data$body_mass_g)
-) +
-  ggplot2::geom_point(size = 1.1, color = "grey35", alpha = 0.55) +
-  ggplot2::stat_ellipse(
-    type = "norm",
-    level = 0.68,
-    linewidth = 0.5,
-    color = "#A33F3F"
-  ) +
-  ggplot2::geom_segment(
-    data = raw_components,
-    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
-    inherit.aes = FALSE,
-    linewidth = 0.55,
-    linetype = "dashed",
-    color = "#A33F3F"
-  ) +
-  ggplot2::geom_segment(
-    data = raw_segment,
-    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
-    inherit.aes = FALSE,
-    linewidth = 0.65,
-    arrow = grid::arrow(length = grid::unit(0.07, "inches"))
-  ) +
-  ggplot2::geom_point(
-    data = selected_points,
-    size = 2.1,
-    color = "#A33F3F"
-  ) +
-  ggplot2::geom_text(
-    data = selected_points,
-    ggplot2::aes(label = .data$point),
-    nudge_y = 170,
-    size = 2.7,
-    fontface = "bold"
-  ) +
-  ggplot2::geom_label(
-    data = raw_segment,
-    ggplot2::aes(
-      x = .data$xmid,
-      y = .data$ymid,
-      label = paste0("d[1]^{raw} == ", round(.data$distance, 0))
-    ),
-    parse = TRUE,
-    inherit.aes = FALSE,
-    size = 2.3,
-    linewidth = 0,
-    fill = "white"
-  ) +
-  ggplot2::labs(
-    x = "Flipper length (mm)",
-    y = "Body mass (g)"
-  ) +
-  distance_plot_theme
-
-independence_plot <- ggplot2::ggplot(
-  dependence_data,
-  ggplot2::aes(x = .data$flipper_comm, y = .data$body_mass_comm)
-) +
-  ggplot2::geom_point(size = 0.65, color = "grey70") +
-  ggplot2::stat_ellipse(
-    type = "norm",
-    level = 0.68,
-    linewidth = 0.5,
-    color = "#A33F3F"
-  ) +
-  ggplot2::geom_segment(
-    data = standardized_components,
-    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
-    inherit.aes = FALSE,
-    linewidth = 0.55,
-    linetype = "dashed",
-    color = "#A33F3F"
-  ) +
-  ggplot2::geom_segment(
-    data = standardized_segment,
-    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
-    inherit.aes = FALSE,
-    linewidth = 0.65,
-    arrow = grid::arrow(length = grid::unit(0.07, "inches"))
-  ) +
-  ggplot2::geom_point(
-    data = selected_points,
-    size = 1.7,
-    color = "#A33F3F"
-  ) +
-  ggplot2::geom_text(
-    data = selected_points,
-    ggplot2::aes(label = .data$point),
-    nudge_y = 0.2,
-    size = 2.7,
-    fontface = "bold"
-  ) +
-  ggplot2::geom_label(
-    data = standardized_segment,
-    ggplot2::aes(
-      x = .data$xmid,
-      y = .data$ymid,
-      label = paste0("d[1]^{ind} == ", round(.data$distance, 2))
-    ),
-    parse = TRUE,
-    inherit.aes = FALSE,
-    size = 2.3,
-    linewidth = 0,
-    fill = "white"
-  ) +
-  ggplot2::scale_x_continuous(
-    limits = common_score_limits,
-    breaks = common_score_breaks,
-    expand = ggplot2::expansion(mult = 0)
-  ) +
-  ggplot2::scale_y_continuous(
-    limits = common_score_limits,
-    breaks = common_score_breaks,
-    expand = ggplot2::expansion(mult = 0)
-  ) +
-  ggplot2::coord_equal() +
-  ggplot2::labs(
-    x = "Flipper contribution",
-    y = "Mass contribution"
-  ) +
-  distance_plot_theme
-
-association_plot <- ggplot2::ggplot(
-  dependence_data,
-  ggplot2::aes(x = .data$pc1_block, y = .data$pc2_block)
-) +
-  ggplot2::geom_point(size = 0.65, color = "grey70") +
-  ggplot2::stat_ellipse(
-    type = "norm",
-    level = 0.68,
-    linewidth = 0.5,
-    color = "#2A7F62"
-  ) +
-  ggplot2::geom_segment(
-    data = association_components,
-    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
-    inherit.aes = FALSE,
-    linewidth = 0.55,
-    linetype = "dashed",
-    color = "#2A7F62"
-  ) +
-  ggplot2::geom_segment(
-    data = association_segment,
-    ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
-    inherit.aes = FALSE,
-    linewidth = 0.65,
-    arrow = grid::arrow(length = grid::unit(0.07, "inches"))
-  ) +
-  ggplot2::geom_point(
-    data = selected_points,
-    size = 1.7,
-    color = "#2A7F62"
-  ) +
-  ggplot2::geom_text(
-    data = selected_points,
-    ggplot2::aes(label = .data$point),
-    nudge_y = 0.2,
-    size = 2.7,
-    fontface = "bold"
-  ) +
-  ggplot2::geom_label(
-    data = association_segment,
-    ggplot2::aes(
-      x = .data$xmid,
-      y = .data$ymid,
-      label = paste0("d[1]^{block} == ", round(.data$distance, 2))
-    ),
-    parse = TRUE,
-    inherit.aes = FALSE,
-    size = 2.3,
-    linewidth = 0,
-    fill = "white"
-  ) +
-  ggplot2::scale_x_continuous(
-    limits = common_score_limits,
-    breaks = common_score_breaks,
-    expand = ggplot2::expansion(mult = 0)
-  ) +
-  ggplot2::scale_y_continuous(
-    limits = common_score_limits,
-    breaks = common_score_breaks,
-    expand = ggplot2::expansion(mult = 0)
-  ) +
-  ggplot2::coord_equal() +
-  ggplot2::labs(
-    x = "Block-scaled whitened PC1",
-    y = "Block-scaled whitened PC2"
-  ) +
-  distance_plot_theme
-
-raw_plot
-independence_plot
-association_plot
-```
-
-```{=latex}
-\Needspace{8\baselineskip}
-```
-
-The three panels of @fig-independence-association separate scale correction
-from association awareness. The second panel equalizes the two marginal
-contributions but retains their correlation. In the third, PCA rotates the
-coordinates and whitening rescales them to unit variance, so the change is not
-merely a rotation; one common factor then gives the complete numerical distance
-mean $Q_n=2$.
-
-```{=latex}
-\endgroup
-\clearpage
-```
-
-#### Categorical variables
 
 \textcolor{blue}{The category-dissimilarity
 matrix provides a common representation for independence- and
@@ -1013,9 +539,8 @@ retain that component as a zero contribution or apply an explicitly stated
 fallback rule.
 
 
-### Response-aware categorical distances {#sec-responseaware}
 
-\textcolor{blue} {We use the term} *response-aware* for a categorical distance whose category dissimilarities are constructed using their associations with a response variable. The same conditional-distribution construction can be applied when a categorical response variable is available, as proposed and evaluated by @vandevelden2024categorical. In particular, when a response $\mathbf{y}$ is supplied, $\mathbf{R}^{y\mid k}$ records its distribution within each category of predictor $k$. The category dissimilarity is then determined based on differences in these distributions across the response-variable classes.  
+\textcolor{blue} {An association-based categorical distance whose category dissimilarities are constructed using their associations with a response variable is defined} *response-aware*, \textcolor{blue} {as proposed by} @vandevelden2024categorical. In particular, when a response $\mathbf{y}$ is supplied, $\mathbf{R}^{y\mid k}$ records its distribution within each category of predictor $k$. The category dissimilarity is then determined based on differences in these distributions across the response-variable classes.  
 
 
 ```{=latex}
@@ -1034,15 +559,7 @@ The examples use the Palmer penguins data from the \pkg{palmerpenguins} package.
 #| label: prepare-penguins-analysis
 
 penguins <- palmerpenguins::penguins |>
-  dplyr::select(
-    species,
-    bill_length_mm,
-    bill_depth_mm,
-    flipper_length_mm,
-    body_mass_g,
-    island,
-    sex
-  ) |>
+  dplyr::select(-year)|>
   tidyr::drop_na() |>
   dplyr::mutate(
     dplyr::across(c(species, island, sex), as.factor)
@@ -1056,11 +573,8 @@ To illustrate later how a fitted distance can be applied to new observations, we
 
 set.seed(2026)
 
-penguin_split <- rsample::initial_split(
-  penguins,
-  prop = 0.75,
-  strata = species
-)
+penguin_split <- rsample::initial_split(penguins, prop = 0.75, 
+                                        strata = species)
 
 penguin_train <- rsample::training(penguin_split)
 penguin_test <- rsample::testing(penguin_split)
@@ -1068,11 +582,6 @@ penguin_test <- rsample::testing(penguin_split)
 
 ### Constructing a distance with mdist()
 
-```{r}
-#| label: attach-manydist
-
-library("manydist")
-```
 
 The central function `mdist()` constructs distances for numerical, categorical, or mixed-type data. Its primary input, `x`, is the data set from which the distance is constructed. At its most basic, a distance is specified through `x` and three components:
 
@@ -1099,12 +608,11 @@ To illustrate how the different components of `mdist()` determine the resulting 
 
 ```{r}
 #| label: build-gower-from-components
+library("manydist")
 
 d_gower_sum <- mdist(
-  dplyr::select(penguin_train, -species),
-  method_num = "range",
-  method_cat = "matching",
-  commensurable = FALSE
+  penguin_train |> dplyr::select(-species),
+  method_num = "range", method_cat = "matching", commensurable = FALSE
 )
 ```
 
@@ -1113,12 +621,9 @@ This differs from the usual Gower distance only by the normalization by the numb
 ```{r}
 #| label: build-gower-preset
 
-d_gower <- mdist(
-  dplyr::select(penguin_train, -species),
-  preset = "gower"
-)
+d_gower <- mdist(penguin_train |> dplyr::select(-species),preset = "gower")
 
-p <- ncol(dplyr::select(penguin_train, -species))
+p <- penguin_train |> dplyr::select(-species) |> ncol()
 
 all.equal(
   as.matrix(d_gower_sum$distance) / p,
@@ -1126,54 +631,33 @@ all.equal(
 )
 ```
 
-The comparison returns `TRUE`. Thus, the preset provides the usual normalized Gower distance, corresponding to standard implementations such as those in \pkg{cluster} and \pkg{gower}.
+Thus, the preset provides the usual normalized Gower distance, corresponding to standard implementations such as those in \pkg{cluster} and \pkg{gower}.
 
-Other distance specifications can be constructed by changing the numerical preprocessing, categorical dissimilarity, and commensurability settings. For example, the default specification of `mdist()` uses standard-deviation scaling for numerical variables, total-variation dissimilarities for categorical variables, and commensurability:
+Other distance specifications can be constructed by changing the numerical preprocessing, categorical dissimilarity, and commensurability settings. For example, the default specification of `mdist()` uses standard-deviation scaling for numerical variables, total-variation dissimilarities for categorical variables, and commensurability.
 
-```{r}
-#| label: build-default-distance
-
-d_default <- mdist(
-  dplyr::select(penguin_train, -species)
-)
-```
-
-Equivalently, this can be written explicitly as
-
-```{r}
-d_default_explicit <- mdist(
-  dplyr::select(penguin_train, -species),
-  method_num = "std",
-  method_cat = "tvd",
-  commensurable = TRUE
-)
-```
 
 When `commensurable = TRUE`, any variable-wise affine rescaling of the numerical variables cancels when each contribution is divided by its empirical mean distance. Consequently, choices such as `"std"`, `"range"`, and `"robust"` produce the same distance under commensurability. Multivariate transformations such as `"pc_scores"` are different because they change the coordinate system rather than rescaling each variable separately.
 
-```{r}
-#| label: verify-scaling-vacuity
+<!-- ```{r} -->
+<!-- #| label: verify-scaling-vacuity -->
 
-purrr::map(
-  c("std", "range", "robust"),
-  ~ mdist(
-    dplyr::select(penguin_train, -species),
-    method_num = .x,
-    method_cat = "tvd",
-    commensurable = TRUE
-  )$distance
-) |>
-  (\(d) c(
-    all.equal(d[[1]], d[[2]]),
-    all.equal(d[[1]], d[[3]])
-  ))()
-```
+<!-- purrr::map(c("std", "range", "robust"), -->
+<!--   ~ mdist( -->
+<!--     penguin_train |> dplyr::select(,-species), -->
+<!--     method_num = .x, -->
+<!--     method_cat = "tvd", -->
+<!--     commensurable = TRUE -->
+<!--   )$distance -->
+<!-- ) |> -->
+<!--   (\(d) c( -->
+<!--     all.equal(d[[1]], d[[2]]), -->
+<!--     all.equal(d[[1]], d[[3]]) -->
+<!--   ))() -->
+<!-- ``` -->
 
 ### Distance presets 
 
-Having illustrated the use of a preset with Gower's distance, we now summarize the complete set of presets available in `mdist()`. These presets fix the relevant numerical preprocessing, categorical dissimilarity, commensurability setting, and, where required, additional method-specific components. 
-
-@tbl-presets summarizes the available presets. The `u_` presets correspond to specifications within the unbiased mixed-variable distance framework. With the exception of Gower's distance, which can be reproduced from the basic `mdist()` components, the remaining presets represent mixed-data distances from the literature that fall outside the framework defined in @eq-mixed-distance. They therefore cannot be expressed solely through `method_num`, `method_cat`, and `commensurable` and require dedicated preset implementations.
+The Gower distance introduced above (`preset = "gower"`) is one of the presets available in `mdist()`; @tbl-presets provides the complete list. Each preset either specifies a predefined combination of `method_num`, `method_cat`, and `commensurable`, or invokes a dedicated implementation of an established mixed-data distance measure.
 
 
 | Preset | Numerical preprocessing | Categorical dissimilarity | Additive | Unbiased | Response-aware |
@@ -1188,53 +672,35 @@ Having illustrated the use of a preset with Gower's distance, we now summarize t
 | `u_dep` | principal-component scaling | total variation distance | yes | yes | yes |
 | `u_mix` | standard-deviation scaling | total variation distance | yes | yes | yes |
 
-: Distance presets used in this article. Additive distances satisfy multivariate additivity and unbiased distances additionally enforce commensurability. Response-awareness affects the categorical dissimilarity only and applies when a response variable is supplied; otherwise the corresponding presets reduce to their predictor-only form. {#tbl-presets tbl-colwidths="[12,28,26,10,10,14]"}
+: Distance implemented via presets. Additive distances satisfy multivariate additivity and unbiased distances additionally enforce commensurability. Response-awareness affects the categorical dissimilarity only and applies when a response variable is supplied; otherwise the corresponding presets reduce to their predictor-only form. {#tbl-presets tbl-colwidths="[12,28,26,10,10,14]"}
 
-The presets provide convenient, reproducible specifications that can be supplied directly through the preset argument of `mdist()`. For example, the `u_mix` preset combines standard-deviation scaling for the numerical variables with total-variation dissimilarities for the categorical variables and commensurability:
+The `u_mix` preset combines standard-deviation scaling for the numerical variables with total-variation dissimilarities for the categorical variables and commensurability:
 
 ```{r}
 #| label: build-u-mix-distance
 
-d_u_mix <- mdist(
-  dplyr::select(penguin_train, -species),
-  preset = "u_mix"
-)
+d_u_mix <- mdist(penguin_train |> dplyr::select(-species),preset = "u_mix")
 
-d_u_mix
+d_u_mix |> print()
 ```
 
 This provides a concise specification of the corresponding unbiased mixed-variable distance without requiring its individual components to be supplied separately.
 
+### Supervised distances
 
-```{r}
-#| label: inspect-u-mix-distance
-
-round(
-  as.matrix(d_u_mix$distance)[1:4, 1:4],
-  2
-)
-```
-
-### Response-aware distances
-
-The response-aware constructions described in @sec-responseaware are available in `mdist()` through the `response` argument. The response is used to estimate categorical dissimilarities but is not itself treated as a predictor. For example, using `species` as the response in the Palmer penguins data,
+In supervised setting, when a categorical response, or label, is available, `mdist()` computes
+response-aware distances through the definition of the `response` argument. For example, using `species` as the response in the Palmer penguins data,
 
 
 ```{r}
 #| label: build-response-aware-distance
 
-d_response <- mdist(
-  penguin_train,
-  response = species,
-  preset = "u_dep"
-)
+d_response <- mdist(penguin_train,response = species,preset = "u_dep")
 ```
 
 constructs a distance in which differences between categories of the categorical predictors can depend on their conditional distributions over `species`. The numerical part of the distance remains predictor-based.
 
-### Application to new observations
-
-A fitted `MDist` object can also be applied to new observations. The `new_data` argument computes rectangular dissimilarities between the new observations and the training observations using the quantities estimated from the training data, rather than re-estimating the distance construction from the new data.
+For prediction purposes, `mdist()`  can be applied to new observations: the `new_data` argument computes rectangular dissimilarities between the new observations and the training observations using the weights and the scaling quantities estimated from the training data to avoid data leakage.
 
 ```{r}
 #| label: apply-response-distance-new-data
@@ -1242,7 +708,7 @@ A fitted `MDist` object can also be applied to new observations. The `new_data` 
 d_response_new <- mdist(
   penguin_train,
   response = species,
-  new_data = dplyr::select(penguin_test, -species),
+  new_data = penguin_test |> dplyr::select(-species),
   preset = "u_dep"
 )
 ```
@@ -1263,7 +729,7 @@ To illustrate this functionality,  consider the penguins data set and the gower 
 #| label: diagnose-gower-distance
 
 lovo_gower <- lovo_mdist(
-  dplyr::select(penguin_train, -species),
+  penguin_train |> dplyr::select(,-species),
   preset = "gower"
 )
 ```
@@ -1322,35 +788,28 @@ For example,
 
 ```{r}
 lovo_gower <- lovo_mdist(
-  dplyr::select(penguin_train, -species),
+  penguin_train |> dplyr::select(,-species),
   preset = "gower",
   cluster_methods = c("hclust", "pam", "spectral"),
   cluster_k = 3
 )
 ```
 
-The `results` field of `lovo_gower` contains the numerical LOVO diagnostics. Visualizations can be obtained with `autoplot()` by specifying the desired metric. For example, the clustering-based diagnostics for the three algorithms are obtained as follows:
+
+The `results` field of `lovo_gower` contains the numerical LOVO diagnostics. Visualizations can be obtained with `autoplot()` by specifying the desired metric:
 
 ```{r}
 #| eval: false
 
 ggplot2::autoplot(
   lovo_gower,
-  metric = "pam_importance"
-)
-
-ggplot2::autoplot(
-  lovo_gower,
   metric = "hclust_importance"
 )
 
-ggplot2::autoplot(
-  lovo_gower,
-  metric = "spectral_importance"
-)
+
 ```
 
-### Comparing LOVO diagnostics across distance specifications
+
 
 To compare variable-specific effects across alternative distance specifications, the \pkg{manydist} package provides the compare_lovo_mdist() function. The function takes a list of distance specifications and, when relevant, downstream analysis settings. For example,
 
@@ -1367,7 +826,7 @@ variants <- list(
 )
 
 lovo_comparison <- compare_lovo_mdist(
-  dplyr::select(penguin_train, -species),
+  penguin_train |> dplyr::select(,-species),
   methods = variants,
   cluster_methods = "pam",
   cluster_k = 3
@@ -1403,16 +862,14 @@ ggplot2::autoplot(
 ```
 
 @fig-compare-lovo-distance compares the relative LOVO contributions across distance specifications, whereas @fig-compare-lovo-pam shows the corresponding PAM-based importance. For each variable and distance specification, pam_importance is defined as ($1-\mathrm{ARI}$), where ARI compares the three-cluster PAM partition obtained from all variables with the partition obtained after omitting that variable. The comparison is therefore made within each distance specification: larger values indicate that leaving out the variable produces a greater change in the corresponding PAM solution. The species labels are not used in either analysis.
-
 The same comparison can instead be displayed for `mad_importance`, `relative_distance`, or the MDS-based diagnostics, depending on which aspect of the LOVO analysis is relevant.
-
-For association-based specifications, leaving out a variable can change not only the available information but also the construction of the remaining contributions. Under `u_dep`, for example, removing either categorical variable leaves only one categorical variable. Because the association-based categorical construction requires at least two categorical variables, the reduced specification falls back to matching. LOVO results in such cases should therefore be interpreted with this change in construction in mind.
+Note that, for association-based specifications, leaving out a variable can change not only the available information but also the construction of the remaining contributions. Under `u_dep`, for example, removing either categorical variable leaves only one categorical variable. Because the association-based categorical construction requires at least two categorical variables, the reduced specification falls back to matching. LOVO results in such cases should therefore be interpreted with this change in construction in mind.
 
 ### Comparing candidate distance specifications
 
 \textcolor{blue}{The leave-one-variable-out function} can be used to inspect and compare how individual variables impact distances, and possibly subsequent distant-based analyses. One may, however, also be interested in a comparison of the overall distances resulting from different distance specification. Or, how such differences lead to differences in downstream analysis. For this purpose, the function `benchmark_mdist()` can be used.
 
-\textcolor{blue}{Candidate distance specifications are combinations} of 5 arguments: `component`, `preset`, `method_cat`, `method_num`, and `commensurable`. The function `all_dist_methods_specs()` yields 482 different distance specifications by defining different combinations of the 5 input arguments. It is possible to select candidates from this list, for example by filtering on specific fields. Alternatively, candidates can be defined by specifying the 5 arguments manually. Note that `benchmark_mdist()` compares pairs of distances. Hence, comparing many candidates results in a large table of comparisons. 
+Candidate distance specifications are described by four fields: `preset`, `method_cat`, `method_num`, and `commensurable`. Named presets determine their settings internally; rows with `preset = "custom"` use the other three fields explicitly. The function `all_dist_method_specs()` returns a table of candidate specifications (`r nrow(all_dist_method_specs())` in the current version), which can be filtered to select a manageable set. Alternatively, the specifications table can be constructed manually. Because `benchmark_mdist()` compares every pair of successful candidates, large candidate sets produce many pairwise comparisons.
 
 If we want to compare the Gower, unbiased, and unbiased preset variants we can do:
 
@@ -1427,17 +884,17 @@ candidate_specs <- all_dist_method_specs(
 set.seed(2026)
 
 distance_benchmark <- benchmark_mdist(
-  x = dplyr::select(penguin_train, -species),
+  x = penguin_train |> dplyr::select(,-species),
   specs = candidate_specs,
   cluster_k = 3,
   cluster_methods = "pam"
 )
 ```
 
-A tibble with the results of all pair-wise comparison can be obtained using `benchmark_comparisons`:
+The `summary()` method displays and returns a tibble with one row per pair of successful distance specifications:
 
 ```{r}
-benchmark_comparisons(distance_benchmark)
+pairwise_results <- summary(distance_benchmark)
 ```
 
 For two candidate distances $d_a$ and $d_b$, `mad` is the mean absolute difference between their pairwise dissimilarities. \textcolor{blue}{When comparing distance specifications,} the overall scale of the distance values can differ considerably, a direct comparison of the absolute difference may therefore not be appropriate. Hence, `relative distance` is also provided, defined as: 
@@ -1460,7 +917,7 @@ Similar to the leave-one-variable-out measures, we assess how different distance
 
 Clustering comparisons are optional and require specification of the clustering algorithn(s) and the number of clusters. When `cluster_k` is specified, each requested clustering method is applied to every candidate distance, and partitions produced by the same clustering method are compared across pairs of distance specifications using ARI. An ARI of one indicates identical partitions, while lower values indicate increasingly different assignments. These values measure agreement between the resulting partitions; they do not provide any information about the quality of the cluster solutions.
 
-The pairwise results can be extracted with `benchmark_comparisons()` as above or displayed using the `autoplot()` method. For example, Figure @fig-benchmark-relative-distance shows the symmetric relative-distance comparison among the three candidate specifications.
+The pairwise results can be extracted with `summary()` as above or displayed using the `autoplot()` method. For example, @fig-benchmark-relative-distance shows the symmetric relative-distance comparison among the three candidate specifications.
 
 ```{r}
 #| label: fig-benchmark-relative-distance
@@ -1481,17 +938,113 @@ The same display can be requested for raw MAD, MDS congruence or alienation, and
 
 Distance-based methods are often described as if the distance matrix were a fixed input to the analysis. This is appropriate when the distance is fully specified in advance, but not when its construction involves quantities estimated from the data. In \pkg{manydist}, for example, commensurability weights, principal-component rotations, and some categorical dissimilarities are estimated from the observations used to fit the distance. In resampling and prediction, these quantities must therefore be estimated from the data used for fitting and then held fixed when new observations are processed. Otherwise, information from observations reserved for model evaluation can enter the distance construction before that evaluation takes place.
 
-The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow rather than a preprocessing operation performed once in advance. The interfaces considered here cover two settings: clustering and supervised nearest-neighbour classification. MDS is also a downstream use of a distance, as considered in @sec-diagnostics, but it is not part of the learning workflows illustrated below.
+The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow. We begin with a direct nearest-neighbour classifier using precomputed distances, then express the same calculation as a recipe and model workflow. Applications to country clustering and income classification illustrate the pairwise representation needed for clustering and the resampling and tuning of a predictive workflow.
 
-### Integrating fitted distances into learning workflows
+### From precomputed distances to a learning workflow
 
-In the \pkg{tidymodels} framework, a *recipe* is an object that specifies preprocessing operations to be estimated from data used for fitting and subsequently applied to new data. The framework distinguishes two levels of data splitting. An initial split creates a *training set* and a *test set*, with the latter reserved for final evaluation. Resampling then operates within the training set: each resample contains an *analysis set* (the fold-specific training data) and an *assessment set* (the held-out fold). We use training and test for the initial split, and analysis and assessment for the resampling splits, throughout this section. `step_mdist()` adds fitted distance construction as a recipe preprocessing step.
+We first predict penguin species using the training and test sets introduced in @sec-construction. For this direct example, we use \code{knn_dist()}, with five neighbours and Gower's distance, keeping \code{species} out of the distance calculation.
 
-`step_mdist()` estimates the distance construction from the data on which the step is fitted and stores the quantities needed to apply it subsequently, including commensurability weights, any principal-component rotation, and estimated category dissimilarities. During resampling, these quantities are re-estimated separately within each analysis set and then held fixed when the corresponding assessment set is processed. For response-aware specifications, the outcome from the analysis set may also enter the fitted categorical dissimilarities, while outcomes from the assessment set or final test set are not used.
+We need only distances from each test observation to each training observation, together with the training labels. The call to \code{mdist()} below estimates the numerical ranges from \code{penguin_train} and applies that fitted preprocessing to the test observations; no training-to-training distance matrix is required for this direct prediction.
 
-The representation required from the fitted distance depends on the learning task. In clustering, all observations in the current data set are compared with one another, so the downstream method uses a square pairwise distance matrix. In nearest-neighbour prediction, each new observation is compared only with the training observations, producing a rectangular new-to-training distance matrix. The `output` argument of `step_mdist()` selects between these representations: `"pairwise"` for clustering and `"distance_to_training"` for nearest-neighbour prediction. The resulting recipes can be paired with `pam_dist()` or `spectral_dist()` for clustering and with `nearest_neighbor_dist()` for nearest-neighbour learning.
+```{r}
+#| label: compute-penguin-knn-distances
 
-The packaged `wdi_2022` data provide a fixed snapshot of five numerical World Development Indicators and three World Bank classifications for 181 countries [@worldbank2022wdi]. We use these data to illustrate both learning settings: first to compare unsupervised country partitions and then to predict World Bank income group.
+d_knn_test <- mdist(
+  penguin_train |> dplyr::select(,-species),
+  new_data = dplyr::select(penguin_test, -species),
+  preset = "gower"
+)
+```
+
+The resulting matrix has `r nrow(penguin_test)` rows and `r nrow(penguin_train)` columns, one for each training observation. Its column order must agree with the order of the training outcomes. The function \code{knn_dist()} uses these distances and outcomes to predict directly, without a separate model-fitting call.
+
+```{=latex}
+\Needspace{18\baselineskip}
+```
+
+```{r}
+#| label: fit-penguin-knn-directly
+
+knn_predictions <- tibble::tibble(
+  .pred_class = knn_dist(
+    x = d_knn_test$distance,
+    y = penguin_train$species,
+    k = 5,
+    type = "class"
+  )
+)
+
+dplyr::bind_cols(penguin_test["species"], knn_predictions) |>
+  yardstick::accuracy(truth = species, estimate = .pred_class)
+```
+
+Alternatively, \code{knn_dist()} accepts tabular training and test data when a distance function is supplied. The \code{response} argument selects the training outcome and excludes it from the predictors (and from the test data if present). The following call gives the same class predictions, computing the test-to-training distances internally:
+
+```{r}
+#| label: predict-penguin-knn-tabular
+
+tabular_predictions <- knn_dist(
+  x = penguin_train,
+  response = "species",
+  new_data = penguin_test,
+  k = 5,
+  dist_fun = mdist,
+  dist_args = list(preset = "gower"),
+  type = "class"
+)
+
+all.equal(knn_predictions$.pred_class, tabular_predictions)
+```
+
+This direct interface computes distances on each call. To combine fitted distance preprocessing and prediction in a reusable pipeline, we use the \pkg{parsnip} model specification \code{nearest_neighbor_dist()} with a \pkg{recipes} recipe: an object that specifies preprocessing operations to be estimated from fitting data and applied to new observations. The step \code{step_mdist()} replaces the original predictors with distances to the training observations. Its \code{output = "distance_to_training"} setting creates the representation consumed by \code{nearest_neighbor_dist()}.
+
+```{=latex}
+\Needspace{30\baselineskip}
+```
+
+```{r}
+#| label: build-penguin-knn-workflow
+
+penguin_knn_spec <- nearest_neighbor_dist(
+  mode = "classification",
+  neighbors = 5
+) |>
+  parsnip::set_engine("manydist")
+
+penguin_recipe <- recipes::recipe(
+  species ~ .,
+  data = penguin_train
+) |>
+  step_mdist(
+    recipes::all_predictors(),
+    preset = "gower",
+    output = "distance_to_training"
+  )
+
+penguin_workflow <- workflows::workflow() |>
+  workflows::add_recipe(penguin_recipe) |>
+  workflows::add_model(penguin_knn_spec)
+
+penguin_workflow_fit <- workflows::fit(
+  penguin_workflow,
+  data = penguin_train
+)
+
+workflow_predictions <- predict(
+  penguin_workflow_fit,
+  new_data = dplyr::select(penguin_test, -species)
+)
+
+all.equal(knn_predictions, workflow_predictions)
+```
+
+The comparison returns \code{TRUE}: the workflow gives the same predictions as the direct calculation, while accepting the original predictors as input. During fitting, \code{step_mdist()} estimates and stores the distance preprocessing and the training predictors. At prediction time, it uses them to construct the required test-to-training distances; test labels are not required.
+
+For supervised resampling, the complete workflow must be fitted separately within each resample. An initial split creates a *training set* and a *test set*, the latter reserved for final evaluation. Resampling operates within the training set: each resample contains an *analysis set* (the fold-specific training data) and an *assessment set* (the held-out fold). We use training and test for the initial split, and analysis and assessment for the resampling splits. The income-classification application below uses this workflow interface to compare distance specifications and tune the number of neighbours.
+
+### Country clustering
+
+The packaged `wdi_2022` data provide a fixed snapshot of five numerical World Development Indicators and three World Bank classifications for 181 countries [@worldbank2022wdi]. We use these data to compare unsupervised country partitions and then to predict World Bank income group.
 
 ```{r}
 #| label: prepare-wdi-data
@@ -1522,279 +1075,6 @@ distance_labels <- c(
   u_mix = "Unbiased mixed"
 )
 ```
-
-For the supervised task, countries labelled `"Not classified"` are removed. Country is an identifier, and lending category is excluded because it is administratively related to income group. The two-country North America level is pooled with Latin America and the Caribbean to reduce the risk that a categorical level is absent from an analysis set.
-
-```{r}
-#| label: prepare-wdi-classification
-
-wdi_classification <- wdi_2022 |>
-  dplyr::filter(income != "Not classified") |>
-  dplyr::mutate(
-    income = forcats::fct_drop(income),
-    region = forcats::fct_collapse(
-      region,
-      Americas = c(
-        "North America",
-        "Latin America & Caribbean"
-      )
-    )
-  ) |>
-  dplyr::select(-country, -lending)
-
-wdi_classification |>
-  dplyr::count(income)
-```
-
-A stratified initial split reserves 25% of the countries as the test set for final evaluation. The remaining training set supplies a common set of five stratified resamples for evaluating every distance and neighbourhood size.
-
-```{r}
-#| label: split-wdi-classification
-
-set.seed(2026)
-
-wdi_split <- rsample::initial_split(
-  wdi_classification,
-  prop = 0.75,
-  strata = income
-)
-
-wdi_train <- rsample::training(wdi_split)
-
-set.seed(2026)
-
-wdi_folds <- rsample::vfold_cv(
-  wdi_train,
-  v = 5,
-  strata = income
-)
-```
-
-```{r}
-#| label: prepare-neighbor-grid
-
-neighbor_grid <- tibble::tibble(
-  neighbors = c(1L, 3L, 5L, 7L, 9L, 15L)
-)
-```
-
-<!-- ### Why the distance must be refitted during resampling -->
-
-<!-- The practical consequence of treating distance construction as a fitted preprocessing operation can be demonstrated in the supervised task. @tbl-refitting-leakage compares the same five-neighbour classifier under two cross-validation procedures for three commensurable specifications. In the first, a single distance is fitted on the complete training set and then subset by resample. In the second, the distance is fitted separately within each analysis set and then applied to the corresponding assessment set. The voting rule and resamples are otherwise identical, so the comparison isolates the effect of fitting the distance before rather than within resampling. -->
-
-<!-- The intended workflow can be written directly with `step_mdist()`: -->
-
-<!-- ```{r} -->
-<!-- #| label: show-honest-arm -->
-<!-- #| eval: false -->
-
-<!-- honest_cv <- function(preset, k) { -->
-<!--   workflows::workflow() |> -->
-<!--     workflows::add_recipe( -->
-<!--       recipes::recipe(income ~ ., data = wdi_train) |> -->
-<!--         step_mdist( -->
-<!--           recipes::all_predictors(), -->
-<!--           preset = preset, -->
-<!--           output = "distance_to_training" -->
-<!--         ) -->
-<!--     ) |> -->
-<!--     workflows::add_model( -->
-<!--       nearest_neighbor_dist(mode = "classification", neighbors = k) |> -->
-<!--         parsnip::set_engine("manydist") -->
-<!--     ) |> -->
-<!--     tune::fit_resamples( -->
-<!--       resamples = wdi_folds, -->
-<!--       metrics = yardstick::metric_set(yardstick::bal_accuracy) -->
-<!--     ) |> -->
-<!--     tune::collect_metrics(summarize = FALSE) |> -->
-<!--     dplyr::filter(.metric == "bal_accuracy") |> -->
-<!--     dplyr::pull(.estimate) -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- The following code reproduces both procedures explicitly so that their difference can be quantified. -->
-
-<!-- ```{r} -->
-<!-- #| label: compare-refitting-leakage -->
-<!-- #| cache: true -->
-<!-- #| echo: false -->
-
-<!-- response_aware_presets <- c("u_dep", "u_mix") -->
-<!-- leakage_presets <- c("u_indep", "u_mix", "u_dep") -->
-
-<!-- knn_vote <- function(d_block, train_y, k) { -->
-<!--   apply(d_block, 1, function(row) { -->
-<!--     nn <- order(row)[seq_len(k)] -->
-<!--     names(sort(table(train_y[nn]), decreasing = TRUE))[1] -->
-<!--   }) -->
-<!-- } -->
-
-<!-- fit_mdist <- function(data, preset, new_data = NULL) { -->
-<!--   args <- if (preset %in% response_aware_presets) { -->
-<!--     list(data, response = quote(income)) -->
-<!--   } else { -->
-<!--     list(dplyr::select(data, -income)) -->
-<!--   } -->
-<!--   args$preset <- preset -->
-<!--   if (!is.null(new_data)) { -->
-<!--     args$new_data <- new_data -->
-<!--   } -->
-<!--   do.call(mdist, args) -->
-<!-- } -->
-
-<!-- fold_accuracy <- function(d_block, train_y, truth, k) { -->
-<!--   pred <- knn_vote(d_block, train_y, k) -->
-<!--   yardstick::bal_accuracy_vec( -->
-<!--     truth = truth, -->
-<!--     estimate = factor(pred, levels = levels(wdi_train$income)) -->
-<!--   ) -->
-<!-- } -->
-
-<!-- leaky_cv <- function(preset, k) { -->
-<!--   m_all <- as.matrix(fit_mdist(wdi_train, preset)$to_dist()) -->
-
-<!--   purrr::map_dbl(wdi_folds$splits, function(split) { -->
-<!--     fit_id <- split$in_id -->
-<!--     out_id <- rsample::complement(split) -->
-<!--     fold_accuracy( -->
-<!--       m_all[out_id, fit_id, drop = FALSE], -->
-<!--       wdi_train$income[fit_id], -->
-<!--       wdi_train$income[out_id], -->
-<!--       k -->
-<!--     ) -->
-<!--   }) -->
-<!-- } -->
-
-<!-- honest_cv <- function(preset, k) { -->
-<!--   purrr::map_dbl(wdi_folds$splits, function(split) { -->
-<!--     fit_data <- rsample::analysis(split) -->
-<!--     out_data <- rsample::assessment(split) -->
-
-<!--     d_block <- unclass( -->
-<!--       fit_mdist( -->
-<!--         fit_data, -->
-<!--         preset, -->
-<!--         new_data = dplyr::select(out_data, -income) -->
-<!--       )$distance -->
-<!--     ) -->
-
-<!--     stopifnot( -->
-<!--       nrow(d_block) == nrow(out_data), -->
-<!--       ncol(d_block) == nrow(fit_data) -->
-<!--     ) -->
-
-<!--     fold_accuracy( -->
-<!--       d_block, -->
-<!--       fit_data$income, -->
-<!--       out_data$income, -->
-<!--       k -->
-<!--     ) -->
-<!--   }) -->
-<!-- } -->
-
-<!-- set.seed(2026) -->
-
-<!-- leakage_comparison <- tibble::tibble(preset = leakage_presets) |> -->
-<!--   dplyr::mutate( -->
-<!--     leaky = purrr::map(preset, leaky_cv, k = 5L), -->
-<!--     honest = purrr::map(preset, honest_cv, k = 5L), -->
-<!--     single_matrix = purrr::map_dbl(leaky, mean), -->
-<!--     refit_per_fold = purrr::map_dbl(honest, mean), -->
-<!--     optimism = single_matrix - refit_per_fold, -->
-<!--     paired_se = purrr::map2_dbl( -->
-<!--       leaky, -->
-<!--       honest, -->
-<!--       ~ stats::sd(.x - .y) / sqrt(length(.x)) -->
-<!--     ) -->
-<!--   ) -->
-<!-- ``` -->
-
-<!-- ```{=latex} -->
-<!-- \Needspace{8\baselineskip} -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- #| label: tbl-refitting-leakage -->
-<!-- #| tbl-cap: "Cross-validated balanced accuracy for WDI income classification with five neighbours, computing the distance once on the training set against refitting it on each analysis set. The standard error is that of the paired fold-wise differences." -->
-<!-- #| echo: false -->
-
-<!-- knitr::kable( -->
-<!--   leakage_comparison |> -->
-<!--     dplyr::transmute( -->
-<!--       Distance = unname(distance_labels[preset]), -->
-<!--       `Single matrix` = single_matrix, -->
-<!--       `Refit per fold` = refit_per_fold, -->
-<!--       Optimism = optimism, -->
-<!--       `Paired SE` = paired_se -->
-<!--     ), -->
-<!--   digits = 3 -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- In this example, the single-matrix procedure gives higher cross-validated balanced accuracy for all three specifications, although most differences are small relative to the fold-to-fold variability. The gap is largest for `u_dep`, whose fitted preprocessing includes a principal-component rotation. The point of the example is not the magnitude for this particular data set, but that the distance contains estimated quantities and therefore belongs inside the resampling procedure. -->
-
-<!-- The same issue can affect comparisons among candidate distances. @tbl-refitting-leakage-grid repeats the two procedures across the neighbourhood grid and records the rank of each specification under each approach. -->
-
-<!-- ```{r} -->
-<!-- #| label: compare-refitting-leakage-grid -->
-<!-- #| cache: true -->
-<!-- #| warning: false -->
-<!-- #| echo: false -->
-
-<!-- set.seed(2026) -->
-
-<!-- leakage_grid <- tidyr::expand_grid( -->
-<!--   preset = leakage_presets, -->
-<!--   k = neighbor_grid$neighbors -->
-<!-- ) |> -->
-<!--   dplyr::mutate( -->
-<!--     single_matrix = purrr::map2_dbl(preset, k, ~ mean(leaky_cv(.x, .y))), -->
-<!--     refit_per_fold = purrr::map2_dbl(preset, k, ~ mean(honest_cv(.x, .y))) -->
-<!--   ) |> -->
-<!--   dplyr::group_by(k) |> -->
-<!--   dplyr::mutate( -->
-<!--     leaky_rank = rank(-single_matrix), -->
-<!--     honest_rank = rank(-refit_per_fold) -->
-<!--   ) |> -->
-<!--   dplyr::ungroup() -->
-<!-- ``` -->
-
-<!-- ```{=latex} -->
-<!-- \Needspace{10\baselineskip} -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- #| label: tbl-refitting-leakage-grid -->
-<!-- #| tbl-cap: "Rank of each specification by cross-validated balanced accuracy at every neighbourhood size, under a single training-partition distance and under fold-wise refitting. The two approaches agree except at one and five neighbours." -->
-<!-- #| echo: false -->
-
-<!-- leakage_grid |> -->
-<!--   dplyr::mutate(Distance = unname(distance_labels[preset])) |> -->
-<!--   dplyr::select(Distance, k, leaky_rank, honest_rank) |> -->
-<!--   tidyr::pivot_longer( -->
-<!--     c(leaky_rank, honest_rank), -->
-<!--     names_to = "Approach", -->
-<!--     values_to = "rank" -->
-<!--   ) |> -->
-<!--   dplyr::mutate( -->
-<!--     Approach = dplyr::if_else( -->
-<!--       Approach == "leaky_rank", -->
-<!--       "Single matrix", -->
-<!--       "Refit per fold" -->
-<!--     ) -->
-<!--   ) |> -->
-<!--   tidyr::pivot_wider( -->
-<!--     names_from = Distance, -->
-<!--     values_from = rank -->
-<!--   ) |> -->
-<!--   dplyr::arrange(k, dplyr::desc(Approach)) |> -->
-<!--   dplyr::rename(Neighbours = k) |> -->
-<!--   knitr::kable() -->
-<!-- ``` -->
-
-<!-- The two procedures rank the three specifications identically at four of the six neighbourhood sizes. They differ at one neighbour, where the leading two exchange places, and at five neighbours, where `u_dep` moves from first to last. Neither difference occurs at the neighbourhood size selected by any of the three specifications in this example. With five folds and 133 training countries, the comparison is illustrative; its purpose is to show that fixing an estimated distance before resampling can change both estimated performance and comparisons among candidate specifications. -->
-
-### Country clustering
 
 The clustering workflows contain no response variable, so every candidate distance is constructed from the observed variables alone. To focus on the effects of the distance and clustering method, the number of clusters is fixed at four throughout. This value is illustrative rather than an estimated optimum.
 
@@ -1952,7 +1232,7 @@ wdi_distance_benchmark <- benchmark_mdist(
 
 ```{r}
 #| label: fig-wdi-clustering-ari
-#| fig-cap: "Pairwise adjusted Rand indices for four-cluster WDI partitions. Within each panel, the clustering method is held fixed while the distance varies; only one triangle is shown."
+#| fig-cap: "Pairwise adjusted Rand indices for four-cluster WDI partitions. Within each panel, the clustering method is held fixed while the distance varies. Self-comparisons are omitted; colours use a fixed ARI scale from 0 to 1."
 #| fig-width: 6.5
 #| fig-height: 4.8
 #| fig-pos: "H"
@@ -1973,7 +1253,61 @@ Together, these summaries show separately how the clustering assignments vary wi
 
 ### Supervised income classification
 
-For supervised learning, the \pkg{manydist} package provides `nearest_neighbor_dist()`, a nearest-neighbour model that predicts each new observation from its distances to the training observations. Accordingly, the recipes below use `output = "distance_to_training"`.
+We now predict income group, comparing the five distance specifications under a common resampling design. The recipes use `output = "distance_to_training"` to provide the representation required by `nearest_neighbor_dist()`.
+Countries labelled \code{"Not classified"} are removed. Country is an identifier, and lending category is excluded because it is administratively related to income group. The two-country North America level is pooled with Latin America and the Caribbean to reduce the risk that a categorical level is absent from an analysis set.
+
+```{r}
+#| label: prepare-wdi-classification
+
+wdi_classification <- wdi_2022 |>
+  dplyr::filter(income != "Not classified") |>
+  dplyr::mutate(
+    income = forcats::fct_drop(income),
+    region = forcats::fct_collapse(
+      region,
+      Americas = c(
+        "North America",
+        "Latin America & Caribbean"
+      )
+    )
+  ) |>
+  dplyr::select(-country, -lending)
+
+wdi_classification |>
+  dplyr::count(income)
+```
+
+A stratified initial split reserves 25% of the countries as the test set for final evaluation. The remaining training set supplies a common set of five stratified resamples for evaluating every distance and neighbourhood size.
+
+```{r}
+#| label: split-wdi-classification
+
+set.seed(2026)
+
+wdi_split <- rsample::initial_split(
+  wdi_classification,
+  prop = 0.75,
+  strata = income
+)
+
+wdi_train <- rsample::training(wdi_split)
+
+set.seed(2026)
+
+wdi_folds <- rsample::vfold_cv(
+  wdi_train,
+  v = 5,
+  strata = income
+)
+```
+
+```{r}
+#| label: prepare-neighbor-grid
+
+neighbor_grid <- tibble::tibble(
+  neighbors = c(1L, 3L, 5L, 7L, 9L, 15L)
+)
+```
 
 Because these recipes include `income` as a response variable, response-aware specifications (`u_dep` and `u_mix`) use the income labels from the current analysis set when their categorical dissimilarities are fitted. Labels from the assessment sets and the final test set are not used in this preprocessing. The other three specifications remain response-independent.
 
@@ -2104,13 +1438,13 @@ knitr::kable(
 )
 ```
 
-The leading configurations are separated by less than one standard error. The results distinguish the commensurable specifications from the two baselines more clearly than they distinguish the commensurable specifications from one another; in particular, the two response-aware presets do not outperform `u_indep` in this example.
+The best configurations for `u_mix` and `u_indep` have very similar balanced accuracies relative to their standard errors. These results describe performance under the present resampling design; they do not establish a general advantage for a response-aware or response-independent distance.
 
 @fig-wdi-knn-tuning shows the complete tuning profiles rather than only the best configuration under each distance.
 
 ```{r}
 #| label: fig-wdi-knn-tuning
-#| fig-cap: "Five-fold cross-validated balanced accuracy for WDI income classification. Each curve tunes the number of neighbours under a different distance specification, with ribbons giving plus or minus one standard error. All five bands overlap at every neighbourhood size."
+#| fig-cap: "Five-fold cross-validated balanced accuracy for WDI income classification. Each curve tunes the number of neighbours under a different distance specification, with ribbons giving plus or minus one standard error."
 #| fig-width: 6.4
 #| fig-height: 3.7
 #| fig-pos: "H"
@@ -2262,6 +1596,10 @@ wdi_confusion <- yardstick::conf_mat(
 )
 ```
 
+```{=latex}
+\Needspace{10\baselineskip}
+```
+
 ```{r}
 #| label: tbl-wdi-confusion
 #| tbl-cap: "Test-set WDI income-group confusion matrix. Rows are predicted classes and columns are observed classes."
@@ -2295,12 +1633,12 @@ confusion_table <- wdi_confusion$table |>
 knitr::kable(confusion_table)
 ```
 
-Together, the two applications illustrate how the same fitted-distance interface supports different learning tasks. In clustering, `step_mdist()` supplies a pairwise representation that can be combined with alternative clustering methods. In classification, it supplies new-to-training distances so that distance specification and neighbourhood size can be evaluated under a common resampling design, with all fitted preprocessing---including any response-aware categorical dissimilarities---restricted to the appropriate analysis sets.
+Together, the WDI applications illustrate how the fitted-distance interface supports different learning tasks. In clustering, `step_mdist()` supplies a pairwise representation that can be combined with alternative clustering methods. In classification, it supplies new-to-training distances so that distance specification and neighbourhood size can be evaluated under a common resampling design, with all fitted preprocessing---including any response-aware categorical dissimilarities---restricted to the appropriate analysis sets.
 
 
 ## Conclusion {#sec-conclusion}
 
-\textcolor{blue} {The \pkg{manydist} package implements the general mixed-variable distance framework of} @van2024unbiased, \textcolor{blue}{providing a flexible way to construct distances by combining numerical and categorical contributions, with purely numerical and purely categorical settings arising as special cases. In addition, the package includes several established and recently proposed distance specifications that do not fall directly within this framework. Beyond distance construction, \pkg{manydist} provides leave-one-variable-out diagnostics for examining variable-specific contributions to the overall distance, together with tools for comparing such diagnostics across alternative distance specifications. It also provides interfaces to distance-based clustering and nearest-neighbour methods and integrates these procedures into resampling and tuning workflows.} Because the fitted `MDist` object retains the preprocessing and distance components estimated from the training data, the same construction can be applied to new observations without re-estimation, thereby avoiding leakage in out-of-sample evaluation. @tbl-refitting-leakage illustrates the practical importance of this distinction: computing the distance once on the full data and resampling it afterwards produces optimistic cross-validated estimates, most clearly for the specification involving a principal-component transformation and to a lesser extent for the other specifications.
+\textcolor{blue} {The \pkg{manydist} package implements the general mixed-variable distance framework of} @van2024unbiased, \textcolor{blue}{providing a flexible way to construct distances by combining numerical and categorical contributions, with purely numerical and purely categorical settings arising as special cases. In addition, the package includes several established and recently proposed distance specifications that do not fall directly within this framework. Beyond distance construction, \pkg{manydist} provides leave-one-variable-out diagnostics for examining variable-specific contributions to the overall distance, together with tools for comparing such diagnostics across alternative distance specifications. It also provides interfaces to distance-based clustering and nearest-neighbour methods and integrates these procedures into resampling and tuning workflows.} Because the fitted `MDist` object retains the preprocessing and distance components estimated from the training data, the same construction can be applied to new observations without re-estimation. The `step_mdist()` interface fits these components within each resample, preventing held-out observations from influencing the learned distance.
 
 Two applications illustrated the interface. The Palmer penguins data showed how
 scale and association shape the distance geometry, and how leave-one-variable-out

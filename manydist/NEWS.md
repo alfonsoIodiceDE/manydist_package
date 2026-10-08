@@ -1,6 +1,58 @@
 # manydist 0.5.2
 
+## Consistent new-data distances
+
+- Replaced the Euclidean cross-distance backend used by `HLeucl` and `hl`
+  with direct coordinate differences. This prevents zero test-to-training
+  distances observed with larger training sets in the previous backend,
+  for both commensurable and non-commensurable `HLeucl`.
+- Corrected Gower's test-to-training average to divide by the number of
+  original predictors rather than the number of expanded dummy columns.
+  Training-to-training distances and the unaveraged Gower sum are unchanged.
+
+## Training-only commensurability
+
+- Corrected numerical and categorical commensurability so each contribution
+  uses its training-to-training mean before aggregation, never the mean of a
+  test-to-training matrix. This applies to `mdist()` and `step_mdist()`,
+  including indicator-based categorical methods. Existing variable-wise
+  training averages (including the zero diagonal) are preserved.
+- Numerical absolute-distance means and categorical means are obtained without
+  allocating observation-level training squares solely for normalization.
+- Robust numerical preprocessing now also uses training medians and IQRs
+  rather than recomputing them on each test batch.
+
+## Direct prediction
+
+- Added `knn_dist()` for direct classification, class probabilities, and
+  regression from test-to-training distances, or from tabular predictors with
+  a supplied distance function such as `mdist()`. The `response` argument
+  selects and excludes the outcome column without manual predictor selection.
+  Existing fit/predict engine
+  functions remain available for tidymodels and compatibility.
+- Fixed neighbour indexing for a single test observation with multiple
+  neighbours and probability output for a single outcome level. Empty
+  precomputed test matrices are also supported in the kNN helpers.
+
 ## Diagnostics
+
+- Removed the redundant `spec_type` field from distance-specification grids
+  and benchmark results. `preset = "custom"` selects explicit method settings;
+  named presets select their predefined settings. Legacy `spec_type` columns
+  are ignored on input. Update grid filters to use `preset` instead.
+
+- Changed LOVO and LOVO-comparison plots so `reorder = TRUE` ranks variables
+  within their categorical and numerical groups, preserving the meaning of
+  the background bands. Comparison rankings use the mean metric across
+  methods; `top_n` selection remains global.
+
+- Changed the default fill gradient for pairwise benchmark heatmaps to
+  coral (`#E76F51`) for lower values and blue (`#008CFF`) for higher values,
+  with regular-weight white cell labels. This applies to all metrics plotted by
+  `autoplot.MDistBenchmark()`, including clustering agreement.
+- Left self-comparison tiles on the main diagonal blank. ARI heatmaps now
+  use a fixed 0 to 1 colour scale instead of the observed range. Negative ARIs
+  remain labelled and use the low-end colour.
 
 - Changed MDS-based diagnostics in `lovo_mdist()` and
   `compare_lovo_mdist()` to be opt-in. Set `mds = TRUE` to compute
@@ -10,7 +62,11 @@
   `cluster_k`.
 - Added compact `print()` and `summary()` methods for `MDistBenchmark`
   objects. The full benchmark remains available as a tibble, while interactive
-  output now emphasizes run status, failures, and pairwise diagnostic ranges.
+  output emphasizes run status and failures. `summary()` displays and invisibly
+  returns the complete pairwise-results tibble.
+- Removed `benchmark_comparisons()`. Use `pairs <- summary(result)` instead.
+  This is a breaking API change; `autoplot()` continues to work directly on
+  the benchmark object.
 
 ## Distance construction
 

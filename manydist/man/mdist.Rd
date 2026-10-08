@@ -51,7 +51,9 @@ variables.}
 
 \item{commensurable}{Logical. If `TRUE`, dissimilarities are scaled so that
 the average contribution of each variable to the overall distance is equal
-to 1.}
+to 1 on the training data. Variable-specific means are computed from
+training pairs, before aggregation, and never from `new_data`. The current
+variable-wise convention includes the zero diagonal of the training square.}
 
 \item{ncomp}{Integer or `NULL`. Number of principal components to retain
 when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all

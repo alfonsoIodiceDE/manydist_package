@@ -13,6 +13,53 @@ lovo_methods <- function() {
   )
 }
 
+lovo_plot_example <- function() {
+  df <- tidyr::expand_grid(method = c("A", "B"),
+                           variable = c("c_low", "c_high", "n_low", "n_high"))
+  df$variable_type <- rep(c("categorical", "categorical", "numeric", "numeric"), 2)
+  df$relative_distance <- c(0.1, 0.5, 0.8, 0.9, 0.8, 0.6, 0.1, 1)
+  df$ari_pam <- df$relative_distance
+  manydist:::MDistLOVOCompare$new(df, methods = list(A = list(), B = list()))
+}
+
+test_that("LOVO comparison reorders within type and preserves background bands", {
+  result <- lovo_plot_example()
+  p <- ggplot2::autoplot(result, reorder = TRUE)
+  expect_identical(levels(p$data$variable), c("c_high", "c_low", "n_high", "n_low"))
+  rects <- ggplot2::ggplot_build(p)$data[1:2]
+  expect_equal(rects[[1]]$xmin, 0.5)
+  expect_equal(rects[[1]]$xmax, 2.5)
+  expect_equal(rects[[2]]$xmin, 2.5)
+  expect_equal(rects[[2]]$xmax, 4.5)
+  expect_identical(as.character(p$data$variable_type[p$data$variable %in%
+                      levels(p$data$variable)[1:2]]), rep("categorical", 4))
+  expect_identical(levels(ggplot2::autoplot(result)$data$variable),
+                   c("c_low", "c_high", "n_low", "n_high"))
+})
+
+test_that("LOVO comparison ordering respects metric direction and global top_n", {
+  result <- lovo_plot_example()
+  p <- ggplot2::autoplot(result, metric = "ari_pam", reorder = TRUE)
+  expect_identical(levels(p$data$variable), c("c_low", "c_high", "n_low", "n_high"))
+  selected <- ggplot2::autoplot(result, reorder = TRUE, top_n = 3)
+  expect_identical(levels(selected$data$variable), c("c_high", "c_low", "n_high"))
+  only_numeric <- ggplot2::autoplot(result, reorder = TRUE, top_n = 1)
+  expect_identical(levels(only_numeric$data$variable), "n_high")
+  result$results$variable_type <- NULL
+  global <- ggplot2::autoplot(result, reorder = TRUE)
+  expect_identical(levels(global$data$variable), c("n_high", "c_high", "c_low", "n_low"))
+})
+
+test_that("single-method LOVO uses the same type-preserving ordering", {
+  result <- lovo_mdist(lovo_example(), preset = "euclidean")
+  result$results <- lovo_plot_example()$results |>
+    dplyr::filter(method == "A")
+  p <- ggplot2::autoplot(result, reorder = TRUE)
+  expect_identical(levels(p$data$variable), c("c_high", "c_low", "n_high", "n_low"))
+  ascending <- ggplot2::autoplot(result, metric = "ari_pam", reorder = TRUE)
+  expect_identical(levels(ascending$data$variable), c("c_low", "c_high", "n_low", "n_high"))
+})
+
 test_that("LOVO skips MDS diagnostics by default", {
   result <- lovo_mdist(lovo_example(), preset = "euclidean")
 

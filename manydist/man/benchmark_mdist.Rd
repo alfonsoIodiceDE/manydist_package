@@ -24,7 +24,7 @@ response column.}
 unquoted or as a character string.}
 
 \item{specs}{A tibble of method specifications. By default, this is generated
-with [all_dist_method_specs()]. It must contain the columns `spec_type`,
+with [all_dist_method_specs()]. It must contain the columns
 `preset`, `method_cat`, `method_num`, and `commensurable`. An optional
 `label` column supplies display labels for comparisons and plots.}
 
@@ -59,11 +59,10 @@ An object of class `"MDistBenchmark"`, which is also a tibble. It
   \item{error}{Error message for failed runs, `NA` otherwise.}
 }
 
-Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
-[ggplot2::autoplot()] to draw an annotated triangular heatmap. The default
-print method displays a compact run overview; use `tibble::as_tibble()` to
-inspect the complete underlying table. `summary()` returns minimum, median,
-and maximum values for each available pairwise diagnostic.
+Use `summary()` to display and obtain the complete pairwise-diagnostics
+tibble, and [ggplot2::autoplot()] to draw an annotated triangular heatmap.
+The default print method displays a compact run overview; use
+`tibble::as_tibble()` to inspect the complete underlying run table.
 }
 \description{
 Applies [mdist()] repeatedly over a tibble of distance-method
@@ -73,7 +72,7 @@ configuration, and optional clustering diagnostics.
 }
 \details{
 Each row of `specs` is interpreted as one valid `mdist()` configuration.
-Preset-based and custom component-based specifications are both supported.
+Preset-based and custom specifications are both supported.
 Failed specifications are caught and returned in the output rather than
 stopping the full benchmark.
 
@@ -123,9 +122,7 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
   )
 
   res
-  summary(res)
-
-  benchmark_comparisons(res)
+  pairwise_results <- summary(res)
   ggplot2::autoplot(res, metric = "relative_distance")
 }
 

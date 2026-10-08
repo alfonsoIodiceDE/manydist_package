@@ -67,17 +67,15 @@ ndist = function (x, validate_x = NULL, commensurable = FALSE, method = "manhatt
       }
     }
   }else if (scaling == "robust") {
-    rec_x = rec_x |>
-      step_mutate(across(everything(), ~(. - median(.))/IQR(.)))
-
-    prepped_rec_x = rec_x |> prep(training = tr_x)
-
-    x = bake(prepped_rec_x, new_data = NULL)
-
-    if (!is.null(validate_x)) {
-      validate_x = bake(prepped_rec_x,
-                        new_data = validate_x)
+    # step_mutate() would recompute medians and IQRs on the test batch.
+    centers <- vapply(tr_x, stats::median, numeric(1))
+    scales <- vapply(tr_x, stats::IQR, numeric(1))
+    transform <- function(data) {
+      as_tibble(sweep(sweep(as.matrix(data), 2, centers, "-"),
+                      2, scales, "/"))
     }
+    x <- transform(tr_x)
+    if (!is.null(validate_x)) validate_x <- transform(validate_x)
   }
   else if (scaling == "none") {
   }
@@ -90,7 +88,9 @@ ndist = function (x, validate_x = NULL, commensurable = FALSE, method = "manhatt
         by_var_dist = map(.x = as_tibble(x), .f = function(x = .x) {
           b_v_d = daisy(data.frame(x), metric = method,
                         warnBin = FALSE) %>% as.matrix()
-          b_v_d = b_v_d/mean(b_v_d)
+          b_v_d = b_v_d / .commensurability_denominator(
+            .mean_absolute_training_distance(x)
+          )
           return(b_v_d)
         })
       }
@@ -106,7 +106,9 @@ ndist = function (x, validate_x = NULL, commensurable = FALSE, method = "manhatt
             # 1D manhattan (and 1D euclidean) distance:
             b_v_d <- abs(outer(xnew, x, "-"))
 
-            b_v_d / mean(b_v_d)
+            b_v_d / .commensurability_denominator(
+              .mean_absolute_training_distance(x)
+            )
           }
         )
 

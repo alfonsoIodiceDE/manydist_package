@@ -34,3 +34,11 @@ A `ggplot` object.
 Draws an annotated triangular heatmap of the pairwise diagnostics from
 [benchmark_mdist()].
 }
+\details{
+The default fill gradient runs from coral (`#E76F51`) for lower values to
+blue (`#008CFF`) for higher values, with regular-weight white cell labels. To use
+another palette, add a fill scale to the returned plot.
+Self-comparisons on the main diagonal are left blank. ARI plots use fixed
+colour limits of 0 and 1, so the same ARI has the same colour across plots.
+Negative ARIs retain their numerical labels but use the low-end colour.
+}

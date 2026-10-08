@@ -218,7 +218,7 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 | M-114 | Moved optional clustering comparisons into a separate paragraph explaining when they are run and how to interpret ARI. | resolved |
 | M-115 | Most prose now uses “comparison,” but “benchmarking” remains in the section title and exported function name. Preferred article terminology remains to be agreed. | needs discussion |
 | M-116 | Explains directly how candidate specifications are supplied or generated with `all_dist_method_specs()`. | resolved |
-| M-117 | Simplified the example to print `benchmark_comparisons(distance_benchmark)` directly. The annotation has no written explanation, so we should confirm whether further change was intended. | needs discussion |
+| M-117 | Updated the example to use `summary(distance_benchmark)`, which displays and returns the complete pairwise-results tibble. Removed the unnecessary separate extractor from the package. The annotation has no written explanation, so we should confirm whether further change was intended. | needs discussion |
 | M-118 | Simplified the code by removing the `dplyr::mutate()` label manipulation. | resolved |
 | M-119 | Defines MAD and relative distance explicitly for two candidate distances. | resolved |
 | M-120 | Replaced “low-dimensional geometry” with the more precise “chosen classical MDS representations.” | resolved |
@@ -242,11 +242,11 @@ Entries are added here after a comment has been assessed. Unresolved author deci
 | ID | Response | Status |
 |---|---|---|
 | M-133 | Added an introduction explaining why data-adaptive distances must be fitted on fitting data, names the unsupervised and supervised settings, and distinguishes the outer training/test split from the analysis/assessment splits used in resampling. | resolved |
-| M-134 | Added a general workflow subsection before the more specific resampling demonstration and renamed the latter around its motivation. | resolved |
+| M-134 | Replaced the general introduction with a worked penguin example: direct `mdist()` distances and `nearest_neighbor_dist()`, then the equivalent `step_mdist()` workflow. Retained the WDI clustering and supervised classification applications and removed the data-leakage experiment at the author's request. | resolved |
 | M-135 | Defines a `tidymodels` recipe before introducing `step_mdist()`. | resolved |
 | M-136 | Condensed the repeated fit-and-apply explanation and removed the unclear pipeline-level analogy. | resolved |
 | M-137 | Names `step_mdist()` explicitly when introducing its `output` argument. | resolved |
-| M-138 | Separately explains pairwise clustering distances, new-to-training prediction distances, and MDS as a non-workflow downstream use. | resolved |
+| M-138 | The worked example distinguishes square training distances from rectangular test-to-training distances and explains their row and column alignment. The clustering application retains the separate `output = "pairwise"` representation. | resolved |
 | M-139 | Introduces supervised nearest-neighbour classification before explaining its required representation and later gives it a dedicated subsection. | resolved |
 | M-140 | “Fixed snapshot” remains, and the annotation contains no written explanation. We should confirm whether Michel wanted the phrase removed or clarified. | needs discussion |
 
@@ -265,3 +265,75 @@ Use this structure for each addressed comment:
 
 **Status:** needs discussion | resolved | partially resolved | already addressed | superseded | declined
 -->
+
+### 2026-10-08 — Benchmark API follow-up
+
+The benchmark example now uses the standard `summary()` interface for pairwise results; `benchmark_mdist()` still retains the fitted distances, specifications, and run status. The separate `benchmark_comparisons()` function has been removed, and package examples and documentation have been aligned with this interface.
+
+All package tests passed, and the manuscript was rebuilt and the revised benchmark pages visually checked. M-117 remains open for discussion because Michel's original annotation contains no written explanation.
+
+### 2026-10-08 — Direct kNN example in Section 6.1
+
+Simplified the direct example to calculate only test-to-training Gower distances, with numerical ranges estimated from the training observations. It now uses `fit_knn_dist()` and `predict_knn_dist_class()`; `nearest_neighbor_dist()` is introduced with the complete recipe/workflow example. The unnecessary training-to-training matrix and manual distance-column naming have been removed. The two approaches give identical predictions for all 84 test observations (accuracy 1). This is an author-requested refinement; no Michel-comment statuses changed.
+
+The manuscript was rebuilt successfully and Section 6.1 visually checked on pages 26–28, including the code-block page breaks and the printed `TRUE` prediction comparison.
+
+### 2026-10-08 — Unified direct prediction interface
+
+Section 6.1 now uses the public `knn_dist()` interface rather than separate fit/predict engine calls. It demonstrates both precomputed test-to-training distances and tabular data with `response = "species"`, which extracts the training labels and excludes the response from the training and test predictors. The subsequent `nearest_neighbor_dist()` / `step_mdist()` workflow is retained. Direct precomputed, direct tabular, and workflow predictions agree for all 84 test observations; all five package test files pass. No Michel-comment statuses changed.
+
+The updated package was installed locally, its help examples were executed successfully, and the 40-page manuscript was rebuilt. The revised Section 6.1 was visually checked on pages 26–28, including both printed `TRUE` comparisons.
+
+### 2026-10-08 — LOVO plot ordering refinement
+
+At the author's request, LOVO comparison plots now reorder variables by their mean selected metric across methods within each variable type, preserving the categorical/numerical groups and their blue/red background shading. The single-method LOVO plot follows the same rule. Global `top_n` selection is unchanged. Package help and regression tests were updated; all five test files pass and the reordered comparison was visually checked. No Michel-comment statuses changed.
+
+### 2026-10-08 — Specification-table simplification and article review
+
+Removed the redundant `spec_type` field: named presets select predefined settings, and `preset = "custom"` selects the explicit numerical, categorical, and commensurability settings. Updated the benchmark paragraph, source vignettes, help, and tests. The complete grid contains 482 candidates after removing the redundant generic-custom row. All five test files pass and the locally installed package and 34-page rendered manuscript are updated. The author's other article edits were preserved; only two equation-reference colour-markup defects were additionally repaired.
+
+The review in `article-review-2026-10-08.md` records both remaining manuscript points and reproduced implementation mismatches involving test-time weights, Gower normalization, and the averaging convention. These are open follow-ups, not resolved changes, and require revalidation of the fit-and-apply claims before submission. No Michel-comment statuses changed.
+
+### 2026-10-08 — Training-only commensurability correction
+
+Corrected the test-dependent commensurability weights identified in the review.
+Each numerical or categorical contribution is now divided by its own
+training-to-training mean before aggregation; the test batch does not affect
+that mean. This applies to plain `mdist()` and `step_mdist()`, including
+indicator-based categorical specifications. Robust preprocessing was also
+corrected to use training medians and IQRs. Regression checks include adding
+unrelated test observations, reordering the batch, and predicting one
+observation at a time.
+
+The existing training averaging convention is preserved. The distinct-pair
+formula versus full-square averaging question and the mixed-data Gower
+normalization discrepancy remain separate open issues. On the paper's penguin
+split, training distances are unchanged, Gower is unaffected, and one of 84
+predictions changes under `u_dep`; the other checked presets retain their
+predictions. No manuscript wording or Michel-comment statuses were changed.
+
+All six package test files pass, and the corrected package was installed
+locally. The manuscript PDF was not rebuilt in this implementation task.
+
+### 2026-10-08 — Gower and HLeucl application fixes
+
+Corrected Gower's test-to-training normalization to average over original
+predictors, rather than expanded dummy columns. Replaced the Euclidean
+cross-distance backend used by `HLeucl` and `hl`, which returned zeros on
+larger examples in this installation. The fix covers commensurable and
+non-commensurable `HLeucl`; training transformations and training distances
+remain unchanged. Removed the unused Rfast dependency.
+
+All seven package test files pass. Larger-data regression tests verify
+independent reference calculations, training/new-data agreement, single-row
+application, batch independence, and recipe consistency. The broader audit
+passes for all 71 specifications it can compute; one categorical measure
+rejects sparse profiles with a non-finite-value error. On the paper's penguin
+split, Gower predictions are unchanged and three of 84 `hl` predictions change
+(accuracy 81/84 to 84/84). The self-pair averaging convention remains to be
+discussed. No manuscript wording or Michel-comment statuses changed; the PDF
+was not rebuilt.
+
+Installed the corrected package and confirmed Gower and `hl` consistency in a
+fresh R session. Independent numerical operator checks, including reduced PCA,
+are retained as regression tests alongside the new-data checks.

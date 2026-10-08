@@ -542,7 +542,7 @@ small_specs <- dplyr::bind_rows(
     method_num = c("std", "robust"),
     commensurable = c(TRUE, FALSE)
   ) |>
-    dplyr::filter(spec_type == "component")
+    dplyr::filter(preset == "custom")
 )
 
 small_specs
@@ -557,7 +557,6 @@ bench_small <- benchmark_mdist(
 
 bench_small |>
   dplyr::select(
-    spec_type,
     preset,
     method_cat,
     method_num,
@@ -581,16 +580,16 @@ When all specifications are successful, the resulting `MDist` objects are stored
 ```{r}
 bench_small |>
   dplyr::filter(ok) |>
-  dplyr::select(spec_type, preset, method_cat, method_num, commensurable, result) |>
+  dplyr::select(preset, method_cat, method_num, commensurable, result) |>
   dplyr::slice_head(n = 3)
 ```
 
 Pairwise MAD, relative distance, MDS congruence, and alienation are available
-through `benchmark_comparisons()`. Because `cluster_k` was left at its default
+through `summary()`. Because `cluster_k` was left at its default
 of `NULL`, no clustering was performed.
 
 ```{r}
-benchmark_comparisons(bench_small) |>
+summary(bench_small) |>
   dplyr::select(
     method_1,
     method_2,
@@ -659,7 +658,6 @@ specs_preview <- specs |>
 
 specs_preview |>
   dplyr::select(
-    spec_type,
     preset,
     method_cat,
     method_num,
@@ -680,7 +678,6 @@ bench <- benchmark_mdist(
 
 bench |>
   dplyr::select(
-    spec_type,
     preset,
     method_cat,
     method_num,
@@ -689,7 +686,7 @@ bench |>
     error
   )
 
-benchmark_comparisons(bench) |>
+summary(bench) |>
   dplyr::select(
     method_1,
     method_2,

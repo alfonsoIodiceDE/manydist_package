@@ -157,7 +157,7 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 | M-114 | 18.7 | Highlight | If is specified, 0 cluster_ k benchmark_mdist also applies each requested clustering… | resolved | Diagnostics — candidate comparison | Moved clustering into its own paragraph and explains separately when it is run and how partitions are compared. |
 | M-115 | 18.8 | Highlight | Benchmarking | needs discussion | Diagnostics — terminology | Most prose now uses “compare” or “comparison,” but “benchmarking” remains in the section title and exported function name; confirm the preferred article terminology. |
 | M-116 | 18.9 | Highlight | evaluates an explicit table of distance spec ifications. | resolved | Diagnostics — candidate specifications | Replaced the opaque description with a direct explanation that specifications may be supplied or generated with `all_dist_method_specs()`. |
-| M-117 | 19.1 | Highlight | benchmark_pairs <- benchmark_comparisons(distance_benchmark) | needs discussion | Diagnostics — benchmark output | Simplified the example to print `benchmark_comparisons(distance_benchmark)` directly, but the annotation contains no written explanation; confirm whether further change was intended. |
+| M-117 | 19.1 | Highlight | benchmark_pairs <- benchmark_comparisons(distance_benchmark) | needs discussion | Diagnostics — benchmark output | Updated the example to obtain the pairwise tibble with `summary(distance_benchmark)` and removed the separate extractor from the package, but the annotation contains no written explanation; confirm whether further change was intended. |
 | M-118 | 19.2 | Highlight | candidate_specs <- all_dist_method_specs( mode = "presets_only", + preset = c("gower",… | resolved | Diagnostics — benchmark example | Simplified the example by removing the `dplyr::mutate()` label manipulation and retaining only preset selection and the benchmark call. |
 | M-119 | 19.3 | Highlight | under pairs of distances; | resolved | Diagnostics — direct comparisons | Recast the passage explicitly for two candidate distances and defines both MAD and the symmetric relative-distance measure. |
 | M-120 | 19.4 | Highlight | low-dimensional geometry, | resolved | Diagnostics — MDS comparisons | Replaced the broad geometry wording with the more precise “chosen classical MDS representations.” |
@@ -174,11 +174,11 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 | M-131 | 20.1 | Highlight | distance, and so the same gap from the Gower | superseded | Diagnostics — removed results narrative | Removed the unclear comparison with the containing narrative. |
 | M-132 | 20.2 | Highlight | Taken together, the diagnostics indicate how much of an analysis rests on the choice… | resolved | Diagnostics — synthesis | Replaced the strong conclusion with a cautious statement that usefulness depends on intended use and that the diagnostics do not alone choose a distance. |
 | M-133 | 20.3 | Highlight | Distance-based learning pipelines | resolved | Pipelines — opening | Added a substantive introduction explaining why data-adaptive distances must be fitted on fitting data, named the unsupervised and supervised settings, and distinguished the outer training/test split from the analysis/assessment splits used in resampling. |
-| M-134 | 20.4 | Highlight | Refitting the distance within resamples | resolved | Pipelines — organization | Added a general workflow introduction before the more specific resampling subsection and renamed the latter around its motivation. |
+| M-134 | 20.4 | Highlight | Refitting the distance within resamples | resolved | Pipelines — organization | Section 6.1 now works through direct `mdist()`/`nearest_neighbor_dist()` use and the equivalent `step_mdist()` workflow. Retained WDI clustering and classification; removed the data-leakage experiment at the author's request. |
 | M-135 | 20.5 | Highlight | recipe. | resolved | Pipelines — workflow introduction | Defines a `tidymodels` recipe before introducing `step_mdist()`. |
 | M-136 | 20.6 | Highlight | The fitted step stores the training data and preprocessing parameters, so the distance… | resolved | Pipelines — workflow introduction | Condensed the repeated explanation and removed the unclear “pipeline-level counterpart” sentence. |
 | M-137 | 20.7 | Highlight | Its | resolved | Pipelines — workflow representations | Names `step_mdist()` explicitly when introducing its `output` argument. |
-| M-138 | 20.8 | Highlight | required by the downstream task: for clustering and "pai rwise" for prediction.… | resolved | Pipelines — workflow representations | Separately explains square pairwise distances for clustering and rectangular new-to-training distances for nearest-neighbour prediction, and mentions MDS as a non-workflow downstream use. |
+| M-138 | 20.8 | Highlight | required by the downstream task: for clustering and "pai rwise" for prediction.… | resolved | Pipelines — workflow representations | Distinguishes square training distances from rectangular test-to-training distances and explains row/column alignment. Retained the clustering application and its `output = "pairwise"` representation. |
 | M-139 | 20.9 | Highlight | whereas nearest-neighbour prediction | resolved | Pipelines — workflow representations | Introduces supervised nearest-neighbour classification before explaining its required representation and later provides a dedicated application subsection. |
 | M-140 | 21.1 | Highlight | a fixed snapshot | needs discussion | Pipelines — WDI data | The phrase “fixed snapshot” remains and the annotation contains no written explanation; confirm whether Michel intended it to be removed or clarified. |
 
@@ -239,3 +239,81 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 - Condensed the surrounding explanation after the trial, retaining the definition, block balance, Mahalanobis relationship, and dimensionality choice.
 - The author shortened the passage further by removing the rendered normal-theory and singularity commentary; the defining equations and principal interpretation remain intact.
 - Rendered the complete manuscript successfully and visually checked the revised Section 3 pages. The equations, three-panel figure, caption, and page transitions have no clipping or overlap.
+
+### 2026-10-07 — Learning workflow revision
+
+- Rewrote Section 6.1 to begin with a five-neighbour penguin classifier using the training and test-to-training matrices returned by `mdist()`, fitted directly through `nearest_neighbor_dist()` and `parsnip::fit_xy()`.
+- Added the equivalent complete `step_mdist()` recipe/workflow, including fitting and prediction on the original predictors. Both routes produce identical predictions on the 84 test observations; the distance columns are explicitly aligned with the 249 training outcomes.
+- Removed the commented data-leakage experiment and its stale table reference in the conclusion. Retained the complete WDI clustering application (Section 6.2) and supervised income classification (Section 6.3).
+- Moved WDI classification preparation and resampling into its own subsection. Updated the results narrative and tuning-figure caption to agree with the freshly executed results, and kept the confusion table and caption together.
+- Updated responses to `M-134` and `M-138` without changing their resolved status. Rendered all examples successfully into a 40-page PDF and visually checked pages 26–37; there are no unresolved cross-references, clipped text, or overlapping elements in the revised material.
+
+### 2026-10-08 — Default pairwise comparison palette
+
+- Changed the package-level `autoplot.MDistBenchmark()` fill gradient to the logo colours: teal `#2A9D8F` for lower values and coral `#E76F51` for higher values. This applies to MAD, relative distance, MDS congruence, alienation, and ARI, including faceted clustering comparisons.
+- Retained black cell labels for readability and the ability to replace the fill scale through normal ggplot additions. Updated package help and release notes; the benchmark test file passes, including palette checks for every supported metric family.
+- Installed the updated package in the local R library and rendered the paper successfully. Visually checked Figures 5 and 6 on pages 25 and 30: both use the new default gradient without article-specific palette overrides, with legible labels and no clipping or overlap. No Michel-comment statuses changed.
+
+### 2026-10-08 — Pairwise palette refinement
+
+- At the author's request, replaced teal with the Muvisu slides' blue and set the final gradient direction to coral `#E76F51` for lower values and blue `#008CFF` for higher values.
+- Changed tile labels to bold white text across all pairwise benchmark metrics. Updated help, release notes, and regression checks for the gradient endpoints and label style; the benchmark test file passes.
+- Reinstalled the package and rendered the paper successfully. Visually checked Figures 5 and 6 on pages 25 and 30: the requested gradient direction and white labels render correctly, without clipping or overlap. No Michel-comment statuses changed.
+
+### 2026-10-08 — Fixed ARI colour scale and blank diagonal
+
+- Fixed the package's ARI heatmap colour limits at 0 and 1, including the method-specific ARI aliases and faceted plots. Colours are now comparable across observed ranges. Negative ARIs remain numerically labelled and use the low-end colour rather than disappearing.
+- Removed diagonal self-comparison tiles and labels from all pairwise benchmark heatmaps, retaining every method on both axes. Other metrics retain their data-dependent colour ranges.
+- Added regression checks for fixed ARI limits, consistent colours across observed ranges, negative-value handling, blank diagonals, and retained axes. Updated package help, release notes, and the Figure 6 caption; the benchmark test file passes.
+- Reinstalled the updated package and rendered the 40-page paper successfully. Visually checked Figures 5 and 6 on pages 25 and 30: diagonals are blank and Figure 6's legend spans 0 to 1, with readable white labels and no clipping or overlap. No cross-references are unresolved and no Michel-comment statuses changed.
+- Final font refinement: changed white tile labels from bold to regular weight (`fontface = "plain"`) at the author's request. Updated package help, release notes, and regression expectations; tests pass. Reinstalled the package, rendered the paper, and visually verified the regular labels in Figures 5 and 6.
+
+### 2026-10-08 — Benchmark summary interface
+
+- Kept `benchmark_mdist()` as the full benchmark object and `print()` as the run overview. `summary()` now displays and invisibly returns the complete pairwise-results tibble; removed `benchmark_comparisons()` and migrated the paper, replication script, and package vignettes.
+- M-117 remains marked “needs discussion”: its original highlight has no written explanation.
+- Verification: all four package test files passed; the updated package was installed locally; the 40-page JSS PDF rebuilt successfully, with no references to the removed function. The revised example and adjacent plot were visually checked on pages 24–25. Generated website pages were not changed or published.
+
+### 2026-10-08 — Simplified direct kNN example in Section 6.1
+
+- Removed the unnecessary training-to-training distance calculation and the distance-column preparation from the direct penguin example. It now computes only the test-to-training matrix using `mdist()` and uses `fit_knn_dist()` with `predict_knn_dist_class()`.
+- Explained that Gower's ranges are estimated from training data and that prediction requires the test-to-training distances in the same column order as the training outcomes. Introduced `nearest_neighbor_dist()` in the subsequent `step_mdist()` workflow rather than in the direct example.
+- Executed the exact revised example chunks: direct and workflow predictions are identical for all 84 test observations, with accuracy 1. No Michel-comment statuses changed.
+- Rebuilt the 40-page manuscript successfully and visually checked Section 6.1 on pages 26–28. Added a page-break guard so the direct fitting/prediction code starts together rather than leaving its opening line on the preceding page. The rendered workflow comparison returns `TRUE`.
+
+### 2026-10-08 — Public direct kNN interface
+
+- Added public `knn_dist()` for direct class predictions, class probabilities, and numeric regression. It accepts either precomputed test-to-training distances with `y`, or tabular training/test data with a distance function. The `response` argument selects the training outcome by name and excludes it from both predictor inputs; test labels are ignored.
+- Retained the lower-level fit/predict functions as tidymodels engine implementation and for compatibility. Fixed shared prediction edge cases for single test rows, a single class level, and empty precomputed test matrices.
+- Updated Section 6.1 to use `knn_dist()` directly and demonstrate tabular input with `response = "species"`, followed by the existing recipe/workflow interface. Updated package help, the kNN vignette overview, and release notes.
+- All five package test files pass. The exact manuscript chunks give identical predictions in all three interfaces for 84 test observations. Installed the updated package locally. No Michel-comment statuses changed.
+- The installed help examples run successfully. Rebuilt the 40-page PDF and visually verified pages 26–28: both direct interfaces and the workflow comparison render cleanly and return `TRUE`.
+
+### 2026-10-08 — Type-preserving LOVO plot ordering
+
+- Changed `reorder = TRUE` in LOVO and LOVO-comparison plots to rank variables within their categorical and numerical groups, keeping categorical variables first so the blue/red background bands identify types correctly. Comparison rankings still use the mean selected metric across methods; `top_n` selection remains global.
+- Updated package help and release notes. Regression tests check ordering in both metric directions, background boundaries, global top-variable selection, the no-type-information fallback, and single-method LOVO consistency. All five test files pass; a reordered mixed-type comparison plot was visually checked. No Michel-comment statuses changed.
+
+### 2026-10-08 — Simplified specification tables and current-article review
+
+- Removed `spec_type` from generated specifications and benchmark output; inference now uses `preset = "custom"` versus a named preset. Legacy input columns are ignored. Removed the redundant generic-custom catalogue row, retaining 482 candidates in the complete grid. Updated active source vignettes, help, and regression tests; all five test files pass and the package was installed locally.
+- Updated only the manuscript's candidate-specification paragraph and two colour-markup/reference defects. Checked against the pre-edit snapshot that the author's other current article changes were preserved. The shortened 34-page paper rebuilt successfully; pages 8 and 18–19 were visually checked and no literal unresolved equation labels remain.
+- Reviewed the author's shortened Sections 3–5 and recorded findings in `article-review-2026-10-08.md`. The streamlined structure is clearer, but the block-whitening description, complete preset table, MDS opt-in instructions, draft placeholders, and computational versions need attention.
+- Important open implementation findings: test-batch-dependent commensurability weights, inconsistent mixed-data Gower normalization between training and new-data paths, and disagreement between the formula's distinct-pair mean and square-matrix averaging in ordinary commensurability. These were reproduced but not patched in this API task. Existing fit-and-apply claims need revalidation before submission. No Michel-comment statuses changed.
+
+### 2026-10-08 — Training-only commensurability correction
+
+- Fixed numerical and categorical normalization, including indicator-based methods, to use each variable's training-to-training mean before aggregation. Test observations never enter these denominators. Means can be computed from sorted numerical values or categorical frequencies and category dissimilarities without allocating a full training square solely for normalization.
+- Fixed an additional test-dependent preprocessing issue: robust scaling now uses training medians and IQRs rather than test-batch summaries.
+- Regression tests cover numerical, categorical, and mixed data; enlarged and reordered test batches; individual test observations; the `step_mdist()` interface; and training/new-data consistency. Preserved the existing variable-wise full-square mean convention. The distinct-pair averaging discrepancy and the separate Gower denominator issue remain open.
+- On the manuscript's seeded penguin split (five neighbours, 84 test observations), training matrices are unchanged for Gower, `u_indep`, `u_mix`, `u_dep`, and `u_dep_bw`. Gower test distances are unchanged. All predictions remain unchanged except one under `u_dep` (accuracy 1 to 83/84); this holds in both predictor-only and response-aware comparisons.
+- Package help and release notes updated. The manuscript source was not edited and no Michel-comment statuses changed. The earlier review's first implementation issue is marked resolved.
+- All six package test files pass. Reinstalled the corrected package locally; the rendered PDF was not rebuilt in this implementation task.
+
+### 2026-10-08 — Gower and HLeucl new-data consistency
+
+- Corrected the Gower test-to-training denominator to count original predictors, not dummy columns. Training Gower distances and the unaveraged sum are unchanged.
+- Replaced both `HLeucl` Euclidean cross-distance calls after reproducing zero distances from the previous backend on larger examples. This fixes non-commensurable and commensurable `HLeucl` and the categorical part of `hl`. Removed the unused Rfast dependency. The training representation, its coefficients, and training-distance construction are unchanged.
+- Added larger-data regression tests, independent Euclidean and Gower references, self-application, single-row and enlarged-batch checks, and recipe consistency. All seven test files pass. The broader 72-specification audit has 71 complete passes; `kulczynski_s` rejects sparse profiles with a non-finite-value error. The three presets without new-data support continue to reject those calls explicitly.
+- On the paper's seeded penguin split, Gower predictions remain unchanged. Corrected `hl` changes three of 84 predictions, increasing accuracy from 81/84 to 84/84. The averaging-convention issue remains open. The review records the resolved issues; no Michel-comment statuses or manuscript text changed, and the PDF was not rebuilt.
+- Installed the corrected package and confirmed training/new-data agreement for Gower and `hl` in a fresh installed-package session. Independent numerical reference checks, including reduced PCA, are also retained as regression tests; all seven test files pass after this addition.

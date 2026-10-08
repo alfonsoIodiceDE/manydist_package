@@ -16,7 +16,7 @@ Main changes:
 
 - Extended `benchmark_mdist()` with pairwise distance, geometry, and optional
   clustering-agreement diagnostics.
-- Added `benchmark_comparisons()` and an `autoplot()` method for
+- Provided pairwise results through `summary()` and an `autoplot()` method for
   `MDistBenchmark` objects.
 - Updated `step_mdist()` so response-aware specifications can obtain the
   outcome from a recipe and reuse the fitted profiles when baking new data.

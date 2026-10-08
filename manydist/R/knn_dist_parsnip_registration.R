@@ -25,10 +25,11 @@
 #' Lower-level engine functions such as `fit_knn_dist()` and
 #' `predict_knn_dist_*()` are exported for parsnip registration, but users
 #' normally do not need to call them directly.
+#' For direct prediction from distances or tabular predictors, use [knn_dist()].
 #'
 #' @return A parsnip model specification of class `"nearest_neighbor_dist"`.
 #'
-#' @seealso [step_mdist()], [mdist()]
+#' @seealso [step_mdist()], [mdist()], [knn_dist()]
 #'
 #' @examples
 #' if (requireNamespace("palmerpenguins", quietly = TRUE)) {

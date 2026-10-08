@@ -39,8 +39,7 @@ utils::globalVariables(c(
   "engine",
   "method",
   "new_data",
-  "object",
-  "spec_type"
+  "object"
 ))
 
 .onLoad <- function(libname, pkgname) {

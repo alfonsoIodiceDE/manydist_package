@@ -82,6 +82,12 @@ For each distance specification, the function:
 The results are combined across methods and returned as an
 \code{MDistLOVOCompare} object, which supports
 \code{print()}, \code{summary()}, and \code{ggplot2::autoplot()}.
+
+In \code{autoplot()}, \code{reorder = TRUE} ranks variables by the selected
+metric averaged across methods, separately within each variable type.
+Categorical variables precede numerical variables, preserving the blue/red
+background bands. \code{top_n} still selects variables globally before
+ordering. If type information is absent, ordering is global.
 }
 \examples{
 \dontrun{

@@ -40,7 +40,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                               Zs = Z_list,
                                               by_var_dist = map2(.x = Z_list, .y = delta,
                                                                  ~as.matrix(.x) %*% .y %*% t(as.matrix(.x))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       } else {
         validate_Z_list = map2(.x = validate_x, .y = prep_list,
@@ -54,7 +55,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                                                  .f = function(a, b, c) {
                                                                    return(as.matrix(c) %*% b %*% t(as.matrix(a)))
                                                                  }),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       }
       cat_dist_mat = Reduce(`+`, pull(commensurable_dist_structure, comm_dist))
@@ -94,7 +96,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                               Zs = Z_list,
                                               by_var_dist = map2(.x = Z_list, .y = delta,
                                                                  ~as.matrix(.x) %*% .y %*% t(as.matrix(.x))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
         cat_dist_mat = Reduce(`+`, pull(commensurable_dist_structure, comm_dist))
       } else {
@@ -107,7 +110,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                               val_Zs = val_Z_list,
                                               by_var_dist = pmap(.l = list(a = Z_list, b = delta, c = val_Z_list),
                                                                  function(a, b, c) as.matrix(c) %*% b %*% t(as.matrix(a))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
         cat_dist_mat = Reduce(`+`, pull(commensurable_dist_structure, comm_dist))
       }
@@ -144,7 +148,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                                                                                 levels_identifier == .x])),
                                               by_var_dist = map2(.x = Z_list, .y = delta,
                                                                  ~as.matrix(.x) %*% .y %*% t(as.matrix(.x))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       } else {
         prep_Z_list = map(x, ~prep(step_dummy(recipe(as_tibble(.x), ~.),
@@ -160,7 +165,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                               val_Zs = val_Z_list,
                                               by_var_dist = pmap(.l = list(a = Z_list, b = delta, c = val_Z_list),
                                                                  function(a, b, c) as.matrix(c) %*% b %*% t(as.matrix(a))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       }
       cat_dist_mat = Reduce(`+`, pull(commensurable_dist_structure, comm_dist))
@@ -199,7 +205,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                                                                                 levels_identifier == .x])),
                                               by_var_dist = map2(.x = Z_list, .y = delta,
                                                                  ~as.matrix(.x) %*% .y %*% t(as.matrix(.x))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       } else {
         prep_Z_list = map(x, ~prep(step_dummy(recipe(as_tibble(.x), ~.),
@@ -215,7 +222,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                               val_Zs = val_Z_list,
                                               by_var_dist = pmap(.l = list(a = Z_list, b = delta, c = val_Z_list),
                                                                  function(a, b, c) as.matrix(c) %*% b %*% t(as.matrix(a))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       }
       cat_dist_mat = Reduce(`+`, pull(commensurable_dist_structure, comm_dist))
@@ -240,7 +248,7 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
         # FIX: Use the already-created prep_Z instead of recreating it
         val_Z = as.matrix(bake(prep_Z, new_data = validate_x))
         val_Zs = (val_Z %*% diag(unlist(eta_vec)))
-        cat_dist_mat = as.matrix(Rfast::dista(xnew = val_Zs, x = Zs, type = "euclidean"))
+        cat_dist_mat = .cross_euclidean_distance(xnew = val_Zs, x = Zs)
       }
     } else {
       if (is.null(validate_x)) {
@@ -254,7 +262,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                                eta = eta_vec,
                                                scaled_Zs = map2(Zs, eta, ~as.matrix(.x) %*% diag(.y)),
                                                by_var_dist = map(scaled_Zs, ~as.matrix(daisy(.x, metric = "euclidean", warnType = FALSE))),
-                                               mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                               mean_by_var_dist = map2_dbl(Zs, eta, ~.commensurability_denominator(
+                                                 .mean_indicator_training_distance(.x, .y))),
                                                comm_dist = map2(by_var_dist, mean_by_var_dist, ~.x/.y))
       } else {
         prep_Z_list <- map(x, ~prep(step_dummy(recipe(as_tibble(.x), ~.),
@@ -272,8 +281,9 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                                scaled_Zs = map2(Zs, eta, ~as.matrix(.x) %*% diag(.y)),
                                                scaled_val_Zs = map2(val_Zs, eta, ~as.matrix(.x) %*% diag(.y)),
                                                by_var_dist = map2(.x = scaled_val_Zs, .y = scaled_Zs,
-                                                                  ~as.matrix(Rfast::dista(xnew = .x, x = .y, type = "euclidean"))),
-                                               mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                                                  ~.cross_euclidean_distance(xnew = .x, x = .y)),
+                                               mean_by_var_dist = map2_dbl(Zs, eta, ~.commensurability_denominator(
+                                                 .mean_indicator_training_distance(.x, .y))),
                                                comm_dist = map2(by_var_dist, mean_by_var_dist, ~.x/.y))
       }
       cat_dist_mat <- Reduce(`+`, pull(commensurable_dist_structure, comm_dist))
@@ -310,7 +320,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                               Zs = Z_list,
                                               by_var_dist = map2(.x = Z_list, .y = delta,
                                                                  ~as.matrix(.x) %*% .y %*% t(as.matrix(.x))),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       } else {
         val_Z_list = map2(.x = prep_Z_list, .y = validate_x,
@@ -324,7 +335,8 @@ indicator_based <- function(x, validate_x, commensurable = FALSE, scaling = "non
                                                                  .f = function(a, b, c) {
                                                                    return(as.matrix(c) %*% b %*% t(as.matrix(a)))
                                                                  }),
-                                              mean_by_var_dist = map_dbl(by_var_dist, ~mean(.x)),
+                                              mean_by_var_dist = map2_dbl(Z_list, delta, ~.commensurability_denominator(
+                                                .mean_categorical_training_distance(.x, .y))),
                                               comm_dist = map2(.x = by_var_dist, .y = mean_by_var_dist, ~.x/.y))
       }
       cat_dist_mat = Reduce(`+`, pull(commensurable_dist_structure, comm_dist))

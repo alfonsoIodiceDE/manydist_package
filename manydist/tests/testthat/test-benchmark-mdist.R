@@ -14,6 +14,38 @@ benchmark_specs <- function(presets = c("gower", "u_indep")) {
   )
 }
 
+test_that("specification grids use preset alone to distinguish custom settings", {
+  specs <- all_dist_method_specs()
+  expect_identical(names(specs), c("preset", "method_cat", "method_num", "commensurable"))
+  custom <- dplyr::filter(specs, preset == "custom")
+  expect_gt(nrow(custom), 0L)
+  expect_false(anyNA(custom))
+  presets <- all_dist_method_specs(mode = "presets_only")
+  expect_false(any(presets$preset == "custom"))
+  expect_true(all(is.na(presets$method_cat)))
+})
+
+test_that("benchmark dispatch is inferred from preset and ignores legacy type labels", {
+  custom <- tibble::tibble(preset = "custom", method_cat = "matching",
+                           method_num = "std", commensurable = TRUE)
+  specs <- dplyr::bind_rows(benchmark_specs("gower"), custom)
+  # Contradictory legacy labels cannot override the actual preset.
+  specs$spec_type <- c("component", "preset")
+  result <- benchmark_mdist(benchmark_example(), specs = specs)
+  expect_true(all(result$ok))
+  expect_false("spec_type" %in% names(result))
+  expect_identical(result$result[[1]]$preset, "gower")
+  expect_identical(result$result[[2]]$preset, "custom")
+  expect_equal(result$result[[2]]$distance,
+               mdist(benchmark_example(), method_cat = "matching",
+                     method_num = "std", commensurable = TRUE)$distance)
+  expect_match(attr(result, "method_labels")[2], "matching + std", fixed = TRUE)
+  expect_output(print(result), "Methods:", fixed = TRUE)
+  expect_error(benchmark_mdist(benchmark_example(),
+                               specs = dplyr::mutate(custom, preset = NA_character_)),
+               "nonmissing, nonempty")
+})
+
 test_that("benchmark_mdist retains its tibble interface", {
   result <- benchmark_mdist(
     benchmark_example(),
@@ -30,7 +62,7 @@ test_that("benchmark_mdist retains its tibble interface", {
   expect_output(print(selected), "preset")
 
   reordered <- dplyr::arrange(result, dplyr::desc(.data$preset))
-  expect_output(print(reordered), "spec_type")
+  expect_output(print(reordered), "preset")
 })
 
 test_that("benchmark printing is compact and reports failures", {
@@ -56,29 +88,30 @@ test_that("benchmark printing is compact and reports failures", {
   expect_true(any(grepl("Methods:", output, fixed = TRUE)))
   expect_true(any(grepl("Failures:", output, fixed = TRUE)))
   expect_true(any(grepl("Invalid preset", output, fixed = TRUE)))
-  expect_true(any(grepl("benchmark_comparisons", output, fixed = TRUE)))
+  expect_true(any(grepl("summary(x)", output, fixed = TRUE)))
 })
 
-test_that("benchmark summary reports compact pairwise metric ranges", {
+test_that("benchmark summary displays and returns the complete pairwise tibble", {
   result <- benchmark_mdist(
     benchmark_example(),
     specs = benchmark_specs(c("gower", "u_indep", "u_dep"))
   )
-
-  metric_summary <- NULL
+  stored <- attr(result, "comparisons")
   expect_output(
-    metric_summary <- summary(result),
-    "Pairwise diagnostic summary",
+    visible_result <- withVisible(summary(result, n = 1L)),
+    "Pairwise diagnostics",
     fixed = TRUE
   )
+  expect_false(visible_result$visible)
+  expect_s3_class(visible_result$value, "tbl_df")
+  expect_identical(visible_result$value, stored)
+  expect_equal(nrow(visible_result$value), 3L)
+  expect_true(all(c("method_1", "method_2", "mad", "relative_distance",
+                    "mds_congruence", "alienation") %in% names(stored)))
+})
 
-  expect_s3_class(metric_summary, "tbl_df")
-  expect_equal(
-    metric_summary$metric,
-    c("mad", "relative_distance", "mds_congruence", "alienation")
-  )
-  expect_equal(names(metric_summary), c("metric", "min", "median", "max"))
-  expect_true(all(is.finite(unlist(metric_summary[c("min", "median", "max")]))))
+test_that("the obsolete benchmark extractor is not exported", {
+  expect_false("benchmark_comparisons" %in% getNamespaceExports("manydist"))
 })
 
 test_that("benchmark summary handles fewer than two successful methods", {
@@ -94,6 +127,7 @@ test_that("benchmark summary handles fewer than two successful methods", {
     fixed = TRUE
   )
   expect_equal(nrow(metric_summary), 0L)
+  expect_identical(metric_summary, attr(result, "comparisons"))
 })
 
 test_that("pairwise metrics are zero or one for identical specifications", {
@@ -101,7 +135,7 @@ test_that("pairwise metrics are zero or one for identical specifications", {
   specs <- dplyr::bind_rows(one_spec, one_spec)
 
   result <- benchmark_mdist(benchmark_example(), specs = specs)
-  comparisons <- benchmark_comparisons(result)
+  capture.output(comparisons <- summary(result))
 
   expect_equal(nrow(comparisons), 1L)
   expect_equal(comparisons$mad, 0)
@@ -115,7 +149,7 @@ test_that("benchmark creates one row per unique method pair", {
     benchmark_example(),
     specs = benchmark_specs(c("gower", "u_indep", "u_dep"))
   )
-  comparisons <- benchmark_comparisons(result)
+  capture.output(comparisons <- summary(result))
 
   expect_equal(nrow(comparisons), choose(sum(result$ok), 2))
   expect_true(all(
@@ -135,7 +169,7 @@ test_that("cluster_k controls optional pairwise ARI diagnostics", {
     cluster_k = NULL
   )
   expect_false("ari_pam" %in% names(
-    benchmark_comparisons(without_clusters)
+    attr(without_clusters, "comparisons")
   ))
 
   with_clusters <- benchmark_mdist(
@@ -144,7 +178,7 @@ test_that("cluster_k controls optional pairwise ARI diagnostics", {
     cluster_k = 3,
     cluster_methods = "pam"
   )
-  comparisons <- benchmark_comparisons(with_clusters)
+  capture.output(comparisons <- summary(with_clusters))
 
   expect_true("ari_pam" %in% names(comparisons))
   expect_equal(comparisons$ari_pam, 1)
@@ -152,10 +186,10 @@ test_that("cluster_k controls optional pairwise ARI diagnostics", {
   cluster_summary <- NULL
   expect_output(
     cluster_summary <- summary(with_clusters),
-    "Pairwise diagnostic summary",
+    "Pairwise diagnostics",
     fixed = TRUE
   )
-  expect_true("ari_pam" %in% cluster_summary$metric)
+  expect_true("ari_pam" %in% names(cluster_summary))
 })
 
 test_that("benchmark clustering arguments are validated", {
@@ -198,4 +232,54 @@ test_that("autoplot draws pairwise and clustering heatmaps", {
     ggplot2::autoplot(result, metric = "ari", cluster_method = "pam"),
     "ggplot"
   )
+
+  for (metric in c(
+    "relative_distance", "mad", "alienation", "mds_congruence", "ari", "ari_pam"
+  )) {
+    plot <- ggplot2::autoplot(result, metric = metric)
+    fill_scale <- plot$scales$get_scales("fill")
+    expect_equal(
+      fill_scale$palette(c(0, 1)),
+      c("#E76F51", "#008CFF"),
+      info = metric
+    )
+    expect_equal(plot$layers[[2]]$aes_params$colour, "white", info = metric)
+    expect_equal(plot$layers[[2]]$aes_params$fontface, "plain", info = metric)
+    expect_false(any(plot$data$method_1 == plot$data$method_2), info = metric)
+    expect_false(plot$scales$get_scales("x")$drop, info = metric)
+    expect_false(plot$scales$get_scales("y")$drop, info = metric)
+    if (startsWith(metric, "ari")) {
+      expect_equal(fill_scale$limits, c(0, 1), info = metric)
+    } else {
+      expect_null(fill_scale$limits, info = metric)
+    }
+  }
+})
+
+test_that("ARI colours are fixed across observed ranges and retain negatives", {
+  result <- benchmark_mdist(
+    benchmark_example(),
+    specs = benchmark_specs(),
+    cluster_k = 3,
+    cluster_methods = "pam"
+  )
+
+  capture.output(comparisons <- summary(result))
+  comparisons$ari_pam <- 0.6
+  attr(result, "comparisons") <- comparisons
+  high_plot <- ggplot2::autoplot(result, metric = "ari")
+  high_scale <- ggplot2::ggplot_build(high_plot)$plot$scales$get_scales("fill")
+  expect_equal(high_scale$get_limits(), c(0, 1))
+  expect_equal(high_scale$map(0.6), high_scale$palette(0.6))
+
+  comparisons$ari_pam <- -0.2
+  attr(result, "comparisons") <- comparisons
+  negative_plot <- ggplot2::autoplot(result, metric = "ari")
+  negative_build <- ggplot2::ggplot_build(negative_plot)
+  negative_scale <- negative_build$plot$scales$get_scales("fill")
+  expect_equal(negative_scale$map(0.6), high_scale$map(0.6))
+  expect_equal(negative_build$data[[1]]$fill, "#E76F51")
+  expect_equal(negative_build$data[[2]]$label, "-0.20")
+  expect_equal(length(negative_build$layout$panel_params[[1]]$x$breaks), 2L)
+  expect_equal(length(negative_build$layout$panel_params[[1]]$y$breaks), 2L)
 })

@@ -18,20 +18,20 @@ Supported values are `"full"`, `"presets_only"`, and
 `"response_aware_only"`.}
 
 \item{method_cat}{Optional character vector restricting the categorical
-methods used in component-based specifications.}
+methods used in custom specifications.}
 
 \item{method_num}{Optional character vector restricting the numerical
-preprocessing methods used in component-based specifications.}
+preprocessing methods used in custom specifications.}
 
 \item{preset}{Optional character vector restricting preset-based
 specifications.}
 
 \item{commensurable}{Optional logical vector restricting the commensurable
-values used in component-based specifications.}
+values used in custom specifications.}
 }
 \value{
 A tibble where each row represents one valid `mdist()` specification.
-  The tibble contains `spec_type`, `preset`, `method_cat`, `method_num`, and
+  The tibble contains `preset`, `method_cat`, `method_num`, and
   `commensurable`.
 }
 \description{
@@ -41,10 +41,13 @@ multiple configurations.
 }
 \details{
 The resulting tibble combines preset-based specifications and custom
-component-based specifications built from the currently available
+custom specifications built from the currently available
 categorical methods and numerical preprocessing options listed in
 [dist_methods_tbl()].
 
+
+Rows with `preset = "custom"` use the explicit categorical, numerical, and
+commensurability options. Named presets determine those settings internally.
 
 `mode` defines the initial candidate pool. Any explicit argument filters
 supplied by the user are applied afterwards and therefore restrict the

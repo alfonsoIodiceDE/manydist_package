@@ -76,6 +76,7 @@ passed to `nearest_neighbor_dist()`.
 Lower-level engine functions such as `fit_knn_dist()` and
 `predict_knn_dist_*()` are exported for parsnip registration, but users
 normally do not need to call them directly.
+For direct prediction from distances or tabular predictors, use [knn_dist()].
 }
 \examples{
 if (requireNamespace("palmerpenguins", quietly = TRUE)) {
@@ -122,6 +123,6 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
 }
 }
 \seealso{
-[step_mdist()], [mdist()]
+[step_mdist()], [mdist()], [knn_dist()]
 }
 \keyword{internal}

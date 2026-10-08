@@ -5,7 +5,7 @@
 #' multiple configurations.
 #'
 #' The resulting tibble combines preset-based specifications and custom
-#' component-based specifications built from the currently available
+#' custom specifications built from the currently available
 #' categorical methods and numerical preprocessing options listed in
 #' [dist_methods_tbl()].
 #'
@@ -13,19 +13,22 @@
 #'   Supported values are `"full"`, `"presets_only"`, and
 #'   `"response_aware_only"`.
 #' @param method_cat Optional character vector restricting the categorical
-#'   methods used in component-based specifications.
+#'   methods used in custom specifications.
 #' @param method_num Optional character vector restricting the numerical
-#'   preprocessing methods used in component-based specifications.
+#'   preprocessing methods used in custom specifications.
 #' @param preset Optional character vector restricting preset-based
 #'   specifications.
 #' @param commensurable Optional logical vector restricting the commensurable
-#'   values used in component-based specifications.
+#'   values used in custom specifications.
 #'
 #' @return A tibble where each row represents one valid `mdist()` specification.
-#'   The tibble contains `spec_type`, `preset`, `method_cat`, `method_num`, and
+#'   The tibble contains `preset`, `method_cat`, `method_num`, and
 #'   `commensurable`.
 #'
 #' @details
+#' Rows with `preset = "custom"` use the explicit categorical, numerical, and
+#' commensurability options. Named presets determine those settings internally.
+#'
 #' `mode` defines the initial candidate pool. Any explicit argument filters
 #' supplied by the user are applied afterwards and therefore restrict the
 #' selected pool further.
@@ -52,7 +55,7 @@ all_dist_method_specs <- function(
   tbl <- dist_methods_tbl()
 
   preset_tbl <- tbl |>
-    dplyr::filter(.data$argument == "preset")
+    dplyr::filter(.data$argument == "preset", .data$method != "custom")
 
   cat_tbl <- tbl |>
     dplyr::filter(.data$argument == "method_cat")
@@ -107,7 +110,6 @@ all_dist_method_specs <- function(
 
   preset_specs <- preset_tbl |>
     dplyr::transmute(
-      spec_type = "preset",
       preset = .data$method,
       method_cat = NA_character_,
       method_num = NA_character_,
@@ -118,17 +120,15 @@ all_dist_method_specs <- function(
     return(preset_specs)
   }
 
-  component_specs <- tidyr::crossing(
+  custom_specs <- tidyr::crossing(
     method_cat = cat_tbl$method,
     method_num = num_tbl$method,
     commensurable = commensurable_vals
   ) |>
     dplyr::mutate(
-      spec_type = "component",
       preset = "custom"
     ) |>
     dplyr::select(
-      spec_type,
       preset,
       method_cat,
       method_num,
@@ -141,5 +141,5 @@ all_dist_method_specs <- function(
       )
     )
 
-  dplyr::bind_rows(preset_specs, component_specs)
+  dplyr::bind_rows(preset_specs, custom_specs)
 }

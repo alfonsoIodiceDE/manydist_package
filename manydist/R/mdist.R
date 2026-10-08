@@ -671,14 +671,20 @@
         .y = tibble::as_tibble(valid_gow),
         .f = function(x, xnew) {
           b_v_d <- abs(outer(as.numeric(xnew), as.numeric(x), "-"))
-          if (isTRUE(prep$commensurable)) .safe_comm(b_v_d) else b_v_d
+          if (isTRUE(prep$commensurable)) {
+            b_v_d / .commensurability_denominator(
+              .mean_absolute_training_distance(x)
+            )
+          } else b_v_d
         }
       )
 
       distance_mat <- Reduce(`+`, gowerlist)
 
       if (isTRUE(prep$gower_average)) {
-        distance_mat <- distance_mat / length(gowerlist)
+        # One-hot columns encode nominal contributions; they are not separate
+        # variables in Gower's average.
+        distance_mat <- distance_mat / ncol(prep$x_train)
       }
     }
   }else if (prep$preset == "euclidean") {
@@ -881,7 +887,9 @@
 #'   variables.
 #' @param commensurable Logical. If `TRUE`, dissimilarities are scaled so that
 #'   the average contribution of each variable to the overall distance is equal
-#'   to 1.
+#'   to 1 on the training data. Variable-specific means are computed from
+#'   training pairs, before aggregation, and never from `new_data`. The current
+#'   variable-wise convention includes the zero diagonal of the training square.
 #' @param ncomp Integer or `NULL`. Number of principal components to retain
 #'   when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
 #'   available components are used unless `threshold` is supplied and supported

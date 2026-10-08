@@ -22,7 +22,7 @@ produce different geometries and, consequently, different learning results.
 - `all_dist_method_specs()` constructs tables of valid specifications;
 - `benchmark_mdist()` evaluates `mdist()` once for every row and compares all
   successful distances;
-- `benchmark_comparisons()` extracts the pairwise diagnostics.
+- `summary()` displays and returns the pairwise-diagnostics tibble.
 
 This guide shows how to define a manageable candidate set, run it safely,
 inspect failures, compare the resulting dissimilarities, and optionally assess
@@ -69,7 +69,7 @@ dplyr::glimpse(penguin_x)
 ## Constructing a candidate set
 
 `all_dist_method_specs()` returns one specification per row. Preset rows use
-the `preset` column, whereas component rows describe a custom combination of
+the `preset` column, whereas rows with `preset = "custom"` describe a combination of
 `method_cat`, `method_num`, and `commensurable`.
 
 ```{r}
@@ -77,7 +77,6 @@ the `preset` column, whereas component rows describe a custom combination of
 
 all_dist_method_specs(mode = "presets_only") |>
   dplyr::select(
-    spec_type,
     preset,
     method_cat,
     method_num,
@@ -98,7 +97,6 @@ candidate_specs <- dplyr::bind_rows(
     preset = c("gower", "u_indep", "euclidean", "hl")
   ),
   tibble::tibble(
-    spec_type = "component",
     preset = "custom",
     method_cat = "matching",
     method_num = "std",
@@ -176,7 +174,7 @@ some methods may be incompatible with the variables in a particular data set.
 
 ## Comparing successful distances
 
-`benchmark_comparisons()` returns one row for each unique pair of successful
+`summary()` returns one row for each unique pair of successful
 specifications. Four diagnostics are always available:
 
 - `mad` is the mean absolute difference between the corresponding pairwise
@@ -196,19 +194,18 @@ $$
 It is zero for identical distances and does not depend on how many
 specifications are included in the benchmark.
 
-`summary()` provides a compact overview of the range of each available
-pairwise diagnostic.
+`summary()` displays the pairwise diagnostics and invisibly returns the complete
+results tibble. These diagnostics are computed by `benchmark_mdist()`; requesting
+a summary does not refit the distances.
 
 ```{r}
 #| label: summarize-pairwise-diagnostics
 
-summary(distance_benchmark)
+pairwise_diagnostics <- summary(distance_benchmark)
 ```
 
 ```{r}
 #| label: inspect-pairwise-diagnostics
-
-pairwise_diagnostics <- benchmark_comparisons(distance_benchmark)
 
 pairwise_diagnostics |>
   dplyr::select(
@@ -286,7 +283,7 @@ clustering_benchmark <- benchmark_mdist(
   spectral_nstart = 50
 )
 
-benchmark_comparisons(clustering_benchmark) |>
+summary(clustering_benchmark) |>
   dplyr::select(
     method_1,
     method_2,
@@ -327,7 +324,7 @@ response_specs <- all_dist_method_specs(
   mode = "response_aware_only"
 ) |>
   dplyr::filter(
-    spec_type == "preset",
+    preset != "custom",
     preset %in% c("u_dep", "u_dep_bw", "u_mix")
   )
 
@@ -349,7 +346,7 @@ response_benchmark <- benchmark_mdist(
 response_benchmark |>
   dplyr::select(preset, ok, error)
 
-benchmark_comparisons(response_benchmark)
+summary(response_benchmark)
 ```
 
 If response-aware distances are compared by predictive performance, their

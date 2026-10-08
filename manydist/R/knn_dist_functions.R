@@ -2,9 +2,10 @@
 
 # majority vote (classification)
 .knn_class_from_dist <- function(D, y_train, k) {
-  nn_idx <- apply(D, 1L, function(d) order(d)[seq_len(k)])
-  if (is.vector(nn_idx)) nn_idx <- matrix(nn_idx, nrow = 1L)
   lv <- levels(y_train)
+  if (nrow(D) == 0L) return(factor(character(), levels = lv))
+  nn_idx <- matrix(apply(D, 1L, function(d) order(d)[seq_len(k)]),
+                   nrow = k, ncol = nrow(D))
   out <- apply(nn_idx, 2L, function(idx) {
     tab <- table(y_train[idx])
     names(tab)[which.max(tab)]
@@ -15,20 +16,25 @@
 # posterior probabilities
 .knn_prob_from_dist <- function(D, y_train, k) {
   classes <- levels(y_train)
-  nn_idx <- apply(D, 1L, function(d) order(d)[seq_len(k)])
-  if (is.vector(nn_idx)) nn_idx <- matrix(nn_idx, nrow = 1L)
-  probs <- t(apply(nn_idx, 2L, function(idx) {
+  if (nrow(D) == 0L) {
+    return(as.data.frame(matrix(numeric(), nrow = 0L, ncol = length(classes),
+                                dimnames = list(NULL, classes))))
+  }
+  nn_idx <- matrix(apply(D, 1L, function(d) order(d)[seq_len(k)]),
+                   nrow = k, ncol = nrow(D))
+  probs <- t(matrix(apply(nn_idx, 2L, function(idx) {
     tab <- table(factor(y_train[idx], levels = classes))
     as.numeric(tab / sum(tab))
-  }))
+  }), nrow = length(classes), ncol = nrow(D)))
   colnames(probs) <- classes
   as.data.frame(probs)
 }
 
 # regression mean
 .knn_reg_from_dist <- function(D, y_train, k) {
-  nn_idx <- apply(D, 1L, function(d) order(d)[seq_len(k)])
-  if (is.vector(nn_idx)) nn_idx <- matrix(nn_idx, nrow = 1L)
+  if (nrow(D) == 0L) return(numeric())
+  nn_idx <- matrix(apply(D, 1L, function(d) order(d)[seq_len(k)]),
+                   nrow = k, ncol = nrow(D))
   apply(nn_idx, 2L, function(idx) mean(y_train[idx]))
 }
 

@@ -464,7 +464,7 @@ distance_benchmark <- benchmark_mdist(
   cluster_methods = "pam"
 )
 
-benchmark_pairs <- benchmark_comparisons(distance_benchmark) |>
+benchmark_pairs <- summary(distance_benchmark) |>
   dplyr::select(
     method_1,
     method_2,

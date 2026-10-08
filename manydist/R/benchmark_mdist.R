@@ -8,7 +8,7 @@
   }
 
   needs_label <- is.na(labels)
-  is_preset <- specs$spec_type == "preset"
+  is_preset <- specs$preset != "custom"
 
   labels[needs_label & is_preset] <- specs$preset[needs_label & is_preset]
 
@@ -240,7 +240,7 @@
 #' configuration, and optional clustering diagnostics.
 #'
 #' Each row of `specs` is interpreted as one valid `mdist()` configuration.
-#' Preset-based and custom component-based specifications are both supported.
+#' Preset-based and custom specifications are both supported.
 #' Failed specifications are caught and returned in the output rather than
 #' stopping the full benchmark.
 #'
@@ -249,7 +249,7 @@
 #' @param response Optional response column inside `x`, supplied either
 #'   unquoted or as a character string.
 #' @param specs A tibble of method specifications. By default, this is generated
-#'   with [all_dist_method_specs()]. It must contain the columns `spec_type`,
+#'   with [all_dist_method_specs()]. It must contain the columns
 #'   `preset`, `method_cat`, `method_num`, and `commensurable`. An optional
 #'   `label` column supplies display labels for comparisons and plots.
 #' @param dims Integer. Number of dimensions used by classical multidimensional
@@ -277,11 +277,10 @@
 #'   \item{error}{Error message for failed runs, `NA` otherwise.}
 #' }
 #'
-#' Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
-#' [ggplot2::autoplot()] to draw an annotated triangular heatmap. The default
-#' print method displays a compact run overview; use `tibble::as_tibble()` to
-#' inspect the complete underlying table. `summary()` returns minimum, median,
-#' and maximum values for each available pairwise diagnostic.
+#' Use `summary()` to display and obtain the complete pairwise-diagnostics
+#' tibble, and [ggplot2::autoplot()] to draw an annotated triangular heatmap.
+#' The default print method displays a compact run overview; use
+#' `tibble::as_tibble()` to inspect the complete underlying run table.
 #'
 #' @details
 #' Preset specifications use the `preset` column and ignore `method_cat`,
@@ -329,9 +328,7 @@
 #'   )
 #'
 #'   res
-#'   summary(res)
-#'
-#'   benchmark_comparisons(res)
+#'   pairwise_results <- summary(res)
 #'   ggplot2::autoplot(res, metric = "relative_distance")
 #' }
 #'
@@ -349,9 +346,11 @@ benchmark_mdist <- function(
 ) {
   x <- tibble::as_tibble(x)
   specs <- tibble::as_tibble(specs)
+  # Ignore the redundant field in grids created by earlier versions.
+  specs$spec_type <- NULL
 
   needed <- c(
-    "spec_type", "preset",
+    "preset",
     "method_cat", "method_num", "commensurable"
   )
 
@@ -362,6 +361,12 @@ benchmark_mdist <- function(
       paste(missing_cols, collapse = ", "),
       call. = FALSE
     )
+  }
+
+  if (!is.character(specs$preset) || anyNA(specs$preset) ||
+      any(!nzchar(specs$preset))) {
+    stop("`preset` must contain nonmissing, nonempty preset names; use \"custom\" for explicit settings.",
+         call. = FALSE)
   }
 
   if (!is.numeric(dims) || length(dims) != 1L || is.na(dims) ||
@@ -428,10 +433,10 @@ benchmark_mdist <- function(
 
   results <- purrr::pmap(
     specs[needed],
-    function(spec_type, preset, method_cat, method_num, commensurable) {
+    function(preset, method_cat, method_num, commensurable) {
       tryCatch(
         {
-          if (identical(spec_type, "preset")) {
+          if (!identical(preset, "custom")) {
             if (is.null(response_name)) {
               mdist(
                 x = x,
@@ -514,7 +519,7 @@ benchmark_mdist <- function(
 print.MDistBenchmark <- function(x, ..., n = 10L, width = NULL) {
   labels <- attr(x, "method_labels")
   required <- c(
-    "spec_type", "preset", "method_cat", "method_num", "commensurable",
+    "preset", "method_cat", "method_num", "commensurable",
     "result", "ok", "error"
   )
 
@@ -552,7 +557,6 @@ print.MDistBenchmark <- function(x, ..., n = 10L, width = NULL) {
   methods <- tibble::tibble(
     id = seq_len(nrow(x)),
     method = labels,
-    type = x$spec_type,
     status = ifelse(x$ok, "successful", "failed")
   )
 
@@ -573,65 +577,39 @@ print.MDistBenchmark <- function(x, ..., n = 10L, width = NULL) {
 
   cat(
     "\nUse `tibble::as_tibble(x)` for the full run table and ",
-    "`benchmark_comparisons(x)` for pairwise diagnostics.\n",
+    "`summary(x)` for pairwise diagnostics.\n",
     sep = ""
   )
 
   invisible(x)
 }
 
+#' Summarize a distance benchmark
+#'
+#' Displays the pairwise diagnostics already computed by [benchmark_mdist()],
+#' without refitting distances or recomputing diagnostics.
+#'
+#' @param object An object returned by [benchmark_mdist()].
+#' @param ... Additional arguments passed to the tibble print method.
+#' @param n Number of rows to display. Use `Inf` to display all rows.
+#' @param width Width of the printed output; `NULL` uses the default width.
+#'
+#' @return Invisibly returns the complete tibble with one row per unique pair
+#'   of successful specifications, regardless of the display limit `n`.
+#'   Columns include the method labels, MAD, symmetric relative distance,
+#'   MDS congruence, alienation, and any requested clustering ARIs.
+#'   If fewer than two specifications succeed, the tibble has zero rows.
+#'
+#' @examples
+#' \dontrun{
+#' pairwise_results <- summary(benchmark_result)
+#' }
+#' @md
 #' @export
-summary.MDistBenchmark <- function(object, ...) {
-  comparisons <- benchmark_comparisons(object)
-  metric_cols <- c(
-    intersect(
-      c("mad", "relative_distance", "mds_congruence", "alienation"),
-      names(comparisons)
-    ),
-    grep("^ari_", names(comparisons), value = TRUE)
-  )
-
-  if (nrow(comparisons) == 0L || length(metric_cols) == 0L) {
-    out <- tibble::tibble(
-      metric = character(),
-      min = double(),
-      median = double(),
-      max = double()
-    )
-  } else {
-    finite_values <- lapply(
-      metric_cols,
-      function(metric) {
-        values <- comparisons[[metric]]
-        values[is.finite(values)]
-      }
-    )
-
-    finite_stat <- function(values, fun) {
-      if (length(values) == 0L) NA_real_ else fun(values)
-    }
-
-    out <- tibble::tibble(
-      metric = metric_cols,
-      min = vapply(
-        finite_values,
-        finite_stat,
-        numeric(1),
-        fun = min
-      ),
-      median = vapply(
-        finite_values,
-        finite_stat,
-        numeric(1),
-        fun = stats::median
-      ),
-      max = vapply(
-        finite_values,
-        finite_stat,
-        numeric(1),
-        fun = max
-      )
-    )
+summary.MDistBenchmark <- function(object, ..., n = 10L, width = NULL) {
+  comparisons <- attr(object, "comparisons")
+  if (!is.data.frame(comparisons)) {
+    stop("The benchmark object has no pairwise diagnostics.", call. = FALSE)
   }
 
   cat("Summary of MDistBenchmark\n")
@@ -640,45 +618,28 @@ summary.MDistBenchmark <- function(object, ...) {
   cat("  failed         : ", sum(!object$ok, na.rm = TRUE), "\n", sep = "")
   cat("  comparisons    : ", nrow(comparisons), "\n\n", sep = "")
 
-  if (nrow(out) == 0L) {
+  if (nrow(comparisons) == 0L) {
     cat("No pairwise diagnostics are available.\n")
   } else {
-    cat("Pairwise diagnostic summary:\n")
-    print(out, ...)
+    cat("Pairwise diagnostics:\n")
+    print(comparisons, ..., n = n, width = width)
   }
 
-  invisible(out)
-}
-
-#' Extract pairwise distance benchmark comparisons
-#'
-#' Returns the pairwise diagnostics computed by [benchmark_mdist()].
-#'
-#' @param x An object returned by [benchmark_mdist()].
-#'
-#' @return A tibble with one row per unique pair of successful distance
-#'   specifications. It contains pairwise MAD, symmetric relative distance,
-#'   MDS congruence, alienation, and—when requested—one adjusted Rand index
-#'   column per clustering method.
-#'
-#' @examples
-#' \dontrun{
-#' benchmark_comparisons(benchmark_result)
-#' }
-#'
-#' @export
-benchmark_comparisons <- function(x) {
-  if (!inherits(x, "MDistBenchmark")) {
-    stop("`x` must be an object returned by `benchmark_mdist()`.", call. = FALSE)
-  }
-
-  attr(x, "comparisons")
+  invisible(comparisons)
 }
 
 #' Plot pairwise distance benchmark comparisons
 #'
 #' Draws an annotated triangular heatmap of the pairwise diagnostics from
 #' [benchmark_mdist()].
+#'
+#' @details
+#' The default fill gradient runs from coral (`#E76F51`) for lower values to
+#' blue (`#008CFF`) for higher values, with regular-weight white cell labels. To use
+#' another palette, add a fill scale to the returned plot.
+#' Self-comparisons on the main diagonal are left blank. ARI plots use fixed
+#' colour limits of 0 and 1, so the same ARI has the same colour across plots.
+#' Negative ARIs retain their numerical labels but use the low-end colour.
 #'
 #' @param object An object returned by [benchmark_mdist()].
 #' @param metric Character string selecting `"mad"`, `"relative_distance"`,
@@ -721,7 +682,7 @@ autoplot.MDistBenchmark <- function(
   }
   digits <- as.integer(digits)
 
-  comparisons <- benchmark_comparisons(object)
+  comparisons <- attr(object, "comparisons")
   successful_labels <- attr(object, "method_labels")[object$ok]
 
   if (length(successful_labels) < 2L || nrow(comparisons) == 0L) {
@@ -770,18 +731,6 @@ autoplot.MDistBenchmark <- function(
         )
       )
 
-    diagonal <- tidyr::crossing(
-      method_1 = successful_labels,
-      cluster_method = unique(plot_data$cluster_method)
-    ) |>
-      dplyr::transmute(
-        method_1 = .data$method_1,
-        method_2 = .data$method_1,
-        cluster_method = .data$cluster_method,
-        value = 1
-      )
-
-    plot_data <- dplyr::bind_rows(plot_data, diagonal)
     metric_label <- "Adjusted Rand index"
     facet_ari <- length(unique(plot_data$cluster_method)) > 1L
   } else {
@@ -789,20 +738,12 @@ autoplot.MDistBenchmark <- function(
       stop("Metric `", metric, "` is not available.", call. = FALSE)
     }
 
-    diagonal_value <- if (identical(metric, "mds_congruence")) 1 else 0
     plot_data <- comparisons |>
       dplyr::transmute(
         method_1 = .data$method_1,
         method_2 = .data$method_2,
         value = .data[[metric]]
       )
-    diagonal <- tibble::tibble(
-      method_1 = successful_labels,
-      method_2 = successful_labels,
-      value = diagonal_value
-    )
-    plot_data <- dplyr::bind_rows(plot_data, diagonal)
-
     metric_label <- switch(
       metric,
       mad = "Mean absolute difference",
@@ -835,9 +776,19 @@ autoplot.MDistBenchmark <- function(
     ggplot2::geom_tile(color = "white") +
     ggplot2::geom_text(
       ggplot2::aes(label = .data$cell_label),
-      size = 3
+      size = 3,
+      colour = "white",
+      fontface = "plain"
     ) +
-    ggplot2::scale_fill_viridis_c(name = metric_label) +
+    ggplot2::scale_fill_gradient(
+      low = "#E76F51",
+      high = "#008CFF",
+      name = metric_label,
+      limits = if (identical(metric, "ari")) c(0, 1) else NULL,
+      oob = function(x, range) pmax(range[1], pmin(range[2], x))
+    ) +
+    ggplot2::scale_x_discrete(drop = FALSE) +
+    ggplot2::scale_y_discrete(drop = FALSE) +
     ggplot2::labs(x = NULL, y = NULL) +
     ggplot2::coord_equal() +
     ggplot2::theme_minimal() +

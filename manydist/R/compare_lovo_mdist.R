@@ -262,13 +262,26 @@ MDistLOVOCompare <- R6::R6Class(
             .groups = "drop"
           )
 
+        if ("variable_type" %in% names(df)) {
+          ord_df <- ord_df |>
+            dplyr::left_join(
+              dplyr::distinct(df, variable, variable_type),
+              by = "variable"
+            ) |>
+            dplyr::mutate(
+              type_order = match(variable_type, c("categorical", "numeric"))
+            )
+        } else {
+          ord_df$type_order <- 1L
+        }
+
         if (smaller_is_stronger) {
           ord <- ord_df |>
-            dplyr::arrange(avg_metric) |>
+            dplyr::arrange(type_order, avg_metric) |>
             dplyr::pull(variable)
         } else {
           ord <- ord_df |>
-            dplyr::arrange(dplyr::desc(avg_metric)) |>
+            dplyr::arrange(type_order, dplyr::desc(avg_metric)) |>
             dplyr::pull(variable)
         }
       } else if ("variable_type" %in% names(df)) {
@@ -408,6 +421,12 @@ MDistLOVOCompare <- R6::R6Class(
 #' The results are combined across methods and returned as an
 #' \code{MDistLOVOCompare} object, which supports
 #' \code{print()}, \code{summary()}, and \code{ggplot2::autoplot()}.
+#'
+#' In \code{autoplot()}, \code{reorder = TRUE} ranks variables by the selected
+#' metric averaged across methods, separately within each variable type.
+#' Categorical variables precede numerical variables, preserving the blue/red
+#' background bands. \code{top_n} still selects variables globally before
+#' ordering. If type information is absent, ordering is global.
 #'
 #' @param x A data frame or tibble containing the predictors.
 #'
