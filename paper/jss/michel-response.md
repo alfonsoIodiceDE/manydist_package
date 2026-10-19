@@ -337,3 +337,108 @@ was not rebuilt.
 Installed the corrected package and confirmed Gower and `hl` consistency in a
 fresh R session. Independent numerical operator checks, including reduced PCA,
 are retained as regression tests alongside the new-data checks.
+
+### 2026-10-16 — Downstream LOVO diagnostic figure
+
+Improved the new two-panel LOVO illustration without changing its diagnostics.
+The panels now use horizontal layouts, a shared readable variable axis, and
+short titles. The caption distinguishes the two-dimensional classical MDS
+alienation coefficient from the three-cluster complete-linkage `1 - ARI`
+diagnostic, explains that larger values indicate greater changes, and identifies
+the variable-type shading and different horizontal scales. The simple
+`autoplot()` calls remain visible; formatting code is omitted from the printed
+article. Rebuilt and visually checked the manuscript. No Michel-comment
+statuses changed.
+
+Subsequent author-requested refinement: restored the conventional orientation
+with variables on the horizontal axes. Shortened variable names and used
+two-line labels at a smaller font size without rotation, retaining the
+side-by-side panels. The caption now refers to different vertical scales.
+Rebuilt and visually checked the 35-page PDF, including page 16 and its
+following page. No diagnostic values or Michel-comment statuses changed.
+
+The side-by-side assembly command, `patchwork::wrap_plots(a, b, nrow = 1)`, is
+now also printed after the two `autoplot()` calls. Only presentation adjustments
+remain hidden. Rebuilt and visually verified page 16; figure appearance and
+diagnostic values are unchanged.
+
+Removed redundant interpretation guidance from the across-specification LOVO
+subsection and shortened its captions, relying on the definitions already given
+for single-specification LOVO. Retained the comparison-specific qualifications:
+full-versus-reduced comparisons are within each specification, species labels
+are not used, and association-aware constructions may change after omission.
+The author's latest edits elsewhere were preserved. This wording-only update
+has not been rendered; no Michel-comment statuses changed.
+
+### 2026-10-16 — Simplified candidate-specification interface
+
+Removed the `mode` argument from `all_dist_method_specs()`. The default
+constructs custom combinations filtered by the component arguments; preset
+names select only those presets, and `preset = "all"` selects all named
+presets. Adding `"custom"` to a selection combines these with filtered custom
+rows. Commensurable custom combinations retain `std` and `pc_scores` only,
+removing the redundant `robust` rows without changing the distances computed
+by `mdist()`. There are 413 custom combinations and 10 named presets.
+
+Updated the manuscript's candidate-grid explanation and calls, package help,
+release notes, source vignettes, and replication-script calls. The paper now
+qualifies affine equivalence as a training-distance property because range
+clipping can affect out-of-range test observations. All eight package test
+files pass; the revised package was installed locally. Other author edits
+were preserved. No Michel-comment statuses changed; the PDF was not rebuilt.
+
+### 2026-10-16 — Direct kNN prediction and Section 6.1
+
+Simplified public `knn_dist()` by removing `dist_fun`. Tabular input now calls
+`mdist()` automatically, with distance settings supplied in `dist_args`;
+precomputed test-to-training distances remain supported. The internal
+tidymodels engine interfaces are unchanged.
+
+Section 6.1 now starts with tabular prediction, then demonstrates externally
+computed distances, and finally gives the complete recipe/workflow. The
+training-only construction, response-column exclusion, matrix orientation, and
+training-outcome ordering are explained in that sequence. Other author edits
+were preserved. All eight package test files pass, the package is installed
+locally, and the exact manuscript chunks and installed help examples execute
+successfully. All three interfaces give identical predictions for the 84 test
+penguins (accuracy 1). No Michel-comment statuses changed.
+
+Rebuilt the 35-page manuscript and visually checked pages 21–24. Both printed
+prediction comparisons return `TRUE`; no unresolved references or `dist_fun`
+mentions remain in the PDF. The tabular and precomputed examples precede the
+workflow as requested.
+
+### 2026-10-16 — Workflow boxes moved to Section 6.3
+
+At the author's clarification, Section 6.1 retains its original purpose: the
+fixed-five-neighbour penguin workflow demonstrates equivalence with the two
+direct interfaces. All 84 test predictions agree; no penguin tuning remains.
+
+The existing WDI pipeline in Section 6.3 now has restrained, phase-labelled
+boxes: Preprocess, Specify, Assemble, Tune; then Select, Finalize, Evaluate.
+The `last_fit()` idiom is preserved, combining final fitting, prediction, and
+test evaluation. The distance and neighbour selection, cross-validation design,
+performance summaries, and figures are unchanged. Rebuilt the 35-page PDF and
+visually checked pages 23, 28, and 30. The WDI selection remains Unbiased mixed
+with nine neighbours, with test balanced accuracy 0.800 and accuracy 0.717.
+No package behavior or Michel-comment statuses changed.
+
+### 2026-10-16 — Right-aligned pipeline phase labels
+
+Refined both Section 6.3 workflow boxes by replacing the phase-name code
+comments with a dedicated, right-aligned column of muted grey labels.
+Each label stays with its code; the code retains the native JSS formatting.
+Rebuilt the 35-page PDF and visually verified both boxes on pages 28 and 30.
+The analysis and results are unchanged; no Michel-comment statuses changed.
+
+### 2026-10-16 — Upper-triangular benchmark summaries
+
+Replaced the printed pairwise-results tibble with one upper-triangular table
+per diagnostic in `summary.MDistBenchmark()`. The `metric` argument selects
+measures (all by default; `"ari"` selects available clustering ARIs), and
+`digits` controls display rounding. The complete, unrounded tibble remains
+the invisible return value, preserving existing extraction and analysis code.
+Updated package documentation and the manuscript description; rebuilt the
+36-page PDF with all five benchmark tables together on page 20. All eight
+test files pass, and the updated package is installed locally. No changes
+to computed diagnostics or Michel-comment statuses.

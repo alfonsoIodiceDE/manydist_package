@@ -16,8 +16,9 @@ systematically:
   evaluates
   [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
   once for every row and compares all successful distances;
-- [`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md)
-  extracts the pairwise diagnostics.
+- [`summary()`](https://rdrr.io/r/base/summary.html) displays
+  upper-triangular diagnostic tables and invisibly returns the complete
+  pairwise-diagnostics tibble.
 
 This guide shows how to define a manageable candidate set, run it
 safely, inspect failures, compare the resulting dissimilarities, and
@@ -72,14 +73,19 @@ dplyr::glimpse(penguin_x)
 
 [`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md)
 returns one specification per row. Preset rows use the `preset` column,
-whereas component rows describe a custom combination of `method_cat`,
-`method_num`, and `commensurable`.
+whereas rows with `preset = "custom"` describe a combination of
+`method_cat`, `method_num`, and `commensurable`.
+
+By default, the function returns custom combinations only. Use
+`preset = "all"` for all named presets, a vector of names for selected
+presets, or `preset = c("all", "custom")` for both. Custom grids retain
+only `"std"` and `"pc_scores"` when commensurability is enabled,
+avoiding redundant affine scaling choices.
 
 ``` r
 
-all_dist_method_specs(mode = "presets_only") |>
+all_dist_method_specs(preset = "all") |>
   dplyr::select(
-    spec_type,
     preset,
     method_cat,
     method_num,
@@ -87,20 +93,19 @@ all_dist_method_specs(mode = "presets_only") |>
   )
 ```
 
-    # A tibble: 11 × 5
-       spec_type preset    method_cat method_num commensurable
-       <chr>     <chr>     <chr>      <chr>      <lgl>
-     1 preset    euclidean <NA>       <NA>       NA
-     2 preset    gower     <NA>       <NA>       NA
-     3 preset    hl        <NA>       <NA>       NA
-     4 preset    u_dep     <NA>       <NA>       NA
-     5 preset    u_dep_bw  <NA>       <NA>       NA
-     6 preset    u_indep   <NA>       <NA>       NA
-     7 preset    u_mix     <NA>       <NA>       NA
-     8 preset    dkss      <NA>       <NA>       NA
-     9 preset    gudmm     <NA>       <NA>       NA
-    10 preset    mod_gower <NA>       <NA>       NA
-    11 preset    custom    <NA>       <NA>       NA           
+    # A tibble: 10 × 4
+       preset    method_cat method_num commensurable
+       <chr>     <chr>      <chr>      <lgl>
+     1 euclidean <NA>       <NA>       NA
+     2 gower     <NA>       <NA>       NA
+     3 hl        <NA>       <NA>       NA
+     4 u_dep     <NA>       <NA>       NA
+     5 u_dep_bw  <NA>       <NA>       NA
+     6 u_indep   <NA>       <NA>       NA
+     7 u_mix     <NA>       <NA>       NA
+     8 dkss      <NA>       <NA>       NA
+     9 gudmm     <NA>       <NA>       NA
+    10 mod_gower <NA>       <NA>       NA           
 
 It is usually better to begin with a small set of substantively
 different choices than to run every possible combination. Here we
@@ -110,11 +115,9 @@ compare four presets and two custom specifications.
 
 candidate_specs <- dplyr::bind_rows(
   all_dist_method_specs(
-    mode = "presets_only",
     preset = c("gower", "u_indep", "euclidean", "hl")
   ),
   tibble::tibble(
-    spec_type = "component",
     preset = "custom",
     method_cat = "matching",
     method_num = "std",
@@ -135,15 +138,15 @@ candidate_specs <- dplyr::bind_rows(
 candidate_specs
 ```
 
-    # A tibble: 6 × 6
-      spec_type preset    method_cat method_num commensurable label
-      <chr>     <chr>     <chr>      <chr>      <lgl>         <chr>
-    1 preset    euclidean <NA>       <NA>       NA            Euclidean
-    2 preset    gower     <NA>       <NA>       NA            Gower
-    3 preset    hl        <NA>       <NA>       NA            Hennig--Liao
-    4 preset    u_indep   <NA>       <NA>       NA            Unbiased independent
-    5 component custom    matching   std        FALSE         Matching + z scores
-    6 component custom    matching   std        TRUE          Matching + z scores (…
+    # A tibble: 6 × 5
+      preset    method_cat method_num commensurable label
+      <chr>     <chr>      <chr>      <lgl>         <chr>
+    1 euclidean <NA>       <NA>       NA            Euclidean
+    2 gower     <NA>       <NA>       NA            Gower
+    3 hl        <NA>       <NA>       NA            Hennig--Liao
+    4 u_indep   <NA>       <NA>       NA            Unbiased independent
+    5 custom    matching   std        FALSE         Matching + z scores
+    6 custom    matching   std        TRUE          Matching + z scores (weighted)
 
 This explicit table is useful for reproducibility: it records exactly
 which distance definitions entered the comparison.
@@ -175,17 +178,17 @@ distance_benchmark
       clustering     : not requested
 
     Methods:
-    # A tibble: 6 × 4
-         id method                         type      status
-      <int> <chr>                          <chr>     <chr>
-    1     1 Euclidean                      preset    successful
-    2     2 Gower                          preset    successful
-    3     3 Hennig--Liao                   preset    successful
-    4     4 Unbiased independent           preset    successful
-    5     5 Matching + z scores            component successful
-    6     6 Matching + z scores (weighted) component successful
+    # A tibble: 6 × 3
+         id method                         status
+      <int> <chr>                          <chr>
+    1     1 Euclidean                      successful
+    2     2 Gower                          successful
+    3     3 Hennig--Liao                   successful
+    4     4 Unbiased independent           successful
+    5     5 Matching + z scores            successful
+    6     6 Matching + z scores (weighted) successful
 
-    Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)` for pairwise diagnostics.
+    Use `tibble::as_tibble(x)` for the full run table and `summary(x)` for pairwise diagnostics.
 
 The compact print method reports how many specifications succeeded, how
 many failed, and how many pairwise comparisons are available. It also
@@ -232,9 +235,9 @@ particular data set.
 
 ## 5 Comparing successful distances
 
-[`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md)
-returns one row for each unique pair of successful specifications. Four
-diagnostics are always available:
+[`summary()`](https://rdrr.io/r/base/summary.html) returns one row for
+each unique pair of successful specifications. Four diagnostics are
+always available:
 
 - `mad` is the mean absolute difference between the corresponding
   pairwise dissimilarities;
@@ -253,12 +256,20 @@ The symmetric relative distance is
 It is zero for identical distances and does not depend on how many
 specifications are included in the benchmark.
 
-[`summary()`](https://rdrr.io/r/base/summary.html) provides a compact
-overview of the range of each available pairwise diagnostic.
+[`summary()`](https://rdrr.io/r/base/summary.html) displays one
+upper-triangular table per diagnostic, omitting the diagonal and
+redundant lower triangle. All available measures are displayed by
+default; use `metric = "relative_distance"`, a vector of measure names,
+or `metric = "ari"` for all available clustering ARIs. `digits` controls
+display rounding. The complete, unrounded results tibble is still
+returned invisibly, regardless of the displayed measures. These
+diagnostics are computed by
+[`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md);
+requesting a summary does not refit the distances.
 
 ``` r
 
-summary(distance_benchmark)
+pairwise_diagnostics <- summary(distance_benchmark)
 ```
 
     Summary of MDistBenchmark
@@ -267,18 +278,101 @@ summary(distance_benchmark)
       failed         : 0
       comparisons    : 15
 
-    Pairwise diagnostic summary:
-    # A tibble: 4 × 4
-      metric              min median   max
-      <chr>             <dbl>  <dbl> <dbl>
-    1 mad               0      2.58  5.66
-    2 relative_distance 0      0.636 1.78
-    3 mds_congruence    0.961  0.990 1
-    4 alienation        0      0.141 0.278
+    Pairwise diagnostics (upper triangle; diagonal omitted):
+
+    mad:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                3.638        1.054
+    Gower                                                 2.585
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     2.074               1.855
+    Gower                                         5.663               5.325
+    Hennig--Liao                                  3.078               2.740
+    Unbiased independent                                              0.553
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               2.074
+    Gower                                                   5.663
+    Hennig--Liao                                            3.078
+    Unbiased independent                                    0.000
+    Matching + z scores                                     0.553
+    Matching + z scores (weighted)
+
+    relative_distance:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                1.673        0.304
+    Gower                                                 1.569
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.414               0.384
+    Gower                                         1.777               1.765
+    Hennig--Liao                                  0.687               0.636
+    Unbiased independent                                              0.095
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.414
+    Gower                                                   1.777
+    Hennig--Liao                                            0.687
+    Unbiased independent                                    0.000
+    Matching + z scores                                     0.095
+    Matching + z scores (weighted)
+
+    mds_congruence:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                0.995        0.980
+    Gower                                                 0.961
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.997               0.984
+    Gower                                         0.990               0.968
+    Hennig--Liao                                  0.987               0.997
+    Unbiased independent                                              0.992
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.997
+    Gower                                                   0.990
+    Hennig--Liao                                            0.987
+    Unbiased independent                                    1.000
+    Matching + z scores                                     0.992
+    Matching + z scores (weighted)
+
+    alienation:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                0.098        0.199
+    Gower                                                 0.278
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.081               0.179
+    Gower                                         0.141               0.250
+    Hennig--Liao                                  0.162               0.075
+    Unbiased independent                                              0.123
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.081
+    Gower                                                   0.141
+    Hennig--Liao                                            0.162
+    Unbiased independent                                    0.000
+    Matching + z scores                                     0.123
+    Matching + z scores (weighted)                               
 
 ``` r
-
-pairwise_diagnostics <- benchmark_comparisons(distance_benchmark)
 
 pairwise_diagnostics |>
   dplyr::select(
@@ -366,7 +460,7 @@ clustering_benchmark <- benchmark_mdist(
   spectral_nstart = 50
 )
 
-benchmark_comparisons(clustering_benchmark) |>
+summary(clustering_benchmark) |>
   dplyr::select(
     method_1,
     method_2,
@@ -376,6 +470,152 @@ benchmark_comparisons(clustering_benchmark) |>
   dplyr::arrange(ari_pam) |>
   dplyr::slice_head(n = 10)
 ```
+
+    Summary of MDistBenchmark
+      specifications : 6
+      successful     : 6
+      failed         : 0
+      comparisons    : 15
+
+    Pairwise diagnostics (upper triangle; diagonal omitted):
+
+    mad:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                3.638        1.054
+    Gower                                                 2.585
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     2.074               1.855
+    Gower                                         5.663               5.325
+    Hennig--Liao                                  3.078               2.740
+    Unbiased independent                                              0.553
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               2.074
+    Gower                                                   5.663
+    Hennig--Liao                                            3.078
+    Unbiased independent                                    0.000
+    Matching + z scores                                     0.553
+    Matching + z scores (weighted)
+
+    relative_distance:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                1.673        0.304
+    Gower                                                 1.569
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.414               0.384
+    Gower                                         1.777               1.765
+    Hennig--Liao                                  0.687               0.636
+    Unbiased independent                                              0.095
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.414
+    Gower                                                   1.777
+    Hennig--Liao                                            0.687
+    Unbiased independent                                    0.000
+    Matching + z scores                                     0.095
+    Matching + z scores (weighted)
+
+    mds_congruence:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                0.995        0.980
+    Gower                                                 0.961
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.997               0.984
+    Gower                                         0.990               0.968
+    Hennig--Liao                                  0.987               0.997
+    Unbiased independent                                              0.992
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.997
+    Gower                                                   0.990
+    Hennig--Liao                                            0.987
+    Unbiased independent                                    1.000
+    Matching + z scores                                     0.992
+    Matching + z scores (weighted)
+
+    alienation:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                0.098        0.199
+    Gower                                                 0.278
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.081               0.179
+    Gower                                         0.141               0.250
+    Hennig--Liao                                  0.162               0.075
+    Unbiased independent                                              0.123
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.081
+    Gower                                                   0.141
+    Hennig--Liao                                            0.162
+    Unbiased independent                                    0.000
+    Matching + z scores                                     0.123
+    Matching + z scores (weighted)
+
+    ari_pam:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                0.911        0.924
+    Gower                                                 0.870
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     0.982               0.924
+    Gower                                         0.929               0.871
+    Hennig--Liao                                  0.941               0.933
+    Unbiased independent                                              0.941
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               0.982
+    Gower                                                   0.929
+    Hennig--Liao                                            0.941
+    Unbiased independent                                    1.000
+    Matching + z scores                                     0.941
+    Matching + z scores (weighted)
+
+    ari_spectral:
+                                   Euclidean Gower Hennig--Liao
+    Euclidean                                1.000        0.828
+    Gower                                                 0.828
+    Hennig--Liao
+    Unbiased independent
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Unbiased independent Matching + z scores
+    Euclidean                                     1.000               0.901
+    Gower                                         1.000               0.901
+    Hennig--Liao                                  0.828               0.917
+    Unbiased independent                                              0.901
+    Matching + z scores
+    Matching + z scores (weighted)
+                                   Matching + z scores (weighted)
+    Euclidean                                               1.000
+    Gower                                                   1.000
+    Hennig--Liao                                            0.828
+    Unbiased independent                                    1.000
+    Matching + z scores                                     0.901
+    Matching + z scores (weighted)                               
 
     # A tibble: 10 × 4
        method_1             method_2                       ari_pam ari_spectral
@@ -412,27 +652,24 @@ clustering.](benchmarking_distance_choices_files/figure-html/plot-clustering-agr
 ## 7 Response-aware candidates
 
 Some specifications can use a response when constructing the
-dissimilarity. They can be listed with `mode = "response_aware_only"`.
+dissimilarity. The response-aware presets can be selected directly by
+name.
 
 ``` r
 
 response_specs <- all_dist_method_specs(
-  mode = "response_aware_only"
-) |>
-  dplyr::filter(
-    spec_type == "preset",
-    preset %in% c("u_dep", "u_dep_bw", "u_mix")
-  )
+  preset = c("u_dep", "u_dep_bw", "u_mix")
+)
 
 response_specs
 ```
 
-    # A tibble: 3 × 5
-      spec_type preset   method_cat method_num commensurable
-      <chr>     <chr>    <chr>      <chr>      <lgl>
-    1 preset    u_dep    <NA>       <NA>       NA
-    2 preset    u_dep_bw <NA>       <NA>       NA
-    3 preset    u_mix    <NA>       <NA>       NA           
+    # A tibble: 3 × 4
+      preset   method_cat method_num commensurable
+      <chr>    <chr>      <chr>      <lgl>
+    1 u_dep    <NA>       <NA>       NA
+    2 u_dep_bw <NA>       <NA>       NA
+    3 u_mix    <NA>       <NA>       NA           
 
 When the response is supplied to
 [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md),
@@ -460,16 +697,40 @@ response_benchmark |>
 
 ``` r
 
-benchmark_comparisons(response_benchmark)
+summary(response_benchmark)
 ```
 
-    # A tibble: 3 × 8
-      method_1_id method_2_id method_1 method_2    mad relative_distance
-            <int>       <int> <chr>    <chr>     <dbl>             <dbl>
-    1           1           2 u_dep    u_dep_bw 0.0122           0.00203
-    2           1           3 u_dep    u_mix    1.30             0.215
-    3           2           3 u_dep_bw u_mix    1.29             0.214
-    # ℹ 2 more variables: mds_congruence <dbl>, alienation <dbl>
+    Summary of MDistBenchmark
+      specifications : 3
+      successful     : 3
+      failed         : 0
+      comparisons    : 3
+
+    Pairwise diagnostics (upper triangle; diagonal omitted):
+
+    mad:
+             u_dep u_dep_bw u_mix
+    u_dep             0.012 1.295
+    u_dep_bw                1.289
+    u_mix
+
+    relative_distance:
+             u_dep u_dep_bw u_mix
+    u_dep             0.002 0.215
+    u_dep_bw                0.214
+    u_mix
+
+    mds_congruence:
+             u_dep u_dep_bw u_mix
+    u_dep             1.000 0.961
+    u_dep_bw                0.962
+    u_mix
+
+    alienation:
+             u_dep u_dep_bw u_mix
+    u_dep             0.002 0.276
+    u_dep_bw                0.275
+    u_mix                        
 
 If response-aware distances are compared by predictive performance,
 their construction must occur inside each resample. Constructing them
@@ -496,7 +757,6 @@ clustering-method combination.
 ``` r
 
 larger_specs <- all_dist_method_specs(
-  mode = "full",
   method_cat = c("matching", "tvd"),
   method_num = c("std", "robust"),
   commensurable = c(FALSE, TRUE)

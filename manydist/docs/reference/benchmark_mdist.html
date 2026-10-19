@@ -77,7 +77,7 @@ unquoted or as a character string.</p></dd>
 
 <dt id="arg-specs">specs<a class="anchor" aria-label="anchor" href="#arg-specs"></a></dt>
 <dd><p>A tibble of method specifications. By default, this is generated
-with [all_dist_method_specs()]. It must contain the columns `spec_type`,
+with [all_dist_method_specs()]. It must contain the columns
 `preset`, `method_cat`, `method_num`, and `commensurable`. An optional
 `label` column supplies display labels for comparisons and plots.</p></dd>
 
@@ -129,16 +129,16 @@ step in spectral clustering.</p></dd>
 <dd><p>Error message for failed runs, `NA` otherwise.</p></dd>
 
 
-</dl><p>Use [benchmark_comparisons()] to obtain the pairwise diagnostics and
-[ggplot2::autoplot()] to draw an annotated triangular heatmap. The default
-print method displays a compact run overview; use `tibble::as_tibble()` to
-inspect the complete underlying table. `summary()` returns minimum, median,
-and maximum values for each available pairwise diagnostic.</p>
+</dl><p>Use `summary()` to display upper-triangular tables of pairwise diagnostics
+and invisibly obtain their complete tibble, and [ggplot2::autoplot()] to draw
+an annotated triangular heatmap.
+The default print method displays a compact run overview; use
+`tibble::as_tibble()` to inspect the complete underlying run table.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Each row of `specs` is interpreted as one valid `mdist()` configuration.
-Preset-based and custom component-based specifications are both supported.
+Preset-based and custom specifications are both supported.
 Failed specifications are caught and returned in the output rather than
 stopping the full benchmark.</p>
 
@@ -176,7 +176,6 @@ columns are included in the comparisons.</p>
 <span class="r-in"><span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html" class="external-link">drop_na</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    mode <span class="op">=</span> <span class="st">"presets_only"</span>,</span></span>
 <span class="r-in"><span>    preset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gower"</span>, <span class="st">"u_indep"</span>, <span class="st">"u_dep"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
@@ -187,9 +186,7 @@ columns are included in the comparisons.</p>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">res</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">pairwise_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">res</span>, metric <span class="op">=</span> <span class="st">"relative_distance"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>For method(s) 'matching', category dissimilarities do not depend on conditional profiles; `response` was therefore ignored.</span>
@@ -199,14 +196,31 @@ columns are included in the comparisons.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   failed         : 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   comparisons    : 3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise diagnostic summary:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 4</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   metric              min median   max</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> mad               1.27   5.66  5.66 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> relative_distance 0.210  1.78  1.78 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> mds_congruence    0.961  0.982 0.990</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> alienation        0.141  0.189 0.278</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pairwise diagnostics (upper triangle; diagonal omitted):</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mad:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         gower u_dep u_indep</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> gower         5.663   5.663</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_dep                 1.266</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_indep                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> relative_distance:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         gower u_dep u_indep</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> gower         1.777   1.777</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_dep                 0.210</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_indep                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mds_congruence:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         gower u_dep u_indep</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> gower         0.982   0.990</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_dep                 0.961</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_indep                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alienation:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         gower u_dep u_indep</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> gower         0.189   0.141</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_dep                 0.278</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> u_indep                    </span>
 <span class="r-plt img"><img src="benchmark_mdist-1.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

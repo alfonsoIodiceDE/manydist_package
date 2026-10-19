@@ -4,20 +4,28 @@
 \alias{summary.MDistBenchmark}
 \title{Summarize a distance benchmark}
 \usage{
-\method{summary}{MDistBenchmark}(object, ..., n = 10L, width = NULL)
+\method{summary}{MDistBenchmark}(object, metric = NULL, digits = 3L, ..., n = Inf, width = NULL)
 }
 \arguments{
 \item{object}{An object returned by \code{\link[=benchmark_mdist]{benchmark_mdist()}}.}
 
-\item{...}{Additional arguments passed to the tibble print method.}
+\item{metric}{Character vector selecting diagnostics to display. \code{NULL}
+(the default) displays all available diagnostics. Choices include \code{"mad"},
+\code{"relative_distance"}, \code{"mds_congruence"}, \code{"alienation"}, and available
+ARI columns such as \code{"ari_pam"}. \code{"ari"} selects all available ARI columns.}
 
-\item{n}{Number of rows to display. Use \code{Inf} to display all rows.}
+\item{digits}{Number of decimal places in the displayed tables.}
+
+\item{...}{Additional arguments passed to the matrix print method.}
+
+\item{n}{Maximum number of methods to display in each table. The default,
+\code{Inf}, displays every successful method. The returned tibble is not limited.}
 
 \item{width}{Width of the printed output; \code{NULL} uses the default width.}
 }
 \value{
 Invisibly returns the complete tibble with one row per unique pair
-of successful specifications, regardless of the display limit \code{n}.
+of successful specifications, regardless of \code{metric}, \code{digits}, or \code{n}.
 Columns include the method labels, MAD, symmetric relative distance,
 MDS congruence, alienation, and any requested clustering ARIs.
 If fewer than two specifications succeed, the tibble has zero rows.
@@ -29,5 +37,7 @@ without refitting distances or recomputing diagnostics.
 \examples{
 \dontrun{
 pairwise_results <- summary(benchmark_result)
+summary(benchmark_result, metric = "relative_distance")
+summary(benchmark_result, metric = c("alienation", "ari"))
 }
 }

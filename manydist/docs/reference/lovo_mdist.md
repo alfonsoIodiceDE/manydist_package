@@ -110,6 +110,12 @@ considered influential when removing it produces a large change in the
 dissimilarity matrix or an optional downstream representation, such as a
 multidimensional scaling configuration or clustering partition.
 
+In \`autoplot()\`, \`reorder = TRUE\` ranks variables by the selected
+metric within each variable type, with categorical variables before
+numerical variables. This preserves the blue/red background bands.
+\`top_n\` selection remains global; without type information, ordering
+is global.
+
 The returned object contains several LOVO diagnostics. The main distance
 contribution is measured by the mean absolute difference between the
 full dissimilarity matrix and each leave-one-variable-out matrix

@@ -36,10 +36,9 @@ benchmark_mdist(
 - specs:
 
   A tibble of method specifications. By default, this is generated with
-  \[all_dist_method_specs()\]. It must contain the columns
-  \`spec_type\`, \`preset\`, \`method_cat\`, \`method_num\`, and
-  \`commensurable\`. An optional \`label\` column supplies display
-  labels for comparisons and plots.
+  \[all_dist_method_specs()\]. It must contain the columns \`preset\`,
+  \`method_cat\`, \`method_num\`, and \`commensurable\`. An optional
+  \`label\` column supplies display labels for comparisons and plots.
 
 - dims:
 
@@ -92,19 +91,18 @@ contains the supplied specifications together with:
 
   Error message for failed runs, \`NA\` otherwise.
 
-Use \[benchmark_comparisons()\] to obtain the pairwise diagnostics and
+Use \`summary()\` to display upper-triangular tables of pairwise
+diagnostics and invisibly obtain their complete tibble, and
 \[ggplot2::autoplot()\] to draw an annotated triangular heatmap. The
 default print method displays a compact run overview; use
-\`tibble::as_tibble()\` to inspect the complete underlying table.
-\`summary()\` returns minimum, median, and maximum values for each
-available pairwise diagnostic.
+\`tibble::as_tibble()\` to inspect the complete underlying run table.
 
 ## Details
 
 Each row of \`specs\` is interpreted as one valid \`mdist()\`
-configuration. Preset-based and custom component-based specifications
-are both supported. Failed specifications are caught and returned in the
-output rather than stopping the full benchmark.
+configuration. Preset-based and custom specifications are both
+supported. Failed specifications are caught and returned in the output
+rather than stopping the full benchmark.
 
 Preset specifications use the \`preset\` column and ignore
 \`method_cat\`, \`method_num\`, and \`commensurable\`. Component
@@ -139,7 +137,6 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     tidyr::drop_na()
 
   specs <- all_dist_method_specs(
-    mode = "presets_only",
     preset = c("gower", "u_indep", "u_dep")
   )
 
@@ -150,9 +147,7 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
   )
 
   res
-  summary(res)
-
-  benchmark_comparisons(res)
+  pairwise_results <- summary(res)
   ggplot2::autoplot(res, metric = "relative_distance")
 }
 #> Warning: For method(s) 'matching', category dissimilarities do not depend on conditional profiles; `response` was therefore ignored.
@@ -162,13 +157,30 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
 #>   failed         : 0
 #>   comparisons    : 3
 #> 
-#> Pairwise diagnostic summary:
-#> # A tibble: 4 × 4
-#>   metric              min median   max
-#>   <chr>             <dbl>  <dbl> <dbl>
-#> 1 mad               1.27   5.66  5.66 
-#> 2 relative_distance 0.210  1.78  1.78 
-#> 3 mds_congruence    0.961  0.982 0.990
-#> 4 alienation        0.141  0.189 0.278
+#> Pairwise diagnostics (upper triangle; diagonal omitted):
+#> 
+#> mad:
+#>         gower u_dep u_indep
+#> gower         5.663   5.663
+#> u_dep                 1.266
+#> u_indep                    
+#> 
+#> relative_distance:
+#>         gower u_dep u_indep
+#> gower         1.777   1.777
+#> u_dep                 0.210
+#> u_indep                    
+#> 
+#> mds_congruence:
+#>         gower u_dep u_indep
+#> gower         0.982   0.990
+#> u_dep                 0.961
+#> u_indep                    
+#> 
+#> alienation:
+#>         gower u_dep u_indep
+#> gower         0.189   0.141
+#> u_dep                 0.278
+#> u_indep                    
 
 ```

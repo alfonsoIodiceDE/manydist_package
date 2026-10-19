@@ -59,8 +59,9 @@ An object of class `"MDistBenchmark"`, which is also a tibble. It
   \item{error}{Error message for failed runs, `NA` otherwise.}
 }
 
-Use `summary()` to display and obtain the complete pairwise-diagnostics
-tibble, and [ggplot2::autoplot()] to draw an annotated triangular heatmap.
+Use `summary()` to display upper-triangular tables of pairwise diagnostics
+and invisibly obtain their complete tibble, and [ggplot2::autoplot()] to draw
+an annotated triangular heatmap.
 The default print method displays a compact run overview; use
 `tibble::as_tibble()` to inspect the complete underlying run table.
 }
@@ -111,7 +112,6 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
     tidyr::drop_na()
 
   specs <- all_dist_method_specs(
-    mode = "presets_only",
     preset = c("gower", "u_indep", "u_dep")
   )
 

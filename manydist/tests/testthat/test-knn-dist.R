@@ -13,8 +13,12 @@ test_that("direct prediction accepts distances and tabular data", {
   expect_identical(knn_dist(ex$d$distance, ex$y, k = 1), expected)
   expect_identical(knn_dist(as.data.frame(ex$d$distance), ex$y, k = 1), expected)
   expect_identical(knn_dist(ex$train, ex$y, new_data = ex$test, k = 1,
-                           dist_fun = mdist, dist_args = list(preset = "gower")),
+                           dist_args = list(preset = "gower")),
                    expected)
+  expect_identical(knn_dist(ex$train, ex$y, new_data = ex$test, k = 1), expected)
+  expect_identical(knn_dist(as.matrix(ex$train), ex$y,
+                            new_data = as.matrix(ex$test), k = 1,
+                            dist_args = list(preset = "gower")), expected)
   engine <- fit_knn_dist(ex$train, ex$y, k = 1)
   expect_identical(knn_dist(ex$d, ex$y, k = 1),
                    predict_knn_dist_class(engine, ex$d$distance))
@@ -27,10 +31,10 @@ test_that("probabilities and regression use all neighbours", {
   expect_equal(rowSums(probabilities), c(1, 1))
   expect_equal(knn_dist(ex$d, ex$train$value, k = 2, type = "numeric"), c(1, 9))
   expect_equal(knn_dist(ex$train, ex$train$value, new_data = ex$test, k = 2,
-                        dist_fun = mdist, dist_args = list(preset = "gower"),
+                        dist_args = list(preset = "gower"),
                         type = "numeric"), c(1, 9))
   expect_equal(knn_dist(ex$train, ex$y, new_data = ex$test, k = 2,
-                        dist_fun = mdist, dist_args = list(preset = "gower"),
+                        dist_args = list(preset = "gower"),
                         type = "prob"), probabilities)
 })
 
@@ -82,33 +86,41 @@ test_that("invalid direct inputs give informative errors", {
   expect_error(knn_dist(1:4, ex$y, k = 1), "test-to-training matrix")
   expect_error(knn_dist(ex$d, ex$y, new_data = ex$test, k = 1),
                "leave `new_data`")
-  expect_error(knn_dist(ex$train, ex$y, k = 1, dist_fun = "mdist"),
-               "function or NULL")
-  expect_error(knn_dist(ex$train, ex$y, k = 1, dist_fun = mdist),
+  expect_false("dist_fun" %in% names(formals(knn_dist)))
+  expect_error(knn_dist(ex$train, ex$y, k = 1, dist_fun = mdist), "unused argument")
+  expect_error(knn_dist(ex$train, ex$y, new_data = 1, k = 1),
                "tabular test predictors")
   expect_error(knn_dist(ex$train[-1, , drop = FALSE], ex$y, new_data = ex$test,
-                        k = 1, dist_fun = mdist), "one row per outcome")
+                        k = 1), "one row per outcome")
   expect_error(knn_dist(ex$train, ex$y, new_data = ex$test, k = 1,
-                        dist_fun = mdist, dist_args = list("gower")), "named list")
+                        dist_args = list("gower")), "named list")
   expect_error(knn_dist(ex$train, ex$y, new_data = ex$test, k = 1,
-                        dist_fun = mdist, dist_args = list(new_data = ex$test)),
+                        dist_args = list(new_data = ex$test)),
                "not `dist_args`")
-  wrong_rows <- function(x, new_data) matrix(0, nrow = 3, ncol = nrow(x))
+  expect_error(knn_dist(ex$d, ex$y, k = 1, dist_args = list(preset = "gower")),
+               "For precomputed distances")
+  testthat::local_mocked_bindings(
+    mdist = function(x, new_data) matrix(0, nrow = 3, ncol = nrow(x)),
+    .package = "manydist"
+  )
   expect_error(knn_dist(ex$train, ex$y, new_data = ex$test, k = 1,
-                        dist_fun = wrong_rows), "one row per test")
+                        dist_args = list()), "one row per test")
 })
 
-test_that("tabular prediction calls the distance function with separate datasets", {
+test_that("tabular prediction calls mdist with separate datasets and arguments", {
   ex <- knn_example()
   called <- 0L
-  distance_function <- function(x, new_data, scale) {
+  actual_mdist <- mdist
+  distance_function <- function(x, new_data, preset) {
     called <<- called + 1L
     expect_identical(x, ex$train)
     expect_identical(new_data, ex$test)
-    as.data.frame(scale * abs(outer(new_data$value, x$value, "-")))
+    expect_identical(preset, "gower")
+    actual_mdist(x, new_data = new_data, preset = preset)
   }
+  testthat::local_mocked_bindings(mdist = distance_function, .package = "manydist")
   expect_identical(knn_dist(ex$train, ex$y, new_data = ex$test, k = 1,
-                           dist_fun = distance_function, dist_args = list(scale = 2)),
+                           dist_args = list(preset = "gower")),
                    knn_dist(ex$d, ex$y, k = 1))
   expect_equal(called, 1L)
 })
@@ -117,10 +129,10 @@ test_that("test extremes do not change training-only Gower scaling", {
   ex <- knn_example()
   extended <- data.frame(value = c(ex$test$value, 100))
   original <- knn_dist(ex$train, ex$y, new_data = ex$test, k = 2,
-                        dist_fun = mdist, dist_args = list(preset = "gower"),
+                        dist_args = list(preset = "gower"),
                         type = "prob")
   extra <- knn_dist(ex$train, ex$y, new_data = extended, k = 2,
-                     dist_fun = mdist, dist_args = list(preset = "gower"),
+                     dist_args = list(preset = "gower"),
                      type = "prob")
   expect_equal(extra[1:2, ], original)
 })
@@ -150,28 +162,30 @@ test_that("response selection supports names and excludes test outcomes", {
   test$outcome <- factor(c("high", "low"), levels = levels(ex$y))
   expected <- knn_dist(ex$d, ex$y, k = 2)
   from_name <- knn_dist(train, response = "outcome", new_data = test, k = 2,
-                         dist_fun = mdist, dist_args = list(preset = "gower"))
+                         dist_args = list(preset = "gower"))
   from_symbol <- knn_dist(train, response = outcome, new_data = ex$test, k = 2,
-                           dist_fun = mdist, dist_args = list(preset = "gower"))
+                           dist_args = list(preset = "gower"))
   expect_identical(from_name, expected)
   expect_identical(from_symbol, expected)
   test$outcome <- NA
   expect_identical(knn_dist(train, response = "outcome", new_data = test, k = 2,
-                            dist_fun = mdist, dist_args = list(preset = "gower")),
+                            dist_args = list(preset = "gower")),
                    expected)
-  checked_distance <- function(x, new_data) {
+  actual_mdist <- mdist
+  checked_distance <- function(x, new_data, ...) {
     expect_identical(x, ex$train)
     expect_identical(new_data, ex$test)
-    mdist(x, new_data = new_data, preset = "gower")
+    actual_mdist(x, new_data = new_data, ...)
   }
+  testthat::local_mocked_bindings(mdist = checked_distance, .package = "manydist")
   expect_identical(knn_dist(train, response = "outcome", new_data = test,
-                            k = 2, dist_fun = checked_distance), expected)
+                            k = 2, dist_args = list(preset = "gower")), expected)
   expect_error(knn_dist(train, ex$y, response = "outcome", new_data = test,
-                        k = 2, dist_fun = mdist), "either `y` or `response`")
+                        k = 2), "either `y` or `response`")
   expect_error(knn_dist(ex$d, response = "outcome", k = 2),
                "tabular training data")
   expect_error(knn_dist(train, response = c(value, outcome), new_data = test,
-                        k = 2, dist_fun = mdist), "exactly one outcome")
+                        k = 2), "exactly one outcome")
   expect_error(knn_dist(ex$d, k = 2), "nonempty vector")
 })
 
@@ -180,6 +194,6 @@ test_that("response selection works for numeric regression", {
   train <- ex$train
   train$outcome <- c(0, 2, 8, 10)
   expect_equal(knn_dist(train, response = "outcome", new_data = ex$test, k = 2,
-                        dist_fun = mdist, dist_args = list(preset = "gower"),
+                        dist_args = list(preset = "gower"),
                         type = "numeric"), c(1, 9))
 })

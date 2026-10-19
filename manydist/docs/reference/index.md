@@ -6,8 +6,6 @@
   : Create a grid of \`mdist()\` method specifications
 - [`autoplot(`*`<MDistBenchmark>`*`)`](https://alfonsoiodicede.github.io/manydist_package/reference/autoplot.MDistBenchmark.md)
   : Plot pairwise distance benchmark comparisons
-- [`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md)
-  : Extract pairwise distance benchmark comparisons
 - [`benchmark_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_mdist.md)
   : Benchmark and compare multiple \`mdist()\` specifications
 - [`compare_lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/compare_lovo_mdist.md)
@@ -25,6 +23,8 @@
 - [`generate_dataset()`](https://alfonsoiodicede.github.io/manydist_package/reference/generate_dataset.md)
   : generate toy mixed datasets for the supplementary material: figures
   1 to 3
+- [`knn_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/knn_dist.md)
+  : Direct nearest-neighbour prediction
 - [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
   : Leave-one-variable-out diagnostics for distance-based variable
   importance
@@ -46,5 +46,7 @@
   : Spectral clustering from a distance matrix
 - [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md)
   : Add manydist dissimilarities to a recipe
+- [`summary(`*`<MDistBenchmark>`*`)`](https://alfonsoiodicede.github.io/manydist_package/reference/summary.MDistBenchmark.md)
+  : Summarize a distance benchmark
 - [`wdi_2022`](https://alfonsoiodicede.github.io/manydist_package/reference/wdi_2022.md)
   : Selected World Development Indicators for 2022

@@ -22,7 +22,8 @@ produce different geometries and, consequently, different learning results.
 - `all_dist_method_specs()` constructs tables of valid specifications;
 - `benchmark_mdist()` evaluates `mdist()` once for every row and compares all
   successful distances;
-- `summary()` displays and returns the pairwise-diagnostics tibble.
+- `summary()` displays upper-triangular diagnostic tables and invisibly returns
+  the complete pairwise-diagnostics tibble.
 
 This guide shows how to define a manageable candidate set, run it safely,
 inspect failures, compare the resulting dissimilarities, and optionally assess
@@ -72,10 +73,16 @@ dplyr::glimpse(penguin_x)
 the `preset` column, whereas rows with `preset = "custom"` describe a combination of
 `method_cat`, `method_num`, and `commensurable`.
 
+By default, the function returns custom combinations only. Use `preset = "all"`
+for all named presets, a vector of names for selected presets, or
+`preset = c("all", "custom")` for both. Custom grids retain only `"std"` and
+`"pc_scores"` when commensurability is enabled, avoiding redundant affine
+scaling choices.
+
 ```{r}
 #| label: inspect-preset-specs
 
-all_dist_method_specs(mode = "presets_only") |>
+all_dist_method_specs(preset = "all") |>
   dplyr::select(
     preset,
     method_cat,
@@ -93,7 +100,6 @@ and two custom specifications.
 
 candidate_specs <- dplyr::bind_rows(
   all_dist_method_specs(
-    mode = "presets_only",
     preset = c("gower", "u_indep", "euclidean", "hl")
   ),
   tibble::tibble(
@@ -194,9 +200,13 @@ $$
 It is zero for identical distances and does not depend on how many
 specifications are included in the benchmark.
 
-`summary()` displays the pairwise diagnostics and invisibly returns the complete
-results tibble. These diagnostics are computed by `benchmark_mdist()`; requesting
-a summary does not refit the distances.
+`summary()` displays one upper-triangular table per diagnostic, omitting the
+diagonal and redundant lower triangle. All available measures are displayed by
+default; use `metric = "relative_distance"`, a vector of measure names, or
+`metric = "ari"` for all available clustering ARIs. `digits` controls display
+rounding. The complete, unrounded results tibble is still returned invisibly,
+regardless of the displayed measures. These diagnostics are computed by
+`benchmark_mdist()`; requesting a summary does not refit the distances.
 
 ```{r}
 #| label: summarize-pairwise-diagnostics
@@ -315,18 +325,14 @@ ggplot2::autoplot(
 ## Response-aware candidates
 
 Some specifications can use a response when constructing the dissimilarity.
-They can be listed with `mode = "response_aware_only"`.
+The response-aware presets can be selected directly by name.
 
 ```{r}
 #| label: response-aware-specs
 
 response_specs <- all_dist_method_specs(
-  mode = "response_aware_only"
-) |>
-  dplyr::filter(
-    preset != "custom",
-    preset %in% c("u_dep", "u_dep_bw", "u_mix")
-  )
+  preset = c("u_dep", "u_dep_bw", "u_mix")
+)
 
 response_specs
 ```
@@ -372,7 +378,6 @@ partition for every distance and clustering-method combination.
 #| eval: false
 
 larger_specs <- all_dist_method_specs(
-  mode = "full",
   method_cat = c("matching", "tvd"),
   method_num = c("std", "robust"),
   commensurable = c(FALSE, TRUE)

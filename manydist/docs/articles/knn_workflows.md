@@ -18,6 +18,20 @@ This guide builds, tunes, and evaluates a mixed-data nearest-neighbour
 classifier while keeping all preprocessing inside the resampling
 workflow.
 
+For direct prediction without a workflow,
+[`knn_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/knn_dist.md)
+accepts either a precomputed test-to-training distance matrix and
+training outcomes, or tabular training and test data, with distances
+computed internally by
+[`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md).
+Use `dist_args = list(preset = "gower")`, for example, to choose the
+distance specification. In the latter mode, `response = "species"`
+selects and excludes the outcome column automatically; test outcomes, if
+present, are ignored. See
+[`?knn_dist`](https://alfonsoiodicede.github.io/manydist_package/reference/knn_dist.md)
+for examples of both interfaces. The fit/predict engine functions remain
+available for tidymodels, but are not needed for direct calls.
+
 ## 2 Setup
 
 ``` r

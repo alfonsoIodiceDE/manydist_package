@@ -277,8 +277,9 @@
 #'   \item{error}{Error message for failed runs, `NA` otherwise.}
 #' }
 #'
-#' Use `summary()` to display and obtain the complete pairwise-diagnostics
-#' tibble, and [ggplot2::autoplot()] to draw an annotated triangular heatmap.
+#' Use `summary()` to display upper-triangular tables of pairwise diagnostics
+#' and invisibly obtain their complete tibble, and [ggplot2::autoplot()] to draw
+#' an annotated triangular heatmap.
 #' The default print method displays a compact run overview; use
 #' `tibble::as_tibble()` to inspect the complete underlying run table.
 #'
@@ -317,7 +318,6 @@
 #'     tidyr::drop_na()
 #'
 #'   specs <- all_dist_method_specs(
-#'     mode = "presets_only",
 #'     preset = c("gower", "u_indep", "u_dep")
 #'   )
 #'
@@ -590,12 +590,18 @@ print.MDistBenchmark <- function(x, ..., n = 10L, width = NULL) {
 #' without refitting distances or recomputing diagnostics.
 #'
 #' @param object An object returned by [benchmark_mdist()].
-#' @param ... Additional arguments passed to the tibble print method.
-#' @param n Number of rows to display. Use `Inf` to display all rows.
+#' @param metric Character vector selecting diagnostics to display. `NULL`
+#'   (the default) displays all available diagnostics. Choices include `"mad"`,
+#'   `"relative_distance"`, `"mds_congruence"`, `"alienation"`, and available
+#'   ARI columns such as `"ari_pam"`. `"ari"` selects all available ARI columns.
+#' @param digits Number of decimal places in the displayed tables.
+#' @param ... Additional arguments passed to the matrix print method.
+#' @param n Maximum number of methods to display in each table. The default,
+#'   `Inf`, displays every successful method. The returned tibble is not limited.
 #' @param width Width of the printed output; `NULL` uses the default width.
 #'
 #' @return Invisibly returns the complete tibble with one row per unique pair
-#'   of successful specifications, regardless of the display limit `n`.
+#'   of successful specifications, regardless of `metric`, `digits`, or `n`.
 #'   Columns include the method labels, MAD, symmetric relative distance,
 #'   MDS congruence, alienation, and any requested clustering ARIs.
 #'   If fewer than two specifications succeed, the tibble has zero rows.
@@ -603,13 +609,55 @@ print.MDistBenchmark <- function(x, ..., n = 10L, width = NULL) {
 #' @examples
 #' \dontrun{
 #' pairwise_results <- summary(benchmark_result)
+#' summary(benchmark_result, metric = "relative_distance")
+#' summary(benchmark_result, metric = c("alienation", "ari"))
 #' }
 #' @md
 #' @export
-summary.MDistBenchmark <- function(object, ..., n = 10L, width = NULL) {
+summary.MDistBenchmark <- function(object, metric = NULL, digits = 3L,
+                                   ..., n = Inf, width = NULL) {
   comparisons <- attr(object, "comparisons")
   if (!is.data.frame(comparisons)) {
     stop("The benchmark object has no pairwise diagnostics.", call. = FALSE)
+  }
+
+  available <- setdiff(names(comparisons),
+                       c("method_1_id", "method_2_id", "method_1", "method_2"))
+  if (is.null(metric)) metric <- available
+  if (!is.character(metric) || length(metric) == 0L || anyNA(metric)) {
+    stop("`metric` must be NULL or a non-empty character vector.", call. = FALSE)
+  }
+  if ("ari" %in% metric) {
+    ari <- grep("^ari_", available, value = TRUE)
+    if (!length(ari)) {
+      stop("No ARI metrics are available in this benchmark.", call. = FALSE)
+    }
+    metric <- unlist(lapply(metric, function(x) if (x == "ari") ari else x),
+                     use.names = FALSE)
+  }
+  unknown <- setdiff(metric, available)
+  if (length(unknown)) {
+    stop("Unknown benchmark metric: ", paste(unknown, collapse = ", "),
+         ". Available metrics: ", paste(available, collapse = ", "),
+         call. = FALSE)
+  }
+  metric <- unique(metric)
+  if (!is.numeric(digits) || length(digits) != 1L || !is.finite(digits) ||
+      digits < 0 || digits > 15 || digits != floor(digits)) {
+    stop("`digits` must be an integer between 0 and 15.", call. = FALSE)
+  }
+  if (!is.numeric(n) || length(n) != 1L || is.na(n) || n < 1 ||
+      (is.finite(n) && n != floor(n))) {
+    stop("`n` must be a positive integer or Inf.", call. = FALSE)
+  }
+  if (!is.null(width)) {
+    if (!is.numeric(width) || length(width) != 1L || !is.finite(width) ||
+        width < 10 || width > 10000 || width != floor(width)) {
+      stop("`width` must be NULL or an integer between 10 and 10000.",
+           call. = FALSE)
+    }
+    old_options <- options(width = as.integer(width))
+    on.exit(options(old_options), add = TRUE)
   }
 
   cat("Summary of MDistBenchmark\n")
@@ -621,8 +669,26 @@ summary.MDistBenchmark <- function(object, ..., n = 10L, width = NULL) {
   if (nrow(comparisons) == 0L) {
     cat("No pairwise diagnostics are available.\n")
   } else {
-    cat("Pairwise diagnostics:\n")
-    print(comparisons, ..., n = n, width = width)
+    ids <- which(object$ok)
+    labels <- attr(object, "method_labels")[ids]
+    shown <- seq_len(min(length(ids), n))
+    cat("Pairwise diagnostics (upper triangle; diagonal omitted):\n")
+    for (measure in metric) {
+      table <- matrix("", length(ids), length(ids),
+                      dimnames = list(labels, labels))
+      row <- match(comparisons$method_1_id, ids)
+      column <- match(comparisons$method_2_id, ids)
+      values <- comparisons[[measure]]
+      cells <- ifelse(is.na(values), "NA", formatC(values, format = "f",
+                                                   digits = digits))
+      table[cbind(pmin(row, column), pmax(row, column))] <- cells
+      cat("\n", measure, ":\n", sep = "")
+      print(noquote(table[shown, shown, drop = FALSE]), ..., right = TRUE)
+    }
+    if (length(shown) < length(ids)) {
+      cat("\nShowing ", length(shown), " of ", length(ids),
+          " successful methods; use n = Inf to display all.\n", sep = "")
+    }
   }
 
   invisible(comparisons)

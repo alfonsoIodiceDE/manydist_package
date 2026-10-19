@@ -80,7 +80,7 @@
 <li>
 <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> evaluates <code><a href="../reference/mdist.html">mdist()</a></code> once for every row and compares all successful distances;</li>
 <li>
-<code><a href="../reference/benchmark_comparisons.html">benchmark_comparisons()</a></code> extracts the pairwise diagnostics.</li>
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> displays upper-triangular diagnostic tables and invisibly returns the complete pairwise-diagnostics tibble.</li>
 </ul>
 <p>This guide shows how to define a manageable candidate set, run it safely, inspect failures, compare the resulting dissimilarities, and optionally assess their clustering solutions. The benchmark is a sensitivity-analysis tool; the final choice should still be based on the intended downstream task and an appropriate validation design.</p>
 </section><section class="level2" data-number="2"><h2 data-number="2" id="setup">
@@ -126,32 +126,31 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 </section><section class="level2" data-number="3"><h2 data-number="3" id="constructing-a-candidate-set">
 <span class="header-section-number">3</span> Constructing a candidate set<a class="anchor" aria-label="anchor" href="#constructing-a-candidate-set"></a>
 </h2>
-<p><code><a href="../reference/all_dist_method_specs.html">all_dist_method_specs()</a></code> returns one specification per row. Preset rows use the <code>preset</code> column, whereas component rows describe a custom combination of <code>method_cat</code>, <code>method_num</code>, and <code>commensurable</code>.</p>
+<p><code><a href="../reference/all_dist_method_specs.html">all_dist_method_specs()</a></code> returns one specification per row. Preset rows use the <code>preset</code> column, whereas rows with <code>preset = "custom"</code> describe a combination of <code>method_cat</code>, <code>method_num</code>, and <code>commensurable</code>.</p>
+<p>By default, the function returns custom combinations only. Use <code>preset = "all"</code> for all named presets, a vector of names for selected presets, or <code>preset = c("all", "custom")</code> for both. Custom grids retain only <code>"std"</code> and <code>"pc_scores"</code> when commensurability is enabled, avoiding redundant affine scaling choices.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span>mode <span class="op">=</span> <span class="st">"presets_only"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span>preset <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">spec_type</span>,</span>
 <span>    <span class="va">preset</span>,</span>
 <span>    <span class="va">method_cat</span>,</span>
 <span>    <span class="va">method_num</span>,</span>
 <span>    <span class="va">commensurable</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 11 × 5
-   spec_type preset    method_cat method_num commensurable
-   &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
- 1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA
- 2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA
- 3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA
- 4 preset    u_dep     &lt;NA&gt;       &lt;NA&gt;       NA
- 5 preset    u_dep_bw  &lt;NA&gt;       &lt;NA&gt;       NA
- 6 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
- 7 preset    u_mix     &lt;NA&gt;       &lt;NA&gt;       NA
- 8 preset    dkss      &lt;NA&gt;       &lt;NA&gt;       NA
- 9 preset    gudmm     &lt;NA&gt;       &lt;NA&gt;       NA
-10 preset    mod_gower &lt;NA&gt;       &lt;NA&gt;       NA
-11 preset    custom    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
+<pre><code># A tibble: 10 × 4
+   preset    method_cat method_num commensurable
+   &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
+ 1 euclidean &lt;NA&gt;       &lt;NA&gt;       NA
+ 2 gower     &lt;NA&gt;       &lt;NA&gt;       NA
+ 3 hl        &lt;NA&gt;       &lt;NA&gt;       NA
+ 4 u_dep     &lt;NA&gt;       &lt;NA&gt;       NA
+ 5 u_dep_bw  &lt;NA&gt;       &lt;NA&gt;       NA
+ 6 u_indep   &lt;NA&gt;       &lt;NA&gt;       NA
+ 7 u_mix     &lt;NA&gt;       &lt;NA&gt;       NA
+ 8 dkss      &lt;NA&gt;       &lt;NA&gt;       NA
+ 9 gudmm     &lt;NA&gt;       &lt;NA&gt;       NA
+10 mod_gower &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
 </div>
 </div>
 <p>It is usually better to begin with a small set of substantively different choices than to run every possible combination. Here we compare four presets and two custom specifications.</p>
@@ -159,11 +158,9 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">candidate_specs</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
-<span>    mode <span class="op">=</span> <span class="st">"presets_only"</span>,</span>
 <span>    preset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gower"</span>, <span class="st">"u_indep"</span>, <span class="st">"euclidean"</span>, <span class="st">"hl"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
-<span>    spec_type <span class="op">=</span> <span class="st">"component"</span>,</span>
 <span>    preset <span class="op">=</span> <span class="st">"custom"</span>,</span>
 <span>    method_cat <span class="op">=</span> <span class="st">"matching"</span>,</span>
 <span>    method_num <span class="op">=</span> <span class="st">"std"</span>,</span>
@@ -183,15 +180,15 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
 <span></span>
 <span><span class="va">candidate_specs</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 6
-  spec_type preset    method_cat method_num commensurable label
-  &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;chr&gt;
-1 preset    euclidean &lt;NA&gt;       &lt;NA&gt;       NA            Euclidean
-2 preset    gower     &lt;NA&gt;       &lt;NA&gt;       NA            Gower
-3 preset    hl        &lt;NA&gt;       &lt;NA&gt;       NA            Hennig--Liao
-4 preset    u_indep   &lt;NA&gt;       &lt;NA&gt;       NA            Unbiased independent
-5 component custom    matching   std        FALSE         Matching + z scores
-6 component custom    matching   std        TRUE          Matching + z scores (…</code></pre>
+<pre><code># A tibble: 6 × 5
+  preset    method_cat method_num commensurable label
+  &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;         &lt;chr&gt;
+1 euclidean &lt;NA&gt;       &lt;NA&gt;       NA            Euclidean
+2 gower     &lt;NA&gt;       &lt;NA&gt;       NA            Gower
+3 hl        &lt;NA&gt;       &lt;NA&gt;       NA            Hennig--Liao
+4 u_indep   &lt;NA&gt;       &lt;NA&gt;       NA            Unbiased independent
+5 custom    matching   std        FALSE         Matching + z scores
+6 custom    matching   std        TRUE          Matching + z scores (weighted)</code></pre>
 </div>
 </div>
 <p>This explicit table is useful for reproducibility: it records exactly which distance definitions entered the comparison.</p>
@@ -216,17 +213,17 @@ $ sex               &lt;fct&gt; male, female, female, female, male, female, male
   clustering     : not requested
 
 Methods:
-# A tibble: 6 × 4
-     id method                         type      status
-  &lt;int&gt; &lt;chr&gt;                          &lt;chr&gt;     &lt;chr&gt;
-1     1 Euclidean                      preset    successful
-2     2 Gower                          preset    successful
-3     3 Hennig--Liao                   preset    successful
-4     4 Unbiased independent           preset    successful
-5     5 Matching + z scores            component successful
-6     6 Matching + z scores (weighted) component successful
+# A tibble: 6 × 3
+     id method                         status
+  &lt;int&gt; &lt;chr&gt;                          &lt;chr&gt;
+1     1 Euclidean                      successful
+2     2 Gower                          successful
+3     3 Hennig--Liao                   successful
+4     4 Unbiased independent           successful
+5     5 Matching + z scores            successful
+6     6 Matching + z scores (weighted) successful
 
-Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)` for pairwise diagnostics.</code></pre>
+Use `tibble::as_tibble(x)` for the full run table and `summary(x)` for pairwise diagnostics.</code></pre>
 </div>
 </div>
 <p>The compact print method reports how many specifications succeeded, how many failed, and how many pairwise comparisons are available. It also displays a short labeled method table. The returned <code>MDistBenchmark</code> object remains a tibble and adds three columns:</p>
@@ -271,7 +268,7 @@ Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)`
 </section><section class="level2" data-number="5"><h2 data-number="5" id="comparing-successful-distances">
 <span class="header-section-number">5</span> Comparing successful distances<a class="anchor" aria-label="anchor" href="#comparing-successful-distances"></a>
 </h2>
-<p><code><a href="../reference/benchmark_comparisons.html">benchmark_comparisons()</a></code> returns one row for each unique pair of successful specifications. Four diagnostics are always available:</p>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns one row for each unique pair of successful specifications. Four diagnostics are always available:</p>
 <ul>
 <li>
 <code>mad</code> is the mean absolute difference between the corresponding pairwise dissimilarities;</li>
@@ -288,10 +285,10 @@ Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)`
 {\operatorname{mean}(|d_a|)+\operatorname{mean}(|d_b|)}.
 </annotation></semantics></math></p>
 <p>It is zero for identical distances and does not depend on how many specifications are included in the benchmark.</p>
-<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> provides a compact overview of the range of each available pairwise diagnostic.</p>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> displays one upper-triangular table per diagnostic, omitting the diagonal and redundant lower triangle. All available measures are displayed by default; use <code>metric = "relative_distance"</code>, a vector of measure names, or <code>metric = "ari"</code> for all available clustering ARIs. <code>digits</code> controls display rounding. The complete, unrounded results tibble is still returned invisibly, regardless of the displayed measures. These diagnostics are computed by <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>; requesting a summary does not refit the distances.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">distance_benchmark</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">pairwise_diagnostics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">distance_benchmark</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Summary of MDistBenchmark
   specifications : 6
@@ -299,21 +296,104 @@ Use `tibble::as_tibble(x)` for the full run table and `benchmark_comparisons(x)`
   failed         : 0
   comparisons    : 15
 
-Pairwise diagnostic summary:
-# A tibble: 4 × 4
-  metric              min median   max
-  &lt;chr&gt;             &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
-1 mad               0      2.58  5.66
-2 relative_distance 0      0.636 1.78
-3 mds_congruence    0.961  0.990 1
-4 alienation        0      0.141 0.278</code></pre>
+Pairwise diagnostics (upper triangle; diagonal omitted):
+
+mad:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                3.638        1.054
+Gower                                                 2.585
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     2.074               1.855
+Gower                                         5.663               5.325
+Hennig--Liao                                  3.078               2.740
+Unbiased independent                                              0.553
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               2.074
+Gower                                                   5.663
+Hennig--Liao                                            3.078
+Unbiased independent                                    0.000
+Matching + z scores                                     0.553
+Matching + z scores (weighted)
+
+relative_distance:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                1.673        0.304
+Gower                                                 1.569
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.414               0.384
+Gower                                         1.777               1.765
+Hennig--Liao                                  0.687               0.636
+Unbiased independent                                              0.095
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.414
+Gower                                                   1.777
+Hennig--Liao                                            0.687
+Unbiased independent                                    0.000
+Matching + z scores                                     0.095
+Matching + z scores (weighted)
+
+mds_congruence:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                0.995        0.980
+Gower                                                 0.961
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.997               0.984
+Gower                                         0.990               0.968
+Hennig--Liao                                  0.987               0.997
+Unbiased independent                                              0.992
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.997
+Gower                                                   0.990
+Hennig--Liao                                            0.987
+Unbiased independent                                    1.000
+Matching + z scores                                     0.992
+Matching + z scores (weighted)
+
+alienation:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                0.098        0.199
+Gower                                                 0.278
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.081               0.179
+Gower                                         0.141               0.250
+Hennig--Liao                                  0.162               0.075
+Unbiased independent                                              0.123
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.081
+Gower                                                   0.141
+Hennig--Liao                                            0.162
+Unbiased independent                                    0.000
+Matching + z scores                                     0.123
+Matching + z scores (weighted)                               </code></pre>
 </div>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pairwise_diagnostics</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">distance_benchmark</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pairwise_diagnostics</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="va">pairwise_diagnostics</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    <span class="va">method_1</span>,</span>
 <span>    <span class="va">method_2</span>,</span>
@@ -399,7 +479,7 @@ Pairwise diagnostic summary:
 <span>  spectral_nstart <span class="op">=</span> <span class="fl">50</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">clustering_benchmark</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">clustering_benchmark</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    <span class="va">method_1</span>,</span>
 <span>    <span class="va">method_2</span>,</span>
@@ -408,6 +488,153 @@ Pairwise diagnostic summary:
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">ari_pam</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_head</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Summary of MDistBenchmark
+  specifications : 6
+  successful     : 6
+  failed         : 0
+  comparisons    : 15
+
+Pairwise diagnostics (upper triangle; diagonal omitted):
+
+mad:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                3.638        1.054
+Gower                                                 2.585
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     2.074               1.855
+Gower                                         5.663               5.325
+Hennig--Liao                                  3.078               2.740
+Unbiased independent                                              0.553
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               2.074
+Gower                                                   5.663
+Hennig--Liao                                            3.078
+Unbiased independent                                    0.000
+Matching + z scores                                     0.553
+Matching + z scores (weighted)
+
+relative_distance:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                1.673        0.304
+Gower                                                 1.569
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.414               0.384
+Gower                                         1.777               1.765
+Hennig--Liao                                  0.687               0.636
+Unbiased independent                                              0.095
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.414
+Gower                                                   1.777
+Hennig--Liao                                            0.687
+Unbiased independent                                    0.000
+Matching + z scores                                     0.095
+Matching + z scores (weighted)
+
+mds_congruence:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                0.995        0.980
+Gower                                                 0.961
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.997               0.984
+Gower                                         0.990               0.968
+Hennig--Liao                                  0.987               0.997
+Unbiased independent                                              0.992
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.997
+Gower                                                   0.990
+Hennig--Liao                                            0.987
+Unbiased independent                                    1.000
+Matching + z scores                                     0.992
+Matching + z scores (weighted)
+
+alienation:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                0.098        0.199
+Gower                                                 0.278
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.081               0.179
+Gower                                         0.141               0.250
+Hennig--Liao                                  0.162               0.075
+Unbiased independent                                              0.123
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.081
+Gower                                                   0.141
+Hennig--Liao                                            0.162
+Unbiased independent                                    0.000
+Matching + z scores                                     0.123
+Matching + z scores (weighted)
+
+ari_pam:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                0.911        0.924
+Gower                                                 0.870
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     0.982               0.924
+Gower                                         0.929               0.871
+Hennig--Liao                                  0.941               0.933
+Unbiased independent                                              0.941
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               0.982
+Gower                                                   0.929
+Hennig--Liao                                            0.941
+Unbiased independent                                    1.000
+Matching + z scores                                     0.941
+Matching + z scores (weighted)
+
+ari_spectral:
+                               Euclidean Gower Hennig--Liao
+Euclidean                                1.000        0.828
+Gower                                                 0.828
+Hennig--Liao
+Unbiased independent
+Matching + z scores
+Matching + z scores (weighted)
+                               Unbiased independent Matching + z scores
+Euclidean                                     1.000               0.901
+Gower                                         1.000               0.901
+Hennig--Liao                                  0.828               0.917
+Unbiased independent                                              0.901
+Matching + z scores
+Matching + z scores (weighted)
+                               Matching + z scores (weighted)
+Euclidean                                               1.000
+Gower                                                   1.000
+Hennig--Liao                                            0.828
+Unbiased independent                                    1.000
+Matching + z scores                                     0.901
+Matching + z scores (weighted)                               </code></pre>
+</div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 10 × 4
    method_1             method_2                       ari_pam ari_spectral
@@ -426,7 +653,7 @@ Pairwise diagnostic summary:
 </div>
 <p>The adjusted Rand indices compare two unsupervised partitions; the penguin species labels are not used. An ARI of one indicates identical assignments, whereas smaller values indicate greater sensitivity to the distance specification.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span></span>
 <span>  <span class="va">clustering_benchmark</span>,</span>
 <span>  metric <span class="op">=</span> <span class="st">"ari"</span>,</span>
@@ -442,30 +669,26 @@ Pairwise diagnostic summary:
 </section><section class="level2" data-number="7"><h2 data-number="7" id="response-aware-candidates">
 <span class="header-section-number">7</span> Response-aware candidates<a class="anchor" aria-label="anchor" href="#response-aware-candidates"></a>
 </h2>
-<p>Some specifications can use a response when constructing the dissimilarity. They can be listed with <code>mode = "response_aware_only"</code>.</p>
+<p>Some specifications can use a response when constructing the dissimilarity. The response-aware presets can be selected directly by name.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">response_specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
-<span>  mode <span class="op">=</span> <span class="st">"response_aware_only"</span></span>
-<span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span></span>
-<span>    <span class="va">spec_type</span> <span class="op">==</span> <span class="st">"preset"</span>,</span>
-<span>    <span class="va">preset</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"u_dep"</span>, <span class="st">"u_dep_bw"</span>, <span class="st">"u_mix"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
+<span>  preset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"u_dep"</span>, <span class="st">"u_dep_bw"</span>, <span class="st">"u_mix"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">response_specs</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 3 × 5
-  spec_type preset   method_cat method_num commensurable
-  &lt;chr&gt;     &lt;chr&gt;    &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
-1 preset    u_dep    &lt;NA&gt;       &lt;NA&gt;       NA
-2 preset    u_dep_bw &lt;NA&gt;       &lt;NA&gt;       NA
-3 preset    u_mix    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
+<pre><code># A tibble: 3 × 4
+  preset   method_cat method_num commensurable
+  &lt;chr&gt;    &lt;chr&gt;      &lt;chr&gt;      &lt;lgl&gt;
+1 u_dep    &lt;NA&gt;       &lt;NA&gt;       NA
+2 u_dep_bw &lt;NA&gt;       &lt;NA&gt;       NA
+3 u_mix    &lt;NA&gt;       &lt;NA&gt;       NA           </code></pre>
 </div>
 </div>
 <p>When the response is supplied to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>, it is used only by response-aware components and is not treated as an ordinary predictor.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">response_benchmark</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/benchmark_mdist.html">benchmark_mdist</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">penguins_small</span>,</span>
 <span>  response <span class="op">=</span> <span class="va">species</span>,</span>
@@ -482,16 +705,40 @@ Pairwise diagnostic summary:
 2 u_dep_bw TRUE  &lt;NA&gt;
 3 u_mix    TRUE  &lt;NA&gt; </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/benchmark_comparisons.html">benchmark_comparisons</a></span><span class="op">(</span><span class="va">response_benchmark</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode cell-code" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">response_benchmark</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 3 × 8
-  method_1_id method_2_id method_1 method_2    mad relative_distance
-        &lt;int&gt;       &lt;int&gt; &lt;chr&gt;    &lt;chr&gt;     &lt;dbl&gt;             &lt;dbl&gt;
-1           1           2 u_dep    u_dep_bw 0.0122           0.00203
-2           1           3 u_dep    u_mix    1.30             0.215
-3           2           3 u_dep_bw u_mix    1.29             0.214
-# ℹ 2 more variables: mds_congruence &lt;dbl&gt;, alienation &lt;dbl&gt;</code></pre>
+<pre><code>Summary of MDistBenchmark
+  specifications : 3
+  successful     : 3
+  failed         : 0
+  comparisons    : 3
+
+Pairwise diagnostics (upper triangle; diagonal omitted):
+
+mad:
+         u_dep u_dep_bw u_mix
+u_dep             0.012 1.295
+u_dep_bw                1.289
+u_mix
+
+relative_distance:
+         u_dep u_dep_bw u_mix
+u_dep             0.002 0.215
+u_dep_bw                0.214
+u_mix
+
+mds_congruence:
+         u_dep u_dep_bw u_mix
+u_dep             1.000 0.961
+u_dep_bw                0.962
+u_mix
+
+alienation:
+         u_dep u_dep_bw u_mix
+u_dep             0.002 0.276
+u_dep_bw                0.275
+u_mix                        </code></pre>
 </div>
 </div>
 <p>If response-aware distances are compared by predictive performance, their construction must occur inside each resample. Constructing them once from the full outcome vector would leak assessment information into training.</p>
@@ -501,9 +748,8 @@ Pairwise diagnostic summary:
 </h2>
 <p>The same workflow can be expanded by filtering the full specification table, as in the unevaluated example below. Keep in mind that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>M</mi><annotation encoding="application/x-tex">M</annotation></semantics></math> successful specifications produce <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo stretchy="false" form="prefix">(</mo><mi>M</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">M(M-1)/2</annotation></semantics></math> pairwise rows, and clustering adds one fitted partition for every distance and clustering-method combination.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">larger_specs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/all_dist_method_specs.html">all_dist_method_specs</a></span><span class="op">(</span></span>
-<span>  mode <span class="op">=</span> <span class="st">"full"</span>,</span>
 <span>  method_cat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"matching"</span>, <span class="st">"tvd"</span><span class="op">)</span>,</span>
 <span>  method_num <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"std"</span>, <span class="st">"robust"</span><span class="op">)</span>,</span>
 <span>  commensurable <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span></span>

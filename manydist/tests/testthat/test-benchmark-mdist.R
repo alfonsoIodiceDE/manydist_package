@@ -9,7 +9,6 @@ benchmark_example <- function() {
 
 benchmark_specs <- function(presets = c("gower", "u_indep")) {
   all_dist_method_specs(
-    mode = "presets_only",
     preset = presets
   )
 }
@@ -20,7 +19,7 @@ test_that("specification grids use preset alone to distinguish custom settings",
   custom <- dplyr::filter(specs, preset == "custom")
   expect_gt(nrow(custom), 0L)
   expect_false(anyNA(custom))
-  presets <- all_dist_method_specs(mode = "presets_only")
+  presets <- all_dist_method_specs(preset = "all")
   expect_false(any(presets$preset == "custom"))
   expect_true(all(is.na(presets$method_cat)))
 })
@@ -91,7 +90,7 @@ test_that("benchmark printing is compact and reports failures", {
   expect_true(any(grepl("summary(x)", output, fixed = TRUE)))
 })
 
-test_that("benchmark summary displays and returns the complete pairwise tibble", {
+test_that("benchmark summary displays tables and returns the complete pairwise tibble", {
   result <- benchmark_mdist(
     benchmark_example(),
     specs = benchmark_specs(c("gower", "u_indep", "u_dep"))
@@ -108,6 +107,57 @@ test_that("benchmark summary displays and returns the complete pairwise tibble",
   expect_equal(nrow(visible_result$value), 3L)
   expect_true(all(c("method_1", "method_2", "mad", "relative_distance",
                     "mds_congruence", "alienation") %in% names(stored)))
+})
+
+test_that("benchmark summary selects and formats upper-triangular measures", {
+  result <- benchmark_mdist(
+    benchmark_example(),
+    specs = benchmark_specs(c("gower", "u_indep", "u_dep"))
+  )
+  stored <- attr(result, "comparisons")
+  stored$mad <- c(1.23456, 2.34567, NA_real_)
+  attr(result, "comparisons") <- stored
+  output <- capture.output(returned <- summary(result, metric = "mad", digits = 2))
+  expect_identical(returned, stored)
+  expect_true(any(grepl("upper triangle; diagonal omitted", output, fixed = TRUE)))
+  expect_equal(sum(grepl("1.23", output, fixed = TRUE)), 1L)
+  expect_equal(sum(grepl("2.35", output, fixed = TRUE)), 1L)
+  expect_true(any(grepl("NA", output, fixed = TRUE)))
+  expect_false(any(grepl("relative_distance:", output, fixed = TRUE)))
+  last_label <- tail(attr(result, "method_labels")[result$ok], 1)
+  last_row <- output[grepl(paste0("^", last_label, " +$"), output)]
+  expect_length(last_row, 1L)
+
+  all_output <- capture.output(summary(result))
+  for (metric in c("mad", "relative_distance", "mds_congruence", "alienation")) {
+    expect_true(any(all_output == paste0(metric, ":")))
+  }
+  expect_error(summary(result, metric = "unknown"), "Unknown benchmark metric")
+  expect_error(summary(result, metric = "ari"), "No ARI metrics")
+  expect_error(summary(result, metric = character()), "non-empty character")
+  expect_error(summary(result, digits = -1), "digits")
+  expect_error(summary(result, digits = Inf), "digits")
+  expect_error(summary(result, n = 0), "`n`", fixed = TRUE)
+  expect_error(summary(result, width = 1), "width")
+})
+
+test_that("summary handles failed methods and ARI selection without refitting", {
+  specs <- benchmark_specs(c("gower", "u_indep", "u_dep"))
+  specs$preset[2] <- "not_a_preset"
+  result <- benchmark_mdist(benchmark_example(), specs = specs,
+                            cluster_k = 3, cluster_methods = c("pam", "hclust"))
+  output <- capture.output(summary(result, metric = "ari"))
+  expect_true(any(output == "ari_pam:"))
+  expect_true(any(output == "ari_hclust:"))
+  expect_false(any(output == "mad:"))
+  expect_false(any(grepl("not_a_preset", output, fixed = TRUE)))
+  output <- capture.output(summary(result, metric = c("mad", "ari_pam")))
+  expect_true(any(output == "mad:"))
+  expect_true(any(output == "ari_pam:"))
+  expect_false(any(output == "ari_hclust:"))
+  old_width <- getOption("width")
+  capture.output(summary(result, n = 1, width = 60))
+  expect_identical(getOption("width"), old_width)
 })
 
 test_that("the obsolete benchmark extractor is not exported", {

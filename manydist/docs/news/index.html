@@ -35,9 +35,40 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.2" id="manydist-052">manydist 0.5.2<a class="anchor" aria-label="anchor" href="#manydist-052"></a></h2>
 <div class="section level3">
+<h3 id="simplified-direct-knn-prediction-0-5-2">Simplified direct kNN prediction<a class="anchor" aria-label="anchor" href="#simplified-direct-knn-prediction-0-5-2"></a></h3>
+<ul><li>Removed <code>dist_fun</code> from public <code><a href="../reference/knn_dist.html">knn_dist()</a></code>. Supplying <code>new_data</code> selects tabular prediction using <code><a href="../reference/mdist.html">mdist()</a></code> internally; <code>dist_args</code> passes its distance settings. Without <code>new_data</code>, <code>x</code> contains precomputed test-to-training distances. The lower-level tidymodels engine interfaces are unchanged.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="simpler-specification-grids-0-5-2">Simpler specification grids<a class="anchor" aria-label="anchor" href="#simpler-specification-grids-0-5-2"></a></h3>
+<ul><li>Removed <code>mode</code> from <code><a href="../reference/all_dist_method_specs.html">all_dist_method_specs()</a></code>. The default <code>preset = NULL</code> returns custom combinations, a vector of names returns only those named presets, and <code>preset = "all"</code> returns all named presets. Include <code>"custom"</code> in a preset selection to also generate component-filtered custom rows. Component filters without custom rows are rejected rather than ignored.</li>
+<li>Commensurable custom grids now retain only <code>"std"</code> and <code>"pc_scores"</code>, omitting <code>"robust"</code> as redundant. This changes the candidate grid only; <code><a href="../reference/mdist.html">mdist()</a></code> still supports all its numerical preprocessing choices.</li>
+<li>Select response-aware specifications using method metadata or explicit preset/method names instead of the former <code>response_aware_only</code> mode.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="consistent-new-data-distances-0-5-2">Consistent new-data distances<a class="anchor" aria-label="anchor" href="#consistent-new-data-distances-0-5-2"></a></h3>
+<ul><li>Replaced the Euclidean cross-distance backend used by <code>HLeucl</code> and <code>hl</code> with direct coordinate differences. This prevents zero test-to-training distances observed with larger training sets in the previous backend, for both commensurable and non-commensurable <code>HLeucl</code>.</li>
+<li>Corrected Gower’s test-to-training average to divide by the number of original predictors rather than the number of expanded dummy columns. Training-to-training distances and the unaveraged Gower sum are unchanged.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="training-only-commensurability-0-5-2">Training-only commensurability<a class="anchor" aria-label="anchor" href="#training-only-commensurability-0-5-2"></a></h3>
+<ul><li>Corrected numerical and categorical commensurability so each contribution uses its training-to-training mean before aggregation, never the mean of a test-to-training matrix. This applies to <code><a href="../reference/mdist.html">mdist()</a></code> and <code><a href="../reference/step_mdist.html">step_mdist()</a></code>, including indicator-based categorical methods. Existing variable-wise training averages (including the zero diagonal) are preserved.</li>
+<li>Numerical absolute-distance means and categorical means are obtained without allocating observation-level training squares solely for normalization.</li>
+<li>Robust numerical preprocessing now also uses training medians and IQRs rather than recomputing them on each test batch.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="direct-prediction-0-5-2">Direct prediction<a class="anchor" aria-label="anchor" href="#direct-prediction-0-5-2"></a></h3>
+<ul><li>Added <code><a href="../reference/knn_dist.html">knn_dist()</a></code> for direct classification, class probabilities, and regression from test-to-training distances, or from tabular predictors using <code><a href="../reference/mdist.html">mdist()</a></code> internally. The <code>response</code> argument selects and excludes the outcome column without manual predictor selection. Existing fit/predict engine functions remain available for tidymodels and compatibility.</li>
+<li>Fixed neighbour indexing for a single test observation with multiple neighbours and probability output for a single outcome level. Empty precomputed test matrices are also supported in the kNN helpers.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="diagnostics-0-5-2">Diagnostics<a class="anchor" aria-label="anchor" href="#diagnostics-0-5-2"></a></h3>
-<ul><li>Changed MDS-based diagnostics in <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> and <code><a href="../reference/compare_lovo_mdist.html">compare_lovo_mdist()</a></code> to be opt-in. Set <code>mds = TRUE</code> to compute congruence and alienation diagnostics; <code>dims = 2</code> remains the default MDS dimensionality when MDS is requested. Distance-based LOVO diagnostics remain available by default, and clustering diagnostics remain controlled by <code>cluster_k</code>.</li>
-<li>Added compact <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> methods for <code>MDistBenchmark</code> objects. The full benchmark remains available as a tibble, while interactive output now emphasizes run status, failures, and pairwise diagnostic ranges.</li>
+<ul><li><p>Removed the redundant <code>spec_type</code> field from distance-specification grids and benchmark results. <code>preset = "custom"</code> selects explicit method settings; named presets select their predefined settings. Legacy <code>spec_type</code> columns are ignored on input. Update grid filters to use <code>preset</code> instead.</p></li>
+<li><p>Changed LOVO and LOVO-comparison plots so <code>reorder = TRUE</code> ranks variables within their categorical and numerical groups, preserving the meaning of the background bands. Comparison rankings use the mean metric across methods; <code>top_n</code> selection remains global.</p></li>
+<li><p>Changed the default fill gradient for pairwise benchmark heatmaps to coral (<code>#E76F51</code>) for lower values and blue (<code>#008CFF</code>) for higher values, with regular-weight white cell labels. This applies to all metrics plotted by <code><a href="../reference/autoplot.MDistBenchmark.html">autoplot.MDistBenchmark()</a></code>, including clustering agreement.</p></li>
+<li><p>Left self-comparison tiles on the main diagonal blank. ARI heatmaps now use a fixed 0 to 1 colour scale instead of the observed range. Negative ARIs remain labelled and use the low-end colour.</p></li>
+<li><p>Changed MDS-based diagnostics in <code><a href="../reference/lovo_mdist.html">lovo_mdist()</a></code> and <code><a href="../reference/compare_lovo_mdist.html">compare_lovo_mdist()</a></code> to be opt-in. Set <code>mds = TRUE</code> to compute congruence and alienation diagnostics; <code>dims = 2</code> remains the default MDS dimensionality when MDS is requested. Distance-based LOVO diagnostics remain available by default, and clustering diagnostics remain controlled by <code>cluster_k</code>.</p></li>
+<li><p>Added compact <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> methods for <code>MDistBenchmark</code> objects. The full benchmark remains available as a tibble, while interactive output emphasizes run status and failures. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> displays one labelled upper-triangular table per diagnostic, with blank diagonal and lower triangle. Use <code>metric</code> to select measures (default: all; <code>"ari"</code> selects all available clustering ARIs), and <code>digits</code> to control rounding. It still invisibly returns the complete, unrounded pairwise-results tibble for further analysis.</p></li>
+<li><p>Removed <code>benchmark_comparisons()</code>. Use <code>pairs &lt;- summary(result)</code> instead. This is a breaking API change; <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> continues to work directly on the benchmark object.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="distance-construction-0-5-2">Distance construction<a class="anchor" aria-label="anchor" href="#distance-construction-0-5-2"></a></h3>
@@ -51,7 +82,7 @@
 <h3 id="benchmarking-and-diagnostics-0-5-1">Benchmarking and diagnostics<a class="anchor" aria-label="anchor" href="#benchmarking-and-diagnostics-0-5-1"></a></h3>
 <ul><li>Extended <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code> to compare every pair of successful distance specifications using mean absolute distance differences, symmetric relative distance, multidimensional-scaling congruence, and alienation.</li>
 <li>Added optional clustering comparisons to <code><a href="../reference/benchmark_mdist.html">benchmark_mdist()</a></code>. Supplying <code>cluster_k</code> computes pairwise adjusted Rand indices for PAM, hierarchical, and/or spectral clustering; clustering is skipped when <code>cluster_k = NULL</code>.</li>
-<li>Added <code><a href="../reference/benchmark_comparisons.html">benchmark_comparisons()</a></code> to extract the pairwise diagnostics stored in an <code>MDistBenchmark</code> result without recomputing the distances.</li>
+<li>Added <code>benchmark_comparisons()</code> to extract the pairwise diagnostics stored in an <code>MDistBenchmark</code> result without recomputing the distances.</li>
 <li>Added an <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> method for <code>MDistBenchmark</code> objects, with annotated heatmaps for distance, geometry, and clustering-agreement diagnostics.</li>
 </ul></div>
 <div class="section level3">

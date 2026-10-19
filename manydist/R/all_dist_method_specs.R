@@ -4,20 +4,17 @@
 #' [benchmark_mdist()] or iterated over manually to benchmark [mdist()] across
 #' multiple configurations.
 #'
-#' The resulting tibble combines preset-based specifications and custom
-#' custom specifications built from the currently available
-#' categorical methods and numerical preprocessing options listed in
-#' [dist_methods_tbl()].
+#' Select named presets or construct custom specifications from the categorical
+#' methods and numerical preprocessing options listed in [dist_methods_tbl()].
 #'
-#' @param mode Character string controlling the initial pool of specifications.
-#'   Supported values are `"full"`, `"presets_only"`, and
-#'   `"response_aware_only"`.
 #' @param method_cat Optional character vector restricting the categorical
 #'   methods used in custom specifications.
 #' @param method_num Optional character vector restricting the numerical
 #'   preprocessing methods used in custom specifications.
-#' @param preset Optional character vector restricting preset-based
-#'   specifications.
+#' @param preset `NULL` (the default) returns custom combinations only. A
+#'   character vector selects named presets; `"all"` selects all named presets.
+#'   Include `"custom"` explicitly to also return custom combinations, for
+#'   example `c("all", "custom")`. Component filters apply only to custom rows.
 #' @param commensurable Optional logical vector restricting the commensurable
 #'   values used in custom specifications.
 #'
@@ -29,29 +26,32 @@
 #' Rows with `preset = "custom"` use the explicit categorical, numerical, and
 #' commensurability options. Named presets determine those settings internally.
 #'
-#' `mode` defines the initial candidate pool. Any explicit argument filters
-#' supplied by the user are applied afterwards and therefore restrict the
-#' selected pool further.
+#' With `commensurable = TRUE`, custom grids retain only `"std"` and
+#' `"pc_scores"` numerical preprocessing. Variable-wise affine scaling cancels
+#' under commensurability, so `"robust"` is omitted as redundant with `"std"`.
+#' The existing exclusions of `"none"` and `"range"` are retained. Range scaling
+#' clips new observations outside the training range, so its equivalence on
+#' training data does not extend to all new observations. These restrictions
+#' affect grid construction, not the options accepted by [mdist()].
 #'
-#' With `mode = "response_aware_only"`, preset specifications and categorical
-#' methods are restricted to response-aware methods.
+#' Named preset rows retain `NA` in their component columns: their settings are
+#' determined by the preset. Supplying component filters without requesting
+#' custom rows gives an error rather than silently ignoring those filters.
 #'
 #' @examples
 #' all_dist_method_specs()
-#' all_dist_method_specs(mode = "presets_only")
-#' all_dist_method_specs(mode = "response_aware_only")
-#' all_dist_method_specs(mode = "full", method_cat = c("tvd", "le_and_ho"))
+#' all_dist_method_specs(preset = c("gower", "u_indep", "u_dep"))
+#' all_dist_method_specs(preset = "all")
+#' all_dist_method_specs(preset = c("all", "custom"))
+#' all_dist_method_specs(method_cat = c("tvd", "le_and_ho"))
 #'
 #' @export
 all_dist_method_specs <- function(
-    mode = c("full", "presets_only", "response_aware_only"),
     method_cat = NULL,
     method_num = NULL,
     preset = NULL,
     commensurable = NULL
 ) {
-  mode <- match.arg(mode)
-
   tbl <- dist_methods_tbl()
 
   preset_tbl <- tbl |>
@@ -79,15 +79,31 @@ all_dist_method_specs <- function(
       )
     )
 
-  if (identical(mode, "response_aware_only")) {
-    preset_tbl <- preset_tbl |>
-      dplyr::filter(.data$response_aware)
-
-    cat_tbl <- cat_tbl |>
-      dplyr::filter(.data$response_aware)
+  validate_names <- function(value, choices, argument) {
+    if (!is.null(value) && (!is.character(value) || anyNA(value) ||
+                            any(!value %in% choices))) {
+      stop("`", argument, "` must be NULL or a character vector containing: ",
+           paste(choices, collapse = ", "), ".", call. = FALSE)
+    }
+  }
+  validate_names(preset, c("all", "custom", preset_tbl$method), "preset")
+  validate_names(method_cat, cat_tbl$method, "method_cat")
+  validate_names(method_num, num_tbl$method, "method_num")
+  if (!is.null(commensurable) &&
+      (!is.logical(commensurable) || anyNA(commensurable))) {
+    stop("`commensurable` must be NULL or a logical vector without missing values.",
+         call. = FALSE)
   }
 
-  if (!is.null(preset)) {
+  include_custom <- is.null(preset) || "custom" %in% preset
+  component_filters <- !is.null(method_cat) || !is.null(method_num) ||
+    !is.null(commensurable)
+  if (!include_custom && component_filters) {
+    stop("Component filters apply to custom rows. Include 'custom' in `preset` ",
+         "or leave `preset = NULL`.", call. = FALSE)
+  }
+
+  if (!"all" %in% preset) {
     preset_tbl <- preset_tbl |>
       dplyr::filter(.data$method %in% preset)
   }
@@ -116,7 +132,7 @@ all_dist_method_specs <- function(
       commensurable = NA
     )
 
-  if (identical(mode, "presets_only")) {
+  if (!include_custom) {
     return(preset_specs)
   }
 
@@ -137,7 +153,7 @@ all_dist_method_specs <- function(
     dplyr::filter(
       !(
         .data$commensurable == TRUE &
-          !.data$method_num %in% c("std", "robust", "pc_scores")
+          !.data$method_num %in% c("std", "pc_scores")
       )
     )
 

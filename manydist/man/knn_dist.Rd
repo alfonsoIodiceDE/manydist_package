@@ -9,32 +9,29 @@ knn_dist(
   y = NULL,
   new_data = NULL,
   k = 5,
-  dist_fun = NULL,
   dist_args = list(),
   type = c("class", "prob", "numeric"),
   response = NULL
 )
 }
 \arguments{
-\item{x}{With \code{dist_fun = NULL}, a numeric test-to-training distance matrix,
-data frame, or \code{MDist} object. Otherwise, tabular training predictors.}
+\item{x}{Tabular training predictors when \code{new_data} is supplied. Otherwise,
+a numeric test-to-training distance matrix, data frame, or \code{MDist} object.}
 
 \item{y}{Training outcomes, in the same order as the distance columns or
 training rows. Use a factor for classification and numeric outcomes for
 regression. Missing outcomes are not supported. May be omitted when
 \code{response} selects an outcome column from tabular training data.}
 
-\item{new_data}{Test predictors when \code{dist_fun} is supplied. Must be \code{NULL}
-when \code{x} already contains test-to-training distances.}
+\item{new_data}{Optional tabular test predictors. When supplied, \code{\link[=mdist]{mdist()}}
+computes their distances to the training data in \code{x}. Leave \code{NULL} when
+\code{x} already contains test-to-training distances.}
 
 \item{k}{Integer number of neighbours, between one and the number of
 training observations.}
 
-\item{dist_fun}{Optional function accepting training predictors as its first
-argument and test predictors as \code{new_data}. It must return a numeric
-test-to-training matrix, data frame, or \code{MDist} object. For example, \code{\link[=mdist]{mdist()}}.}
-
-\item{dist_args}{Named list of additional arguments passed to \code{dist_fun}.}
+\item{dist_args}{Named list of additional arguments passed to \code{\link[=mdist]{mdist()}},
+such as \code{list(preset = "gower")}. Used only with tabular input.}
 
 \item{type}{Prediction type: \code{"class"} for class labels, \code{"prob"} for class
 probabilities, or \code{"numeric"} for regression predictions.}
@@ -61,10 +58,9 @@ uses an unweighted majority vote; regression uses the mean of the neighbours'
 outcomes. Distance ties are resolved in training order and class-vote ties
 in factor-level order. Class probabilities are neighbour class proportions.
 
-No training-to-training matrix is required. With \code{dist_fun = mdist}, distance
-construction uses \code{x} as training data and \code{new_data} as test data. The
+No training-to-training matrix needs to be supplied. For tabular input,
+\code{\link[=mdist]{mdist()}} uses \code{x} as training data and \code{new_data} as test data. The
 function computes distances on each call; it does not return a fitted model.
-Other distance functions are responsible for their own preprocessing rules.
 For fitted tidymodels workflows, use \code{\link[=nearest_neighbor_dist]{nearest_neighbor_dist()}} with
 \code{\link[=step_mdist]{step_mdist()}} instead.
 }
@@ -72,13 +68,13 @@ For fitted tidymodels workflows, use \code{\link[=nearest_neighbor_dist]{nearest
 train <- data.frame(value = c(0, 2, 8, 10))
 test <- data.frame(value = c(1, 9))
 labels <- factor(c("low", "low", "high", "high"))
-d <- mdist(train, new_data = test, preset = "gower")
-knn_dist(d, labels, k = 1)
 knn_dist(train, labels, new_data = test, k = 1,
-         dist_fun = mdist, dist_args = list(preset = "gower"))
+         dist_args = list(preset = "gower"))
 train$label <- labels
 knn_dist(train, response = "label", new_data = test, k = 1,
-         dist_fun = mdist, dist_args = list(preset = "gower"))
+         dist_args = list(preset = "gower"))
+d <- mdist(train["value"], new_data = test, preset = "gower")
+knn_dist(d, labels, k = 1)
 knn_dist(d, labels, k = 2, type = "prob")
 knn_dist(d, c(0, 2, 8, 10), k = 2, type = "numeric")
 }

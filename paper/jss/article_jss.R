@@ -446,7 +446,6 @@ candidate_labels <- c(
 )
 
 candidate_specs <- all_dist_method_specs(
-  mode = "presets_only",
   preset = c("gower", "u_indep", "u_dep")
 ) |>
   dplyr::mutate(
@@ -956,7 +955,6 @@ knitr::kable(
 )
 
 wdi_benchmark_specs <- all_dist_method_specs(
-  mode = "presets_only",
   preset = unname(distance_presets)
 ) |>
   dplyr::mutate(

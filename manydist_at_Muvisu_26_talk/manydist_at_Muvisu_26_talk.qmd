@@ -1557,7 +1557,6 @@ While LOVO asks **which variables matter within a distance**, `benchmark_mdist()
 #| warning: false
 
 wdi_specs <- all_dist_method_specs(
-  mode = "presets_only",
   preset = c("gower", "u_indep", "hl", "u_dep")
 )
 
@@ -3241,8 +3240,6 @@ bank_lovo_pam_plot <-
 
 bank_benchmark_specs <-
   all_dist_method_specs(
-    mode =
-      "presets_only",
     preset =
       unname(
         bank_presets

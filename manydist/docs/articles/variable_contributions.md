@@ -453,10 +453,10 @@ lovo_compare
     3 gower           bill_length_mm numeric                   0.123         0.0359
     4 u_indep         island         categorical               0.167         1.00
     5 u_indep         bill_length_mm numeric                   0.167         1.00
-    6 u_indep         bill_depth_mm  numeric                   0.167         1.00
+    6 u_indep         body_mass_g    numeric                   0.167         1
     7 custom_matching island         categorical               0.167         1.00
     8 custom_matching bill_length_mm numeric                   0.167         1.00
-    9 custom_matching bill_depth_mm  numeric                   0.167         1.00  
+    9 custom_matching body_mass_g    numeric                   0.167         1     
 
 The combined results are stored in the `$results` field. The table
 contains one row for each combination of distance specification and
@@ -573,10 +573,10 @@ lovo_compare_cluster
     3 gower   bill_le… numeric                   0.123         0.0359         0.0789
     4 u_indep island   categorical               0.167         1.00           0.0359
     5 u_indep bill_le… numeric                   0.167         1.00           0
-    6 u_indep bill_de… numeric                   0.167         1.00           0.0452
+    6 u_indep body_ma… numeric                   0.167         1              0
     7 custom… island   categorical               0.167         1.00           0.0359
     8 custom… bill_le… numeric                   0.167         1.00           0
-    9 custom… bill_de… numeric                   0.167         1.00           0.0452
+    9 custom… body_ma… numeric                   0.167         1              0
     # ℹ 2 more variables: hclust_importance <dbl>, spectral_importance <dbl>
 
 The resulting object includes the ARI-based diagnostics for the selected

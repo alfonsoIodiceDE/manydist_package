@@ -71,6 +71,8 @@ header-includes:
   - \usepackage{bm}
   - \usepackage{needspace}
   - \usepackage{xcolor}
+  - \usepackage[breakable]{tcolorbox}
+  - '\newenvironment{pipelinephase}[1]{\par\noindent\def\pipelinephasename{#1}\begin{minipage}[t]{0.82\linewidth}\vspace{0pt}}{\end{minipage}\hfill\begin{minipage}[t]{0.16\linewidth}\vspace{0pt}\raggedleft\scriptsize\sffamily\bfseries\color{black!55}\pipelinephasename\end{minipage}\par\medskip}'
   - \definecolor{assocrevision}{RGB}{126,47,142}
   - \newcommand{\new}[1]{{\color{blue}#1}}
 ---
@@ -597,7 +599,7 @@ The main arguments are summarized below. The default specification uses standard
 |---|---|---|---|
 | `x` | Numerical, categorical, or mixed-type data | required | --- |
 | `method_num` | Numerical preprocessing | `"std"` | `"none"`, `"std"`, `"range"`, `"robust"`, `"pc_scores"` |
-| `method_cat` | Categorical dissimilarity | `"tvd"` | `"matching"`, `"tvd"`, and further association-, independence-, and indicator-based methods |
+| `method_cat` | Categorical dissimilarity | `"tvd"` | `"matching"`, `"tvd"`, and further association-aware, independence-based, and indicator-based methods |
 | `commensurable` | Equalize expected component contributions | `TRUE` | `TRUE`, `FALSE` |
 
 : Main arguments of `mdist()` {#tbl-args tbl-colwidths="[18,22,10,50]"}
@@ -631,19 +633,19 @@ all.equal(
 )
 ```
 
-Thus, the preset provides the usual normalized Gower distance, corresponding to standard implementations such as those in \pkg{cluster} and \pkg{gower}.
+Thus, the preset provides the  normalized Gower distance, corresponding to standard implementations such as those in \pkg{cluster} and \pkg{gower}.
 
 Other distance specifications can be constructed by changing the numerical preprocessing, categorical dissimilarity, and commensurability settings. For example, the default specification of `mdist()` uses standard-deviation scaling for numerical variables, total-variation dissimilarities for categorical variables, and commensurability.
 
 
-When `commensurable = TRUE`, any variable-wise affine rescaling of the numerical variables cancels when each contribution is divided by its empirical mean distance. Consequently, choices such as `"std"`, `"range"`, and `"robust"` produce the same distance under commensurability. Multivariate transformations such as `"pc_scores"` are different because they change the coordinate system rather than rescaling each variable separately.
+When `commensurable = TRUE`, any variable-wise affine rescaling of the numerical variables cancels when each contribution is divided by its empirical mean distance. Consequently, choices such as `"std"`, `"range"`, and `"robust"` produce the same training distances under commensurability. Range scaling can differ for new observations outside the training range, since these are clipped to the training limits. Multivariate transformations such as `"pc_scores"` are different because they change the coordinate system rather than rescaling each variable separately.
 
 <!-- ```{r} -->
 <!-- #| label: verify-scaling-vacuity -->
 
 <!-- purrr::map(c("std", "range", "robust"), -->
 <!--   ~ mdist( -->
-<!--     penguin_train |> dplyr::select(,-species), -->
+<!--      |> , -->
 <!--     method_num = .x, -->
 <!--     method_cat = "tvd", -->
 <!--     commensurable = TRUE -->
@@ -657,7 +659,8 @@ When `commensurable = TRUE`, any variable-wise affine rescaling of the numerical
 
 ### Distance presets 
 
-The Gower distance introduced above (`preset = "gower"`) is one of the presets available in `mdist()`; @tbl-presets provides the complete list. Each preset either specifies a predefined combination of `method_num`, `method_cat`, and `commensurable`, or invokes a dedicated implementation of an established mixed-data distance measure.
+Presets either specifiy a predefined combination of `method_num`, `method_cat`, and `commensurable`, or invoke a dedicated implementation of an established mixed-data distance measure.
+The Gower distance introduced above (`preset = "gower"`) is one of the presets available in `mdist()`; @tbl-presets provides the complete list. 
 
 
 | Preset | Numerical preprocessing | Categorical dissimilarity | Additive | Unbiased | Response-aware |
@@ -672,9 +675,9 @@ The Gower distance introduced above (`preset = "gower"`) is one of the presets a
 | `u_dep` | principal-component scaling | total variation distance | yes | yes | yes |
 | `u_mix` | standard-deviation scaling | total variation distance | yes | yes | yes |
 
-: Distance implemented via presets. Additive distances satisfy multivariate additivity and unbiased distances additionally enforce commensurability. Response-awareness affects the categorical dissimilarity only and applies when a response variable is supplied; otherwise the corresponding presets reduce to their predictor-only form. {#tbl-presets tbl-colwidths="[12,28,26,10,10,14]"}
+: Distance implemented via presets. Additive distances satisfy multivariate additivity and unbiased distances additionally enforce commensurability. Response-awareness affects the categorical dissimilarity only and applies when a response variable and an association-aware categorical variant are supplied. {#tbl-presets tbl-colwidths="[12,28,26,10,10,14]"}
 
-The `u_mix` preset combines standard-deviation scaling for the numerical variables with total-variation dissimilarities for the categorical variables and commensurability:
+The `u_mix` preset, which is the default, combines standard-deviation scaling for the numerical variables with total-variation dissimilarities for the categorical variables and commensurability:
 
 ```{r}
 #| label: build-u-mix-distance
@@ -684,23 +687,23 @@ d_u_mix <- mdist(penguin_train |> dplyr::select(-species),preset = "u_mix")
 d_u_mix |> print()
 ```
 
-This provides a concise specification of the corresponding unbiased mixed-variable distance without requiring its individual components to be supplied separately.
+
 
 ### Supervised distances
 
-In supervised setting, when a categorical response, or label, is available, `mdist()` computes
+In supervised setting, when a categorical response, or label, is available, `mdist()` can compute
 response-aware distances through the definition of the `response` argument. For example, using `species` as the response in the Palmer penguins data,
 
 
 ```{r}
 #| label: build-response-aware-distance
 
-d_response <- mdist(penguin_train,response = species,preset = "u_dep")
+d_response <- mdist(penguin_train,response = species,preset = "u_mix")
 ```
 
-constructs a distance in which differences between categories of the categorical predictors can depend on their conditional distributions over `species`. The numerical part of the distance remains predictor-based.
+constructs a distance in which differences between categories of the categorical predictors can depend on their conditional distributions over `species`. Note that the response is not used in the computation for the numerical part of the distance.
 
-For prediction purposes, `mdist()`  can be applied to new observations: the `new_data` argument computes rectangular dissimilarities between the new observations and the training observations using the weights and the scaling quantities estimated from the training data to avoid data leakage.
+The `mdist()` function can also be used to calculate distances of new observations to the training data. This can be useful in distance-based classification methods like kNN or simply for assigning new data according to existing clusters. The `new_data` argument computes rectangular dissimilarities between the new observations and the training observations using the weights and the scaling quantities estimated from the training data.
 
 ```{r}
 #| label: apply-response-distance-new-data
@@ -717,11 +720,15 @@ Note that `species` is not supplied for `penguin_test`: the response information
 
 ## Distance diagnostics and benchmarking {#sec-diagnostics}
 
-With several plausible distance specifications available for mixed data, it can be informative to examine how the resulting dissimilarities depend on the variables included and how differences between distances propagate to downstream analyses. The \pkg{manydist} package provides diagnostics at two levels. The first compares dissimilarity matrices directly. The second considers their consequences for particular downstream procedures, namely multidimensional scaling (MDS) and clustering. 
+With many plausible distance specifications available for mixed data, it is important to examine how dissimilarities depend on individual variables  and how differences propagate to downstream analyses. The \pkg{manydist} package provides diagnostics at two levels. The first
+considers direct variable specific effects on the dissimilarity matrices whereas the second considers the consequences for the distance-based downstream procedures classical MDS and clustering.
+
 
 ### Leave-one-variable-out diagnostics
 
-\textcolor{blue}{Leave-one-variable-out (LOVO) diagnostics} for individual distance specifications are available through the `lovo_mdist()` function. This function first computes the distance using all variables and then removes each variable in turn, recomputes the distance, and quantifies the resulting change. The function can be called using the same inputs as `mdist()`. However,  for diagnostics involving a subsequent analysis, additional information concerning the downstream method need to be supplied.  
+\textcolor{blue}{Leave-one-variable-out (LOVO) diagnostics} for individual distance specifications are available through the `lovo_mdist()` function. This function first computes the distance using all variables and then removes each variable in turn, recomputes the distance, and quantifies the resulting change. The function can be called using the same inputs as `mdist()`. 
+
+Diagnostics corresponding to subsequent analysis can be obtained by specifying the corresponding analysis and involved parameters (e.g, dimensionality of the mds solution,  the clustering algorithm and the number of cluster).
 
 To illustrate this functionality,  consider the penguins data set and the gower distance. Leave-one-variable-out results can be obtained using:
 
@@ -729,10 +736,12 @@ To illustrate this functionality,  consider the penguins data set and the gower 
 #| label: diagnose-gower-distance
 
 lovo_gower <- lovo_mdist(
-  penguin_train |> dplyr::select(,-species),
+  penguin_train |> dplyr::select(-species),
   preset = "gower"
 )
 ```
+
+Direct distance diagnostics are:
 
 - `mad_importance` is the mean absolute difference between the full dissimilarity matrix and the matrix obtained after leaving out a variable.
 - `relative_distance` is the normalized version of `mad_importance`, allowing the relative LOVO contributions of the variables to be compared on a common scale.
@@ -744,23 +753,17 @@ $$
 $$
 Thus, the values sum to one across variables and can be interpreted as the relative LOVO contribution of each variable to the change in the overall distance.
 
-The downstream diagnostics instead quantify what the change in distance does to a particular subsequent analysis:
+The downstream analysis-based diagnostics  quantify what the change in distance does to a particular subsequent analysis:
 
 - `mds_congruence` (equivalently, `cc_importance`) and `ac_importance` compare classical MDS representations of the full and reduced distances.
 - When clustering is requested, `pam_importance`, `hclust_importance`, or `spectral_importance` measure the change in the corresponding clustering partition as one minus the adjusted Rand index (ARI).
 
-We first consider the direct distance diagnostics.
+The computed diagnostics measures are stored in the `results` tibble returned by `lovo_mdist()`
 
 ```{r}
 #| label: inspect-gower-distance-diagnostics
 
-lovo_gower$results |>
-  dplyr::select(
-    variable,
-    mad_importance,
-    relative_distance
-  ) |>
-  dplyr::arrange(dplyr::desc(relative_distance))
+lovo_gower$results 
 ```
 
 \textcolor{blue}{A visual summary of the leave-one-variable-out results} on the dissimilarities can be obtained using the `autoplot` function from `ggplot2` and the measure (i.e., either "mad_importance", or, the default, "relative_distance"):
@@ -778,9 +781,8 @@ ggplot2::autoplot(
 )
 ```
 
-LOVO can also describe the consequences of removing a variable for a subsequent distance-based analysis. For MDS, `lovo_mdist()` applies classical multidimensional scaling to the full and leave-one-variable-out dissimilarity matrices. By default, two-dimensional configurations are used, with the number of dimensions controlled by `dims`. \textcolor{blue}{To measure the impact of leaving a variable out on the MDS solution, the alienation coefficient is calculated (see, @van2024unbiased, for details). Low values indicate similar configurations (small effects of leaving a variable out) whereas larger values indicate large effects.}
 
-These MDS diagnostics should be distinguished from `mad_importance` and `relative_distance`. A variable can change the original dissimilarity matrix substantially without producing a comparable change in a low-dimensional MDS representation, or conversely. The quantities do not provide competing estimates of the same effect: they describe different objects. MDS-based diagnostics are therefore most relevant when such a representation is itself of interest.
+These MDS diagnostics should be distinguished direct distance diagnostics. A variable can change the original dissimilarity matrix substantially without producing a comparable change in a low-dimensional MDS representation, or conversely. The quantities do not provide competing estimates of the same effect: they describe different objects. MDS-based diagnostics are therefore most relevant when such a representation is itself of interest.
 
 The impact of leaving a variable out on cluster analysis can be assessed by specifying the number of clusters and one or more of the following distance based clustering algorithms: hierarchical clustering (`hclust` with complete linkage), partitioning around medoids (`pam`) and spectral clustering (`spectral`, with some defaults?). The effect of leaving a variable out is assessed by calculating the adjusted rand index (ARI; reference) between the clusters obtained by using all variables to the solution obtained by leaving-one-variable out. The clustering importance is defined as 1-ARI so that higher values correspond to more impact on the solution. 
 
@@ -788,30 +790,82 @@ For example,
 
 ```{r}
 lovo_gower <- lovo_mdist(
-  penguin_train |> dplyr::select(,-species),
+  penguin_train |> dplyr::select(-species),
   preset = "gower",
+  mds = TRUE,
   cluster_methods = c("hclust", "pam", "spectral"),
   cluster_k = 3
 )
 ```
 
 
-The `results` field of `lovo_gower` contains the numerical LOVO diagnostics. Visualizations can be obtained with `autoplot()` by specifying the desired metric:
+The `results` field of `lovo_gower` contains the numerical LOVO diagnostics. Visualizations can be obtained with `autoplot()` by specifying the desired metric. @fig-gower-lovo-downstream compares the effects on the MDS configuration and the hierarchical clustering partition:
 
 ```{r}
-#| eval: false
+#| label: plot-gower-lovo-downstream
 
-ggplot2::autoplot(
+a <- ggplot2::autoplot(
+  lovo_gower,
+  metric = "ac_importance"
+)
+
+b <- ggplot2::autoplot(
   lovo_gower,
   metric = "hclust_importance"
 )
+```
 
+```{r}
+#| label: style-gower-lovo-downstream
+#| include: true
+
+variable_labels <- c(
+  island = "Island", sex = "Sex",
+  bill_length_mm = "Bill\nlength",
+  bill_depth_mm = "Bill\ndepth",
+  flipper_length_mm = "Flipper\nlength",
+  body_mass_g = "Body\nmass"
+)
+
+a <- a + ggplot2::labs(
+  title = "(a) MDS configuration", y = "Alienation coefficient", x = NULL
+)
+b <- b + ggplot2::labs(
+  title = "(b) Hierarchical clustering", y = "1 - ARI", x = NULL
+)
+
+lovo_plot_style <- list(
+  ggplot2::scale_x_discrete(labels = variable_labels),
+  ggplot2::scale_y_continuous(limits = c(0, NA)),
+  ggplot2::theme(
+    legend.position = "none",
+    plot.title = ggplot2::element_text(size = 10, face = "plain"),
+    axis.title = ggplot2::element_text(size = 9),
+    axis.text = ggplot2::element_text(size = 8),
+    axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5),
+    panel.grid.minor = ggplot2::element_blank()
+  )
+)
+a <- a + lovo_plot_style
+b <- b + lovo_plot_style
 
 ```
 
+```{r}
+#| label: fig-gower-lovo-downstream
+#| fig-cap: "Downstream leave-one-variable-out diagnostics under Gower distance for the penguin training data. (a) Alienation coefficient comparing the two-dimensional classical MDS configurations before and after omitting each variable. (b) One minus the adjusted Rand index (ARI) comparing the full and reduced complete-linkage hierarchical clustering partitions, each with three clusters."
+#| fig-width: 6.5
+#| fig-height: 3.2
 
+patchwork::wrap_plots(a, b, nrow = 1)
+
+```
+
+#### Compare LOVO diagnostics across distance specifications
 
 To compare variable-specific effects across alternative distance specifications, the \pkg{manydist} package provides the compare_lovo_mdist() function. The function takes a list of distance specifications and, when relevant, downstream analysis settings. For example,
+
+\Needspace{14\baselineskip}
 
 ```{r}
 variants <- list(
@@ -826,7 +880,7 @@ variants <- list(
 )
 
 lovo_comparison <- compare_lovo_mdist(
-  penguin_train |> dplyr::select(,-species),
+  penguin_train |> dplyr::select(-species),
   methods = variants,
   cluster_methods = "pam",
   cluster_k = 3
@@ -836,7 +890,7 @@ lovo_comparison <- compare_lovo_mdist(
 
 ```{r}
 #| label: fig-compare-lovo-distance
-#| fig-cap: "Relative leave-one-variable-out contributions under four distance specifications. Larger values indicate a greater relative change in the pairwise dissimilarities when the variable is omitted."
+#| fig-cap: "Relative leave-one-variable-out contributions under four distance specifications."
 #| fig-width: 6.3
 #| fig-height: 3.6
 
@@ -850,7 +904,7 @@ ggplot2::autoplot(
 
 ```{r}
 #| label: fig-compare-lovo-pam
-#| fig-cap: "Effect of leaving out each variable on three-cluster PAM solutions under four distance specifications. Values are one minus the adjusted Rand index between the full and leave-one-variable-out partitions; larger values indicate a greater change in the partition."
+#| fig-cap: "Leave-one-variable-out importance (1 - ARI) for three-cluster PAM solutions under four distance specifications."
 #| fig-width: 6.3
 #| fig-height: 3.6
 
@@ -861,15 +915,15 @@ ggplot2::autoplot(
 )
 ```
 
-@fig-compare-lovo-distance compares the relative LOVO contributions across distance specifications, whereas @fig-compare-lovo-pam shows the corresponding PAM-based importance. For each variable and distance specification, pam_importance is defined as ($1-\mathrm{ARI}$), where ARI compares the three-cluster PAM partition obtained from all variables with the partition obtained after omitting that variable. The comparison is therefore made within each distance specification: larger values indicate that leaving out the variable produces a greater change in the corresponding PAM solution. The species labels are not used in either analysis.
-The same comparison can instead be displayed for `mad_importance`, `relative_distance`, or the MDS-based diagnostics, depending on which aspect of the LOVO analysis is relevant.
+@fig-compare-lovo-distance compares the relative LOVO contributions across distance specifications, whereas @fig-compare-lovo-pam shows the corresponding PAM-based importance. In both cases, each full-versus-reduced comparison is made within the same distance specification; the species labels are not used. Other diagnostics introduced above can be displayed by changing the `metric` argument.
+
 Note that, for association-based specifications, leaving out a variable can change not only the available information but also the construction of the remaining contributions. Under `u_dep`, for example, removing either categorical variable leaves only one categorical variable. Because the association-based categorical construction requires at least two categorical variables, the reduced specification falls back to matching. LOVO results in such cases should therefore be interpreted with this change in construction in mind.
 
 ### Comparing candidate distance specifications
 
 \textcolor{blue}{The leave-one-variable-out function} can be used to inspect and compare how individual variables impact distances, and possibly subsequent distant-based analyses. One may, however, also be interested in a comparison of the overall distances resulting from different distance specification. Or, how such differences lead to differences in downstream analysis. For this purpose, the function `benchmark_mdist()` can be used.
 
-Candidate distance specifications are described by four fields: `preset`, `method_cat`, `method_num`, and `commensurable`. Named presets determine their settings internally; rows with `preset = "custom"` use the other three fields explicitly. The function `all_dist_method_specs()` returns a table of candidate specifications (`r nrow(all_dist_method_specs())` in the current version), which can be filtered to select a manageable set. Alternatively, the specifications table can be constructed manually. Because `benchmark_mdist()` compares every pair of successful candidates, large candidate sets produce many pairwise comparisons.
+Candidate distance specifications are described by four fields: `preset`, `method_cat`, `method_num`, and `commensurable`. Named presets determine their settings internally; rows with `preset = "custom"` use the other three fields explicitly. By default, `all_dist_method_specs()` returns a table of custom combinations (`r nrow(all_dist_method_specs())` in the current version), filtered through its component arguments. For commensurable specifications, the grid retains only `"std"` and `"pc_scores"` numerical preprocessing to avoid redundant affine scalings. Supplying preset names returns only those presets; `preset = "all"` lists all named presets. Alternatively, the specifications table can be constructed manually. Because `benchmark_mdist()` compares every pair of successful candidates, large candidate sets produce many pairwise comparisons.
 
 If we want to compare the Gower, unbiased, and unbiased preset variants we can do:
 
@@ -877,21 +931,20 @@ If we want to compare the Gower, unbiased, and unbiased preset variants we can d
 #| label: benchmark-candidate-distances
 
 candidate_specs <- all_dist_method_specs(
-  mode = "presets_only",
   preset = c("gower", "u_indep", "u_dep")
 )
 
 set.seed(2026)
 
 distance_benchmark <- benchmark_mdist(
-  x = penguin_train |> dplyr::select(,-species),
+  x = penguin_train |> dplyr::select(-species),
   specs = candidate_specs,
   cluster_k = 3,
   cluster_methods = "pam"
 )
 ```
 
-The `summary()` method displays and returns a tibble with one row per pair of successful distance specifications:
+The `summary()` method displays one upper-triangular table per benchmark measure, with distance specifications labelling both axes and the diagonal omitted. By default, all available measures are shown; the `metric` argument selects one or more measures (for example, `metric = "relative_distance"` or `metric = "ari_pam"`). The complete tibble, with one row per pair of successful distance specifications, is returned invisibly for further analysis:
 
 ```{r}
 pairwise_results <- summary(distance_benchmark)
@@ -937,47 +990,17 @@ The same display can be requested for raw MAD, MDS congruence or alienation, and
 ## Distance-based learning pipelines {#sec-pipelines}
 
 
-The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow. We begin with a direct nearest-neighbour classifier using precomputed distances, then express the same calculation as a recipe and model workflow. We then illustrate clustering and classification pipelines using the same real-world dataset.
+The \pkg{manydist} package integrates this fit-and-apply principle with \pkg{tidymodels}, allowing distance construction to become part of a learning workflow. We begin with a direct nearest-neighbour classifier on tabular data, show the equivalent calculation using precomputed distances, and then express it as a recipe and model workflow. We then illustrate clustering and classification pipelines using the same real-world dataset.
 
-### From precomputed distances to a learning workflow
+### From tabular data to a distance-based learning workflow
 
 We first predict penguin species using the training and test sets introduced in @sec-construction. For this direct example, we use \code{knn_dist()}, with five neighbours and Gower's distance, keeping \code{species} out of the distance calculation.
 
-We need only distances from each test observation to each training observation, together with the training labels. The call to \code{mdist()} below estimates the numerical ranges from \code{penguin_train} and applies that fitted preprocessing to the test observations; no training-to-training distance matrix is required for this direct prediction.
-
-```{r}
-#| label: compute-penguin-knn-distances
-
-d_knn_test <- mdist(
-  penguin_train |> dplyr::select(,-species),
-  new_data = dplyr::select(penguin_test, -species),
-  preset = "gower"
-)
-```
-
-The resulting matrix has `r nrow(penguin_test)` rows and `r nrow(penguin_train)` columns, one for each training observation. Its column order must agree with the order of the training outcomes. The function \code{knn_dist()} uses these distances and outcomes to predict directly, without a separate model-fitting call.
+The simplest interface supplies the tabular training data in \code{x} and the test data in \code{new_data}. The \code{response} argument selects the training outcome and excludes it from the predictors, including from the test data if present. The function calls \code{mdist()} internally; \code{dist_args} supplies its distance settings. Here, \code{preset = "gower"} uses numerical ranges estimated from the training observations and applies the same preprocessing to the test observations.
 
 ```{=latex}
-\Needspace{18\baselineskip}
+\Needspace{24\baselineskip}
 ```
-
-```{r}
-#| label: fit-penguin-knn-directly
-
-knn_predictions <- tibble::tibble(
-  .pred_class = knn_dist(
-    x = d_knn_test$distance,
-    y = penguin_train$species,
-    k = 5,
-    type = "class"
-  )
-)
-
-dplyr::bind_cols(penguin_test["species"], knn_predictions) |>
-  yardstick::accuracy(truth = species, estimate = .pred_class)
-```
-
-Alternatively, \code{knn_dist()} accepts tabular training and test data when a distance function is supplied. The \code{response} argument selects the training outcome and excludes it from the predictors (and from the test data if present). The following call gives the same class predictions, computing the test-to-training distances internally:
 
 ```{r}
 #| label: predict-penguin-knn-tabular
@@ -987,15 +1010,50 @@ tabular_predictions <- knn_dist(
   response = "species",
   new_data = penguin_test,
   k = 5,
-  dist_fun = mdist,
   dist_args = list(preset = "gower"),
   type = "class"
 )
 
-all.equal(knn_predictions$.pred_class, tabular_predictions)
+knn_predictions <- tibble::tibble(
+  .pred_class = tabular_predictions
+)
+
+dplyr::bind_cols(penguin_test["species"], knn_predictions) |>
+  yardstick::accuracy(truth = species, estimate = .pred_class)
 ```
 
-This direct interface computes distances on each call. To combine fitted distance preprocessing and prediction in a reusable pipeline, we use the \pkg{parsnip} model specification \code{nearest_neighbor_dist()} with a \pkg{recipes} recipe: an object that specifies preprocessing operations to be estimated from fitting data and applied to new observations. The step \code{step_mdist()} replaces the original predictors with distances to the training observations. Its \code{output = "distance_to_training"} setting creates the representation consumed by \code{nearest_neighbor_dist()}.
+Alternatively, the test-to-training distances can be computed externally with \code{mdist()} and passed directly to \code{knn_dist()}, together with the training outcomes. No training-to-training matrix needs to be supplied:
+
+```{r}
+#| label: compute-penguin-knn-distances
+
+d_knn_test <- mdist(
+  penguin_train |> dplyr::select(-species),
+  new_data = dplyr::select(penguin_test, -species),
+  preset = "gower"
+)
+```
+
+The resulting matrix has `r nrow(penguin_test)` rows and `r nrow(penguin_train)` columns. Its columns correspond to training observations and must be in the same order as the training outcomes. The following call gives the same class predictions as the tabular interface:
+
+```{r}
+#| label: predict-penguin-knn-precomputed
+
+distance_predictions <- knn_dist(
+  x = d_knn_test$distance,
+  y = penguin_train$species,
+  k = 5,
+  type = "class"
+)
+
+all.equal(tabular_predictions, distance_predictions)
+```
+
+```{=latex}
+\Needspace{8\baselineskip}
+```
+
+For tabular input, this direct interface computes distances on each call rather than returning a fitted model. To combine fitted distance preprocessing and prediction in a reusable pipeline, we use the \pkg{parsnip} model specification \code{nearest_neighbor_dist()} with a \pkg{recipes} recipe: an object that specifies preprocessing operations to be estimated from fitting data and applied to new observations. The step \code{step_mdist()} replaces the original predictors with distances to the training observations. Its \code{output = "distance_to_training"} setting creates the representation consumed by \code{nearest_neighbor_dist()}.
 
 ```{=latex}
 \Needspace{30\baselineskip}
@@ -1210,7 +1268,6 @@ The cross-method ARI in @tbl-wdi-clustering-summary holds the distance fixed and
 #| echo: false
 
 wdi_benchmark_specs <- all_dist_method_specs(
-  mode = "presets_only",
   preset = unname(distance_presets)
 ) |>
   dplyr::mutate(
@@ -1312,6 +1369,18 @@ Because these recipes include `income` as a response variable, response-aware sp
 
 One recipe is defined for each distance and paired with the same nearest-neighbour model. The number of neighbours is tuned over the grid defined above.
 
+The workflow set evaluates the distance specifications under the same resampling design, tuning the number of neighbours within each workflow. Balanced accuracy is the primary metric because the four income groups have different sizes. The box separates preprocessing, model specification, workflow assembly, and tuning.
+
+```{=latex}
+\begin{tcolorbox}[breakable, colback=black!2, colframe=black!25,
+  boxrule=0.4pt, arc=0pt, left=6pt, right=6pt, top=4pt, bottom=4pt,
+  fontupper=\footnotesize, colbacktitle=black!8, coltitle=black,
+  before upper={\fvset{samepage=true}}, fonttitle=\small\bfseries,
+  title={Income classification: cross-validation},
+  title after break={Income classification: cross-validation (continued)}]
+\begin{pipelinephase}{Preprocess}
+```
+
 ```{r}
 #| label: build-wdi-classification-workflows
 
@@ -1325,11 +1394,31 @@ classification_recipes <- purrr::map(
     )
 )
 
+```
+
+```{=latex}
+\end{pipelinephase}
+\begin{pipelinephase}{Specify}
+```
+
+```{r}
+#| label: specify-wdi-classification-model
+
 knn_spec <- nearest_neighbor_dist(
   mode = "classification",
   neighbors = tune::tune()
 ) |>
   parsnip::set_engine("manydist")
+
+```
+
+```{=latex}
+\end{pipelinephase}
+\begin{pipelinephase}{Assemble}
+```
+
+```{r}
+#| label: assemble-wdi-classification-workflows
 
 classification_workflows <- workflowsets::workflow_set(
   preproc = classification_recipes,
@@ -1337,7 +1426,10 @@ classification_workflows <- workflowsets::workflow_set(
 )
 ```
 
-The workflow set allows the distance specification and neighbourhood size to be evaluated under the same resampling design. The number of neighbours is tuned within each workflow, while the distance is compared across workflows. Balanced accuracy is used as the primary metric because the four income groups have different sizes.
+```{=latex}
+\end{pipelinephase}
+\begin{pipelinephase}{Tune}
+```
 
 ```{r}
 #| label: tune-wdi-classification-workflows
@@ -1357,6 +1449,11 @@ classification_results <- workflowsets::workflow_map(
   control = tune::control_grid(save_pred = TRUE),
   verbose = FALSE
 )
+```
+
+```{=latex}
+\end{pipelinephase}
+\end{tcolorbox}
 ```
 
 `rank_results()` identifies the best neighbourhood size within each distance workflow and then ranks those workflows using balanced accuracy.
@@ -1514,6 +1611,13 @@ Only after the distance specification and number of neighbours have been selecte
 
 ```{=latex}
 \Needspace{6\baselineskip}
+\begin{tcolorbox}[breakable, colback=black!2, colframe=black!25,
+  boxrule=0.4pt, arc=0pt, left=6pt, right=6pt, top=4pt, bottom=4pt,
+  fontupper=\footnotesize, colbacktitle=black!8, coltitle=black,
+  before upper={\fvset{samepage=true}}, fonttitle=\small\bfseries,
+  title={Income classification: final evaluation},
+  title after break={Income classification: final evaluation (continued)}]
+\begin{pipelinephase}{Select}
 ```
 
 ```{r}
@@ -1538,11 +1642,31 @@ best_neighbors <- tune::select_best(
   metric = "bal_accuracy"
 )
 
+```
+
+```{=latex}
+\end{pipelinephase}
+\begin{pipelinephase}{Finalize}
+```
+
+```{r}
+#| label: finalize-selected-wdi-workflow
+
 final_wdi_workflow <- workflowsets::extract_workflow(
   classification_results,
   selected_workflow_id
 ) |>
   tune::finalize_workflow(best_neighbors)
+
+```
+
+```{=latex}
+\end{pipelinephase}
+\begin{pipelinephase}{Evaluate}
+```
+
+```{r}
+#| label: evaluate-selected-wdi-workflow
 
 final_wdi_results <- tune::last_fit(
   final_wdi_workflow,
@@ -1556,6 +1680,11 @@ final_wdi_results <- tune::last_fit(
 final_wdi_metrics <- tune::collect_metrics(final_wdi_results)
 
 final_wdi_metrics
+```
+
+```{=latex}
+\end{pipelinephase}
+\end{tcolorbox}
 ```
 
 ```{r}

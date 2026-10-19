@@ -7,7 +7,7 @@
 `manydist` provides tools for constructing, computing, and using
 distance measures for numerical, categorical, and mixed-type data.
 
-  
+\
 
 ## Installation
 

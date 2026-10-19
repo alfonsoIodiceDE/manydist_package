@@ -81,6 +81,7 @@
 <code><a href="../reference/nearest_neighbor_dist.html">nearest_neighbor_dist()</a></code>, a parsnip model specification that consumes those distance columns.</li>
 </ul>
 <p>This guide builds, tunes, and evaluates a mixed-data nearest-neighbour classifier while keeping all preprocessing inside the resampling workflow.</p>
+<p>For direct prediction without a workflow, <code><a href="../reference/knn_dist.html">knn_dist()</a></code> accepts either a precomputed test-to-training distance matrix and training outcomes, or tabular training and test data, with distances computed internally by <code><a href="../reference/mdist.html">mdist()</a></code>. Use <code>dist_args = list(preset = "gower")</code>, for example, to choose the distance specification. In the latter mode, <code>response = "species"</code> selects and excludes the outcome column automatically; test outcomes, if present, are ignored. See <code><a href="../reference/knn_dist.html">?knn_dist</a></code> for examples of both interfaces. The fit/predict engine functions remain available for tidymodels, but are not needed for direct calls.</p>
 </section><section class="level2" data-number="2"><h2 data-number="2" id="setup">
 <span class="header-section-number">2</span> Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h2>

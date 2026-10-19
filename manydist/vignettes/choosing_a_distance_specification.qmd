@@ -204,12 +204,15 @@ Response-aware construction is available in two ways:
 
 
 
-The response-aware presets can be inspected with
-`all_dist_method_specs(mode = "response_aware_only")`.
+The response-aware presets can be identified from the method metadata and
+passed to `all_dist_method_specs()`.
 
 ```{r}
-response_aware_presets <- all_dist_method_specs(mode = "response_aware_only") |>
-  dplyr::filter(preset != "custom") |>
+response_preset_names <- dist_methods_tbl() |>
+  dplyr::filter(argument == "preset", response_aware) |>
+  dplyr::pull(method)
+
+response_aware_presets <- all_dist_method_specs(preset = response_preset_names) |>
   dplyr::distinct(preset) |>
   dplyr::arrange(preset)
 
@@ -640,11 +643,10 @@ response-aware custom specifications.
 
 <!-- ```{r} -->
 <!-- small_specs <- dplyr::bind_rows( -->
-<!--   all_dist_method_specs(mode = "presets_only") |> -->
+<!--   all_dist_method_specs(preset = "all") |> -->
 <!--     dplyr::filter(preset %in% c("gower", "u_dep", "u_indep", "euclidean")), -->
 
 <!--   all_dist_method_specs( -->
-<!--     mode = "full", -->
 <!--     method_cat = c("matching", "tvd"), -->
 <!--     method_num = c("std", "robust"), -->
 <!--     commensurable = c(TRUE, FALSE) -->

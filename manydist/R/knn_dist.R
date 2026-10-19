@@ -3,8 +3,8 @@
 #' Predict outcomes from precomputed test-to-training distances, or compute
 #' those distances from tabular training and test predictors before predicting.
 #'
-#' @param x With `dist_fun = NULL`, a numeric test-to-training distance matrix,
-#'   data frame, or `MDist` object. Otherwise, tabular training predictors.
+#' @param x Tabular training predictors when `new_data` is supplied. Otherwise,
+#'   a numeric test-to-training distance matrix, data frame, or `MDist` object.
 #' @param y Training outcomes, in the same order as the distance columns or
 #'   training rows. Use a factor for classification and numeric outcomes for
 #'   regression. Missing outcomes are not supported. May be omitted when
@@ -14,14 +14,13 @@
 #'   column is excluded from the training and test predictors before distance
 #'   computation. This selects the prediction outcome, not the `response`
 #'   argument of [mdist()].
-#' @param new_data Test predictors when `dist_fun` is supplied. Must be `NULL`
-#'   when `x` already contains test-to-training distances.
+#' @param new_data Optional tabular test predictors. When supplied, [mdist()]
+#'   computes their distances to the training data in `x`. Leave `NULL` when
+#'   `x` already contains test-to-training distances.
 #' @param k Integer number of neighbours, between one and the number of
 #'   training observations.
-#' @param dist_fun Optional function accepting training predictors as its first
-#'   argument and test predictors as `new_data`. It must return a numeric
-#'   test-to-training matrix, data frame, or `MDist` object. For example, [mdist()].
-#' @param dist_args Named list of additional arguments passed to `dist_fun`.
+#' @param dist_args Named list of additional arguments passed to [mdist()],
+#'   such as `list(preset = "gower")`. Used only with tabular input.
 #' @param type Prediction type: `"class"` for class labels, `"prob"` for class
 #'   probabilities, or `"numeric"` for regression predictions.
 #'
@@ -32,10 +31,9 @@
 #' outcomes. Distance ties are resolved in training order and class-vote ties
 #' in factor-level order. Class probabilities are neighbour class proportions.
 #'
-#' No training-to-training matrix is required. With `dist_fun = mdist`, distance
-#' construction uses `x` as training data and `new_data` as test data. The
+#' No training-to-training matrix needs to be supplied. For tabular input,
+#' [mdist()] uses `x` as training data and `new_data` as test data. The
 #' function computes distances on each call; it does not return a fitted model.
-#' Other distance functions are responsible for their own preprocessing rules.
 #' For fitted tidymodels workflows, use [nearest_neighbor_dist()] with
 #' [step_mdist()] instead.
 #'
@@ -47,20 +45,20 @@
 #' train <- data.frame(value = c(0, 2, 8, 10))
 #' test <- data.frame(value = c(1, 9))
 #' labels <- factor(c("low", "low", "high", "high"))
-#' d <- mdist(train, new_data = test, preset = "gower")
-#' knn_dist(d, labels, k = 1)
 #' knn_dist(train, labels, new_data = test, k = 1,
-#'          dist_fun = mdist, dist_args = list(preset = "gower"))
+#'          dist_args = list(preset = "gower"))
 #' train$label <- labels
 #' knn_dist(train, response = "label", new_data = test, k = 1,
-#'          dist_fun = mdist, dist_args = list(preset = "gower"))
+#'          dist_args = list(preset = "gower"))
+#' d <- mdist(train["value"], new_data = test, preset = "gower")
+#' knn_dist(d, labels, k = 1)
 #' knn_dist(d, labels, k = 2, type = "prob")
 #' knn_dist(d, c(0, 2, 8, 10), k = 2, type = "numeric")
 #' @seealso [mdist()], [nearest_neighbor_dist()], [step_mdist()]
 #' @md
 #' @export
 knn_dist <- function(x, y = NULL, new_data = NULL, k = 5,
-                     dist_fun = NULL, dist_args = list(),
+                     dist_args = list(),
                      type = c("class", "prob", "numeric"), response = NULL) {
   type <- match.arg(type)
   response_quo <- rlang::enquo(response)
@@ -68,8 +66,8 @@ knn_dist <- function(x, y = NULL, new_data = NULL, k = 5,
     if (!is.null(y)) {
       stop("Supply either `y` or `response`, not both.", call. = FALSE)
     }
-    if (is.null(dist_fun) || !is.data.frame(x)) {
-      stop("`response` requires tabular training data in `x` and a distance function.",
+    if (is.null(new_data) || !is.data.frame(x)) {
+      stop("`response` requires tabular training data in `x` and test predictors in `new_data`.",
            call. = FALSE)
     }
     response_index <- tidyselect::eval_select(response_quo, x)
@@ -113,26 +111,26 @@ knn_dist <- function(x, y = NULL, new_data = NULL, k = 5,
   }
 
   expected_rows <- NULL
-  if (is.null(dist_fun)) {
-    if (!is.null(new_data) || length(dist_args) > 0L) {
-      stop("With `dist_fun = NULL`, supply distances in `x` and leave `new_data` and `dist_args` empty.",
+  if (is.null(new_data)) {
+    if (length(dist_args) > 0L) {
+      stop("For precomputed distances, leave `dist_args` empty. For tabular input, supply `new_data`.",
            call. = FALSE)
     }
     distances <- x
   } else {
-    if (!is.function(dist_fun)) {
-      stop("`dist_fun` must be a function or NULL.", call. = FALSE)
+    if (inherits(x, "MDist")) {
+      stop("For precomputed distances in `x`, leave `new_data` NULL.", call. = FALSE)
     }
     if (!(is.data.frame(x) || is.matrix(x)) || nrow(x) != length(y)) {
       stop("Training predictors in `x` must have one row per outcome in `y`.",
            call. = FALSE)
     }
     if (!(is.data.frame(new_data) || is.matrix(new_data))) {
-      stop("Supply tabular test predictors in `new_data` when using `dist_fun`.",
+      stop("Supply tabular test predictors in `new_data`.",
            call. = FALSE)
     }
     expected_rows <- nrow(new_data)
-    distances <- do.call(dist_fun, c(list(x, new_data = new_data), dist_args))
+    distances <- do.call(mdist, c(list(x, new_data = new_data), dist_args))
   }
 
   if (inherits(distances, "MDist")) distances <- distances$distance
@@ -149,7 +147,7 @@ knn_dist <- function(x, y = NULL, new_data = NULL, k = 5,
          call. = FALSE)
   }
   if (!is.null(expected_rows) && nrow(D) != expected_rows) {
-    stop("The distance function must return one row per test observation.",
+    stop("`mdist()` must return one row per test observation.",
          call. = FALSE)
   }
   k <- as.integer(k)

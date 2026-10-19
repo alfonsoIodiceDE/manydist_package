@@ -217,13 +217,17 @@ Response-aware construction is available in two ways:
 1.  through response-aware presets;
 2.  through response-aware categorical methods in custom specifications.
 
-The response-aware presets can be inspected with
-`all_dist_method_specs(mode = "response_aware_only")`.
+The response-aware presets can be identified from the method metadata
+and passed to
+[`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md).
 
 ``` r
 
-response_aware_presets <- all_dist_method_specs(mode = "response_aware_only") |>
-  dplyr::filter(spec_type == "preset") |>
+response_preset_names <- dist_methods_tbl() |>
+  dplyr::filter(argument == "preset", response_aware) |>
+  dplyr::pull(method)
+
+response_aware_presets <- all_dist_method_specs(preset = response_preset_names) |>
   dplyr::distinct(preset) |>
   dplyr::arrange(preset)
 

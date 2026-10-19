@@ -68,7 +68,11 @@ mdist(
 - commensurable:
 
   Logical. If \`TRUE\`, dissimilarities are scaled so that the average
-  contribution of each variable to the overall distance is equal to 1.
+  contribution of each variable to the overall distance is equal to 1 on
+  the training data. Variable-specific means are computed from training
+  pairs, before aggregation, and never from \`new_data\`. The current
+  variable-wise convention includes the zero diagonal of the training
+  square.
 
 - ncomp:
 

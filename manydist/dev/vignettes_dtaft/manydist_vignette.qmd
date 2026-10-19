@@ -519,11 +519,10 @@ For a small example, we restrict the grid to a few specifications.
 
 ```{r}
 small_specs <- dplyr::bind_rows(
-  all_dist_method_specs(mode = "presets_only") |>
+  all_dist_method_specs(preset = "all") |>
     dplyr::filter(preset %in% c("gower", "u_dep", "u_indep", "euclidean")),
 
   all_dist_method_specs(
-    mode = "full",
     method_cat = c("matching", "tvd"),
     method_num = c("std", "robust"),
     commensurable = c(TRUE, FALSE)

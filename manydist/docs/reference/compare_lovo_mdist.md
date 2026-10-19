@@ -31,7 +31,6 @@ compare_lovo_mdist(
 
   For example:
 
-
       methods = list(
         gower = list(preset = "gower"),
         u_dep = list(preset = "unbiased_dependent"),
@@ -115,6 +114,12 @@ The results are combined across methods and returned as an
 [`print()`](https://rdrr.io/r/base/print.html),
 [`summary()`](https://rdrr.io/r/base/summary.html), and
 [`ggplot2::autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html).
+
+In `autoplot()`, `reorder = TRUE` ranks variables by the selected metric
+averaged across methods, separately within each variable type.
+Categorical variables precede numerical variables, preserving the
+blue/red background bands. `top_n` still selects variables globally
+before ordering. If type information is absent, ordering is global.
 
 ## See also
 

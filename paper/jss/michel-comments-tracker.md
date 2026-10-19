@@ -317,3 +317,50 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 - Added larger-data regression tests, independent Euclidean and Gower references, self-application, single-row and enlarged-batch checks, and recipe consistency. All seven test files pass. The broader 72-specification audit has 71 complete passes; `kulczynski_s` rejects sparse profiles with a non-finite-value error. The three presets without new-data support continue to reject those calls explicitly.
 - On the paper's seeded penguin split, Gower predictions remain unchanged. Corrected `hl` changes three of 84 predictions, increasing accuracy from 81/84 to 84/84. The averaging-convention issue remains open. The review records the resolved issues; no Michel-comment statuses or manuscript text changed, and the PDF was not rebuilt.
 - Installed the corrected package and confirmed training/new-data agreement for Gower and `hl` in a fresh installed-package session. Independent numerical reference checks, including reduced PCA, are also retained as regression tests; all seven test files pass after this addition.
+
+### 2026-10-16 — Downstream LOVO figure presentation
+
+- Reformatted the author's new MDS/clustering diagnostic figure as two horizontal panels with a shared variable axis, readable variable labels and units, concise panel titles, and no redundant method legends. Preserved the metric values, variable ordering, and categorical/numerical background shading. Each metric retains its own horizontal scale starting at zero.
+- Added a numbered figure reference and a caption defining the alienation coefficient comparison and the complete-linkage, three-cluster `1 - ARI` comparison. Kept the two `autoplot()` calls visible and moved publication formatting into a non-echoing figure chunk. Added a page-break guard to prevent the following specification list from splitting across pages.
+- Rendered the manuscript with the current installed package and checked the figure and neighbouring pages visually. No Michel-comment statuses changed.
+- At the author's request, restored variables to the horizontal axes. Shortened labels to Island, Sex, Bill length, Bill depth, Flipper length, and Body mass, using two lines for the longer names and smaller, unrotated tick labels. Removed axis flipping and axis collection, retained side-by-side panels, and corrected the caption to refer to different vertical scales. Rebuilt the 35-page PDF and visually checked the revised figure on page 16 and the following page.
+- Made `patchwork::wrap_plots(a, b, nrow = 1)` visible beneath the two `autoplot()` calls, moving only the label/font/theme adjustments into a hidden styling chunk. Rebuilt the 35-page PDF and verified that the assembly command appears with the unchanged figure on page 16, with no unresolved references.
+- Streamlined the across-specification LOVO subsection: removed repeated metric definitions and larger-value interpretation keys from its prose and captions. Retained the within-specification comparison point, absence of species labels, and association-aware fallback caveat. Preserved the author's latest edits, including the visible styling chunk and shortened single-LOVO caption. This wording-only revision was not rendered; no Michel-comment statuses changed.
+
+### 2026-10-16 — Argument-filtered distance specification grids
+
+- Removed `mode` from `all_dist_method_specs()`. `preset = NULL` returns custom combinations; preset names return only the selected named presets; `"all"` returns all named presets. Including `"custom"` in a selection also returns the component-filtered custom grid. Component filters without custom rows now give an explicit error rather than being silently ignored.
+- Reduced commensurable custom grids to `std` and `pc_scores`, removing the redundant `robust` rows while retaining the previous exclusions of `none` and `range`. `mdist()` itself is unchanged. The grid contains 413 custom combinations, 10 named presets, or 423 combined rows (59 fewer than the former combined grid).
+- Updated package help, release notes, source vignettes, paper examples and replication-script calls, plus compatibility calls in the slide and draft-vignette sources. Response-aware selection now uses explicit names or method metadata. Qualified the paper's affine-equivalence statement for training distances and the existing range-clipping behavior on new observations.
+- All eight package test files pass, covering selection semantics, mixed selections, filters, redundant scalings, invalid inputs, and absence of `mode`. Installed the revised package locally and checked its API in a fresh session. Preserved the author's other manuscript edits; no Michel-comment statuses changed and the PDF was not rebuilt.
+
+### 2026-10-16 — Simplified public kNN interface and reordered Section 6.1
+
+- Removed `dist_fun` from public `knn_dist()`: non-NULL `new_data` selects tabular input and an internal `mdist()` call, with distance settings passed through `dist_args`. With `new_data = NULL`, `x` contains precomputed test-to-training distances. The lower-level tidymodels engine functions are unchanged.
+- Reordered Section 6.1 to introduce tabular prediction first, externally computed test-to-training distances second, and the fitted recipe/workflow last. Retained response-column selection, training-only preprocessing, the matrix orientation and outcome-order requirements, and exact prediction comparisons. Preserved the author's other article edits.
+- Updated help, examples, the kNN vignette introduction, release notes, and regression tests. Tests check automatic `mdist()` dispatch, argument forwarding, matrix predictors, outcome exclusion, validation, classification/probabilities/regression, and continued precomputed input support. All eight test files pass, and the updated package was installed locally.
+- Executed the exact revised manuscript chunks and installed help examples: all three interfaces agree for 84 test penguins (accuracy 1). No Michel-comment statuses changed.
+- Rebuilt the 35-page PDF and visually checked Section 6.1 and its transition on pages 21–24. Both prediction comparisons print `TRUE`; there are no unresolved references or `dist_fun` mentions in the rendered manuscript. Added a page-break guard before the workflow introduction.
+
+### 2026-10-16 — Phase-labelled boxes in Section 6.3
+
+- Following the author's clarification, restored Section 6.1's fixed-five-neighbour penguin workflow and equivalence check. Removed the interim penguin cross-validation example and its box; tabular, precomputed, and tidymodels predictions again agree for all 84 test penguins.
+- Applied the box treatment to the existing WDI pipeline in Section 6.3 without changing its analysis. The cross-validation box labels Preprocess, Specify, Assemble, and Tune, in that order. A second box labels Select, Finalize, and Evaluate; the existing `last_fit()` call continues to combine final fitting, prediction, and test scoring. Retained the intervening tuning comparisons and figures.
+- Rebuilt the 35-page PDF. Visually checked the restored workflow on page 23 and the complete boxes on pages 28 and 30. All phase labels stay with their code; there are no unresolved references. WDI still selects Unbiased mixed with nine neighbours (test balanced accuracy 0.800, accuracy 0.717). No package behavior or Michel-comment statuses changed; other author edits are preserved.
+
+### 2026-10-16 — Right-aligned pipeline phase labels
+
+- Moved the phase names in both Section 6.3 boxes from code comments to a dedicated, right-aligned grey label column. Labels remain attached to their corresponding code; analysis and results are unchanged.
+- Rebuilt the 35-page PDF and visually checked pages 28 and 30: labels align with their phases, code stays readable, and neither box splits across pages. No Michel-comment statuses changed.
+
+### 2026-10-16 — Upper-triangular benchmark summaries
+
+- `summary.MDistBenchmark()` now displays a labelled upper-triangular table for each available measure, leaving the diagonal and lower triangle blank. `metric` selects one or more measures; `"ari"` selects all available clustering ARIs. All measures are shown by default, with configurable display rounding through `digits`.
+- Preserved the complete, unrounded, invisible tibble return value for existing analysis code. The summary uses stored diagnostics without recomputing distances. Added coverage for measure selection, omitted cells, missing values, failed specifications, validation, and unchanged return values. All eight test files pass; installed the revised package and verified it in a fresh session.
+- Updated package help, the benchmarking vignette, release notes, and the paper's summary-method description. Rebuilt the 36-page PDF: the five tables appear together on page 20. No Michel-comment statuses changed.
+
+### 2026-10-16 — Refreshed pkgdown website
+
+- Rebuilt the local website in `manydist/docs` from the current package documentation, executing all seven articles and refreshing reference pages, figures, changelog, search index, sitemap, and Markdown mirrors.
+- Removed the two obsolete generated `benchmark_comparisons` reference files; their previous versions remain recoverable through Git. Verified the new benchmark summary reference and updated benchmarking article in a browser. The site build and its final checks completed successfully.
+- No publication, Git commit/push, package-version change, or source archive build was performed. The existing GitHub Pages workflow deploys `manydist/docs` on a push to `main`. No Michel-comment statuses changed.

@@ -1,5 +1,25 @@
 # manydist 0.5.2
 
+## Simplified direct kNN prediction
+
+- Removed `dist_fun` from public `knn_dist()`. Supplying `new_data` selects
+  tabular prediction using `mdist()` internally; `dist_args` passes its distance
+  settings. Without `new_data`, `x` contains precomputed test-to-training
+  distances. The lower-level tidymodels engine interfaces are unchanged.
+
+## Simpler specification grids
+
+- Removed `mode` from `all_dist_method_specs()`. The default `preset = NULL`
+  returns custom combinations, a vector of names returns only those named
+  presets, and `preset = "all"` returns all named presets. Include `"custom"`
+  in a preset selection to also generate component-filtered custom rows.
+  Component filters without custom rows are rejected rather than ignored.
+- Commensurable custom grids now retain only `"std"` and `"pc_scores"`,
+  omitting `"robust"` as redundant. This changes the candidate grid only;
+  `mdist()` still supports all its numerical preprocessing choices.
+- Select response-aware specifications using method metadata or explicit
+  preset/method names instead of the former `response_aware_only` mode.
+
 ## Consistent new-data distances
 
 - Replaced the Euclidean cross-distance backend used by `HLeucl` and `hl`
@@ -25,8 +45,8 @@
 ## Direct prediction
 
 - Added `knn_dist()` for direct classification, class probabilities, and
-  regression from test-to-training distances, or from tabular predictors with
-  a supplied distance function such as `mdist()`. The `response` argument
+  regression from test-to-training distances, or from tabular predictors using
+  `mdist()` internally. The `response` argument
   selects and excludes the outcome column without manual predictor selection.
   Existing fit/predict engine
   functions remain available for tidymodels and compatibility.
@@ -62,8 +82,11 @@
   `cluster_k`.
 - Added compact `print()` and `summary()` methods for `MDistBenchmark`
   objects. The full benchmark remains available as a tibble, while interactive
-  output emphasizes run status and failures. `summary()` displays and invisibly
-  returns the complete pairwise-results tibble.
+  output emphasizes run status and failures. `summary()` displays one labelled
+  upper-triangular table per diagnostic, with blank diagonal and lower triangle.
+  Use `metric` to select measures (default: all; `"ari"` selects all available
+  clustering ARIs), and `digits` to control rounding. It still invisibly returns
+  the complete, unrounded pairwise-results tibble for further analysis.
 - Removed `benchmark_comparisons()`. Use `pairs <- summary(result)` instead.
   This is a breaking API change; `autoplot()` continues to work directly on
   the benchmark object.

@@ -5,7 +5,6 @@
 \title{Create a grid of `mdist()` method specifications}
 \usage{
 all_dist_method_specs(
-  mode = c("full", "presets_only", "response_aware_only"),
   method_cat = NULL,
   method_num = NULL,
   preset = NULL,
@@ -13,18 +12,16 @@ all_dist_method_specs(
 )
 }
 \arguments{
-\item{mode}{Character string controlling the initial pool of specifications.
-Supported values are `"full"`, `"presets_only"`, and
-`"response_aware_only"`.}
-
 \item{method_cat}{Optional character vector restricting the categorical
 methods used in custom specifications.}
 
 \item{method_num}{Optional character vector restricting the numerical
 preprocessing methods used in custom specifications.}
 
-\item{preset}{Optional character vector restricting preset-based
-specifications.}
+\item{preset}{`NULL` (the default) returns custom combinations only. A
+character vector selects named presets; `"all"` selects all named presets.
+Include `"custom"` explicitly to also return custom combinations, for
+example `c("all", "custom")`. Component filters apply only to custom rows.}
 
 \item{commensurable}{Optional logical vector restricting the commensurable
 values used in custom specifications.}
@@ -40,26 +37,30 @@ Construct a tibble of valid method specifications that can be passed to
 multiple configurations.
 }
 \details{
-The resulting tibble combines preset-based specifications and custom
-custom specifications built from the currently available
-categorical methods and numerical preprocessing options listed in
-[dist_methods_tbl()].
+Select named presets or construct custom specifications from the categorical
+methods and numerical preprocessing options listed in [dist_methods_tbl()].
 
 
 Rows with `preset = "custom"` use the explicit categorical, numerical, and
 commensurability options. Named presets determine those settings internally.
 
-`mode` defines the initial candidate pool. Any explicit argument filters
-supplied by the user are applied afterwards and therefore restrict the
-selected pool further.
+With `commensurable = TRUE`, custom grids retain only `"std"` and
+`"pc_scores"` numerical preprocessing. Variable-wise affine scaling cancels
+under commensurability, so `"robust"` is omitted as redundant with `"std"`.
+The existing exclusions of `"none"` and `"range"` are retained. Range scaling
+clips new observations outside the training range, so its equivalence on
+training data does not extend to all new observations. These restrictions
+affect grid construction, not the options accepted by [mdist()].
 
-With `mode = "response_aware_only"`, preset specifications and categorical
-methods are restricted to response-aware methods.
+Named preset rows retain `NA` in their component columns: their settings are
+determined by the preset. Supplying component filters without requesting
+custom rows gives an error rather than silently ignoring those filters.
 }
 \examples{
 all_dist_method_specs()
-all_dist_method_specs(mode = "presets_only")
-all_dist_method_specs(mode = "response_aware_only")
-all_dist_method_specs(mode = "full", method_cat = c("tvd", "le_and_ho"))
+all_dist_method_specs(preset = c("gower", "u_indep", "u_dep"))
+all_dist_method_specs(preset = "all")
+all_dist_method_specs(preset = c("all", "custom"))
+all_dist_method_specs(method_cat = c("tvd", "le_and_ho"))
 
 }

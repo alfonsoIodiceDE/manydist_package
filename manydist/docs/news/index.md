@@ -2,7 +2,98 @@
 
 ## manydist 0.5.2
 
+### Simplified direct kNN prediction
+
+- Removed `dist_fun` from public
+  [`knn_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/knn_dist.md).
+  Supplying `new_data` selects tabular prediction using
+  [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
+  internally; `dist_args` passes its distance settings. Without
+  `new_data`, `x` contains precomputed test-to-training distances. The
+  lower-level tidymodels engine interfaces are unchanged.
+
+### Simpler specification grids
+
+- Removed `mode` from
+  [`all_dist_method_specs()`](https://alfonsoiodicede.github.io/manydist_package/reference/all_dist_method_specs.md).
+  The default `preset = NULL` returns custom combinations, a vector of
+  names returns only those named presets, and `preset = "all"` returns
+  all named presets. Include `"custom"` in a preset selection to also
+  generate component-filtered custom rows. Component filters without
+  custom rows are rejected rather than ignored.
+- Commensurable custom grids now retain only `"std"` and `"pc_scores"`,
+  omitting `"robust"` as redundant. This changes the candidate grid
+  only;
+  [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
+  still supports all its numerical preprocessing choices.
+- Select response-aware specifications using method metadata or explicit
+  preset/method names instead of the former `response_aware_only` mode.
+
+### Consistent new-data distances
+
+- Replaced the Euclidean cross-distance backend used by `HLeucl` and
+  `hl` with direct coordinate differences. This prevents zero
+  test-to-training distances observed with larger training sets in the
+  previous backend, for both commensurable and non-commensurable
+  `HLeucl`.
+- Corrected Gower’s test-to-training average to divide by the number of
+  original predictors rather than the number of expanded dummy columns.
+  Training-to-training distances and the unaveraged Gower sum are
+  unchanged.
+
+### Training-only commensurability
+
+- Corrected numerical and categorical commensurability so each
+  contribution uses its training-to-training mean before aggregation,
+  never the mean of a test-to-training matrix. This applies to
+  [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
+  and
+  [`step_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/step_mdist.md),
+  including indicator-based categorical methods. Existing variable-wise
+  training averages (including the zero diagonal) are preserved.
+- Numerical absolute-distance means and categorical means are obtained
+  without allocating observation-level training squares solely for
+  normalization.
+- Robust numerical preprocessing now also uses training medians and IQRs
+  rather than recomputing them on each test batch.
+
+### Direct prediction
+
+- Added
+  [`knn_dist()`](https://alfonsoiodicede.github.io/manydist_package/reference/knn_dist.md)
+  for direct classification, class probabilities, and regression from
+  test-to-training distances, or from tabular predictors using
+  [`mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/mdist.md)
+  internally. The `response` argument selects and excludes the outcome
+  column without manual predictor selection. Existing fit/predict engine
+  functions remain available for tidymodels and compatibility.
+- Fixed neighbour indexing for a single test observation with multiple
+  neighbours and probability output for a single outcome level. Empty
+  precomputed test matrices are also supported in the kNN helpers.
+
 ### Diagnostics
+
+- Removed the redundant `spec_type` field from distance-specification
+  grids and benchmark results. `preset = "custom"` selects explicit
+  method settings; named presets select their predefined settings.
+  Legacy `spec_type` columns are ignored on input. Update grid filters
+  to use `preset` instead.
+
+- Changed LOVO and LOVO-comparison plots so `reorder = TRUE` ranks
+  variables within their categorical and numerical groups, preserving
+  the meaning of the background bands. Comparison rankings use the mean
+  metric across methods; `top_n` selection remains global.
+
+- Changed the default fill gradient for pairwise benchmark heatmaps to
+  coral (`#E76F51`) for lower values and blue (`#008CFF`) for higher
+  values, with regular-weight white cell labels. This applies to all
+  metrics plotted by
+  [`autoplot.MDistBenchmark()`](https://alfonsoiodicede.github.io/manydist_package/reference/autoplot.MDistBenchmark.md),
+  including clustering agreement.
+
+- Left self-comparison tiles on the main diagonal blank. ARI heatmaps
+  now use a fixed 0 to 1 colour scale instead of the observed range.
+  Negative ARIs remain labelled and use the low-end colour.
 
 - Changed MDS-based diagnostics in
   [`lovo_mdist()`](https://alfonsoiodicede.github.io/manydist_package/reference/lovo_mdist.md)
@@ -12,11 +103,22 @@
   diagnostics; `dims = 2` remains the default MDS dimensionality when
   MDS is requested. Distance-based LOVO diagnostics remain available by
   default, and clustering diagnostics remain controlled by `cluster_k`.
+
 - Added compact [`print()`](https://rdrr.io/r/base/print.html) and
   [`summary()`](https://rdrr.io/r/base/summary.html) methods for
   `MDistBenchmark` objects. The full benchmark remains available as a
-  tibble, while interactive output now emphasizes run status, failures,
-  and pairwise diagnostic ranges.
+  tibble, while interactive output emphasizes run status and failures.
+  [`summary()`](https://rdrr.io/r/base/summary.html) displays one
+  labelled upper-triangular table per diagnostic, with blank diagonal
+  and lower triangle. Use `metric` to select measures (default: all;
+  `"ari"` selects all available clustering ARIs), and `digits` to
+  control rounding. It still invisibly returns the complete, unrounded
+  pairwise-results tibble for further analysis.
+
+- Removed `benchmark_comparisons()`. Use `pairs <- summary(result)`
+  instead. This is a breaking API change;
+  [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+  continues to work directly on the benchmark object.
 
 ### Distance construction
 
@@ -47,10 +149,9 @@ CRAN release: 2026-07-23
   Supplying `cluster_k` computes pairwise adjusted Rand indices for PAM,
   hierarchical, and/or spectral clustering; clustering is skipped when
   `cluster_k = NULL`.
-- Added
-  [`benchmark_comparisons()`](https://alfonsoiodicede.github.io/manydist_package/reference/benchmark_comparisons.md)
-  to extract the pairwise diagnostics stored in an `MDistBenchmark`
-  result without recomputing the distances.
+- Added `benchmark_comparisons()` to extract the pairwise diagnostics
+  stored in an `MDistBenchmark` result without recomputing the
+  distances.
 - Added an
   [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
   method for `MDistBenchmark` objects, with annotated heatmaps for
