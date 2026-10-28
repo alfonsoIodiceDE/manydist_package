@@ -442,3 +442,166 @@ Updated package documentation and the manuscript description; rebuilt the
 36-page PDF with all five benchmark tables together on page 20. All eight
 test files pass, and the updated package is installed locally. No changes
 to computed diagnostics or Michel-comment statuses.
+
+### 2026-10-26 — Carlo R2-004: clustrd function name
+
+Corrected the mixed-data related-software table entry from
+`clustrd::cluspca()` to `clustrd::cluspcamix()` in both table data files,
+consistent with the existing manuscript prose. Source correction complete;
+PDF rebuild pending.
+
+### 2026-10-26 — Explicit block_comm option (Carlo R2-005: manuscript pending)
+
+Added public `block_comm = FALSE` to `mdist()` and `step_mdist()`. For a custom
+distance with `method_num = "pc_scores"` and `commensurable = TRUE`, setting
+`block_comm = TRUE` enables the whitened-PC Manhattan numerical-block scaling
+previously available only through `u_dep_bw`. The preset and explicit settings
+produce identical distances; categorical contributions retain their existing
+variable-wise treatment. All eight test files pass without warnings, and the
+updated package is installed locally. The author will revise the manuscript
+wording separately; R2-005 is not yet marked fully addressed. PDF, website,
+and source archive remain unchanged by this implementation step.
+
+### 2026-10-26 — Carlo R2-005: manuscript identification added
+
+The presets table now includes `u_dep_bw`, with numerical weighting explicitly
+identified as blockwise. The following paragraph explains whitening, Manhattan
+distance, scaling of the complete numerical block, and the continued
+variable-wise commensurability of the categorical TVD contributions. It also
+names the equivalent custom settings, including `block_comm = TRUE`, in the
+interface section rather than the theoretical section. R2-005 is addressed.
+The manuscript PDF has been rebuilt; the earlier R2-004 function-name
+correction is now also reflected in the rendered related-software table.
+
+At the author's subsequent wording preference, both PC-based presets are
+labelled "principal-component scaling" in Table 4, with "blockwise" retained
+for `u_dep_bw` in the unbiased column. The accompanying paragraph retains the
+explicit whitening explanation. This table-label adjustment is saved in the
+source and will appear in the next PDF render.
+
+### 2026-10-26 — Commensurable numerical default changed at author's request
+
+The package now uses no preliminary numerical scaling by default when
+commensurability is enabled (`method_num = NULL` resolves to `"none"`);
+without commensurability, the custom `mdist()` default remains `"std"`.
+Explicit numerical methods remain available. The `u_indep` and `u_mix`
+presets and the commensurable grid representative now use `"none"`, while
+PCA presets and non-commensurable preset definitions are preserved. All eight
+test files pass without warnings, and the package is installed locally.
+The manuscript's defaults and preset/grid descriptions are pending the
+author's revisions; no further comment statuses were changed by this step.
+
+### 2026-10-26 — Review progress recorded in annotated PDF
+
+Reviewed the saved manuscript revisions and marked 18 clearly addressed
+second-round annotations green in a separate progress copy. These cover the
+section roadmap, mixed-data function name, identification of blockwise
+commensurability, Gower/preset exposition, removal of the flagged comparison
+chunk, small wording corrections, and use of the default comparative LOVO
+plotting metric. Exact annotation IDs and supporting evidence are recorded
+in `coauthor-review-progress-2026-10-26.md` and `coauthor-review-status.json`.
+Partially addressed comments retain their original colours, as do all other
+pending comments. The original annotated PDF is preserved; all comment text,
+authors, and reply relationships remain intact in the progress copy.
+
+The author clarified that removal from the visible manuscript is sufficient
+for code-deletion requests. R2-045 is therefore also addressed and green:
+the lengthy plotting-formatting code is hidden from the paper. R2-044's
+broader suggestion about package defaults remains open. The progress copy
+now contains 19 green annotations, with all 99 records preserved.
+
+### 2026-10-27 — Abstract comment R2-001
+
+The author confirms that the abstract comment is addressed. Recorded this
+confirmation and queued R2-001 to turn green at the next progress-copy update;
+the PDF was not regenerated now. R2-074 remains a separate, unchanged item.
+
+### 2026-10-27 — Reply-only comments: light-blue convention
+
+Light blue will identify comments answered without manuscript changes.
+The author confirms this status for R2-006, Michel's prepared-data suggestion
+at the start of Data preparation (annotated PDF p. 9). Queued its light-blue
+colour for the next progress-copy update. No reply text has been supplied or
+transcribed here; this records the author's status confirmation only.
+
+### 2026-10-27 — Michel R2-014: returned object and print output
+
+Added `print(d_gower)` before "Other distance specifications" and explained
+the printed overview: the custom specification, observation and variable
+counts, numerical preprocessing, categorical method, and commensurability.
+The prose distinguishes the returned `MDist` object from its
+`d_gower$distance` component and names `as.matrix()` for full matrix access.
+The exact example runs successfully. R2-014 is addressed in the source and
+queued for green; PDF rendering remains pending the author's nearby
+unfinished footnote.
+
+### 2026-10-27 — Cleaner package print output
+
+Updated the package's `MDist` print method so that principal-component counts
+and inertia thresholds are shown only for `method_num = "pc_scores"`, and
+NULL thresholds are never printed. This removes irrelevant PCA entries from
+the Gower example's normal `print(d_gower)` output. All nine test files pass;
+the updated package is installed locally. Distance calculations and stored
+parameters are unchanged.
+
+### 2026-10-27 — Michel R2-015 and updated R2-014 example
+
+Replaced the Gower construction example with the current default, as requested
+by the author. The manuscript now shows explicit `method_num = "none"`,
+`method_cat = "tvd"`, and `commensurable = TRUE`, followed by the equivalent
+short call and `print(d_default)`. The object explanation now refers to
+`d_default$distance`. Verified that both calls and the `u_mix` preset produce
+identical distances. Updated the associated default/preset descriptions and
+tables and rebuilt the 36-page PDF successfully. R2-015 is addressed and
+queued for green; R2-014 remains addressed with the revised example.
+
+### 2026-10-27 — Retain the short Gower implementation distinction
+
+Kept the default example first and restored a short, separate Gower
+construction call without printed output. The text explains that this call
+sums contributions, whereas conventional Gower implementations average them;
+for the complete, equally weighted example, division by the predictor count
+recovers the conventional scale. Verified agreement with `cluster::daisy()`
+and the `gower` preset and rebuilt the 36-page PDF. The longer comparison
+chunk and its equality-check output remain omitted.
+
+### 2026-10-27 — Additional summary illustration
+
+Following the author's request, added `summary(d_default)` immediately after
+the print explanation. The text distinguishes descriptive distance statistics
+from quick preview-block checks, including the sampled triangle-inequality
+check, rather than presenting these checks as an exhaustive verification.
+The example uses a fixed hidden seed and restores the preceding RNG state;
+no package behavior or subsequent stochastic analysis was changed.
+
+Rebuilt the 37-page manuscript and checked the summary layout on page 12.
+The complete output stays together, with the following presets subsection
+starting cleanly on page 13. The progress annotation PDF remains unchanged.
+
+### 2026-10-27 — Latest colour/status update
+
+The progress PDF now records 26 green annotations and one light-blue
+reply-only annotation; the remaining 72 retain their original colours.
+Applied the previously queued abstract, default-object, and default-example
+updates and recorded the additional completed wording/code changes. R2-022
+and R2-025 remain partial for the reasons in the detailed progress log.
+All existing comment text, including the author's manually appended answer,
+is preserved. A dated backup of the preceding progress copy is retained.
+
+The author's R2-006 answer is now available in the PDF and is transcribed
+verbatim here (no manuscript change for this comment):
+
+> I would keep this, I would not define a dataset that is already availble just to drop one variable and some missings. Also, I believe it serves as an example of minimal data preparation
+
+Separately, corrected `penguin_train[, 1]` to `penguin_train[, -1]` in the
+`u_mix` example at the author's explicit instruction. No other manuscript
+changes or article PDF rendering were performed in this update.
+
+### 2026-10-27 — Consistent non-commensurable training/new-data example
+
+Both calls now use robust numerical preprocessing, TVD categorical
+dissimilarities, and `commensurable = FALSE`. Updated the explanation to
+describe training-fitted category dissimilarities and numerical preprocessing,
+and explicitly noted that no commensurability weights are estimated in this
+example. The former mismatch is resolved; the remaining R2-025 requests are
+tracked separately. Source-only wording update; PDFs were not regenerated.

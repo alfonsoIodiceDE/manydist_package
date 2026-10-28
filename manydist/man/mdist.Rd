@@ -9,7 +9,7 @@ mdist(
   new_data = NULL,
   response = NULL,
   method_cat = "tvd",
-  method_num = "std",
+  method_num = NULL,
   commensurable = TRUE,
   ncomp = NULL,
   threshold = NULL,
@@ -18,7 +18,8 @@ mdist(
   prop_nn = 0.1,
   score = "ba",
   decision = "prior_corrected",
-  gower_average = TRUE
+  gower_average = TRUE,
+  block_comm = FALSE
 )
 }
 \arguments{
@@ -39,8 +40,10 @@ dissimilarity used when `preset = "custom"`. Common values include
 `"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
 available methods.}
 
-\item{method_num}{Character string specifying numerical-variable
-preprocessing. Supported values are `"none"` for no preprocessing,
+\item{method_num}{Character string or `NULL` specifying numerical-variable
+preprocessing. With the default `NULL` and `preset = "custom"`, resolves
+to `"none"` when `commensurable = TRUE` and `"std"` otherwise. Explicit
+choices are retained. Supported values are `"none"` for no preprocessing,
 `"std"` for standard-deviation scaling, `"range"` for range scaling,
 `"robust"` for inter-quartile-range-based scaling, and `"pc_scores"` for
 principal-component score scaling. This argument is used directly when
@@ -53,7 +56,8 @@ variables.}
 the average contribution of each variable to the overall distance is equal
 to 1 on the training data. Variable-specific means are computed from
 training pairs, before aggregation, and never from `new_data`. The current
-variable-wise convention includes the zero diagonal of the training square.}
+variable-wise convention includes the zero diagonal of the training square.
+See `block_comm` for an alternative numerical-block convention.}
 
 \item{ncomp}{Integer or `NULL`. Number of principal components to retain
 when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
@@ -68,7 +72,7 @@ specification. Available values include `"custom"`, `"gower"`,
 `"unbiased_dependent"`, `"u_dep"`, `"u_dep_bw"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
 When `preset` is not `"custom"`, arguments such as `method_cat`,
-`method_num`, `commensurable`, and `interaction` are normally handled by
+`method_num`, `commensurable`, `block_comm`, and `interaction` are handled by
 the preset and user-supplied values are ignored. The exception is
 `method_num` for `preset = "euclidean"` when all predictors are numeric.}
 
@@ -91,6 +95,16 @@ the scale of [cluster::daisy()] with `metric = "gower"`. If `FALSE`,
 returns the sum of per-variable Gower contributions, equivalent to
 multiplying the averaged Gower dissimilarity by the number of active
 variables.}
+
+\item{block_comm}{Logical, default `FALSE`. With `method_num = "pc_scores"`
+and `commensurable = TRUE`, set `TRUE` to whiten the retained numerical
+PCs and scale their complete Manhattan distance as one block, rather than
+commensurating components separately. Its mean over distinct training
+pairs is the number of original numerical variables, also when components
+are dropped. Categorical contributions remain individually commensurated.
+The fitted transformation and block scale are reused for `new_data`.
+This option is enabled automatically by `preset = "u_dep_bw"`; other
+non-custom presets ignore it.}
 }
 \value{
 An object of class `"MDist"`. The object contains the computed
@@ -123,14 +137,18 @@ averaged over variables or returned as a sum of variable-wise contributions.
 
 The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
 convenience specifications for unbiased or commensurable mixed-variable
-dissimilarities. The `"u_dep_bw"` preset uses the same categorical
+dissimilarities. The `"u_indep"` and `"u_mix"` presets use `method_num = "none"`,
+omitting redundant variable-wise standardization before commensurability.
+The `"u_dep_bw"` preset uses the same categorical
 construction as `"u_dep"`, but whitens the retained numerical principal
 components and scales their complete Manhattan distance by the number of
 original numerical variables divided by its mean over distinct training
-pairs. The `"euclidean"` preset computes Euclidean distance after
+pairs. This is equivalent to `method_cat = "tvd"`,
+`method_num = "pc_scores"`, `commensurable = TRUE`, and `block_comm = TRUE`
+with `preset = "custom"`. The `"euclidean"` preset computes Euclidean distance after
 standardizing numerical variables and one-hot encoding and standardizing
-categorical variables. For numerical-only inputs, `"std"` remains the
-default, but `method_num` can be overridden. Setting `method_num = "none"`
+categorical variables. For numerical-only inputs to this preset, `"std"`
+remains the default, but `method_num` can be overridden. Setting `method_num = "none"`
 produces the same numerical distances as [stats::dist()] applied directly
 to the original variables. The `"gudmm"`, `"dkss"`, and `"mod_gower"`
 presets provide additional mixed-type distance constructions. Some presets
@@ -178,6 +196,12 @@ if (requireNamespace("palmerpenguins", quietly = TRUE)) {
   )
 
   d_new
+
+  # Whitened-PC Manhattan distance with numerical-block commensurability
+  d_block <- mdist(
+    iris[, 1:4], method_num = "pc_scores",
+    commensurable = TRUE, block_comm = TRUE
+  )
 }
 
 }

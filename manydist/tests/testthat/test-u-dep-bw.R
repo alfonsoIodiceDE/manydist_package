@@ -166,3 +166,130 @@ test_that("u_dep_bw rejects an undefined numerical block scale clearly", {
     "positive finite standard deviations"
   )
 })
+
+test_that("custom block_comm reproduces the preset and manual numerical definition", {
+  x <- u_dep_bw_example()
+  for (ncomp in c(2L, 3L)) {
+    custom <- mdist(x, method_num = "pc_scores", commensurable = TRUE,
+                    block_comm = TRUE, ncomp = ncomp)
+    preset <- mdist(x, preset = "u_dep_bw", ncomp = ncomp)
+    expect_equal(custom$distance, preset$distance, tolerance = 0)
+    expect_equal(as.matrix(custom$distance), manual_u_dep_bw(x, ncomp = ncomp),
+                 tolerance = 1e-12)
+    expect_true(custom$params$block_comm)
+    expect_true(preset$params$block_comm)
+    expect_identical(preset$params$method_num, "pc_scores")
+  }
+  custom <- mdist(x, method_num = "pc_scores", block_comm = TRUE, threshold = 0.8)
+  preset <- mdist(x, preset = "u_dep_bw", threshold = 0.8)
+  expect_equal(custom$distance, preset$distance, tolerance = 0)
+})
+
+test_that("block_comm defaults to FALSE without changing componentwise PCs", {
+  x <- u_dep_bw_example()
+  default <- mdist(x, method_num = "pc_scores")
+  explicit <- mdist(x, method_num = "pc_scores", block_comm = FALSE)
+  expect_identical(default$distance, explicit$distance)
+  expect_false(default$params$block_comm)
+  expect_null(default$params$numeric_block_scale)
+  expect_false(mdist(x, preset = "u_dep")$params$block_comm)
+})
+
+test_that("custom block scaling preserves categorical-method choice", {
+  numeric <- u_dep_bw_example()
+  categorical <- tibble::tibble(
+    group_1 = factor(c("a", "a", "b", "b", "c", "c")),
+    group_2 = factor(c("x", "y", "y", "x", "x", "y"))
+  )
+  mixed <- dplyr::bind_cols(numeric, categorical)
+  for (method in c("matching", "tvd")) {
+    full <- mdist(mixed, method_num = "pc_scores", method_cat = method,
+                  block_comm = TRUE)
+    numerical <- mdist(numeric, method_num = "pc_scores", block_comm = TRUE)
+    cat <- mdist(categorical, method_cat = method)
+    expect_equal(as.matrix(full$distance),
+                 as.matrix(numerical$distance) + as.matrix(cat$distance),
+                 tolerance = 1e-12)
+  }
+  expect_equal(
+    mdist(mixed, method_num = "pc_scores", method_cat = "tvd",
+          block_comm = TRUE)$distance,
+    mdist(mixed, preset = "u_dep_bw")$distance,
+    tolerance = 0
+  )
+})
+
+test_that("custom block scaling fits numerical operators on training data only", {
+  x <- u_dep_bw_example()
+  test <- x[1:2, ] + 0.25
+  train <- mdist(x, method_num = "pc_scores", block_comm = TRUE)
+  together <- mdist(x, new_data = test, method_num = "pc_scores", block_comm = TRUE)
+  alone <- mdist(x, new_data = test[1, ], method_num = "pc_scores", block_comm = TRUE)
+  enlarged <- mdist(x, new_data = dplyr::bind_rows(test, test * 1000),
+                    method_num = "pc_scores", block_comm = TRUE)
+  expect_equal(as.matrix(together$distance), manual_u_dep_bw(x, new_data = test),
+               tolerance = 1e-12)
+  expect_equal(as.matrix(alone$distance)[1, ], as.matrix(together$distance)[1, ])
+  expect_equal(as.matrix(enlarged$distance)[1:2, ], as.matrix(together$distance))
+  expect_identical(train$params$numeric_block_scale, together$params$numeric_block_scale)
+  reapplied <- mdist(x, new_data = x, method_num = "pc_scores", block_comm = TRUE)
+  expect_equal(as.matrix(reapplied$distance), as.matrix(train$distance),
+               tolerance = 1e-12)
+})
+
+test_that("block_comm is validated and non-custom presets retain control", {
+  x <- u_dep_bw_example()
+  for (value in list(NA, NULL, "TRUE", 1, c(TRUE, FALSE))) {
+    expect_error(mdist(x, method_num = "pc_scores", block_comm = value),
+                 "single TRUE or FALSE")
+  }
+  expect_error(mdist(x, method_num = "std", block_comm = TRUE),
+               "requires.*pc_scores")
+  expect_error(mdist(x, method_num = "pc_scores", commensurable = FALSE,
+                     block_comm = TRUE), "commensurable = TRUE")
+  expect_warning(gower <- mdist(x, preset = "gower", block_comm = TRUE),
+                 "ignored.*block_comm")
+  expect_false(gower$params$block_comm)
+  single <- mdist(x[, 1, drop = FALSE], method_num = "pc_scores", block_comm = TRUE)
+  expect_equal(mean(as.numeric(single$to_dist())), 1, tolerance = 1e-12)
+})
+
+test_that("step_mdist supports custom block scaling for pairwise and new data", {
+  x <- u_dep_bw_example()
+  test <- x[1:2, ] + 0.25
+  rec <- recipes::recipe(~ ., data = x) |>
+    step_mdist(recipes::all_predictors(), method_cat = "matching",
+               method_num = "pc_scores", commensurable = TRUE, block_comm = TRUE) |>
+    recipes::prep(training = x)
+  expect_true(rec$steps[[1]]$block_comm)
+  expect_true(rec$steps[[1]]$preprocessor$block_comm)
+  baked <- recipes::bake(rec, new_data = test)
+  expect_equal(unname(as.matrix(baked)),
+               unname(manual_u_dep_bw(x, new_data = test)), tolerance = 1e-12)
+  expect_equal(unname(as.matrix(recipes::bake(rec, new_data = test[1, ]))),
+               unname(as.matrix(baked[1, ])), tolerance = 1e-12)
+  pairwise <- recipes::recipe(~ ., data = x) |>
+    step_mdist(recipes::all_predictors(), method_cat = "matching",
+               method_num = "pc_scores", commensurable = TRUE,
+               block_comm = TRUE, output = "pairwise") |>
+    recipes::prep(training = x)
+  expect_true(pairwise$steps[[1]]$block_comm)
+  expect_equal(as.matrix(manydist::mdist(x, preset = "u_dep_bw")$distance),
+               as.matrix(pairwise$steps[[1]]$preprocessor |>
+                           .apply_mdist()), tolerance = 1e-12)
+})
+
+test_that("custom benchmark rows honor optional block_comm", {
+  x <- u_dep_bw_example()
+  specs <- tibble::tibble(preset = "custom", method_cat = "matching",
+                          method_num = "pc_scores", commensurable = TRUE,
+                          block_comm = c(FALSE, TRUE))
+  result <- benchmark_mdist(x, specs = specs)
+  expect_true(all(result$ok))
+  expect_false(result$result[[1]]$params$block_comm)
+  expect_true(result$result[[2]]$params$block_comm)
+  expect_equal(result$result[[2]]$distance,
+               mdist(x, method_cat = "matching", method_num = "pc_scores",
+                     block_comm = TRUE)$distance, tolerance = 0)
+  expect_match(attr(result, "method_labels")[2], "numerical block")
+})

@@ -364,3 +364,105 @@ The author edits `article.qmd`. After each reported batch, the tracker and [mich
 - Rebuilt the local website in `manydist/docs` from the current package documentation, executing all seven articles and refreshing reference pages, figures, changelog, search index, sitemap, and Markdown mirrors.
 - Removed the two obsolete generated `benchmark_comparisons` reference files; their previous versions remain recoverable through Git. Verified the new benchmark summary reference and updated benchmarking article in a browser. The site build and its final checks completed successfully.
 - No publication, Git commit/push, package-version change, or source archive build was performed. The existing GitHub Pages workflow deploys `manydist/docs` on a push to `main`. No Michel-comment statuses changed.
+
+### 2026-10-26 — R2-004: mixed-data clustrd function name
+
+- Addressed Carlo's annotation R2-004 (annotated PDF p. 5): changed `cluspca` to `cluspcamix` in both related-software table data files. The prose in `article.qmd` already uses `clustrd::cluspcamix()`.
+- Source correction complete; the rendered PDF has not yet been rebuilt. Other second-round annotations remain unassessed.
+
+### 2026-10-26 — Explicit block_comm argument (related to R2-005)
+
+- At the author's request, added `block_comm = FALSE` to `mdist()` and `step_mdist()`. For custom `method_num = "pc_scores"`, `commensurable = TRUE`, setting it to `TRUE` exposes the existing whitened-PC Manhattan numerical-block treatment outside the `u_dep_bw` preset. Categorical methods remain independently selectable and individually commensurated.
+- `u_dep_bw` now resolves to these same explicit options, without changing its distances. Custom benchmark rows may carry an optional `block_comm` column; the default grids and existing componentwise calculations are unchanged. Preserved the existing distinct-training-pair convention for the numerical block; the previously noted difference from the variable-wise averaging convention was not changed.
+- Updated package help, the presets vignette, and release notes. All eight test files pass without warnings; tests cover preset/manual equivalence, retained components, fixed training-only operators and weights, categorical contributions, invalid settings, recipe use, and benchmark forwarding. Installed the revised package locally.
+- Manuscript wording for Carlo R2-005 remains pending the author's revision and review. No manuscript text, PDF, website, or source archive was rebuilt in this step.
+
+### 2026-10-26 — R2-005: identify groupwise commensurability in the presets section
+
+- Addressed at the author's requested location: added `u_dep_bw` to Table 4 and explained its whitened-PC Manhattan numerical-block scaling immediately below the table in Section 4.3. The paragraph gives the equivalent custom arguments, including `block_comm = TRUE`, and distinguishes the default componentwise option. Section 3 remains free of these interface details and was left unchanged.
+- The table marks numerical commensurability as "blockwise" rather than implying that individual PC contributions are all equalized. Categorical TVD contributions remain individually commensurated. Added a page-break guard to keep the following example together.
+- Rebuilt the manuscript PDF and checked the table and accompanying text on pages 12-13. The earlier `cluspcamix()` correction is also present in the rebuilt Table 2. Fixed a missing space before the introduction's `@sec-pipelines` reference, without changing its wording. No other second-round comments were marked addressed by this step.
+- Subsequent author wording preference: Table 4 now uses "principal-component scaling" for both `u_dep` and `u_dep_bw`, with "blockwise" retained in the latter's unbiased column. The paragraph below still explains whitening explicitly; no mathematical definition or package behavior changed. This final label adjustment is source-only, pending the next PDF render.
+
+### 2026-10-26 — Render repair: function-name underscore
+
+- Fixed an unescaped underscore in the new Gower comparison sentence: `\pkg{gower::gower_dist()}` is now `\pkg{gower::gower\_dist()}`. This caused the reported LaTeX `Missing $ inserted` error. Other underscored names inside JSS `\code{}` macros do not need this repair.
+- Rebuilt the 36-page PDF successfully and visually checked the corrected passage on page 11. The preceding Table 4 label adjustment is now included in the PDF as well. Preserved the author's other ongoing revisions; no additional reviewer comments were assessed or marked addressed.
+
+### 2026-10-26 — Use none as the commensurable numerical default
+
+- At the author's request, `mdist()` now resolves its default `method_num = NULL` to `"none"` with `commensurable = TRUE`, and to `"std"` otherwise. Explicit numerical methods are preserved. `u_indep` and `u_mix` use `"none"`; their redundant standard-deviation preprocessing is removed without changing the mathematical distances. PCA presets and the standard scaling in `euclidean`/`hl` are preserved. Recipe preset resolution is consistent.
+- Commensurable custom grids now retain `"none"` and `"pc_scores"` instead of `"std"` and `"pc_scores"`; there are still 413 custom specifications. Updated package help, release notes, and the relevant source vignettes. All eight test files pass without warnings; installed the updated package locally.
+- Equivalence is qualified: range scaling clips out-of-range new observations and was not silently replaced. Variable-wise and blockwise averaging conventions are unchanged.
+- The manuscript is left for the author's revisions. Follow-up wording needed: the main-argument default, descriptions of `u_indep`/`u_mix`, their Table 4 numerical-preprocessing entries, and the specification-grid representative. No PDF, website, or source archive was rebuilt for this package-only change; no additional reviewer annotations were marked addressed.
+
+### 2026-10-26 — Green annotation progress copy
+
+- Compared the saved manuscript source with the second-round annotations and created `article_cc_mvdv_progress.pdf`, leaving `article_cc_mvdv.pdf` unchanged. Green marks clearly addressed annotations; original colours are retained for partial or pending ones. The annotated PDF's original manuscript text and page numbers are not changed.
+- Marked 18 annotations addressed: R2-003, 004, 005, 007, 012, 013, 016, 017, 019, 021, 029, 030, 031, 032, 033, 035, 036, and 050. R2-013 records removal of the flagged Gower comparison chunk; the separate returned-object explanation in R2-014 remains open.
+- Five partially addressed annotations retain their original colours: R2-001, 044, 045, 061, and 074. Other annotations remain pending. In particular, hiding plotting-formatting code is not treated as completing the separate request to change package defaults.
+- Detailed evidence and partial-case explanations are in `coauthor-review-progress-2026-10-26.md`; `coauthor-review-status.json` records every annotation ID, status, rationale, and the manuscript/source-PDF hashes for this pass.
+- Verified that all 36 pages, 99 annotation records, reviewer identities, comment bodies, positions, replies, and unchanged annotation appearances are preserved. Updated both annotation colour metadata and visible appearance streams; no annotations were flattened or deleted. Visually checked mixed completed/pending annotations on pages 11 and 14. The manuscript and package were not edited in this step.
+
+### 2026-10-26 — Removed visible code counts as addressed
+
+- At the author's clarification, marked R2-045 green: the lengthy Figure 2 formatting code is removed from the visible manuscript, which satisfies its editorial deletion request even though the helper chunk remains hidden in the source. Physical deletion is not required. The related broader package-default discussion in R2-044 remains partial.
+- The progress copy and status/evidence files now record 19 addressed annotations and 80 retaining their original colours. All 99 annotation records and all 36 pages are preserved. No manuscript or package edits were made.
+
+### 2026-10-27 — Abstract comment confirmed addressed
+
+- The author confirms that Carlo's abstract comment R2-001 is addressed. Recorded that status in `coauthor-review-status.json`, with a pending colour update so it will turn green in the next progress PDF revision.
+- Did not regenerate or recolour the PDF now: it still contains 19 green annotations. The separate leakage-demonstration annotation R2-074 remains unchanged.
+
+### 2026-10-27 — Light blue for replies without manuscript changes
+
+- Agreed on a third colour: light blue means replied to without changing the manuscript. Green continues to indicate changes made in response to a comment; partial/pending comments retain their original colours.
+- The author identifies R2-006 (Michel, annotated PDF p. 9, start of Data preparation, prepared penguins-data suggestion) as the first reply-only item. Recorded `replied_no_change` and queued its light-blue colour for the next progress-copy update. The reply text itself has not been supplied, so no substantive answer was invented.
+- PDF unchanged for now. Its next update should include R2-001 in green and R2-006 in light blue.
+
+### 2026-10-27 — R2-014: explain the mdist return object before other specifications
+
+- Added a visible `print(d_gower)` chunk and explanatory prose before "Other distance specifications". The text distinguishes the overall `MDist` object, its printed construction settings, and the `dist`-compatible `d_gower$distance` component; `as.matrix(d_gower$distance)` gives the full square matrix.
+- Executed the exact current training split and distance call: 249 observations, four numerical and two categorical variables, range scaling, matching, and `commensurable = FALSE`. Verified the object/component classes and 249-by-249 matrix dimensions.
+- R2-014 is addressed in the saved source and queued for green. Did not regenerate the manuscript or progress PDFs: the author's preceding paragraph currently contains a malformed/unclosed footnote, which was left untouched. No other manuscript wording was changed.
+
+### 2026-10-27 — Package print method: relevant PCA fields only
+
+- Updated the actual `MDist` R6 print method in `manydist/R/mdist_class.R`: principal-component counts and inertia thresholds are omitted unless `method_num = "pc_scores"`. A `NULL` inertia threshold is omitted even for PC scores and when fields are explicitly selected with `show`.
+- Added print regression tests covering non-PC methods, component counts, non-NULL/NULL thresholds, explicit field selection, and the existing blockwise-PC count/scale display. All nine test files pass without warnings. Updated release notes and installed the package locally.
+- This is a package-level display change, not a manuscript-specific workaround. Distances, stored parameters, manuscript source, and annotation colour states are unchanged by this step.
+
+### 2026-10-27 — R2-015: replace the Gower example with the actual default
+
+- At the author's explicit request, replaced the Gower construction example with `d_default`: first the explicit `none`/`tvd`/logical `TRUE` settings, then `mdist(penguin_train[, -1])`, followed by `print(d_default)`. Retained and adapted the returned-object explanation for R2-014, including `$distance` and matrix conversion.
+- Updated the local default description, Table 3 effective numerical default, Table 4's `u_indep`/`u_mix` preprocessing, and the equivalent `u_mix` explanation. The presets section retains the averaged-Gower definition without referring back to the removed example. Removed the obsolete inactive Gower comparison block. Retained the author's name-based-selection footnote using native Quarto footnote syntax.
+- Executed the manuscript's exact data preparation and split: the explicit default, short call, and `u_mix` distance objects contain identical distances. Print output contains the relevant `none`, `tvd`, and `TRUE` settings only. Rebuilt the 36-page PDF successfully and visually checked pages 10-12; no unresolved references were detected.
+- R2-015 is addressed and queued for green; R2-014 remains queued with its updated object name. The progress PDF itself was not recoloured in this step. The later grid paragraph's old `std` wording is left for the author's review under R2-061.
+
+### 2026-10-27 — Restore the concise Gower sum-versus-average explanation
+
+- At the author's clarification, retained the default construction/print example first, and added a second assignment-only `mdist()` call with `range`, `matching`, and `commensurable = FALSE`, naming its result `d_gower_sum`. No Gower print or equality-check output was added to the manuscript.
+- Restored the useful distinction: the component-based call sums contributions, while conventional Gower implementations and the `gower` preset average them. Qualified division by the number of predictors to the complete, equally weighted data used in the example.
+- Verified numerically that dividing the sum by six predictors matches `cluster::daisy(metric = "gower")` and the `gower` preset. Rebuilt the 36-page manuscript PDF and visually checked pages 11-12. Updated R2-012's evidence; no annotation colours were changed in this step.
+
+### 2026-10-27 — Illustrate summary after print for d_default
+
+- Added a visible `summary(d_default)` example after the print explanation. Introduced descriptive statistics and basic checks, and stated that statistics for this `dist` result use all distinct pairs while diagonal/symmetry checks use a small preview block and the triangle check samples triples within it. No claim of exhaustive metric verification is made.
+- The summary's sampled check is run with a fixed seed in hidden setup, restoring the preceding random-number state afterwards so later stochastic analyses are unchanged. Executed the example and verified RNG-state restoration; the package summary function itself is unchanged.
+- Used a local smaller monospaced display and a page-break guard to keep the output together and prevent its long concluding line from overrunning the margin. No progress-copy colour states were changed by this addition.
+- Rebuilt the 37-page manuscript successfully and visually verified the complete summary on page 12 and the following presets subsection on page 13. No unresolved references were detected. The existing distinction between variable-wise training-square means and distinct-pair summary statistics is unchanged.
+
+### 2026-10-27 — Apply queued colours and review the latest revisions
+
+- Updated the existing progress PDF, rather than rebuilding from the pristine original, so the author's manually appended answer to R2-006 is preserved. Saved the previous progress copy in `review-history/article_cc_mvdv_progress_before-2026-10-27-8d5be1a2.pdf`.
+- Applied the queued green colours for R2-001, R2-014, and R2-015, and the queued light blue for R2-006. Also marked R2-008, R2-011, R2-020, and R2-024 green based on the latest predictor-selection wording/code, removal of redundant print output, and explicit commensurability-weight terminology.
+- R2-022 and R2-025 are partial: the association-aware custom training example has been revised, but the response-warning question and the complete train/test illustration are not resolved. The training example uses robust/FALSE and the new-data example uses u_mix (none/TRUE). No distance settings were changed on the author's behalf.
+- At the author's explicit clarification, corrected the `u_mix` predictor selection from `penguin_train[, 1]` to `penguin_train[, -1]`. This is the only manuscript edit in this colour-update pass. The manuscript PDF was not regenerated.
+- Current progress-copy totals: 26 green, one light blue, and 72 original-colour annotations (five partial and 67 pending). All 99 annotations and all 36 original pages are preserved, including comment bodies, rich text, authors, timestamps, reply links, and unchanged annotation appearances. The original annotated PDF hash is unchanged. Visually checked pages 1, 9, and 13; all queued colour updates are now applied.
+- Refreshed `coauthor-review-status.json` and `coauthor-review-progress-2026-10-26.md` with the current evidence, the actual R2-006 answer, and remaining consistency issues.
+
+### 2026-10-27 — Align the train/test explanation with the non-commensurable example
+
+- Verified the author's correction: both calls use `method_num = "robust"`, `method_cat = "tvd"`, and `commensurable = FALSE`, with the test response excluded.
+- At the author's request, changed the surrounding prose to refer to training-fitted categorical dissimilarities and numerical scaling/preprocessing, rather than estimated commensurability weights. Explicitly states that no such weights are estimated in this example.
+- Updated R2-024's evidence and removed the obsolete mismatch warning from the current progress notes. R2-025 remains partial only for its separate unsupervised-new-data example and matrix-dimension requests. No annotation colours or PDF files were changed; the wording is saved in the manuscript source for the next render.

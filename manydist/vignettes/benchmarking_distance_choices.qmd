@@ -75,7 +75,7 @@ the `preset` column, whereas rows with `preset = "custom"` describe a combinatio
 
 By default, the function returns custom combinations only. Use `preset = "all"`
 for all named presets, a vector of names for selected presets, or
-`preset = c("all", "custom")` for both. Custom grids retain only `"std"` and
+`preset = c("all", "custom")` for both. Custom grids retain only `"none"` and
 `"pc_scores"` when commensurability is enabled, avoiding redundant affine
 scaling choices.
 

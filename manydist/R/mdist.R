@@ -14,7 +14,7 @@
 
   if (nrow(x) < 2L) {
     stop(
-      "`preset = \"u_dep_bw\"` requires at least two training observations ",
+      "`block_comm = TRUE` requires at least two training observations ",
       "to estimate the numerical block scale.",
       call. = FALSE
     )
@@ -25,7 +25,7 @@
 
   if (any(!is.finite(scale)) || any(scale <= .Machine$double.eps)) {
     stop(
-      "`preset = \"u_dep_bw\"` requires numerical variables with positive ",
+      "`block_comm = TRUE` requires numerical variables with positive ",
       "finite standard deviations.",
       call. = FALSE
     )
@@ -39,7 +39,7 @@
 
   if (length(positive) == 0L) {
     stop(
-      "`preset = \"u_dep_bw\"` could not retain a principal component with ",
+      "`block_comm = TRUE` could not retain a principal component with ",
       "positive variance.",
       call. = FALSE
     )
@@ -72,7 +72,7 @@
 
   if (!is.finite(block_mean) || block_mean <= .Machine$double.eps) {
     stop(
-      "`preset = \"u_dep_bw\"` could not estimate a positive finite mean ",
+      "`block_comm = TRUE` could not estimate a positive finite mean ",
       "distance for the numerical block.",
       call. = FALSE
     )
@@ -160,7 +160,8 @@
     commensurable,
     method_num,
     interaction,
-    all_continuous = FALSE
+    all_continuous = FALSE,
+    block_comm = FALSE
 ) {
 
   preset_defs <- list(
@@ -202,21 +203,22 @@
     u_dep_bw = list(
       method_cat    = "tvd",
       commensurable = TRUE,
-      method_num    = "whitened_pc_scores",
+      method_num    = "pc_scores",
+      block_comm    = TRUE,
       interaction   = FALSE
     ),
 
     u_indep = list(
       method_cat    = "matching",
       commensurable = TRUE,
-      method_num    = "std",
+      method_num    = "none",
       interaction   = FALSE
     ),
 
     u_mix = list(
       method_cat    = "tvd",
       commensurable = TRUE,
-      method_num    = "std",
+      method_num    = "none",
       interaction   = FALSE
     )
   )
@@ -225,21 +227,30 @@
     method_cat    = method_cat,
     commensurable = commensurable,
     method_num    = method_num,
-    interaction   = interaction
+    interaction   = interaction,
+    block_comm    = block_comm
   )
 
+  default_method_num <- if (isTRUE(commensurable)) "none" else "std"
   default_args <- list(
     method_cat    = "tvd",
     commensurable = TRUE,
-    method_num    = "std",
-    interaction   = FALSE
+    method_num    = default_method_num,
+    interaction   = FALSE,
+    block_comm    = FALSE
   )
 
   if (!preset %in% names(preset_defs)) {
+    user_args$method_num <- method_num %||% default_method_num
+    if (block_comm) {
+      warning("`block_comm` is ignored by this non-custom preset.", call. = FALSE)
+      user_args$block_comm <- FALSE
+    }
     return(user_args)
   }
 
   if (identical(preset, "custom")) {
+    user_args$method_num <- method_num %||% default_method_num
     return(user_args)
   }
 
@@ -259,6 +270,9 @@
   if (allow_method_num_override) {
     non_default_args <- setdiff(non_default_args, "method_num")
   }
+  if (is.null(method_num)) {
+    non_default_args <- setdiff(non_default_args, "method_num")
+  }
 
   if (length(non_default_args) > 0) {
     warning(
@@ -274,12 +288,13 @@
   list(
     method_cat    = defs$method_cat    %||% method_cat,
     commensurable = defs$commensurable %||% commensurable,
-    method_num = if (allow_method_num_override) {
+    method_num = if (allow_method_num_override && !is.null(method_num)) {
       method_num
     } else {
-      defs$method_num %||% method_num
+      defs$method_num %||% method_num %||% default_method_num
     },
-    interaction   = defs$interaction   %||% interaction
+    interaction   = defs$interaction   %||% interaction,
+    block_comm    = defs$block_comm    %||% FALSE
   )
 }
 
@@ -322,7 +337,7 @@
   method <- .numeric_metric_from_preset(preset)
 
   if (!is.null(cont_data)) {
-    if (identical(preset, "u_dep_bw")) {
+    if (!is.null(u_dep_bw_numeric)) {
       cont_dist_mat <- .apply_u_dep_bw_numeric(
         numeric_prep = u_dep_bw_numeric,
         new_data = cont_data_val
@@ -393,11 +408,15 @@
 .prep_mdist <- function(x, response = NULL,
                         method_cat = "tvd",
                         commensurable = TRUE,
-                        method_num = "std",
+                        method_num = NULL,
                         ncomp = NULL, threshold = NULL,
                         preset = "custom", interaction = FALSE,
                         prop_nn = 0.1, score = "ba", decision = "prior_corrected",
-                        gower_average = TRUE) {
+                        gower_average = TRUE, block_comm = FALSE) {
+
+  if (!is.logical(block_comm) || length(block_comm) != 1L || is.na(block_comm)) {
+    stop("`block_comm` must be a single TRUE or FALSE value.", call. = FALSE)
+  }
 
   preset <- .normalize_preset(preset)
 
@@ -454,13 +473,21 @@
     commensurable = commensurable,
     method_num = method_num,
     interaction = interaction,
-    all_continuous = all_continuous
+    all_continuous = all_continuous,
+    block_comm = block_comm
   )
 
   method_cat    <- args$method_cat
   commensurable <- args$commensurable
   method_num    <- args$method_num
   interaction   <- args$interaction
+  block_comm    <- args$block_comm
+
+  if (block_comm && (!identical(method_num, "pc_scores") ||
+                     !isTRUE(commensurable))) {
+    stop("`block_comm = TRUE` requires `method_num = \"pc_scores\"` and ",
+         "`commensurable = TRUE`.", call. = FALSE)
+  }
 
 
   cat_data  <- x |> dplyr::select(where(is.factor))
@@ -478,12 +505,15 @@
     method_cat <- "matching"
   }
 
-  if (!is.null(cont_data) && identical(method_num, "pc_scores") && ncol(cont_data) == 1) {
+  if (!block_comm && !is.null(cont_data) &&
+      identical(method_num, "pc_scores") && ncol(cont_data) == 1) {
+    fallback <- if (isTRUE(commensurable)) "none" else "std"
     warning(
-      "With 1 continuous variable, 'pc_scores' is equivalent to standardization. Switching to method_num='std'.",
+      "With 1 continuous variable, 'pc_scores' is equivalent to variable-wise ",
+      "scaling. Switching to method_num='", fallback, "'.",
       call. = FALSE
     )
-    method_num <- "std"
+    method_num <- fallback
   }
 
   cat_levels <- NULL
@@ -495,7 +525,7 @@
   dummy_recipe <- NULL
   u_dep_bw_numeric <- NULL
 
-  if (identical(preset, "u_dep_bw") && !is.null(cont_data)) {
+  if (block_comm && !is.null(cont_data)) {
     u_dep_bw_numeric <- .fit_u_dep_bw_numeric(
       x = cont_data,
       ncomp = ncomp,
@@ -528,6 +558,7 @@
       method_cat     = method_cat,
       method_num     = method_num,
       commensurable  = commensurable,
+      block_comm     = block_comm,
       ncomp          = ncomp,
       threshold      = threshold,
       interaction    = interaction,
@@ -876,8 +907,10 @@
 #'   dissimilarity used when `preset = "custom"`. Common values include
 #'   `"matching"` and `"tvd"`. Use [all_dist_method_specs()] to inspect
 #'   available methods.
-#' @param method_num Character string specifying numerical-variable
-#'   preprocessing. Supported values are `"none"` for no preprocessing,
+#' @param method_num Character string or `NULL` specifying numerical-variable
+#'   preprocessing. With the default `NULL` and `preset = "custom"`, resolves
+#'   to `"none"` when `commensurable = TRUE` and `"std"` otherwise. Explicit
+#'   choices are retained. Supported values are `"none"` for no preprocessing,
 #'   `"std"` for standard-deviation scaling, `"range"` for range scaling,
 #'   `"robust"` for inter-quartile-range-based scaling, and `"pc_scores"` for
 #'   principal-component score scaling. This argument is used directly when
@@ -890,6 +923,16 @@
 #'   to 1 on the training data. Variable-specific means are computed from
 #'   training pairs, before aggregation, and never from `new_data`. The current
 #'   variable-wise convention includes the zero diagonal of the training square.
+#'   See `block_comm` for an alternative numerical-block convention.
+#' @param block_comm Logical, default `FALSE`. With `method_num = "pc_scores"`
+#'   and `commensurable = TRUE`, set `TRUE` to whiten the retained numerical
+#'   PCs and scale their complete Manhattan distance as one block, rather than
+#'   commensurating components separately. Its mean over distinct training
+#'   pairs is the number of original numerical variables, also when components
+#'   are dropped. Categorical contributions remain individually commensurated.
+#'   The fitted transformation and block scale are reused for `new_data`.
+#'   This option is enabled automatically by `preset = "u_dep_bw"`; other
+#'   non-custom presets ignore it.
 #' @param ncomp Integer or `NULL`. Number of principal components to retain
 #'   when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
 #'   available components are used unless `threshold` is supplied and supported
@@ -901,7 +944,7 @@
 #'   `"unbiased_dependent"`, `"u_dep"`, `"u_dep_bw"`, `"u_indep"`, `"u_mix"`, `"hl"`,
 #'   `"gudmm"`, `"dkss"`, `"mod_gower"`, and `"euclidean"`.
 #'   When `preset` is not `"custom"`, arguments such as `method_cat`,
-#'   `method_num`, `commensurable`, and `interaction` are normally handled by
+#'   `method_num`, `commensurable`, `block_comm`, and `interaction` are handled by
 #'   the preset and user-supplied values are ignored. The exception is
 #'   `method_num` for `preset = "euclidean"` when all predictors are numeric.
 #' @param interaction Logical. If `TRUE`, adds an interaction-aware
@@ -931,14 +974,18 @@
 #'
 #' The `"u_dep"`, `"unbiased_dependent"`, `"u_indep"`, and `"u_mix"` presets are
 #' convenience specifications for unbiased or commensurable mixed-variable
-#' dissimilarities. The `"u_dep_bw"` preset uses the same categorical
+#' dissimilarities. The `"u_indep"` and `"u_mix"` presets use `method_num = "none"`,
+#' omitting redundant variable-wise standardization before commensurability.
+#' The `"u_dep_bw"` preset uses the same categorical
 #' construction as `"u_dep"`, but whitens the retained numerical principal
 #' components and scales their complete Manhattan distance by the number of
 #' original numerical variables divided by its mean over distinct training
-#' pairs. The `"euclidean"` preset computes Euclidean distance after
+#' pairs. This is equivalent to `method_cat = "tvd"`,
+#' `method_num = "pc_scores"`, `commensurable = TRUE`, and `block_comm = TRUE`
+#' with `preset = "custom"`. The `"euclidean"` preset computes Euclidean distance after
 #' standardizing numerical variables and one-hot encoding and standardizing
-#' categorical variables. For numerical-only inputs, `"std"` remains the
-#' default, but `method_num` can be overridden. Setting `method_num = "none"`
+#' categorical variables. For numerical-only inputs to this preset, `"std"`
+#' remains the default, but `method_num` can be overridden. Setting `method_num = "none"`
 #' produces the same numerical distances as [stats::dist()] applied directly
 #' to the original variables. The `"gudmm"`, `"dkss"`, and `"mod_gower"`
 #' presets provide additional mixed-type distance constructions. Some presets
@@ -995,16 +1042,22 @@
 #'   )
 #'
 #'   d_new
+#'
+#'   # Whitened-PC Manhattan distance with numerical-block commensurability
+#'   d_block <- mdist(
+#'     iris[, 1:4], method_num = "pc_scores",
+#'     commensurable = TRUE, block_comm = TRUE
+#'   )
 #' }
 #'
 #' @export
 mdist <- function(x, new_data = NULL, response = NULL,
-                  method_cat = "tvd", method_num = "std",
+                  method_cat = "tvd", method_num = NULL,
                   commensurable = TRUE,
                   ncomp = NULL, threshold = NULL,
                   preset = "custom", interaction = FALSE,
                   prop_nn = 0.1, score = "ba", decision = "prior_corrected",
-                  gower_average = TRUE) {
+                  gower_average = TRUE, block_comm = FALSE) {
 
   prep <- .prep_mdist(
     x = x,
@@ -1019,7 +1072,8 @@ mdist <- function(x, new_data = NULL, response = NULL,
     prop_nn = prop_nn,
     score = score,
     decision = decision,
-    gower_average = gower_average
+    gower_average = gower_average,
+    block_comm = block_comm
   )
 
   distance_mat <- .apply_mdist(prep, new_data = new_data)
@@ -1029,6 +1083,7 @@ mdist <- function(x, new_data = NULL, response = NULL,
     method_cat  = prep$method_cat,
     method_num  = prep$method_num,
     commensurable = prep$commensurable,
+    block_comm    = prep$block_comm,
     gower_average = prep$gower_average,
     ncomp         = prep$ncomp,
     threshold     = prep$threshold,

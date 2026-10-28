@@ -1,5 +1,37 @@
 # manydist 0.5.2
 
+## Relevant print fields only
+
+- `MDist` printing now omits principal-component counts and inertia thresholds
+  unless `method_num = "pc_scores"`. A `NULL` inertia threshold is always
+  omitted, including when fields are explicitly selected with `show`.
+
+## No redundant numerical scaling under commensurability
+
+- `mdist()` now resolves its default `method_num = NULL` to `"none"` when
+  `commensurable = TRUE`, and to `"std"` otherwise. Explicit numerical methods,
+  including `"pc_scores"`, remain available and are not silently replaced.
+- `u_indep` and `u_mix` now specify `"none"` instead of `"std"`; the redundant
+  scaling step is removed without changing their mathematical distances.
+  `euclidean` and `hl` retain their standard-deviation scaling, and PCA-based
+  presets are unchanged. The recipe interface resolves named presets the same way.
+- Commensurable custom grids use `"none"` rather than `"std"` as their
+  canonical affine-scaling representative; the grid size is unchanged.
+  Explicit range scaling still clips out-of-range new observations, so it is
+  not universally equivalent to the other affine choices for test data.
+
+## Explicit numerical-block commensurability
+
+- Added `block_comm = FALSE` to `mdist()` and `step_mdist()`. With custom
+  `method_num = "pc_scores"` and `commensurable = TRUE`, setting it to `TRUE`
+  whitens the retained PCs and scales their complete Manhattan distance as a
+  numerical block, targeting the original number of numerical variables.
+  Categorical contributions retain variable-wise commensurability, and fitted
+  numerical transformations and block weights use training data only.
+- `u_dep_bw` enables these same explicit settings; its distances are unchanged.
+  Custom benchmark specifications may include an optional `block_comm` column.
+  Existing default specification grids and componentwise calculations are unchanged.
+
 ## Simplified direct kNN prediction
 
 - Removed `dist_fun` from public `knn_dist()`. Supplying `new_data` selects

@@ -22,7 +22,8 @@ step_mdist(
   train_predictors = NULL,
   preprocessor = NULL,
   skip = FALSE,
-  id = recipes::rand_id("mdist")
+  id = recipes::rand_id("mdist"),
+  block_comm = FALSE
 )
 }
 \arguments{
@@ -65,9 +66,10 @@ preprocessing. Supported values are `"none"` for no preprocessing,
 `"std"` for standard-deviation scaling, `"range"` for range scaling,
 `"robust"` for inter-quartile-range-based scaling, and `"pc_scores"` for
 principal-component score scaling. With `preset = "custom"`, `NULL`
-defaults to `"none"`. With `preset = "euclidean"`, the default is `"std"`;
-when all predictors selected by the step are numeric, an explicitly
-supplied value can override that default.}
+defaults to `"none"`. Named presets choose their own preprocessing:
+`"u_indep"` and `"u_mix"` use `"none"`, while `"euclidean"` and `"hl"`
+use `"std"`. With `preset = "euclidean"` and all selected predictors
+numeric, an explicitly supplied value can override the preset's default.}
 
 \item{commensurable}{Logical. If `TRUE`, dissimilarities are scaled so that
 the average contribution of each variable to the overall distance is equal
@@ -97,6 +99,11 @@ training observations.}
 should be skipped when baking new data.}
 
 \item{id}{Character string. Unique step identifier.}
+
+\item{block_comm}{Logical, default `FALSE`. Passed to [mdist()]. With
+`method_num = "pc_scores"` and `commensurable = TRUE`, `TRUE` whitens
+the retained PCs and commensurates their complete numerical Manhattan
+distance as one block. Categorical contributions remain variable-wise.}
 }
 \value{
 An updated recipe with a manydist step.

@@ -42,12 +42,17 @@
 #'   `"std"` for standard-deviation scaling, `"range"` for range scaling,
 #'   `"robust"` for inter-quartile-range-based scaling, and `"pc_scores"` for
 #'   principal-component score scaling. With `preset = "custom"`, `NULL`
-#'   defaults to `"none"`. With `preset = "euclidean"`, the default is `"std"`;
-#'   when all predictors selected by the step are numeric, an explicitly
-#'   supplied value can override that default.
+#'   defaults to `"none"`. Named presets choose their own preprocessing:
+#'   `"u_indep"` and `"u_mix"` use `"none"`, while `"euclidean"` and `"hl"`
+#'   use `"std"`. With `preset = "euclidean"` and all selected predictors
+#'   numeric, an explicitly supplied value can override the preset's default.
 #' @param commensurable Logical. If `TRUE`, dissimilarities are scaled so that
 #'   the average contribution of each variable to the overall distance is equal
 #'   to 1, when supported by the selected distance specification.
+#' @param block_comm Logical, default `FALSE`. Passed to [mdist()]. With
+#'   `method_num = "pc_scores"` and `commensurable = TRUE`, `TRUE` whitens
+#'   the retained PCs and commensurates their complete numerical Manhattan
+#'   distance as one block. Categorical contributions remain variable-wise.
 #' @param ncomp Integer or `NULL`. Number of principal components to retain
 #'   when `method_num = "pc_scores"` or `preset = "u_dep_bw"`. If `NULL`, all
 #'   available components are used unless `threshold` is supplied and supported
@@ -150,7 +155,8 @@ step_mdist <- function(
     train_predictors = NULL,
     preprocessor     = NULL,
     skip             = FALSE,
-    id               = recipes::rand_id("mdist")
+    id               = recipes::rand_id("mdist"),
+    block_comm       = FALSE
 ) {
 
   commensurable_missing <- missing(commensurable)
@@ -165,7 +171,7 @@ step_mdist <- function(
     method_num <- if (identical(preset, "custom")) {
       "none"
     } else {
-      "std"
+      NULL
     }
   }
 
@@ -185,6 +191,7 @@ step_mdist <- function(
       method_cat       = method_cat,
       method_num       = method_num,
       commensurable    = commensurable,
+      block_comm       = block_comm,
       ncomp            = ncomp,
       threshold        = threshold,
       columns          = columns,
@@ -204,7 +211,7 @@ step_mdist_new <- function(terms, role, trained,
                            ncomp, threshold,
                            columns, response_col,
                            train_predictors, preprocessor,
-                           skip, id) {
+                           skip, id, block_comm = FALSE) {
   recipes::step(
     subclass         = "mdist",
     terms            = terms,
@@ -216,6 +223,7 @@ step_mdist_new <- function(terms, role, trained,
     method_cat       = method_cat,
     method_num       = method_num,
     commensurable    = commensurable,
+    block_comm       = block_comm,
     ncomp            = ncomp,
     threshold        = threshold,
     columns          = columns,
@@ -300,6 +308,7 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
     method_cat = x$method_cat,
     method_num = x$method_num,
     commensurable = x$commensurable,
+    block_comm = x$block_comm %||% FALSE,
     ncomp = ncomp,
     threshold = x$threshold,
     preset = x$preset
@@ -321,6 +330,7 @@ prep.step_mdist <- function(x, training, info = NULL, ...) {
     method_cat = preprocessor$method_cat,
     method_num = preprocessor$method_num,
     commensurable = preprocessor$commensurable,
+    block_comm = preprocessor$block_comm,
     ncomp            = ncomp,
     threshold        = x$threshold,
     columns          = col_names,

@@ -61,6 +61,13 @@ The `engine` column helps distinguish presets implemented directly in
 
 ## Presets as argument shortcuts
 
+For a custom `mdist()` call, the default numerical preprocessing is `"none"`
+when `commensurable = TRUE`: variable-wise affine scaling would cancel when
+each contribution is divided by its training mean. With `commensurable = FALSE`,
+the default remains `"std"`. Explicit choices are retained. The commensurable
+`"u_indep"` and `"u_mix"` presets likewise use `"none"`; PCA-based presets
+retain `"pc_scores"`, and `"euclidean"` and `"hl"` retain `"std"`.
+
 Consider the `"u_dep"` preset, which computes an unbiased association-aware
 distance measure.
 
@@ -106,6 +113,23 @@ block has training mean `p_num`, even if fewer than `p_num` components are
 retained. The fitted PCA transformation and block scale are reused for new
 observations. This differs from `"u_dep"`, which commensurates the numerical
 principal-component contributions separately.
+
+The same block treatment is available without a preset:
+
+```{r}
+#| eval: false
+mdist(
+  x,
+  method_cat = "tvd",
+  method_num = "pc_scores",
+  commensurable = TRUE,
+  block_comm = TRUE
+)
+```
+
+`block_comm` defaults to `FALSE`; switching it on also enables whitening, as
+in `"u_dep_bw"`. With a custom specification, the categorical method can be
+chosen independently. The same argument is available in `step_mdist()`.
 
 ## Presets based on specific distance constructions
 

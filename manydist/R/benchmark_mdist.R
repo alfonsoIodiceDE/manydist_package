@@ -24,6 +24,11 @@
     )
   )
 
+  if ("block_comm" %in% names(specs)) {
+    block_rows <- component_rows & vapply(specs$block_comm, isTRUE, logical(1))
+    labels[block_rows] <- paste0(labels[block_rows], " [numerical block]")
+  }
+
   make.unique(labels, sep = " #")
 }
 
@@ -251,6 +256,9 @@
 #' @param specs A tibble of method specifications. By default, this is generated
 #'   with [all_dist_method_specs()]. It must contain the columns
 #'   `preset`, `method_cat`, `method_num`, and `commensurable`. An optional
+#'   logical `block_comm` column selects numerical-block commensurability for
+#'   custom specifications; if the column is omitted, it defaults to `FALSE`.
+#'   An optional
 #'   `label` column supplies display labels for comparisons and plots.
 #' @param dims Integer. Number of dimensions used by classical multidimensional
 #'   scaling when computing congruence and alienation coefficients.
@@ -431,9 +439,11 @@ benchmark_mdist <- function(
     }
   }
 
+  calculation_specs <- specs[needed]
+  calculation_specs$block_comm <- specs[["block_comm"]] %||% rep(FALSE, nrow(specs))
   results <- purrr::pmap(
-    specs[needed],
-    function(preset, method_cat, method_num, commensurable) {
+    calculation_specs,
+    function(preset, method_cat, method_num, commensurable, block_comm) {
       tryCatch(
         {
           if (!identical(preset, "custom")) {
@@ -456,6 +466,7 @@ benchmark_mdist <- function(
                 preset = "custom",
                 method_cat = method_cat,
                 method_num = method_num,
+                block_comm = block_comm,
                 commensurable = commensurable
               )
             } else {
@@ -465,6 +476,7 @@ benchmark_mdist <- function(
                 preset = "custom",
                 method_cat = method_cat,
                 method_num = method_num,
+                block_comm = block_comm,
                 commensurable = commensurable
               )
             }

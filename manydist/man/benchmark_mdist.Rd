@@ -26,6 +26,9 @@ unquoted or as a character string.}
 \item{specs}{A tibble of method specifications. By default, this is generated
 with [all_dist_method_specs()]. It must contain the columns
 `preset`, `method_cat`, `method_num`, and `commensurable`. An optional
+logical `block_comm` column selects numerical-block commensurability for
+custom specifications; if the column is omitted, it defaults to `FALSE`.
+An optional
 `label` column supplies display labels for comparisons and plots.}
 
 \item{dims}{Integer. Number of dimensions used by classical multidimensional

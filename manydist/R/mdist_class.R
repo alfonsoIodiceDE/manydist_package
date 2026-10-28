@@ -31,6 +31,13 @@
                            if (is.null(keys)) keys <- private$param_keys_by_preset[[self$preset]]
                            if (is.null(keys)) keys <- names(self$params)
 
+                           if (!identical(self$params$method_num, "pc_scores")) {
+                             keys <- setdiff(keys, c("ncomp", "threshold", "retained_ncomp"))
+                           }
+                           if (is.null(self$params$threshold)) {
+                             keys <- setdiff(keys, "threshold")
+                           }
+
                            if (!is.null(self$params) && length(self$params) && length(keys)) {
                              cat("  parameters:\n")
                              for (k in keys) {

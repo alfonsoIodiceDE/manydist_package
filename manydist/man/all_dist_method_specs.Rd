@@ -44,10 +44,10 @@ methods and numerical preprocessing options listed in [dist_methods_tbl()].
 Rows with `preset = "custom"` use the explicit categorical, numerical, and
 commensurability options. Named presets determine those settings internally.
 
-With `commensurable = TRUE`, custom grids retain only `"std"` and
+With `commensurable = TRUE`, custom grids retain only `"none"` and
 `"pc_scores"` numerical preprocessing. Variable-wise affine scaling cancels
-under commensurability, so `"robust"` is omitted as redundant with `"std"`.
-The existing exclusions of `"none"` and `"range"` are retained. Range scaling
+under commensurability, so `"std"` and `"robust"` are omitted as redundant
+with `"none"`. Range scaling is also omitted from commensurable grids; it
 clips new observations outside the training range, so its equivalence on
 training data does not extend to all new observations. These restrictions
 affect grid construction, not the options accepted by [mdist()].
